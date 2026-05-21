@@ -235,12 +235,21 @@ pub.post("/:token/download", async (req, res) => {
 });
 
 async function readFile(key: string): Promise<Buffer | null> {
+  // path traversal 2차 방어 — key 는 반드시 안전한 문자만, ../ 같은 게 끼면 거부.
+  // (1차 방어는 docSchema.fileUrl regex; DB 에 과거 데이터가 남아있을 수 있어 여기서 또 막는다.)
+  if (!/^[A-Za-z0-9._-]+$/.test(key)) return null;
   if (isStorageEnabled()) {
     const f = await downloadFile(key);
     if (f) return f.buffer;
   }
   const diskPath = path.join(UPLOAD_DIR, key);
-  if (fs.existsSync(diskPath)) return fs.promises.readFile(diskPath);
+  // 한 번 더: 절대경로 resolve 후 UPLOAD_DIR 밖이면 거부.
+  const resolved = path.resolve(diskPath);
+  const uploadDirResolved = path.resolve(UPLOAD_DIR);
+  if (!resolved.startsWith(uploadDirResolved + path.sep) && resolved !== uploadDirResolved) {
+    return null;
+  }
+  if (fs.existsSync(resolved)) return fs.promises.readFile(resolved);
   return null;
 }
 

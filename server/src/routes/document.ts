@@ -348,11 +348,14 @@ router.delete("/folders/:id", async (req, res) => {
 });
 
 /* ===== 문서 ===== */
+// fileUrl 은 반드시 우리 업로드 경로 형식이어야 함 — javascript:, data:, 외부 URL,
+// 그리고 path traversal(../) 모두 차단. (chat.ts 와 동일 정책)
+const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
 const docSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
   folderId: z.string().max(64).optional().nullable(),
-  fileUrl: z.string().max(2000).optional(),
+  fileUrl: z.string().regex(SAFE_UPLOAD_URL).max(2000).optional(),
   fileName: z.string().max(255).optional(),
   fileType: z.string().max(80).optional(),
   // 업로드 크기는 upload 라우트에서 파일 용량 체크로 방어하고, 여기서는 int 한도만.
@@ -676,16 +679,24 @@ router.delete("/:id", async (req, res) => {
  * 폴더 자체를 못 보면 애초에 이 엔드포인트로 접근 불가.
  */
 
-/** 저장소/디스크 어디든 해당 파일의 Buffer 를 꺼낸다. 없으면 null. */
+/** 저장소/디스크 어디든 해당 파일의 Buffer 를 꺼낸다. 없으면 null.
+ *  path traversal 2차 방어 — key 가 안전한 charset 이 아니거나 resolve 결과가
+ *  UPLOAD_DIR 바깥이면 거부. (1차 방어는 docSchema.fileUrl regex.) */
 async function fetchFileBuffer(key: string): Promise<Buffer | null> {
+  if (!/^[A-Za-z0-9._-]+$/.test(key)) return null;
   if (isStorageEnabled()) {
     const f = await downloadFile(key);
     if (f) return f.buffer;
   }
   // 디스크 fallback (dev / legacy)
   const diskPath = path.join(UPLOAD_DIR, key);
-  if (fs.existsSync(diskPath)) {
-    return fs.promises.readFile(diskPath);
+  const resolved = path.resolve(diskPath);
+  const uploadDirResolved = path.resolve(UPLOAD_DIR);
+  if (!resolved.startsWith(uploadDirResolved + path.sep) && resolved !== uploadDirResolved) {
+    return null;
+  }
+  if (fs.existsSync(resolved)) {
+    return fs.promises.readFile(resolved);
   }
   return null;
 }

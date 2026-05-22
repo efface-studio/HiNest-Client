@@ -116,9 +116,18 @@ function scrubUrl(raw: string): string {
   const qs = params.toString();
   return qs ? `${path}?${qs}` : path;
 }
+// HTTP access log — 매 요청마다 in-memory 링버퍼에 적재.
+// 비용 절감:
+//   - ALB/Fargate healthcheck 가 GET /api/health 를 매 30초씩 두드리는데, 200 OK 만
+//     남기는 라인은 정보가 없고 CloudWatch ingestion(=USD/GB) 만 가산된다.
+//   - GET /api/notification/stream 도 SSE long-poll 시작 핸드셰이크가 끊임없이 찍힘.
+//   - 위 두 경로는 정상 200/204 일 때만 스킵. 비정상 응답(5xx, 4xx)은 그대로 기록해야
+//     장애 진단이 가능.
+const ACCESS_LOG_SKIP_PATHS = new Set(["/api/health", "/api/notification/stream"]);
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
+    if (ACCESS_LOG_SKIP_PATHS.has(req.path) && res.statusCode < 400) return;
     const dur = Date.now() - start;
     const url = req.originalUrl || req.url;
     pushHttpLog(`${req.method} ${scrubUrl(url)} ${res.statusCode} ${dur}ms`);

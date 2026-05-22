@@ -1,0 +1,81 @@
+# CloudWatch Log Groups 보존 기간 표준화 — 비용 절감.
+#
+# 무엇이 문제였나:
+#   ECS Fargate 가 자동으로 만드는 로그 그룹들은 retention = "Never expire" 기본값이라
+#   영구 보관된다. ingestion 은 USD/GB(가장 큰 비용), 저장은 USD/GB-month 로 매월 누적.
+#
+# 정책:
+#   - 운영 서버 / ECS exec 컨텍스트 : 30 일
+#   - 일회성 진단/마이그레이션 (`/ecs/onetime-*`)  :  7 일
+#
+# 운영:
+#   gh workflow run cost-log-retention.yml — 멱등. 이미 같은 retention 이면 noop.
+#   새 로그 그룹이 생기면 다시 한 번 실행하면 됨.
+name: Cost — CloudWatch log retention
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 매주 월요일 KST 09:00 (UTC 00:00) — 새로 생긴 log group 도 자동으로 잡아준다.
+    - cron: "0 0 * * 1"
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::149536482210:role/github-deploy-hinest
+          role-session-name: gha-log-retention-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Set retention 30d on long-lived ECS / app log groups
+        run: |
+          set -e
+          echo "운영 로그 그룹 — 30일"
+          aws logs describe-log-groups --region "$AWS_REGION" \
+            --query 'logGroups[?starts_with(logGroupName, `/ecs/hinest`) || starts_with(logGroupName, `/aws/ecs/hinest`)].logGroupName' \
+            --output text | tr '\t' '\n' | while read -r g; do
+              [ -z "$g" ] && continue
+              CURRENT=$(aws logs describe-log-groups --log-group-name-prefix "$g" --region "$AWS_REGION" \
+                --query "logGroups[?logGroupName=='$g'].retentionInDays | [0]" --output text)
+              if [ "$CURRENT" = "30" ]; then
+                echo "  $g (이미 30일)"
+              else
+                echo "  $g  ← 설정"
+                aws logs put-retention-policy --log-group-name "$g" --retention-in-days 30 --region "$AWS_REGION"
+              fi
+            done
+
+      - name: Set retention 7d on one-off / diag log groups
+        run: |
+          set -e
+          echo "일회성 로그 그룹 — 7일"
+          aws logs describe-log-groups --region "$AWS_REGION" \
+            --query 'logGroups[?starts_with(logGroupName, `/ecs/onetime`) || contains(logGroupName, `seed`) || contains(logGroupName, `diag`)].logGroupName' \
+            --output text | tr '\t' '\n' | while read -r g; do
+              [ -z "$g" ] && continue
+              CURRENT=$(aws logs describe-log-groups --log-group-name-prefix "$g" --region "$AWS_REGION" \
+                --query "logGroups[?logGroupName=='$g'].retentionInDays | [0]" --output text)
+              if [ "$CURRENT" = "7" ]; then
+                echo "  $g (이미 7일)"
+              else
+                echo "  $g  ← 설정"
+                aws logs put-retention-policy --log-group-name "$g" --retention-in-days 7 --region "$AWS_REGION"
+              fi
+            done
+
+      - name: Summary — 보존 기간 미설정 그룹 확인
+        run: |
+          echo ""
+          echo "=== 'Never expire' 상태로 남아있는 로그 그룹 (있다면 확인 필요) ==="
+          aws logs describe-log-groups --region "$AWS_REGION" \
+            --query 'logGroups[?!not_null(retentionInDays)].logGroupName' --output text | tr '\t' '\n'

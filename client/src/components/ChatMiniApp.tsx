@@ -114,8 +114,18 @@ export default function ChatMiniApp({
       } catch {}
     };
     fetchPresence();
-    const t = setInterval(fetchPresence, 30_000);
-    return () => { cancelled = true; clearInterval(t); };
+    // presence 는 사이드패널이 열려 있을 때만 polling. 탭 hidden 이면 polling 중단해서
+    // 백그라운드 탭 다수 운영 시 서버 RPS 누적을 막는다 (SSE 가 실시간 이벤트는 별도 채널).
+    let t: number | null = null;
+    function start() { if (t === null) t = window.setInterval(fetchPresence, 30_000); }
+    function stop() { if (t !== null) { window.clearInterval(t); t = null; } }
+    if (document.visibilityState === "visible") start();
+    function onVis() {
+      if (document.visibilityState === "visible") { fetchPresence(); start(); }
+      else { stop(); }
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => { cancelled = true; stop(); document.removeEventListener("visibilitychange", onVis); };
   }, [isPanelOpen]);
 
   const patchRoomSetting = (roomId: string, patch: { nickname?: string; muted?: boolean }) => {

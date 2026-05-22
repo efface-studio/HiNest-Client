@@ -1,0 +1,139 @@
+# VPC 비용 항목 감사 — 어디가 새는지 한 번에 본다.
+#
+# 가장 큰 단일 항목은 거의 항상 NAT Gateway 존재 여부:
+#   - NAT GW 1개 = 시간당 $0.045 + 트래픽 GB 당 $0.045
+#   - 그냥 존재만 해도 월 ~$32 (₩42,000) 깔고 시작
+#
+# 이 워크플로우가 확인하는 것:
+#   1) VPC 별 NAT Gateway 개수 + 월 추정 비용
+#   2) ECS Service 가 사용하는 subnet 이 public 인지 private 인지
+#   3) ECR / Logs / S3 VPC endpoint 가 있는지 (있으면 NAT 우회로 트래픽 무료)
+#   4) Elastic IP 점유 (associate 안 된 EIP 는 시간당 $0.005)
+#
+# 사용:
+#   gh workflow run cost-vpc-audit.yml
+name: Cost — VPC / NAT audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECS_CLUSTER: hinest-prod
+  ECS_SERVICE: hinest-server
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::149536482210:role/github-deploy-hinest
+          role-session-name: gha-vpc-audit-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 1) NAT Gateway 점유
+        run: |
+          echo "═══════════ NAT Gateway ═══════════"
+          NATS=$(aws ec2 describe-nat-gateways \
+            --filter "Name=state,Values=available,pending" \
+            --region "$AWS_REGION" \
+            --query 'NatGateways[*].[NatGatewayId, VpcId, SubnetId, State, CreateTime]' \
+            --output table)
+          echo "$NATS"
+          COUNT=$(aws ec2 describe-nat-gateways \
+            --filter "Name=state,Values=available,pending" \
+            --region "$AWS_REGION" \
+            --query 'length(NatGateways)' --output text)
+          if [ "$COUNT" = "0" ]; then
+            echo "✓ NAT Gateway 없음 — 이 항목 최적화 완료"
+          else
+            COST=$(python3 -c "print(f'{$COUNT*0.045*730:.2f}')")
+            KRW=$(python3 -c "print(int($COUNT*0.045*730*1350))")
+            echo ""
+            echo "⚠️  NAT Gateway $COUNT 개 = 시간당 \$$(python3 -c "print($COUNT*0.045)")"
+            echo "    월 ~\$$COST (₩$KRW) — 트래픽 별도"
+            echo ""
+            echo "제거 방안:"
+            echo "  (a) ECS task 를 public subnet 으로 이동 + assignPublicIp=ENABLED"
+            echo "      → outbound 가 IGW 로 빠짐, NAT 불필요"
+            echo "  (b) VPC endpoint(Gateway: S3, Interface: ECR/Logs) 만 만들고 NAT 유지"
+            echo "      → 일부 트래픽만 무료화. 컨테이너 외부 API 호출(SES 등) 은 여전히 NAT 통과"
+          fi
+
+      - name: 2) ECS Service subnet 검사 (public / private)
+        run: |
+          echo ""
+          echo "═══════════ ECS Service subnets ═══════════"
+          SUBNETS=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --region "$AWS_REGION" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.subnets' \
+            --output text)
+          ASSIGN=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --region "$AWS_REGION" \
+            --query 'services[0].networkConfiguration.awsvpcConfiguration.assignPublicIp' \
+            --output text)
+          echo "subnets    : $SUBNETS"
+          echo "assignIP   : $ASSIGN"
+
+          for S in $SUBNETS; do
+            RTB=$(aws ec2 describe-route-tables \
+              --filters "Name=association.subnet-id,Values=$S" \
+              --region "$AWS_REGION" \
+              --query 'RouteTables[0].Routes[?DestinationCidrBlock==`0.0.0.0/0`].[GatewayId, NatGatewayId]' \
+              --output text)
+            if echo "$RTB" | grep -q "^igw-"; then
+              echo "  $S → public (IGW 직접)"
+            elif echo "$RTB" | grep -q "^nat-"; then
+              echo "  $S → private (NAT Gateway 경유) ⚠️"
+            else
+              echo "  $S → 0.0.0.0/0 route 못 찾음"
+            fi
+          done
+
+      - name: 3) VPC Endpoint 존재 여부
+        run: |
+          echo ""
+          echo "═══════════ VPC Endpoints (NAT 우회 경로) ═══════════"
+          aws ec2 describe-vpc-endpoints \
+            --region "$AWS_REGION" \
+            --query 'VpcEndpoints[*].[VpcEndpointId, ServiceName, VpcEndpointType, State]' \
+            --output table
+
+      - name: 4) 미사용 Elastic IP
+        run: |
+          echo ""
+          echo "═══════════ 미사용 Elastic IP ═══════════"
+          ORPHANS=$(aws ec2 describe-addresses \
+            --region "$AWS_REGION" \
+            --query 'Addresses[?!not_null(AssociationId)].[PublicIp, AllocationId]' \
+            --output text)
+          if [ -z "$ORPHANS" ]; then
+            echo "✓ 점유만 한 EIP 없음"
+          else
+            COUNT=$(echo "$ORPHANS" | wc -l | tr -d ' ')
+            COST=$(python3 -c "print(f'{$COUNT*0.005*730:.2f}')")
+            KRW=$(python3 -c "print(int($COUNT*0.005*730*1350))")
+            echo "$ORPHANS"
+            echo ""
+            echo "⚠️  $COUNT 개 미사용 EIP — 월 \$$COST (₩$KRW) 의미없이 청구됨"
+            echo "    제거: aws ec2 release-address --allocation-id <id>"
+          fi
+
+      - name: 5) 요약 — 즉시 가능한 절감액
+        run: |
+          echo ""
+          echo "═══════════ 즉시 가능한 절감 액션 ═══════════"
+          echo "1. NAT Gateway 있다면 → public subnet 이동 후 제거 (월 ₩42,000+)"
+          echo "2. 미사용 EIP 회수 (월 ₩5,000/개)"
+          echo "3. S3 / ECR / Logs Interface Endpoint 추가 (NAT 통과 트래픽 우회)"
+          echo ""
+          echo "다음: 청구서 Cost Explorer → Group by: Service / Usage Type 으로"
+          echo "      'NAT Gateway-Hours', 'NAT Gateway-Bytes' 항목이 얼마인지 확인"

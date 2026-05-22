@@ -1,0 +1,182 @@
+# Fargate task 의 7일치 CPU / Memory 사용률을 CloudWatch 에서 읽어
+# 다운사이즈가 안전한지 자동 판단하는 진단 워크플로우.
+#
+# 사용:
+#   gh workflow run cost-fargate-diagnose.yml
+#
+# 출력:
+#   - 현재 task cpu/memory 사이즈
+#   - 7일 평균 / p95 / max
+#   - 권장 사이즈 (안전 마진 포함)
+#   - 추정 월 절감액 (Seoul 리전 기준)
+#
+# 다운사이즈를 *실제로 적용* 하려면:
+#   gh workflow run cost-fargate-rightsize.yml -f cpu=256 -f memory=512
+#
+# 안전 정책:
+#   p95 CPU < 40% AND p95 MEM < 50% 일 때만 다음 단계 사이즈 권장.
+#   그 이상이면 "유지" 권장 — 다운사이즈가 실패할 가능성 큼.
+name: Cost — Fargate rightsize diagnose
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECS_CLUSTER: hinest-prod
+  ECS_SERVICE: hinest-server
+  TASK_FAMILY: hinest-server
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::149536482210:role/github-deploy-hinest
+          role-session-name: gha-cost-diag-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 현재 task 사이즈
+        id: current
+        run: |
+          TD=$(aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --region "$AWS_REGION" --query 'taskDefinition')
+          CPU=$(echo "$TD" | jq -r '.cpu')
+          MEM=$(echo "$TD" | jq -r '.memory')
+          REV=$(echo "$TD" | jq -r '.revision')
+          echo "현재: $CPU CPU units / $MEM MB RAM (revision $REV)"
+          echo "cpu=$CPU" >> "$GITHUB_OUTPUT"
+          echo "memory=$MEM" >> "$GITHUB_OUTPUT"
+
+      - name: CloudWatch — 7일 CPU/Memory 통계
+        id: stats
+        run: |
+          # ECS Service 단위 CPUUtilization / MemoryUtilization (%).
+          # period=3600 (1시간) × 168 datapoint = 7일.
+          START=$(date -u -d "7 days ago" +%Y-%m-%dT%H:%M:%S 2>/dev/null || date -u -v-7d +%Y-%m-%dT%H:%M:%S)
+          END=$(date -u +%Y-%m-%dT%H:%M:%S)
+          echo "측정 구간: $START ~ $END (UTC)"
+
+          fetch() {
+            local METRIC=$1
+            aws cloudwatch get-metric-statistics \
+              --namespace AWS/ECS \
+              --metric-name "$METRIC" \
+              --dimensions Name=ClusterName,Value="$ECS_CLUSTER" Name=ServiceName,Value="$ECS_SERVICE" \
+              --start-time "$START" --end-time "$END" \
+              --period 3600 \
+              --statistics Average Maximum \
+              --region "$AWS_REGION" \
+              --query 'Datapoints[*].[Average, Maximum]' --output text
+          }
+
+          CPU_RAW=$(fetch CPUUtilization)
+          MEM_RAW=$(fetch MemoryUtilization)
+          if [ -z "$CPU_RAW" ]; then
+            echo "::error::CPU metric 데이터 없음 — 서비스가 7일 미만 운영됐거나 metric publish 안 됨"
+            exit 1
+          fi
+
+          # 통계 계산 — awk + sort 만으로.
+          p95() {
+            # $1: 멀티라인 데이터, $2: 컬럼 번호
+            printf '%s\n' "$1" | awk -v c="$2" '{print $c}' | sort -n | awk '
+              { a[NR]=$1 }
+              END {
+                if (NR == 0) { print 0; exit }
+                idx = int(NR * 0.95 + 0.5);
+                if (idx < 1) idx = 1; if (idx > NR) idx = NR;
+                print a[idx]
+              }'
+          }
+          avg() {
+            printf '%s\n' "$1" | awk -v c="$2" 'BEGIN{s=0;n=0} {s+=$c; n++} END{ if(n==0) print 0; else printf "%.2f", s/n }'
+          }
+          mx() {
+            printf '%s\n' "$1" | awk -v c="$2" 'BEGIN{m=0} {if($c+0>m) m=$c+0} END{printf "%.2f", m}'
+          }
+
+          CPU_AVG=$(avg "$CPU_RAW" 1)
+          CPU_P95=$(p95 "$CPU_RAW" 1)
+          CPU_MAX=$(mx  "$CPU_RAW" 2)
+          MEM_AVG=$(avg "$MEM_RAW" 1)
+          MEM_P95=$(p95 "$MEM_RAW" 1)
+          MEM_MAX=$(mx  "$MEM_RAW" 2)
+
+          echo ""
+          echo "═══════════ 7일 사용률 (단위 %) ═══════════"
+          printf "%-12s %10s %10s %10s\n" ""        "평균"  "p95"  "최댓값"
+          printf "%-12s %10s %10s %10s\n" "CPU"     "$CPU_AVG" "$CPU_P95" "$CPU_MAX"
+          printf "%-12s %10s %10s %10s\n" "Memory"  "$MEM_AVG" "$MEM_P95" "$MEM_MAX"
+
+          # outputs
+          echo "cpu_p95=$CPU_P95" >> "$GITHUB_OUTPUT"
+          echo "mem_p95=$MEM_P95" >> "$GITHUB_OUTPUT"
+          echo "cpu_max=$CPU_MAX" >> "$GITHUB_OUTPUT"
+          echo "mem_max=$MEM_MAX" >> "$GITHUB_OUTPUT"
+
+      - name: 권장 사이즈 + 절감액 추정
+        run: |
+          # Fargate Seoul 가격 (2026 기준, USD)
+          # vCPU-hour:   0.04048
+          # GB-hour:     0.004445
+          # 730h/월 (28~31일 평균).
+          calc_cost() {
+            python3 -c "print(f'{($1/1024)*0.04048*730 + ($2/1024)*0.004445*730:.2f}')"
+          }
+
+          CUR_CPU=${{ steps.current.outputs.cpu }}
+          CUR_MEM=${{ steps.current.outputs.memory }}
+          CUR_COST=$(calc_cost $CUR_CPU $CUR_MEM)
+
+          P95_CPU=${{ steps.stats.outputs.cpu_p95 }}
+          P95_MEM=${{ steps.stats.outputs.mem_p95 }}
+          MAX_CPU=${{ steps.stats.outputs.cpu_max }}
+          MAX_MEM=${{ steps.stats.outputs.mem_max }}
+
+          # 다운사이즈 후보 — 한 단계 아래의 Fargate "정상 조합".
+          # 256 CPU + 512/1024/2048 MB
+          # 512 CPU + 1024/2048/3072/4096 MB
+          # 1024 CPU + 2048/3072/4096/5120/6144/7168/8192 MB
+          # 단순화: 현재가 (512, 1024) 면 (256, 512) 또는 (256, 1024) 제안.
+          REC_CPU=""
+          REC_MEM=""
+          if [ "$CUR_CPU" = "512" ] && [ "$CUR_MEM" = "1024" ]; then
+            REC_CPU=256; REC_MEM=512
+          elif [ "$CUR_CPU" = "1024" ] && [ "$CUR_MEM" = "2048" ]; then
+            REC_CPU=512; REC_MEM=1024
+          else
+            REC_CPU=$CUR_CPU; REC_MEM=$CUR_MEM
+          fi
+          REC_COST=$(calc_cost $REC_CPU $REC_MEM)
+
+          SAVE=$(python3 -c "print(f'{$CUR_COST - $REC_COST:.2f}')")
+
+          echo ""
+          echo "═══════════ 진단 결과 ═══════════"
+          echo "현재 task:   $CUR_CPU CPU / $CUR_MEM MB  →  월 \$$CUR_COST"
+
+          # 안전 판단 — p95 < 40% / 50% 일 때만 권장.
+          SAFE=$(python3 -c "print('yes' if $P95_CPU < 40 and $P95_MEM < 50 and $MAX_CPU < 70 and $MAX_MEM < 80 else 'no')")
+          if [ "$SAFE" = "yes" ] && [ "$REC_CPU" != "$CUR_CPU" -o "$REC_MEM" != "$CUR_MEM" ]; then
+            echo "권장 task:   $REC_CPU CPU / $REC_MEM MB  →  월 \$$REC_COST"
+            echo "예상 절감:   월 \$$SAVE (KRW ≈ ₩$(python3 -c "print(int($SAVE*1350))"))"
+            echo ""
+            echo "다운사이즈 적용:"
+            echo "  gh workflow run cost-fargate-rightsize.yml -f cpu=$REC_CPU -f memory=$REC_MEM"
+          else
+            if [ "$SAFE" = "no" ]; then
+              echo ""
+              echo "⚠️  다운사이즈 비권장 — p95 CPU=$P95_CPU% / p95 MEM=$P95_MEM% / max CPU=$MAX_CPU% / max MEM=$MAX_MEM%"
+              echo "    안전 기준: p95<40%/50%, max<70%/80%."
+              echo "    polling 정리(PR4) 후 1주일 더 데이터 쌓고 재진단 권장."
+            else
+              echo ""
+              echo "ℹ️  이미 최소 사이즈 또는 추천 조합 없음."
+            fi
+          fi

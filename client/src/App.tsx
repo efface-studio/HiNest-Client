@@ -1,9 +1,10 @@
 import { Suspense } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
 import UpdateBanner from "./components/UpdateBanner";
 import DesktopUpdateBanner from "./components/DesktopUpdateBanner";
 import ConfirmHost from "./components/ConfirmHost";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
@@ -68,11 +69,15 @@ function SuperOnly({ children }: { children: React.ReactNode }) {
 }
 
 export default function App() {
+  // 라우트 단위 ErrorBoundary 의 reset 트리거 — 다음 페이지로 이동하면 자동 초기화.
+  // 이렇게 안 하면 한 페이지에서 에러 나면 다른 메뉴로 가도 fallback 이 계속 보임.
+  const { pathname } = useLocation();
   return (
     <>
     <UpdateBanner />
     <DesktopUpdateBanner />
     <ConfirmHost />
+    <ErrorBoundary resetKey={pathname}>
     <Suspense fallback={<RouteFallback />}>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
@@ -127,6 +132,7 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
+    </ErrorBoundary>
     </>
   );
 }

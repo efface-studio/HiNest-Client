@@ -76,7 +76,7 @@ const MentionList = forwardRef<{ onKeyDown: (e: { event: KeyboardEvent }) => boo
               className="mention-avatar"
               style={{ background: u.avatarUrl ? "transparent" : u.avatarColor ?? "#94A3B8" }}
             >
-              {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} /> : u.name[0]}
+              {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} loading="lazy" decoding="async"/> : u.name[0]}
             </span>
             <span className="mention-name">{u.name}</span>
             {(u.team || u.position) && (

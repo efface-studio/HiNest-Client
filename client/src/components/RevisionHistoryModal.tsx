@@ -88,7 +88,7 @@ export default function RevisionHistoryModal({
               {revs.map((r) => (
                 <div key={r.id} className="panel p-3 flex items-start gap-3">
                   <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 overflow-hidden" style={{ background: r.editor?.avatarUrl ? "transparent" : (r.editor?.avatarColor ?? "#6B7280") }}>
-                    {r.editor?.avatarUrl ? <img src={r.editor.avatarUrl} alt={r.editor.name} className="w-full h-full object-cover" /> : (r.editor?.name[0] ?? "?")}
+                    {r.editor?.avatarUrl ? <img src={r.editor.avatarUrl} alt={r.editor.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/> : (r.editor?.name[0] ?? "?")}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[12px] font-bold text-ink-900">

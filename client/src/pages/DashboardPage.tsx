@@ -354,7 +354,7 @@ function ProfileCard(p: { name: string; email?: string; team: string | null; pos
           className="w-12 h-12 rounded-2xl grid place-items-center text-white text-[18px] font-extrabold overflow-hidden flex-shrink-0"
           style={{ background: p.avatarUrl ? "transparent" : (p.avatarColor ?? "#3D54C4") }}
         >
-          {p.avatarUrl ? <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" /> : initial}
+          {p.avatarUrl ? <img src={p.avatarUrl} alt={p.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/> : initial}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">

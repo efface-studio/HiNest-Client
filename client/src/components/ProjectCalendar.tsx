@@ -345,7 +345,7 @@ export default function ProjectCalendar({
                 style={{ background: meUrl ? "transparent" : (me?.avatarColor ?? "#64748B") }}
               >
                 {meUrl ? (
-                  <img src={meUrl} alt={me?.name ?? "내 프로필"} className="w-full h-full object-cover" />
+                  <img src={meUrl} alt={me?.name ?? "내 프로필"} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                 ) : (
                   (me?.name ?? user.name ?? "나")[0]
                 )}
@@ -362,7 +362,7 @@ export default function ProjectCalendar({
               style={{ background: m.avatarUrl ? "transparent" : m.avatarColor }}
             >
               {m.avatarUrl ? (
-                <img src={m.avatarUrl} alt={m.name} className="w-full h-full object-cover" />
+                <img src={m.avatarUrl} alt={m.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
               ) : (
                 m.name[0]
               )}
@@ -440,7 +440,7 @@ export default function ProjectCalendar({
                             style={{ background: m.avatarUrl ? "transparent" : m.avatarColor }}
                           >
                             {m.avatarUrl ? (
-                              <img src={m.avatarUrl} alt={m.name} className="w-full h-full object-cover" />
+                              <img src={m.avatarUrl} alt={m.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                             ) : (
                               m.name[0]
                             )}
@@ -506,7 +506,7 @@ export default function ProjectCalendar({
                           style={{ background: m.avatarUrl ? "transparent" : m.avatarColor }}
                         >
                           {m.avatarUrl ? (
-                            <img src={m.avatarUrl} alt={m.name} className="w-full h-full object-cover" />
+                            <img src={m.avatarUrl} alt={m.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                           ) : (
                             m.name[0]
                           )}
@@ -638,7 +638,7 @@ function AssigneeStack({
             title={m.name}
           >
             {m.avatarUrl ? (
-              <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={m.avatarUrl} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
             ) : (
               m.name[0]
             )}

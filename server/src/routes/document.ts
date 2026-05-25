@@ -5,6 +5,7 @@ import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { downloadFile, isStorageEnabled } from "../lib/storage.js";
 import { UPLOAD_DIR } from "./upload.js";
+import { safeUniqueZipEntry } from "../lib/zipSafe.js";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -736,21 +737,10 @@ router.get("/folders/:id/download", async (req, res) => {
     return res.status(404).json({ error: "폴더에 다운로드할 파일이 없어요" });
   }
 
-  // 파일명 중복 시 "(1)" "(2)" 같은 꼬리 번호를 붙여 덮어쓰기 방지 (경로별로 별도 카운터).
-  const usedByPath = new Map<string, Set<string>>();
-  function uniqueName(dir: string, base: string): string {
-    let used = usedByPath.get(dir);
-    if (!used) { used = new Set(); usedByPath.set(dir, used); }
-    if (!used.has(base)) { used.add(base); return base; }
-    const ext = path.extname(base);
-    const stem = base.slice(0, base.length - ext.length);
-    for (let i = 1; i < 1000; i++) {
-      const c = `${stem} (${i})${ext}`;
-      if (!used.has(c)) { used.add(c); return c; }
-    }
-    used.add(base);
-    return base;
-  }
+  // 파일명 중복 시 "(2)" "(3)" 꼬리 번호. safeUniqueZipEntry 가 ZIP slip 방어
+  // (sanitizeZipPath) + 중복 회피를 한 번에 처리. fileName / title / 폴더 name 에
+  // "../" 가 섞여 들어와도 추출 시 상위 디렉토리로 빠지지 않음.
+  const usedEntries = new Set<string>();
 
   const zipName = `${folder.name.replace(/[\\/:*?"<>|]/g, "_")}.zip`;
   res.setHeader("Content-Type", "application/zip");
@@ -786,8 +776,7 @@ router.get("/folders/:id/download", async (req, res) => {
         console.error("[doc:zip] fetch failed", key, err);
       }
       if (!buf) continue;
-      const display = uniqueName(d.relPath, d.fileName || d.title || key);
-      const entryName = d.relPath ? `${d.relPath}/${display}` : display;
+      const entryName = safeUniqueZipEntry(usedEntries, d.relPath || "", d.fileName || d.title || key);
       archive.append(buf, { name: entryName });
       added++;
     }

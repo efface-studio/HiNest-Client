@@ -1714,12 +1714,23 @@ function ServerLogsPanel() {
     }
   }
 
-  // 검색·레벨 변경 시 즉시 reload, 그리고 follow 켜져 있으면 3초마다 자동 갱신.
+  // 검색·레벨 변경 시 즉시 reload, follow 켜져 있으면 자동 갱신.
+  // 비용 절감:
+  //   - 3초 → 5초. 운영자가 실시간 디버깅할 때 5초면 충분, 시간당 요청 수 1200 → 720.
+  //   - 탭 hidden 이거나 follow off 면 폴링 정지.
   useEffect(() => {
     void load();
     if (!follow) return;
-    const id = window.setInterval(load, 3000);
-    return () => window.clearInterval(id);
+    let id: number | null = null;
+    function start() { if (id === null) id = window.setInterval(load, 5000); }
+    function stop() { if (id !== null) { window.clearInterval(id); id = null; } }
+    if (document.visibilityState === "visible") start();
+    function onVis() {
+      if (document.visibilityState === "visible") { void load(); start(); }
+      else { stop(); }
+    }
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [level, q, follow]);
 

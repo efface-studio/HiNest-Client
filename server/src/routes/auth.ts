@@ -373,7 +373,9 @@ router.get("/desktop-biometric", requireAuth, async (req, res) => {
   const list = await prisma.desktopBiometric.findMany({
     where: { userId: u.id },
     orderBy: { createdAt: "desc" },
-    select: { id: true, deviceId: true, deviceName: true, createdAt: true, lastUsedAt: true },
+    // deviceId 는 반환하지 않음 — Electron 앱은 로컬 userData 에서 직접 읽으며
+    // 서버 응답을 통해 노출하면 세션 탈취 시 super step-up 우회에 악용될 수 있음.
+    select: { id: true, deviceName: true, createdAt: true, lastUsedAt: true },
   });
   res.json({ devices: list });
 });

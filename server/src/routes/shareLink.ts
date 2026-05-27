@@ -131,8 +131,10 @@ pub.get("/:token", async (req, res) => {
   const folderResult = await findActiveFolderLink(req.params.token);
   if (folderResult.link) {
     const fl = folderResult.link;
+    const hasPassword = !!fl.passwordHash;
     return res.json({
-      document: {
+      // 비밀번호 보호 링크는 인증 전에 파일명·형식을 노출하지 않음.
+      document: hasPassword ? null : {
         title: fl.folder.name,
         fileName: `${fl.folder.name}.zip`,
         fileType: "application/zip",
@@ -142,7 +144,7 @@ pub.get("/:token", async (req, res) => {
       expiresAt: fl.expiresAt,
       maxDownloads: fl.maxDownloads,
       downloads: fl.downloads,
-      hasPassword: !!fl.passwordHash,
+      hasPassword,
     });
   }
   if (folderResult.err && folderResult.err !== 404) {
@@ -152,8 +154,10 @@ pub.get("/:token", async (req, res) => {
   const r = await findActive(req.params.token);
   if (r.err) return res.status(r.err).json({ error: statusMsg(r.err) });
   const link = r.link!;
+  const hasPassword = !!link.passwordHash;
   res.json({
-    document: {
+    // 비밀번호 보호 링크는 인증 전에 문서 제목·파일명 등을 노출하지 않음.
+    document: hasPassword ? null : {
       title: link.document.title,
       fileName: link.document.fileName,
       fileType: link.document.fileType,
@@ -163,7 +167,7 @@ pub.get("/:token", async (req, res) => {
     expiresAt: link.expiresAt,
     maxDownloads: link.maxDownloads,
     downloads: link.downloads,
-    hasPassword: !!link.passwordHash,
+    hasPassword,
   });
 });
 

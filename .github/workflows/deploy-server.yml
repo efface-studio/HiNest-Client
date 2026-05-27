@@ -34,6 +34,8 @@ env:
   ECR_REPOSITORY: hinest-server
   ECS_CLUSTER: hinest-prod
   ECS_SERVICE: hinest-server
+  # Node.js 24 가 2026-06-02 부터 Actions 기본 런타임이 됨. 사전 opt-in 으로 경고 제거.
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   deploy:

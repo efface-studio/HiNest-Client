@@ -34,6 +34,7 @@ env:
   # DKIM 서명도 이 도메인 키로 붙어서 deliverability 우수.
   SES_FROM_ADDRESS: "HiNest <no-reply@nest.hi-vits.com>"
   PUBLIC_APP_URL: "https://nest.hi-vits.com"
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   setup:

@@ -11,6 +11,8 @@ permissions:
 jobs:
   debug:
     runs-on: ubuntu-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     steps:
       - uses: aws-actions/configure-aws-credentials@v4
         with:

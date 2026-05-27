@@ -26,6 +26,7 @@ permissions:
 env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: hinest-server
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   apply:

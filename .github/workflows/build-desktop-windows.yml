@@ -24,6 +24,8 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
     defaults:
       run:
         working-directory: desktop
@@ -32,7 +34,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "22"  # Node.js 22 LTS (Node 20 EOL 2026-10)
           cache: "npm"
           cache-dependency-path: desktop/package-lock.json
 

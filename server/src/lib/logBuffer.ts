@@ -153,20 +153,30 @@ export function installConsoleHook() {
       .join(" ");
   }
 
+  /** 비밀번호 재설정 토큰처럼 URL 쿼리에 들어가는 평문 비밀을 마지막 방어선에서 제거.
+   *  메일 코드 / 직접 console.log 등에서 빠뜨려도 인메모리 버퍼·CloudWatch 양쪽에서 가린다. */
+  function scrubSecrets(s: string): string {
+    // token=<base64url-ish or hex 20+자>
+    return s
+      .replace(/(token=)[A-Za-z0-9_\-]{16,}/g, "$1<redacted>")
+      .replace(/(reset-password\?token=)[^\s"'&<>]+/gi, "$1<redacted>")
+      .replace(/(Bearer\s+)[A-Za-z0-9._\-]{16,}/g, "$1<redacted>");
+  }
+
   console.log = (...args: any[]) => {
-    pushEntry("info", fmt(args));
+    pushEntry("info", scrubSecrets(fmt(args)));
     origLog(...args);
   };
   console.info = (...args: any[]) => {
-    pushEntry("info", fmt(args));
+    pushEntry("info", scrubSecrets(fmt(args)));
     origInfo(...args);
   };
   console.warn = (...args: any[]) => {
-    pushEntry("warn", fmt(args));
+    pushEntry("warn", scrubSecrets(fmt(args)));
     origWarn(...args);
   };
   console.error = (...args: any[]) => {
-    pushEntry("error", fmt(args));
+    pushEntry("error", scrubSecrets(fmt(args)));
     origError(...args);
   };
 }

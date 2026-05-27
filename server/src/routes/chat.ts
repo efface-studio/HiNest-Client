@@ -276,7 +276,9 @@ router.get("/search", async (req, res) => {
       sender: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
       room: {
         include: {
-          members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
+          // 검색 결과 카드에 최대 50명까지만 표시 — 대형 그룹방에서 수백 명을 끌어와
+          // 응답 크기가 폭발하는 것을 방지. 실제 UI 는 아바타 5개 + "+N" 으로 표시.
+          members: { take: 50, include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
         },
       },
     },

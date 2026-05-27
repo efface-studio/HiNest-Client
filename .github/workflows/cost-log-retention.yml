@@ -25,6 +25,7 @@ permissions:
 
 env:
   AWS_REGION: ap-northeast-2
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   apply:

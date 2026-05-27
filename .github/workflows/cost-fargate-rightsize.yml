@@ -34,6 +34,7 @@ env:
   ECS_CLUSTER: hinest-prod
   ECS_SERVICE: hinest-server
   TASK_FAMILY: hinest-server
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
   apply:

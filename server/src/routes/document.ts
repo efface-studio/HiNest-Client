@@ -5,6 +5,7 @@ import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { downloadFile, isStorageEnabled } from "../lib/storage.js";
 import { UPLOAD_DIR } from "./upload.js";
+import { safeUniqueZipEntry } from "../lib/zipSafe.js";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -348,11 +349,14 @@ router.delete("/folders/:id", async (req, res) => {
 });
 
 /* ===== 문서 ===== */
+// fileUrl 은 반드시 우리 업로드 경로 형식이어야 함 — javascript:, data:, 외부 URL,
+// 그리고 path traversal(../) 모두 차단. (chat.ts 와 동일 정책)
+const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
 const docSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
   folderId: z.string().max(64).optional().nullable(),
-  fileUrl: z.string().max(2000).optional(),
+  fileUrl: z.string().regex(SAFE_UPLOAD_URL).max(2000).optional(),
   fileName: z.string().max(255).optional(),
   fileType: z.string().max(80).optional(),
   // 업로드 크기는 upload 라우트에서 파일 용량 체크로 방어하고, 여기서는 int 한도만.
@@ -676,16 +680,24 @@ router.delete("/:id", async (req, res) => {
  * 폴더 자체를 못 보면 애초에 이 엔드포인트로 접근 불가.
  */
 
-/** 저장소/디스크 어디든 해당 파일의 Buffer 를 꺼낸다. 없으면 null. */
+/** 저장소/디스크 어디든 해당 파일의 Buffer 를 꺼낸다. 없으면 null.
+ *  path traversal 2차 방어 — key 가 안전한 charset 이 아니거나 resolve 결과가
+ *  UPLOAD_DIR 바깥이면 거부. (1차 방어는 docSchema.fileUrl regex.) */
 async function fetchFileBuffer(key: string): Promise<Buffer | null> {
+  if (!/^[A-Za-z0-9._-]+$/.test(key)) return null;
   if (isStorageEnabled()) {
     const f = await downloadFile(key);
     if (f) return f.buffer;
   }
   // 디스크 fallback (dev / legacy)
   const diskPath = path.join(UPLOAD_DIR, key);
-  if (fs.existsSync(diskPath)) {
-    return fs.promises.readFile(diskPath);
+  const resolved = path.resolve(diskPath);
+  const uploadDirResolved = path.resolve(UPLOAD_DIR);
+  if (!resolved.startsWith(uploadDirResolved + path.sep) && resolved !== uploadDirResolved) {
+    return null;
+  }
+  if (fs.existsSync(resolved)) {
+    return fs.promises.readFile(resolved);
   }
   return null;
 }
@@ -736,21 +748,10 @@ router.get("/folders/:id/download", async (req, res) => {
     return res.status(404).json({ error: "폴더에 다운로드할 파일이 없어요" });
   }
 
-  // 파일명 중복 시 "(1)" "(2)" 같은 꼬리 번호를 붙여 덮어쓰기 방지 (경로별로 별도 카운터).
-  const usedByPath = new Map<string, Set<string>>();
-  function uniqueName(dir: string, base: string): string {
-    let used = usedByPath.get(dir);
-    if (!used) { used = new Set(); usedByPath.set(dir, used); }
-    if (!used.has(base)) { used.add(base); return base; }
-    const ext = path.extname(base);
-    const stem = base.slice(0, base.length - ext.length);
-    for (let i = 1; i < 1000; i++) {
-      const c = `${stem} (${i})${ext}`;
-      if (!used.has(c)) { used.add(c); return c; }
-    }
-    used.add(base);
-    return base;
-  }
+  // 파일명 중복 시 "(2)" "(3)" 꼬리 번호. safeUniqueZipEntry 가 ZIP slip 방어
+  // (sanitizeZipPath) + 중복 회피를 한 번에 처리. fileName / title / 폴더 name 에
+  // "../" 가 섞여 들어와도 추출 시 상위 디렉토리로 빠지지 않음.
+  const usedEntries = new Set<string>();
 
   const zipName = `${folder.name.replace(/[\\/:*?"<>|]/g, "_")}.zip`;
   res.setHeader("Content-Type", "application/zip");
@@ -786,8 +787,7 @@ router.get("/folders/:id/download", async (req, res) => {
         console.error("[doc:zip] fetch failed", key, err);
       }
       if (!buf) continue;
-      const display = uniqueName(d.relPath, d.fileName || d.title || key);
-      const entryName = d.relPath ? `${d.relPath}/${display}` : display;
+      const entryName = safeUniqueZipEntry(usedEntries, d.relPath || "", d.fileName || d.title || key);
       archive.append(buf, { name: entryName });
       added++;
     }

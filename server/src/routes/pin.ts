@@ -127,9 +127,13 @@ router.post("/reorder", async (req, res) => {
   // 내 것만 검증.
   const mine = await prisma.pin.findMany({ where: { userId: u.id, id: { in: ids } }, select: { id: true } });
   if (mine.length !== ids.length) return res.status(400).json({ error: "invalid ids" });
-  await prisma.$transaction(
-    ids.map((id, i) => prisma.pin.update({ where: { id }, data: { sortOrder: i } })),
-  );
+  // 배열 형태 → callback 형태로 변경. 배열 형태는 timeout 옵션을 받지 않으므로
+  // 100개 짜리 정렬에서 default 5초 timeout 에 걸릴 위험을 명시적으로 막는다.
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < ids.length; i++) {
+      await tx.pin.update({ where: { id: ids[i] }, data: { sortOrder: i } });
+    }
+  }, { timeout: 8_000 });
   res.json({ ok: true });
 });
 

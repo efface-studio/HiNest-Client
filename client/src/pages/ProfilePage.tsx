@@ -169,8 +169,7 @@ export default function ProfilePage() {
                 <img
                   src={avatarUrl}
                   alt={name}
-                  className="w-16 h-16 rounded-full object-cover border border-ink-150"
-                />
+                  className="w-16 h-16 rounded-full object-cover border border-ink-150" loading="lazy" decoding="async"/>
               ) : (
                 <div
                   className="w-16 h-16 rounded-full grid place-items-center text-white text-[22px] font-extrabold"
@@ -218,8 +217,7 @@ export default function ProfilePage() {
                     <img
                       src={avatarUrl}
                       alt="프로필"
-                      className="w-14 h-14 rounded-full object-cover border border-ink-150"
-                    />
+                      className="w-14 h-14 rounded-full object-cover border border-ink-150" loading="lazy" decoding="async"/>
                   ) : (
                     <div
                       className="w-14 h-14 rounded-full grid place-items-center text-white text-[18px] font-extrabold"

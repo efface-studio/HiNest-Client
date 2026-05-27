@@ -761,6 +761,10 @@ model Document {
 
   @@index([projectId, updatedAt])
   @@index([deletedAt])
+  // 폴더별 문서 목록 — 문서함이 깊어지면 folderId 단독 필터가 자주 들어와 인덱스 필수.
+  @@index([folderId, deletedAt])
+  // 작성자 본인의 문서 (마이페이지 / 검색) — authorId 단독 필터도 자주 들어옴.
+  @@index([authorId, updatedAt(sort: Desc)])
 }
 
 model Approval {
@@ -813,6 +817,13 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt(sort: Desc)])
+  // 운영자 콘솔의 "특정 사용자의 최근 활동" 조회 패턴 최적화.
+  // writeLog() 가 매 액션마다 INSERT 하는데 조회는 userId + 최신순으로 자주 들어옴.
+  // 단일 createdAt 인덱스만 있던 시절엔 userId 필터가 풀스캔 + 정렬이라 audit log 가 100만 row
+  // 넘어가는 순간 admin 페이지가 timeout 났다.
+  @@index([userId, createdAt(sort: Desc)])
+  // action 단위 집계 — LOGIN_FAIL / PWD_RESET 등 보안 이벤트 모니터링용.
+  @@index([action, createdAt(sort: Desc)])
 }
 
 /// 회의록 — 노션 스타일 리치 텍스트 에디터(TipTap) 의 JSON 도큐먼트를 content 에 저장.

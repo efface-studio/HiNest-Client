@@ -52,6 +52,18 @@ export default defineConfig({
           if (id.includes("node_modules/xlsx")) {
             return "xlsx-vendor";
           }
+          // highlight.js — 마크다운 코드블록 / 스니펫 페이지에서만 사용.
+          // 라이브러리 자체가 ~70KB gzip 이라 main bundle 에서 빼두면
+          // 첫 페이지(대시보드/로그인) 로드가 그만큼 빨라짐. lazy load 되는
+          // syntaxHighlight.ts / markdown.tsx 가 import 시점에 별도 다운로드.
+          if (id.includes("node_modules/highlight.js")) {
+            return "highlight-vendor";
+          }
+          // WebAuthn — 개발자 콘솔(SuperStepUpGate) 에서만 호출.
+          // 일반 사용자는 다운로드 자체 안 함.
+          if (id.includes("node_modules/@simplewebauthn")) {
+            return "webauthn-vendor";
+          }
         },
       },
     },

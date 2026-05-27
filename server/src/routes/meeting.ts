@@ -309,9 +309,11 @@ router.get("/:id", async (req, res) => {
 /* =========================== 첨부 (파일·이미지·영상·링크) =========================== */
 
 const ATTACHMENT_KINDS = ["FILE", "IMAGE", "VIDEO", "LINK"] as const;
+// 파일 첨부의 url 은 반드시 우리 업로드 경로 — 외부/javascript: 스킴 차단.
+const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
 const fileAttachmentSchema = z.object({
   kind: z.enum(["FILE", "IMAGE", "VIDEO"]),
-  url: z.string().min(1).max(500),
+  url: z.string().min(1).max(500).regex(SAFE_UPLOAD_URL, { message: "/uploads/ 경로만 가능합니다" }),
   name: z.string().min(1).max(200),
   mimeType: z.string().min(1).max(100),
   sizeBytes: z.number().int().min(0).max(1_000_000_000),
@@ -538,6 +540,9 @@ router.patch("/:id", async (req, res) => {
             : d.projectId ?? undefined,
       },
     });
+  }, {
+    // 명시적 timeout — viewer 가 수십명일 때 deleteMany + createMany 가 길어질 수 있어 8초.
+    timeout: 8_000,
   });
   await writeLog(u.id, "MEETING_UPDATE", updated.id);
 

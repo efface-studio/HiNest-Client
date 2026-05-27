@@ -79,13 +79,13 @@ function fromB64Url(s: string) {
 }
 
 /* ================ 등록(registration) ================
- * - 본인 확인된(step-up 완료) 사용자만 새 패스키 등록 가능
- * - 총관리자든 일반 사용자든 본인 계정에 추가
+ * 정책 (보안 우선):
+ *   - 패스키 = step-up 인증 자격증 자체이므로, 새 패스키를 추가하려면 반드시 step-up 완료 상태여야 한다.
+ *   - 세션 쿠키만 탈취된 공격자가 자기 기기 패스키를 등록 → 영구 super 접근을 얻는 시나리오 차단.
+ *   - 현재 UI 도 SuperStepUpGate 안에서만 등록을 트리거하므로 UX 영향 없음.
  */
-router.post("/register/options", requireAuth, async (req, res) => {
+router.post("/register/options", requireAuth, requireSuperAdminStepUp, async (req, res) => {
   const u = (req as any).user;
-  // 총관리자가 새 기기 등록하려면 우선 비번 step-up 필요 (관리자 페이지에서만 표시)
-  // requireSuperAdminStepUp 는 총관리자 전용이라, 여기선 일반 유저도 등록 가능하게 allow
   const user = await prisma.user.findUnique({ where: { id: u.id } });
   if (!user) return res.status(404).json({ error: "not found" });
 
@@ -113,7 +113,7 @@ router.post("/register/options", requireAuth, async (req, res) => {
   res.json(options);
 });
 
-router.post("/register/verify", requireAuth, async (req, res) => {
+router.post("/register/verify", requireAuth, requireSuperAdminStepUp, async (req, res) => {
   const u = (req as any).user;
   const expected = takeChallenge(u.id, "register");
   if (!expected) return res.status(400).json({ error: "챌린지가 만료되었어요. 다시 시도해주세요." });

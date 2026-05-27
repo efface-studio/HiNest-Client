@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR } from "../api";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import DatePicker from "./DatePicker";
+import { safeAttachmentUrl } from "../lib/safeUrl";
 
 type Status = "BUG" | "IN_PROGRESS" | "NEEDS_FIX" | "NEEDS_TEST" | "DONE" | "ON_HOLD";
 type Priority = "LOW" | "NORMAL" | "HIGH";
@@ -885,7 +886,7 @@ function QaRow({
                     }}
                   >
                     {item.createdBy.avatarUrl ? (
-                      <img src={item.createdBy.avatarUrl} alt={item.createdBy.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={item.createdBy.avatarUrl} alt={item.createdBy.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
                     ) : (
                       item.createdBy.name[0]
                     )}
@@ -1024,7 +1025,7 @@ function QaRow({
               }}
             >
               {item.assignee.avatarUrl ? (
-                <img src={item.assignee.avatarUrl} alt={item.assignee.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={item.assignee.avatarUrl} alt={item.assignee.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
               ) : (
                 item.assignee.name[0]
               )}
@@ -1287,7 +1288,7 @@ function AssigneeSelect({
             }}
           >
             {current.avatarUrl ? (
-              <img src={current.avatarUrl} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={current.avatarUrl} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
             ) : (
               current.name[0]
             )}
@@ -1321,12 +1322,23 @@ function AttachmentThumb({
   onRemove?: () => void;
 }) {
   const box = "relative group/thumb rounded-lg overflow-hidden border border-ink-100 bg-ink-25";
+  // 첨부 url 은 서버 스키마에서 /uploads/… 만 허용하지만, 과거 데이터/혹시 모를 우회에 대비해
+  // 렌더 직전에 다시 한 번 검증. 검증 실패 시 href/src 를 안 박는다.
+  const safeHref = safeAttachmentUrl(att.url, att.kind);
   if (att.kind === "IMAGE") {
+    if (!safeHref) {
+      return (
+        <div className={box} style={{ width: 112, height: 112 }} title="유효하지 않은 첨부">
+          <div className="w-full h-full grid place-items-center text-ink-400 text-[11px]">⚠️ invalid</div>
+          {onRemove && <RemoveDot onRemove={onRemove} />}
+        </div>
+      );
+    }
     return (
       <div className={box} style={{ width: 112, height: 112 }}>
-        <a href={att.url} target="_blank" rel="noreferrer" title={att.name}>
+        <a href={safeHref} target="_blank" rel="noreferrer" title={att.name}>
           <img
-            src={att.url}
+            src={safeHref}
             alt={att.name}
             className="w-full h-full object-cover"
             loading="lazy"
@@ -1337,10 +1349,18 @@ function AttachmentThumb({
     );
   }
   if (att.kind === "VIDEO") {
+    if (!safeHref) {
+      return (
+        <div className={box} style={{ width: 180, height: 112 }} title="유효하지 않은 첨부">
+          <div className="w-full h-full grid place-items-center text-ink-400 text-[11px]">⚠️ invalid</div>
+          {onRemove && <RemoveDot onRemove={onRemove} />}
+        </div>
+      );
+    }
     return (
       <div className={box} style={{ width: 180, height: 112 }}>
         <video
-          src={att.url}
+          src={safeHref}
           className="w-full h-full object-cover"
           controls
           preload="metadata"
@@ -1355,15 +1375,19 @@ function AttachmentThumb({
       style={{ maxWidth: 240 }}
     >
       <span>📎</span>
-      <a
-        href={att.url}
-        target="_blank"
-        rel="noreferrer"
-        className="truncate text-ink-700 hover:underline"
-        title={att.name}
-      >
-        {att.name}
-      </a>
+      {safeHref ? (
+        <a
+          href={safeHref}
+          target="_blank"
+          rel="noreferrer"
+          className="truncate text-ink-700 hover:underline"
+          title={att.name}
+        >
+          {att.name}
+        </a>
+      ) : (
+        <span className="truncate text-ink-400" title="유효하지 않은 첨부 URL">{att.name}</span>
+      )}
       <span className="text-ink-400">{humanSize(att.sizeBytes)}</span>
       {onRemove && <RemoveDot onRemove={onRemove} />}
     </div>

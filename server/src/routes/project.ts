@@ -225,6 +225,15 @@ router.patch("/:id/events/:eventId", async (req, res) => {
   const u = (req as any).user;
   const ok = await assertProjectMember(req.params.id, u.id, u.role);
   if (!ok) return res.status(403).json({ error: "forbidden" });
+  // IDOR 방어 — :eventId 가 :id 프로젝트 소속인지 확인. 빠뜨리면 다른 프로젝트 이벤트를
+  // 우리 프로젝트 멤버 권한으로 수정할 수 있어 cross-project 일정 변조가 발생함.
+  const existing = await prisma.projectEvent.findUnique({
+    where: { id: req.params.eventId },
+    select: { id: true, projectId: true },
+  });
+  if (!existing || existing.projectId !== req.params.id) {
+    return res.status(404).json({ error: "not found" });
+  }
   const parsed = eventPatchSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid input" });
   const d = parsed.data;
@@ -255,7 +264,13 @@ router.delete("/:id/events/:eventId", async (req, res) => {
   const u = (req as any).user;
   const ok = await assertProjectMember(req.params.id, u.id, u.role);
   if (!ok) return res.status(403).json({ error: "forbidden" });
-  await prisma.projectEvent.delete({ where: { id: req.params.eventId } });
+  // IDOR 방어 — :eventId 의 projectId 가 :id 와 일치해야 삭제 가능. 빠뜨리면
+  // 다른 프로젝트 이벤트를 우리 프로젝트 멤버 권한으로 삭제할 수 있음.
+  // deleteMany + where 로 1회 쿼리에 처리 (count===0 이면 404 처럼 처리).
+  const r = await prisma.projectEvent.deleteMany({
+    where: { id: req.params.eventId, projectId: req.params.id },
+  });
+  if (r.count === 0) return res.status(404).json({ error: "not found" });
   res.json({ ok: true });
 });
 
@@ -302,10 +317,23 @@ router.post("/:id/webhook", async (req, res) => {
   res.json({ channel: ch });
 });
 
+/** 채널이 정말 이 프로젝트 소속인지 확인 — IDOR 방어 공통 헬퍼.
+ *  routes 가 :id/webhook/:channelId 패턴이라 :channelId 만 받으면 cross-project 변조 가능. */
+async function assertChannelInProject(projectId: string, channelId: string): Promise<boolean> {
+  const ch = await prisma.webhookChannel.findUnique({
+    where: { id: channelId },
+    select: { projectId: true },
+  });
+  return !!ch && ch.projectId === projectId;
+}
+
 router.delete("/:id/webhook/:channelId", async (req, res) => {
   const u = (req as any).user;
   const ok = await assertProjectMember(req.params.id, u.id, u.role);
   if (!ok) return res.status(403).json({ error: "forbidden" });
+  if (!(await assertChannelInProject(req.params.id, req.params.channelId))) {
+    return res.status(404).json({ error: "not found" });
+  }
   await prisma.webhookChannel.delete({ where: { id: req.params.channelId } });
   res.json({ ok: true });
 });
@@ -315,6 +343,9 @@ router.post("/:id/webhook/:channelId/rotate", async (req, res) => {
   const u = (req as any).user;
   const ok = await assertProjectMember(req.params.id, u.id, u.role);
   if (!ok) return res.status(403).json({ error: "forbidden" });
+  if (!(await assertChannelInProject(req.params.id, req.params.channelId))) {
+    return res.status(404).json({ error: "not found" });
+  }
   const ch = await prisma.webhookChannel.update({
     where: { id: req.params.channelId },
     data: { token: generateWebhookToken() },
@@ -327,6 +358,9 @@ router.get("/:id/webhook/:channelId/events", async (req, res) => {
   const u = (req as any).user;
   const ok = await assertProjectMember(req.params.id, u.id, u.role);
   if (!ok) return res.status(403).json({ error: "forbidden" });
+  if (!(await assertChannelInProject(req.params.id, req.params.channelId))) {
+    return res.status(404).json({ error: "not found" });
+  }
   const limit = Math.min(Number(req.query.limit ?? 50) || 50, 200);
   const events = await prisma.webhookEvent.findMany({
     where: { channelId: req.params.channelId },
@@ -385,8 +419,10 @@ router.get("/:id/qa", async (req, res) => {
   });
 });
 
+// QA 첨부 url 은 반드시 우리 업로드 경로 — javascript:, data:, 외부 URL 모두 차단.
+const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
 const qaAttachmentInput = z.object({
-  url: z.string().min(1).max(500),
+  url: z.string().min(1).max(500).regex(SAFE_UPLOAD_URL, { message: "/uploads/ 경로만 가능합니다" }),
   name: z.string().min(1).max(200),
   mimeType: z.string().min(1).max(100),
   sizeBytes: z.number().int().min(0).max(1_000_000_000),

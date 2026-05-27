@@ -96,6 +96,7 @@ model User {
   meetingRevisions        MeetingRevision[]
   meetingAttachments      MeetingAttachment[]    @relation("MeetingAttachmentUploader")
   passwordResetTokens     PasswordResetToken[]
+  chatRoomsCreated        ChatRoom[]             @relation("ChatRoomCreator")
   documentRevisions       DocumentRevision[]
   shareLinksCreated       DocumentShareLink[]    @relation("ShareLinkCreator")
   folderShareLinksCreated FolderShareLink[]      @relation("FolderShareLinkCreator")
@@ -587,12 +588,19 @@ model DocumentRevision {
 }
 
 model ChatRoom {
-  id        String        @id @default(cuid())
-  name      String
-  type      String        @default("GROUP") // GROUP | DIRECT | TEAM
-  createdAt DateTime      @default(now())
-  members   RoomMember[]
-  messages  ChatMessage[]
+  id          String        @id @default(cuid())
+  name        String
+  type        String        @default("GROUP") // GROUP | DIRECT | TEAM
+  // 그룹방을 만든 사람 — DELETE /rooms/:id 권한 판정에 사용.
+  // legacy row 는 null (그 경우 ADMIN 만 삭제 가능).
+  // 유저 삭제 시 방은 살아남아야 하므로 SetNull.
+  createdById String?
+  createdBy   User?         @relation("ChatRoomCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime      @default(now())
+  members     RoomMember[]
+  messages    ChatMessage[]
+
+  @@index([createdById])
 }
 
 model RoomMember {

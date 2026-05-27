@@ -37,6 +37,7 @@ import snippetRouter from "./routes/snippet.js";
 import { shareLinkAuthedRouter, shareLinkPublicRouter } from "./routes/shareLink.js";
 import { folderShareLinkAuthedRouter } from "./routes/folderShareLink.js";
 import serviceAccountRouter from "./routes/serviceAccount.js";
+import desktopDownloadRouter from "./routes/desktopDownload.js";
 import path from "node:path";
 import mime from "mime-types";
 import { installConsoleHook, pushHttpLog, pushErrorEvent } from "./lib/logBuffer.js";
@@ -250,6 +251,10 @@ const passwordResetLimiter = rateLimit({
   message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
 });
 app.use("/api/auth/password-reset/request", passwordResetLimiter);
+
+// 데스크톱 앱 다운로드 — 인증 불필요, GitHub Releases 스트리밍 프록시.
+// 자체 도메인으로 일관된 URL 을 제공해 브라우저 Safe Browsing 평판을 쌓는다.
+app.use("/api/download", desktopDownloadRouter);
 
 app.use("/api/auth", loginLimiter, authRouter);
 app.use("/api/me", meRouter);

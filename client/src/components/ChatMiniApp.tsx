@@ -323,7 +323,16 @@ export default function ChatMiniApp({
         });
       }
     };
-    const onRoom = () => { loadRooms(); };
+    const onRoom = (ev: Event) => {
+      // 서버가 { kind: "deleted", roomId } 푸시 → 활성 방이 그거였으면 즉시 닫고,
+      // rooms 목록도 재조회. (그냥 loadRooms() 만 부르면 hover 상태에서 깜빡임)
+      const detail = (ev as CustomEvent).detail as { kind?: string; roomId?: string } | undefined;
+      if (detail?.kind === "deleted" && detail.roomId) {
+        if (activeId === detail.roomId) setActiveId(null);
+        setRooms((prev) => prev.filter((r) => r.id !== detail.roomId));
+      }
+      loadRooms();
+    };
     window.addEventListener("chat:sse-message", onMessage);
     window.addEventListener("chat:sse-update", onUpdate);
     window.addEventListener("chat:sse-room", onRoom);
@@ -622,9 +631,32 @@ export default function ChatMiniApp({
         <SettingsView
           room={active}
           meId={user?.id ?? ""}
+          isAdmin={user?.role === "ADMIN"}
           settings={roomSettings[active.id] ?? {}}
           onPatch={(p) => patchRoomSetting(active.id, p)}
           messages={messages}
+          onDeleteRoom={async () => {
+            // 그룹 생성자(또는 ADMIN) 만 가능 — 서버가 한 번 더 검증.
+            // 삭제 성공하면 onRoom SSE 가 도착하기 전에 클라가 먼저 정리.
+            const ok = await confirmAsync({
+              title: "그룹방 삭제",
+              description: `"${roomTitle(active, user?.id ?? "")}" 을(를) 삭제할까요?\n메시지와 첨부도 모두 사라지고, 되돌릴 수 없어요.`,
+              tone: "danger",
+              confirmLabel: "삭제",
+            });
+            if (!ok) return;
+            try {
+              await api(`/api/chat/rooms/${active.id}`, { method: "DELETE" });
+              setShowSettings(false);
+              setActiveId(null);
+              setRooms((prev) => prev.filter((r) => r.id !== active.id));
+            } catch (e: any) {
+              await alertAsync({
+                title: "삭제 실패",
+                description: e?.message ?? "잠시 후 다시 시도해 주세요",
+              });
+            }
+          }}
         />
       ) : active ? (
         <RoomView
@@ -1250,14 +1282,21 @@ function CreateGroupView({
 
 /* ======================= 채팅방 설정 ======================= */
 function SettingsView({
-  room, meId, settings, onPatch, messages,
+  room, meId, isAdmin, settings, onPatch, messages, onDeleteRoom,
 }: {
   room: Room;
   meId: string;
+  /** ADMIN 권한이면 어떤 그룹방이든 삭제 가능. */
+  isAdmin: boolean;
   settings: { nickname?: string; muted?: boolean };
   onPatch: (p: { nickname?: string; muted?: boolean }) => void;
   messages: Message[];
+  onDeleteRoom: () => void | Promise<void>;
 }) {
+  // 그룹/팀방 삭제 권한 — 생성자 본인 또는 ADMIN.
+  // DM 은 어떤 경우에도 삭제 불가 (서버에서도 거부).
+  const canDeleteRoom =
+    room.type !== "DIRECT" && (room.createdById === meId || isAdmin);
   const originalTitle = roomTitle(room, meId);
   const [draft, setDraft] = useState(settings.nickname ?? "");
   const [editing, setEditing] = useState(false);
@@ -1409,6 +1448,43 @@ function SettingsView({
       </button>
 
       <SharedMediaTabs messages={messages} />
+
+      {canDeleteRoom && (
+        <>
+          <SectionLabel>위험 구역</SectionLabel>
+          <button
+            type="button"
+            onClick={onDeleteRoom}
+            style={{
+              width: "100%",
+              padding: "12px 14px",
+              borderRadius: 12,
+              background: "color-mix(in srgb, var(--c-danger) 8%, transparent)",
+              border: "1px solid color-mix(in srgb, var(--c-danger) 24%, transparent)",
+              color: "var(--c-danger)",
+              fontSize: 14, fontWeight: 700,
+              cursor: "pointer",
+              textAlign: "left",
+              display: "flex", alignItems: "center", gap: 10,
+              transition: "background .12s ease",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--c-danger) 14%, transparent)")}
+            onMouseLeave={(e) => (e.currentTarget.style.background = "color-mix(in srgb, var(--c-danger) 8%, transparent)")}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 6h18" />
+              <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+            </svg>
+            <div style={{ flex: 1 }}>
+              <div>그룹방 삭제</div>
+              <div style={{ fontSize: 11.5, fontWeight: 500, marginTop: 2, opacity: 0.85 }}>
+                메시지 · 첨부 · 멤버 정보가 모두 사라지고 되돌릴 수 없어요
+              </div>
+            </div>
+          </button>
+        </>
+      )}
     </div>
   );
 }

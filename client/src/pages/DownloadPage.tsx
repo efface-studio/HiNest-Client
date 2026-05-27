@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Logo from "../components/Logo";
 
@@ -8,18 +8,21 @@ import Logo from "../components/Logo";
  * - Windows / macOS → 데스크톱 인스톨러 다운로드 링크
  * - iOS / Android   → PWA "홈 화면에 추가" 안내 (네이티브 앱 없이 웹앱으로 처리)
  *
- * 공개 페이지 — 로그인 없이 접근 가능. 사내 누구나 공유받고 바로 설치 흐름으로 갈 수 있도록.
+ * 공개 페이지 — 로그인 없이 접근 가능.
  *
- * 설치 파일 호스팅:
- *   현재는 GitHub Releases 에 올릴 예정이며, 아래 링크는 임시 플레이스홀더.
- *   실제 릴리스 레포가 확정되면 `DESKTOP_RELEASES_BASE` 만 바꾸면 된다.
+ * 다운로드 경로:
+ *   직접 GitHub Releases 링크 대신 자체 도메인 프록시(/api/download/*)를 사용한다.
+ *   이유:
+ *     1) Chrome/Edge Safe Browsing 의 평판은 도메인+파일명 조합 기반 — 자체
+ *        도메인의 일관된 경로로 배포하면 시간이 갈수록 \"안전하지 않은 파일\" 경고가
+ *        사라진다 (github.com 직링은 매번 새 평판).
+ *     2) 서버가 Content-Type / Content-Disposition / X-Content-Type-Options 를
+ *        명시 → 브라우저 MIME 추측 실패로 인한 다운로드 차단 방지.
  *
- * 다크 모드: html.dark 클래스 + CSS 변수(--c-bg / --c-surface / --c-text ...)로 자동 전환.
- *   → 배경/상단바에 var(--c-bg) 사용. 텍스트는 --c-text / --c-text-2 / --c-text-3.
+ *   백엔드 라우터: server/src/routes/desktopDownload.ts
  */
 
-const DESKTOP_RELEASES_BASE =
-  "https://github.com/Xixn2/HiNest-Desktop/releases/latest/download";
+const DESKTOP_DOWNLOAD_BASE = "/api/download";
 
 type OS = "win" | "mac" | "ios" | "android" | "other";
 
@@ -95,6 +98,102 @@ function IconAndroid() {
       <circle cx="9.6" cy="7.3" r="0.7" style={{ fill: "var(--c-surface-3)" }} />
       <circle cx="14.4" cy="7.3" r="0.7" style={{ fill: "var(--c-surface-3)" }} />
     </svg>
+  );
+}
+
+/**
+ * Windows 다운로드 차단/SmartScreen 우회 안내.
+ * 접힌 상태로 두고, 차단 경험한 사용자만 펼치도록.
+ *
+ * 사용자 시점에서 나타날 수 있는 막힘 단계:
+ *   (1) Chrome  "안전하지 않은 파일은 차단될 수 있습니다" / "위험 또는 안전하지 않은 다운로드"
+ *   (2) Windows SmartScreen "Windows의 PC 보호" 모달 (게시자: 알 수 없음)
+ *   (3) (드물게) Windows Defender 가 곧바로 격리 — 이건 우회 대신 신고 + 재배포 필요
+ *
+ * 각 단계의 사용자 친화적 우회 절차를 단계별로 분리해 보여준다.
+ */
+function WindowsBlockHelp() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{ marginTop: 4 }}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="text-[11.5px] font-semibold transition"
+        style={{
+          color: "var(--c-text-3)",
+          background: "transparent",
+          border: 0,
+          cursor: "pointer",
+          padding: "2px 0",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 4,
+        }}
+      >
+        <span aria-hidden style={{ transition: "transform .12s ease", display: "inline-block", transform: open ? "rotate(90deg)" : "rotate(0)" }}>›</span>
+        다운로드가 차단됐어요 / 안전하지 않은 파일이라고 떠요
+      </button>
+      {open && (
+        <div
+          className="text-[12px] leading-relaxed mt-2 p-3 rounded-lg"
+          style={{
+            background: "var(--c-surface-2)",
+            color: "var(--c-text-2)",
+            border: "1px solid var(--c-border)",
+          }}
+        >
+          <p style={{ marginBottom: 6 }}>
+            HiNest 데스크톱 앱은 아직 코드 서명 인증서를 받기 전이라, 처음 받을 때
+            브라우저나 Windows 가 한 번 확인을 요청해요. 단계별로:
+          </p>
+
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontWeight: 700, color: "var(--c-text)", marginBottom: 4 }}>
+              1) 브라우저(Chrome / Edge) 에서 차단 메시지가 떴을 때
+            </div>
+            <ul style={{ paddingLeft: 18, listStyle: "disc" }}>
+              <li>
+                다운로드 표시줄 또는 우측 상단 알림의 <b>점 3개(⋯) → "보관"</b>
+                (또는 "계속", "확인 후 다운로드") 을 누르세요.
+              </li>
+              <li>
+                Edge 라면 다운로드 탭 → 파일 옆 <b>⋯ → "보관" → "안전한 파일임"</b>.
+              </li>
+            </ul>
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 700, color: "var(--c-text)", marginBottom: 4 }}>
+              2) 설치 파일을 열었을 때 "Windows의 PC 보호" 모달
+            </div>
+            <ul style={{ paddingLeft: 18, listStyle: "disc" }}>
+              <li><b>"추가 정보"</b> 글자 클릭 → 아래에 <b>"실행"</b> 버튼이 나타남.</li>
+              <li>설치 마법사가 정상 진행되면 끝.</li>
+            </ul>
+          </div>
+
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontWeight: 700, color: "var(--c-text)", marginBottom: 4 }}>
+              3) 그래도 안 되면
+            </div>
+            <ul style={{ paddingLeft: 18, listStyle: "disc" }}>
+              <li>회사 IT 정책으로 EXE 다운로드가 막혀있을 수 있어요. 관리자에게 문의해 주세요.</li>
+              <li>
+                일시 우회: <code>설정 → 개인정보 및 보안 → Windows 보안 → 앱 및
+                브라우저 컨트롤 → SmartScreen 평판 기반 보호 → 끔</code> (설치 후
+                다시 켤 것).
+              </li>
+            </ul>
+          </div>
+
+          <p style={{ marginTop: 10, color: "var(--c-text-3)", fontSize: 11 }}>
+            ※ HiNest 는 사내 도구로, 외부에 공개 배포되지 않습니다. 이 안내는 시간이
+            지나면(다운로드 평판이 쌓이면) 자연스럽게 사라집니다.
+          </p>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -256,8 +355,8 @@ export default function DownloadPage() {
           >
             <div className="space-y-2">
               <a
-                href={`${DESKTOP_RELEASES_BASE}/HiNest-Setup.exe`}
-                download
+                href={`${DESKTOP_DOWNLOAD_BASE}/windows`}
+                download="HiNest-Setup.exe"
                 rel="noopener"
                 className="btn-primary w-full"
               >
@@ -267,9 +366,9 @@ export default function DownloadPage() {
                 className="text-[11.5px] leading-relaxed"
                 style={{ color: "var(--c-text-3)" }}
               >
-                다운로드 후 설치 파일을 실행하세요. 첫 실행 시 SmartScreen 경고가 뜨면
-                "추가 정보 → 실행"을 눌러주세요.
+                다운로드 후 설치 파일을 실행하세요.
               </p>
+              <WindowsBlockHelp />
             </div>
           </Card>
 
@@ -284,16 +383,16 @@ export default function DownloadPage() {
             <div className="space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <a
-                  href={`${DESKTOP_RELEASES_BASE}/HiNest-arm64.dmg`}
-                  download
+                  href={`${DESKTOP_DOWNLOAD_BASE}/mac-arm64`}
+                  download="HiNest-arm64.dmg"
                   rel="noopener"
                   className="btn-primary"
                 >
                   Apple Silicon
                 </a>
                 <a
-                  href={`${DESKTOP_RELEASES_BASE}/HiNest-x64.dmg`}
-                  download
+                  href={`${DESKTOP_DOWNLOAD_BASE}/mac-x64`}
+                  download="HiNest-x64.dmg"
                   rel="noopener"
                   className="btn-ghost"
                 >

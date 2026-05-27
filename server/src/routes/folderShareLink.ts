@@ -7,6 +7,7 @@ import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { downloadFile, isStorageEnabled } from "../lib/storage.js";
 import { UPLOAD_DIR } from "./upload.js";
+import { safeUniqueZipEntry } from "../lib/zipSafe.js";
 import path from "node:path";
 import fs from "node:fs";
 
@@ -175,6 +176,10 @@ export async function streamFolderZip(
   archive.pipe(res);
 
   let added = 0;
+  // ZIP slip 방어 — fileName / title / folder.name 모두 사용자 입력이라
+  // "../" 같은 segment 가 섞이면 추출 시 상위 디렉토리로 빠질 수 있음.
+  // sanitizeZipPath 가 각 segment 의 .. / . 제거 + 절대경로 prefix 제거.
+  const usedEntryNames = new Set<string>();
   for (const doc of docs) {
     const key = doc.fileUrl!.replace(/^\/uploads\//, "");
     try {
@@ -182,7 +187,7 @@ export async function streamFolderZip(
       if (!buf) continue;
       const prefix = folderPath(doc.folderId);
       const fname = doc.fileName ?? `${doc.title}`;
-      const entryPath = prefix ? `${prefix}/${fname}` : fname;
+      const entryPath = safeUniqueZipEntry(usedEntryNames, prefix, fname);
       archive.append(buf, { name: entryPath });
       added++;
     } catch (e) {

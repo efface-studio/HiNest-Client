@@ -146,14 +146,28 @@ app.use((req, res, next) => {
   const origin = String(req.headers.origin || "");
   const referer = String(req.headers.referer || "");
   // Origin 이 있으면 그걸로 검증. 없으면 Referer 의 origin 을 뽑아 검증.
-  // 둘 다 없으면 브라우저 외 클라이언트(스크립트/네이티브 앱)로 간주해 통과 — 쿠키/JWT 체크는 그대로 작동.
   let sender = origin;
   if (!sender && referer) {
     try { sender = new URL(referer).origin; } catch { sender = ""; }
   }
-  if (!sender) return next();
-  if (CORS_ORIGINS.includes(sender)) return next();
-  return res.status(403).json({ error: "origin not allowed" });
+  if (sender) {
+    if (CORS_ORIGINS.includes(sender)) return next();
+    return res.status(403).json({ error: "origin not allowed" });
+  }
+  // Origin / Referer 둘 다 없는 경우 — CSRF 핵심 위협은 "브라우저가 자동으로 cookie 를
+  // 실어 보내는" 시나리오라, cookie 가 함께 오는 경우만 차단한다.
+  //   - 정상 브라우저 (web/Electron): 항상 Origin 송신
+  //   - 네이티브 앱 / curl / 웹훅: Authorization 또는 토큰 헤더로 인증, cookie 안 씀
+  // 이 정책으로 위 cookie + no Origin 조합(= CSRF 시도)이 차단되고, 정상 비-브라우저는
+  // 영향 없음. 이전엔 무조건 통과해 SameSite 우회 공격에 노출됐었다.
+  const hasCookieAuth =
+    !!req.cookies?.["hinest_token"] ||
+    !!req.cookies?.["hinest_super"] ||
+    !!req.cookies?.["hinest_imp"];
+  if (hasCookieAuth) {
+    return res.status(403).json({ error: "origin required for cookie-authenticated requests" });
+  }
+  return next();
 });
 
 // 레이트 리밋 — 브루트포스/DoS 방어.
@@ -209,6 +223,18 @@ app.use("/api", rateLimitMiddleware);
 // 전역 API 레이트 리밋 — 라우트별 특수 limiter 는 그 뒤에 추가로 씌운다.
 // (login/upload 는 더 엄격한 limiter 가 먼저 적용됨)
 app.use("/api", apiLimiter);
+
+// 비밀번호 재설정 요청은 1회당 메일 1건 발송이라 enumeration 방어가 있어도
+// IP 당 분당 100건씩 던지면 메일 폭격이 된다. IP 당 시간당 10건으로 묶어둔다.
+// 정상 사용자라면 시간당 10건은 절대 도달 불가능 (1번 받고 받았는지 확인 + 재요청 1~2회면 충분).
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1시간
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+});
+app.use("/api/auth/password-reset/request", passwordResetLimiter);
 
 app.use("/api/auth", loginLimiter, authRouter);
 app.use("/api/me", meRouter);

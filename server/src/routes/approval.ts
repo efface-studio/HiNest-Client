@@ -68,13 +68,20 @@ router.get("/counts", async (req, res) => {
 
 router.get("/", async (req, res) => {
   const u = (req as any).user;
-  const scope = String(req.query.scope ?? "mine"); // mine | pending | all
+  const scope = String(req.query.scope ?? "mine"); // mine | pending | all(admin only)
   const where: any = {};
-  if (scope === "mine") where.requesterId = u.id;
-  else if (scope === "pending") {
+
+  if (scope === "all") {
+    // 전체 목록은 ADMIN 전용. 일반 사용자가 ?scope=all 로 요청 시 강제 403.
+    if (u.role !== "ADMIN") return res.status(403).json({ error: "forbidden" });
+    // where = {} — 전체 조회 (ADMIN 의도된 동작)
+  } else if (scope === "pending") {
     // 내가 리뷰어이고, 아직 대기중이며 내 순번이 돌아온 것
     where.steps = { some: { reviewerId: u.id, status: "PENDING" } };
     where.status = "PENDING";
+  } else {
+    // "mine" 또는 미지원 scope → 안전하게 본인 것만 반환
+    where.requesterId = u.id;
   }
   const list = await prisma.approval.findMany({
     where,

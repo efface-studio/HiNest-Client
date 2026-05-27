@@ -466,13 +466,32 @@ router.post("/users/:id/reset-password", async (req, res) => {
   if (!parsed.success) return res.status(400).json({ error: "비밀번호는 8자 이상이어야 합니다" });
   const target = await prisma.user.findUnique({ where: { id: req.params.id }, select: { id: true, email: true, superAdmin: true } });
   if (!target) return res.status(404).json({ error: "not found" });
+  // super-admin 의 비밀번호는 super-admin 끼리만 리셋 가능 — 404 로 위장(존재 노출 X).
   if (target.superAdmin && !u.superAdmin) return res.status(404).json({ error: "not found" });
+  // super-admin 끼리의 비번 리셋(자기 자신 포함)은 step-up 필요. (쿠키 단독 탈취 시
+  // super 비밀번호까지 덮어쓰는 우회 차단.)
+  if (target.superAdmin) {
+    const v = verifySuperToken(req, u.id);
+    if (!v) return res.status(401).json({ error: "step-up 필요", code: "SUPER_STEPUP_REQUIRED" });
+  }
   const passwordHash = await bcrypt.hash(parsed.data.newPassword, 12);
-  await prisma.user.update({
-    where: { id: target.id },
-    // 비밀번호를 새로 설정했으면 잠김도 같이 풀어주는 게 자연스러움.
-    data: { passwordHash, failedLoginCount: 0, lockedAt: null },
+  // 새 비번 발효 + 잠김 해제 + 대상의 모든 활성 세션 revoke (다른 기기 자동 로그아웃).
+  // 이전엔 세션 그대로라 공격자가 ADMIN 의 잔존 세션으로 계속 활동 가능했다.
+  const sessionsToEvict = await prisma.session.findMany({
+    where: { userId: target.id, revokedAt: null },
+    select: { id: true },
   });
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: target.id },
+      data: { passwordHash, failedLoginCount: 0, lockedAt: null },
+    });
+    await tx.session.updateMany({
+      where: { userId: target.id, revokedAt: null },
+      data: { revokedAt: new Date(), revokedById: u.id },
+    });
+  });
+  for (const s of sessionsToEvict) evictSessionCache(s.id);
   await evictUserCache(target.id);
   await writeLog(u.id, "USER_PW_RESET", target.id, target.email, req.ip);
   res.json({ ok: true });
@@ -1277,7 +1296,12 @@ router.get("/logs", requireSuperAdminStepUp, async (req, res) => {
 
 /* ===== 출근 기록 조회 — 특정 유저의 특정 날짜 ===== */
 router.get("/users/:id/attendance", async (req, res) => {
+  const u = (req as any).user;
   const { id } = req.params;
+  // super-admin 의 출근 기록은 super-admin 끼리만 열람 가능 — 다른 관리자에게는
+  // 존재 자체를 숨겨 출근 패턴/근무 시간 노출 차단.
+  const target = await prisma.user.findUnique({ where: { id }, select: { superAdmin: true } });
+  if (target?.superAdmin && !u.superAdmin) return res.status(404).json({ error: "not found" });
   const defaultDate = todayStr();
   const qdate = typeof req.query.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.date) ? req.query.date : defaultDate;
   const rec = await prisma.attendance.findUnique({
@@ -1290,9 +1314,12 @@ router.get("/users/:id/attendance", async (req, res) => {
 // body: { date?: "YYYY-MM-DD" 생략시 오늘, checkIn?: ISO|null, checkOut?: ISO|null }
 // 문자열 생략 → 미변경, null 명시 → 해당 필드 지움.
 router.patch("/users/:id/attendance", async (req, res) => {
+  const u = (req as any).user;
   const { id } = req.params;
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return res.status(404).json({ error: "not found" });
+  // super-admin 의 출퇴근을 일반 관리자가 조작 못 하도록 차단 — 존재 노출 X.
+  if (user.superAdmin && !u.superAdmin) return res.status(404).json({ error: "not found" });
   const body = req.body ?? {};
   const defaultDate = todayStr();
   const date = typeof body.date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(body.date) ? body.date : defaultDate;
@@ -1312,6 +1339,8 @@ router.patch("/users/:id/attendance", async (req, res) => {
     update: data,
     create: { userId: id, date, checkIn: checkIn ?? null, checkOut: checkOut ?? null },
   });
+  // 출근 기록은 임금/평가 근거가 되는 민감 데이터 — 변경 감사 추적 필수.
+  await writeLog(u.id, "ATTENDANCE_EDIT", id, `${date} in=${body.checkIn ?? "·"} out=${body.checkOut ?? "·"}`, req.ip);
   res.json({ attendance: rec });
 });
 

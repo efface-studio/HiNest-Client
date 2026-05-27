@@ -10,6 +10,7 @@ import {
 } from "../lib/auth.js";
 import { todayStr } from "../lib/dates.js";
 import { getLogs, type LogLevel, getErrorGroups, getErrorGroup, clearErrorGroups } from "../lib/logBuffer.js";
+import { evictNavVisibilityCache } from "./nav.js";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
@@ -1268,6 +1269,8 @@ router.post("/nav-visibility", requireSuperAdminStepUp, async (req, res) => {
     create: { path: p, enabled: nextEnabled, inDev: nextInDev, updatedBy: u.id },
     update: { enabled: nextEnabled, inDev: nextInDev, updatedBy: u.id },
   });
+  // NavConfig 변경 즉시 인메모리 캐시 무효화 — 다음 요청에서 최신값 로드.
+  evictNavVisibilityCache();
   await writeLog(u.id, "NAV_TOGGLE", p, JSON.stringify({ enabled: nextEnabled, inDev: nextInDev }), req.ip).catch(() => {});
   res.json({ ok: true });
 });

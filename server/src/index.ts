@@ -463,7 +463,7 @@ async function backfillNoticeLinks() {
   }
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[HiNest API] http://localhost:${PORT}`);
   backfillNoticeLinks();
   backfillUserIdentity();
@@ -471,4 +471,49 @@ app.listen(PORT, () => {
   import("./jobs/autoClockOut.js").then((m) => m.startAutoClockOut()).catch((e) => {
     console.error("[autoClockOut] 스케줄러 로드 실패:", e);
   });
+});
+
+// === Graceful shutdown ===
+// ECS Fargate 가 배포 중 task 교체할 때 SIGTERM 을 30초 grace 안에 보낸다.
+// 그 30초 동안 진행 중인 요청을 정상 처리하고, 새 요청은 받지 않으며, DB 연결을
+// 닫아야 한다. 그래야 사용자가 "갑자기 끊겼다" / 502 를 안 보고, prisma 연결도
+// pgBouncer/RDS 풀에 dangling 으로 남지 않는다.
+//
+// 흐름:
+//   1) SIGTERM 수신 → server.close() (새 연결 거부, 기존 요청 finish 대기)
+//   2) prisma.$disconnect() (커넥션 풀 cleanup)
+//   3) 25초 안에 안 끝나면 process.exit(1) — Fargate 가 SIGKILL 보내기 직전 자체 종료.
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${signal} received — draining connections`);
+  const forceTimer = setTimeout(() => {
+    console.error("[shutdown] 25s timeout — forcing exit");
+    process.exit(1);
+  }, 25_000);
+  server.close(async (err) => {
+    if (err) console.error("[shutdown] server.close error:", err);
+    try {
+      const { prisma } = await import("./lib/db.js");
+      await prisma.$disconnect();
+      console.log("[shutdown] prisma disconnected");
+    } catch (e) {
+      console.error("[shutdown] prisma disconnect failed:", e);
+    }
+    clearTimeout(forceTimer);
+    console.log("[shutdown] clean exit");
+    process.exit(0);
+  });
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+// uncaughtException / unhandledRejection — 로깅만 하고 프로세스는 유지.
+// (exit 시키면 ECS 가 재시작하지만 그 사이 사용자는 끊김 — 일시적 에러는 흘려보내는 게 운영상 안전)
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
 });

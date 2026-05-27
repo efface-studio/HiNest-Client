@@ -7,7 +7,8 @@ import { fmtSize } from "../lib/fmt";
  * 메타를 먼저 조회하고, 비밀번호가 걸려 있으면 입력 받은 뒤 다운로드를 트리거.
  */
 type Meta = {
-  document: { title: string; fileName: string | null; fileType: string | null; fileSize: number | null };
+  // 비밀번호 보호 링크는 인증 전에 document 가 null — 제목·파일명 노출 차단.
+  document: { title: string; fileName: string | null; fileType: string | null; fileSize: number | null } | null;
   kind?: "document" | "folder";
   expiresAt: string | null;
   maxDownloads: number | null;
@@ -58,8 +59,8 @@ export default function PublicSharePage() {
       const a = document.createElement("a");
       a.href = url;
       const defaultName = meta?.kind === "folder"
-        ? `${meta.document.title}.zip`
-        : (meta?.document.fileName ?? meta?.document.title ?? "download");
+        ? `${meta.document?.title ?? "folder"}.zip`
+        : (meta?.document?.fileName ?? meta?.document?.title ?? "download");
       a.download = defaultName;
       document.body.appendChild(a);
       a.click();
@@ -91,12 +92,16 @@ export default function PublicSharePage() {
               ) : (
                 <span className="text-2xl">📄</span>
               )}
-              <div className="text-lg font-bold text-ink-900">{meta.document.title}</div>
+              <div className="text-lg font-bold text-ink-900">
+                {meta.document?.title ?? (meta.hasPassword ? "🔒 비밀번호로 보호된 파일" : "파일")}
+              </div>
             </div>
-            <div className="text-[12px] text-ink-500 tabular">
-              {meta.kind === "folder" ? "폴더 전체 (ZIP)" : (meta.document.fileName ?? "파일")}
-              {typeof meta.document.fileSize === "number" ? ` · ${fmtSize(meta.document.fileSize)}` : ""}
-            </div>
+            {meta.document && (
+              <div className="text-[12px] text-ink-500 tabular">
+                {meta.kind === "folder" ? "폴더 전체 (ZIP)" : (meta.document.fileName ?? "파일")}
+                {typeof meta.document.fileSize === "number" ? ` · ${fmtSize(meta.document.fileSize)}` : ""}
+              </div>
+            )}
             <div className="text-[11px] text-ink-500 tabular mt-2 space-y-0.5">
               <div>다운로드 {meta.downloads}{meta.maxDownloads !== null ? `/${meta.maxDownloads}` : ""}</div>
               {meta.expiresAt && <div>만료 {new Date(meta.expiresAt).toLocaleString("ko-KR")}</div>}

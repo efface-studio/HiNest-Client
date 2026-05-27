@@ -1,16 +1,15 @@
-# Render Free 는 15분 무활동 시 sleep → 첫 사용자가 콜드 스타트 30~60초 대기.
-# 10분마다 /api/health 를 치면 항상 warm 상태 유지.
+# [비활성화] 서버가 Render Free → AWS Fargate 로 이전됨.
 #
-# 주의: Render Free 는 월 750 인스턴스 시간 제공 — 24/7 항상 깨어있어도 720h 라
-# 단일 인스턴스는 한도 안 넘김.
-# 사용량 절약이 중요하면 cron 을 '*/15 * * * 6,0' 식으로 주말만 돌리는 것도 가능.
-name: Keep Render service warm
+# Fargate 는 sleep 이 없으므로 keepalive 불필요.
+# 이 schedule 이 살아있으면 10분마다 GitHub Actions 러너가 기동돼
+# 월 ~4,300 분 (≈ GitHub Free 티어의 두 배)을 낭비한다.
+#
+# Render 시절 URL(hinest-api.onrender.com) 은 이제 수신자가 없음.
+# 필요 시 workflow_dispatch 로 수동 확인용으로만 남겨둔다.
+name: Keep Render service warm (DISABLED — moved to Fargate)
 
 on:
-  schedule:
-    # GitHub Actions cron 은 UTC 기준. '*/10 * * * *' = 매 10분.
-    # 실제 실행은 최대 수 분 지연될 수 있음 (무료 러너 큐). 우리 목적엔 충분.
-    - cron: "*/10 * * * *"
+  # schedule 제거 — Fargate 는 항상 warm, keepalive 불필요
   workflow_dispatch:   # 수동 실행 가능 (Actions 탭에서 "Run workflow")
 
 jobs:
@@ -18,9 +17,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
-      - name: Ping /api/health
+      - name: Ping /api/health (production — Fargate)
         run: |
-          # --max-time 90: 콜드 스타트 시 60초까지 걸릴 수 있으니 여유 있게.
-          # --fail: HTTP 4xx/5xx 면 exit 코드 0 이 아닌 값 반환 → 러너 failed 로 표시.
-          curl --fail --max-time 90 -sS https://hinest-api.onrender.com/api/health
+          # 현재 프로덕션 서버는 api.nest.hi-vits.com (AWS Fargate).
+          # Fargate 는 항상 warm → keepalive 불필요. 이 잡은 수동 헬스 확인용으로만 남김.
+          curl --fail --max-time 30 -sS https://api.nest.hi-vits.com/api/health
           echo

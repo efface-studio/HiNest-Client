@@ -75,7 +75,6 @@ export function LangIcon({ lang, size = 14 }: { lang?: string; size?: number }) 
         height: size,
         flexShrink: 0,
         verticalAlign: "text-bottom",
-      }}
-    />
+      }} loading="lazy" decoding="async"/>
   );
 }

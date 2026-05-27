@@ -183,7 +183,7 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
                       style={{ background: u.avatarUrl ? "transparent" : u.avatarColor }}
                     >
                       {u.avatarUrl ? (
-                        <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
+                        <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                       ) : (
                         u.name[0]
                       )}

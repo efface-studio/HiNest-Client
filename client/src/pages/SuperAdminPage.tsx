@@ -546,7 +546,7 @@ function ChatAuditPanel() {
                         <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 overflow-hidden"
                           style={{ background: m.sender.avatarUrl ? "transparent" : m.sender.avatarColor }}>
                           {m.sender.avatarUrl ? (
-                            <img src={m.sender.avatarUrl} alt={m.sender.name} className="w-full h-full object-cover" />
+                            <img src={m.sender.avatarUrl} alt={m.sender.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                           ) : (
                             m.sender.name[0]
                           )}

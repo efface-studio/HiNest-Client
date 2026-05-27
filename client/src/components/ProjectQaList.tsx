@@ -886,7 +886,7 @@ function QaRow({
                     }}
                   >
                     {item.createdBy.avatarUrl ? (
-                      <img src={item.createdBy.avatarUrl} alt={item.createdBy.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      <img src={item.createdBy.avatarUrl} alt={item.createdBy.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
                     ) : (
                       item.createdBy.name[0]
                     )}
@@ -1025,7 +1025,7 @@ function QaRow({
               }}
             >
               {item.assignee.avatarUrl ? (
-                <img src={item.assignee.avatarUrl} alt={item.assignee.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                <img src={item.assignee.avatarUrl} alt={item.assignee.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
               ) : (
                 item.assignee.name[0]
               )}
@@ -1288,7 +1288,7 @@ function AssigneeSelect({
             }}
           >
             {current.avatarUrl ? (
-              <img src={current.avatarUrl} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={current.avatarUrl} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
             ) : (
               current.name[0]
             )}

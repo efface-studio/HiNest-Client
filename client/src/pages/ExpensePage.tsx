@@ -436,7 +436,7 @@ export default function ExpensePage() {
 
       {preview && (
         <div className="fixed inset-0 bg-slate-900/70 grid place-items-center p-4 z-50" onClick={() => setPreview(null)}>
-          <img src={preview} alt="receipt" decoding="async" className="max-h-[90vh] max-w-[90vw] rounded-xl" />
+          <img src={preview} alt="receipt" decoding="async" className="max-h-[90vh] max-w-[90vw] rounded-xl" loading="lazy"/>
         </div>
       )}
     </div>

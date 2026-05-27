@@ -144,7 +144,7 @@ export default function UserProfilePage() {
                 }}
               >
                 {u.avatarUrl ? (
-                  <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
+                  <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                 ) : (
                   initial
                 )}

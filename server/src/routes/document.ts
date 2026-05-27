@@ -690,10 +690,14 @@ router.delete("/:id", async (req, res) => {
   if (!exist) return res.status(404).json({ error: "not found" });
   const isAuthor = exist.authorId === u.id;
   const isAdmin = u.role === "ADMIN";
+  // 프로젝트 문서함: 단순 멤버십만으로 타인 문서를 삭제할 수 없음.
+  // 작성자 본인 또는 전사 ADMIN / MANAGER 만 허용.
+  const isManagerOrAbove = u.role === "ADMIN" || u.role === "MANAGER";
   const isProjectMember = exist.projectId
     ? await assertProjectMember(u, exist.projectId)
     : false;
-  if (!isAuthor && !isAdmin && !isProjectMember)
+  const canDelete = isAuthor || isAdmin || (isProjectMember && isManagerOrAbove);
+  if (!canDelete)
     return res.status(403).json({ error: "forbidden" });
   await prisma.document.update({ where: { id: exist.id }, data: { deletedAt: new Date(), deletedById: (req as any).user?.id } });
   await writeLog(u.id, "DOC_DELETE", req.params.id);

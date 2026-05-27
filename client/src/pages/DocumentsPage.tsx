@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
@@ -1726,16 +1725,12 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         />
       )}
 
-      {/* ===== 메모 편집/열람 모달 — Suspense fallback 도 body 에 portal 해서 overflow/transform 계층 우회 ===== */}
+      {/* ===== 메모 편집/열람 모달 ===== */}
+      {/* fallback=null: DocMemoModal 이 createPortal(document.body) 를 사용하므로
+          Suspense fallback 에도 동일 컨테이너 portal 을 쓰면 React reconciler 가 crash.
+          초기 로드는 100ms 내외라 null 로 충분. */}
       {memoTarget !== null && (
-        <Suspense fallback={
-          createPortal(
-            <div className="fixed inset-0 z-[60] grid place-items-center bg-[color:var(--c-bg)]">
-              <div className="text-[12px] text-ink-400">에디터 불러오는 중…</div>
-            </div>,
-            document.body
-          )
-        }>
+        <Suspense fallback={null}>
           <DocMemoModal
             doc={memoTarget === "new" ? null : (memoTarget as MemoDoc)}
             initialFolderId={memoTarget === "new" ? (currentFolder === "root" ? null : currentFolder) : undefined}

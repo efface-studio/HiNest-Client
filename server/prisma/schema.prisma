@@ -579,6 +579,8 @@ model DocumentRevision {
   fileName    String?
   fileType    String?
   fileSize    Int?
+  /// 메모(리치텍스트) 스냅샷 — 파일 문서 리비전에선 null.
+  content     Json?
   editorId    String
   editor      User     @relation(fields: [editorId], references: [id], onDelete: Cascade)
   createdAt   DateTime @default(now())
@@ -734,6 +736,8 @@ model Document {
   fileType     String?
   fileSize     Int?
   tags         String? // comma separated
+  /// TipTap JSON — null 이면 파일/링크 문서, 값이 있으면 메모(리치텍스트) 문서.
+  content      Json?
   authorId     String
   author       User                @relation("DocumentAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   // 공개 범위 — ALL(전체) | TEAM(팀) | PRIVATE(개인) | CUSTOM(사용자지정)

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
@@ -6,6 +6,10 @@ import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import ShareLinkModal from "../components/ShareLinkModal";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
+import type { MemoDoc } from "../components/DocMemoModal";
+
+// DocMemoModal 은 TipTap(무거운 번들)을 포함 → 실제 열릴 때만 로드.
+const DocMemoModal = lazy(() => import("../components/DocMemoModal"));
 
 type Folder = {
   id: string;
@@ -27,9 +31,12 @@ type Doc = {
   fileType?: string | null;
   fileSize?: number | null;
   tags?: string | null;
+  /** TipTap JSON — 값이 있으면 메모 타입 문서. */
+  content?: any;
   scope?: DocScope;
   scopeTeam?: string | null;
   scopeUserIds?: string | null;
+  authorId?: string;
   createdAt: string;
   updatedAt: string;
   author: { name: string; avatarColor: string; avatarUrl?: string | null };
@@ -135,6 +142,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   const [sharingDoc, setSharingDoc] = useState<Doc | null>(null);
   const [sharingFolder, setSharingFolder] = useState<Folder | null>(null);
   const [historyDoc, setHistoryDoc] = useState<Doc | null>(null);
+  /** 현재 열린 메모 편집/열람 모달 (null = 닫힘 | "new" = 새 메모 | Doc = 기존 메모) */
+  const [memoTarget, setMemoTarget] = useState<Doc | "new" | null>(null);
   const [docForm, setDocForm] = useState<{
     title: string; description: string; tags: string;
     fileUrl: string; fileName: string; fileType: string; fileSize: number;
@@ -843,6 +852,12 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
               >
                 {folderUpload ? `업로드 중… ${folderUpload.done}/${folderUpload.total}` : "+ 폴더 업로드"}
               </button>
+              <button className="btn-ghost" onClick={() => setMemoTarget("new")}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline-block mr-1">
+                  <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+                </svg>
+                메모 작성
+              </button>
               <button className="btn-primary" onClick={() => { setModalErr(null); setCreating("doc"); }}>+ 문서 업로드</button>
             </>
           }
@@ -942,6 +957,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
           >
             {folderUpload ? `업로드 중… ${folderUpload.done}/${folderUpload.total}` : "+ 폴더 업로드"}
           </button>
+          <button className="btn-ghost btn-xs" onClick={() => setMemoTarget("new")}>메모 작성</button>
           <button className="btn-primary btn-xs" onClick={() => { setModalErr(null); setCreating("doc"); }}>+ 문서 업로드</button>
         </div>
       )}
@@ -1294,15 +1310,31 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                   }}
                 >
                   <td>
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 grid place-items-center flex-shrink-0">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
-                        </svg>
-                      </div>
+                    <div
+                      className={`flex items-start gap-2.5 ${d.content != null ? "cursor-pointer" : ""}`}
+                      onClick={d.content != null ? () => setMemoTarget(d) : undefined}
+                      title={d.content != null ? "메모 열기" : undefined}
+                    >
+                      {/* 메모 vs 파일 문서 아이콘 구분 */}
+                      {d.content != null ? (
+                        <div className="w-8 h-8 rounded-lg bg-violet-50 text-violet-700 grid place-items-center flex-shrink-0">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 grid place-items-center flex-shrink-0">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
+                          </svg>
+                        </div>
+                      )}
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <div className="text-[13px] font-bold text-ink-900">{d.title}</div>
+                          <div className={`text-[13px] font-bold text-ink-900 ${d.content != null ? "hover:text-brand-700" : ""}`}>{d.title}</div>
+                          {d.content != null && (
+                            <span className="text-[10px] font-bold px-1.5 py-[1px] rounded bg-violet-50 text-violet-700">메모</span>
+                          )}
                           {d.scope && d.scope !== "ALL" && (
                             <span className={`text-[10px] font-bold px-1.5 py-[1px] rounded ${
                               d.scope === "PRIVATE" ? "bg-rose-50 text-rose-700"
@@ -1347,22 +1379,42 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                   <td className="tabular text-[11px] text-ink-500">{new Date(d.updatedAt).toLocaleDateString("ko-KR")}</td>
                   <td style={{ textAlign: "right" }}>
                     <div className="flex items-center justify-end gap-1">
-                      {d.fileUrl && (
-                        <button className="btn-icon" onClick={() => downloadDoc(d)} title="다운로드">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
-                        </button>
+                      {/* 메모 타입 */}
+                      {d.content != null ? (
+                        <>
+                          <button className="btn-icon" onClick={() => setMemoTarget(d)} title="메모 열기">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
+                            </svg>
+                          </button>
+                          <button className="btn-icon" onClick={() => setHistoryDoc(d)} title="버전 히스토리">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></svg>
+                          </button>
+                          <button className="btn-icon" onClick={() => deleteDoc(d)} title="삭제">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                          </button>
+                        </>
+                      ) : (
+                        /* 파일 문서 타입 */
+                        <>
+                          {d.fileUrl && (
+                            <button className="btn-icon" onClick={() => downloadDoc(d)} title="다운로드">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+                            </button>
+                          )}
+                          {d.fileUrl && (
+                            <button className="btn-icon" onClick={() => setSharingDoc(d)} title="외부 공유 링크">
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
+                            </button>
+                          )}
+                          <button className="btn-icon" onClick={() => setHistoryDoc(d)} title="버전 히스토리">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></svg>
+                          </button>
+                          <button className="btn-icon" onClick={() => deleteDoc(d)} title="삭제">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                          </button>
+                        </>
                       )}
-                      {d.fileUrl && (
-                        <button className="btn-icon" onClick={() => setSharingDoc(d)} title="외부 공유 링크">
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
-                        </button>
-                      )}
-                      <button className="btn-icon" onClick={() => setHistoryDoc(d)} title="버전 히스토리">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l3 2" /></svg>
-                      </button>
-                      <button className="btn-icon" onClick={() => deleteDoc(d)} title="삭제">
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
-                      </button>
                     </div>
                   </td>
                 </tr>
@@ -1660,6 +1712,44 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
           onClose={() => setHistoryDoc(null)}
           onRestored={() => load()}
         />
+      )}
+
+      {/* ===== 메모 편집/열람 모달 ===== */}
+      {memoTarget !== null && (
+        <Suspense fallback={
+          <div className="fixed inset-0 z-50 grid place-items-center bg-[color:var(--c-bg)]">
+            <div className="text-[12px] text-ink-400">에디터 불러오는 중…</div>
+          </div>
+        }>
+          <DocMemoModal
+            doc={memoTarget === "new" ? null : (memoTarget as MemoDoc)}
+            initialFolderId={memoTarget === "new" ? (currentFolder === "root" ? null : currentFolder) : undefined}
+            initialScope={
+              memoTarget === "new"
+                ? (scopeTab === "team" ? "TEAM" : scopeTab === "private" ? "PRIVATE" : "ALL")
+                : undefined
+            }
+            projectId={activeProjectId ?? null}
+            onClose={() => setMemoTarget(null)}
+            onSaved={(saved) => {
+              setMemoTarget(saved as unknown as Doc);
+              // 목록 갱신 — 새 메모면 리스트에 추가, 수정이면 제자리 업데이트
+              setDocs((prev) => {
+                const idx = prev.findIndex((d) => d.id === saved.id);
+                if (idx >= 0) {
+                  const next = [...prev];
+                  next[idx] = { ...next[idx], ...saved };
+                  return next;
+                }
+                return [saved as unknown as Doc, ...prev];
+              });
+            }}
+            onDeleted={(id) => {
+              setMemoTarget(null);
+              setDocs((prev) => prev.filter((d) => d.id !== id));
+            }}
+          />
+        </Suspense>
       )}
     </div>
   );

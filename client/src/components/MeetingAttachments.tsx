@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "./ConfirmHost";
+import { safeAttachmentUrl } from "../lib/safeUrl";
 
 /**
  * 회의록 본문 아래에 떠있는 첨부 섹션 — 파일(이미지/영상/문서) + 외부 링크 모두 한 곳에서 관리.
@@ -246,22 +247,34 @@ export default function MeetingAttachments({
           {attachments.map((att) => {
             const isLink = att.kind === "LINK";
             const display = isLink ? att.name : att.name;
+            // 과거 데이터/혹시 모를 새 입력에 대비해 한 번 더 검증.
+            // 검증 실패 시 링크 없이 텍스트만 렌더(클릭 불가).
+            const safeHref = safeAttachmentUrl(att.url, att.kind);
             return (
               <li key={att.id} className="flex items-center gap-3 px-4 py-2.5 hover:bg-ink-25 transition group">
                 <span className="text-[18px] flex-shrink-0 grid place-items-center w-8 h-8 rounded-md" style={{ background: "var(--c-surface-3)" }}>
                   {kindIcon(att.kind, att.mimeType)}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <a
-                    href={att.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    {...(isLink ? {} : { download: att.name })}
-                    className="text-[13px] font-semibold text-ink-900 hover:text-brand-600 truncate block"
-                    title={isLink ? att.url : att.name}
-                  >
-                    {display}
-                  </a>
+                  {safeHref ? (
+                    <a
+                      href={safeHref}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      {...(isLink ? {} : { download: att.name })}
+                      className="text-[13px] font-semibold text-ink-900 hover:text-brand-600 truncate block"
+                      title={isLink ? safeHref : att.name}
+                    >
+                      {display}
+                    </a>
+                  ) : (
+                    <span
+                      className="text-[13px] font-semibold text-ink-400 truncate block"
+                      title="유효하지 않은 첨부 URL"
+                    >
+                      {display}
+                    </span>
+                  )}
                   <div className="text-[11px] text-ink-500 truncate">
                     {isLink ? (
                       <span className="text-ink-500" title={att.url}>{att.url}</span>

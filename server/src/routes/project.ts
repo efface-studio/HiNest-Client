@@ -385,8 +385,10 @@ router.get("/:id/qa", async (req, res) => {
   });
 });
 
+// QA 첨부 url 은 반드시 우리 업로드 경로 — javascript:, data:, 외부 URL 모두 차단.
+const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
 const qaAttachmentInput = z.object({
-  url: z.string().min(1).max(500),
+  url: z.string().min(1).max(500).regex(SAFE_UPLOAD_URL, { message: "/uploads/ 경로만 가능합니다" }),
   name: z.string().min(1).max(200),
   mimeType: z.string().min(1).max(100),
   sizeBytes: z.number().int().min(0).max(1_000_000_000),

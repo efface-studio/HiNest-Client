@@ -6,6 +6,7 @@ import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import ShareLinkModal from "../components/ShareLinkModal";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
+import { safeUploadUrl } from "../lib/safeUrl";
 
 type Folder = {
   id: string;
@@ -1326,11 +1327,21 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                     </div>
                   </td>
                   <td>
-                    {d.fileUrl ? (
-                      <a href={d.fileUrl} target="_blank" rel="noreferrer" className="text-[12px] font-bold text-brand-600 hover:underline tabular">
-                        {d.fileName} <span className="text-ink-400">({humanSize(d.fileSize ?? 0)})</span>
-                      </a>
-                    ) : <span className="text-ink-400 text-[12px]">—</span>}
+                    {(() => {
+                      // 과거 데이터에 javascript:/외부 URL 이 남아있을 수 있어 렌더 직전에 한 번 더 검증.
+                      const safe = safeUploadUrl(d.fileUrl);
+                      if (!d.fileUrl) return <span className="text-ink-400 text-[12px]">—</span>;
+                      if (!safe) return (
+                        <span className="text-[12px] text-ink-400" title="유효하지 않은 파일 URL">
+                          {d.fileName} <span className="text-ink-300">(invalid)</span>
+                        </span>
+                      );
+                      return (
+                        <a href={safe} target="_blank" rel="noreferrer" className="text-[12px] font-bold text-brand-600 hover:underline tabular">
+                          {d.fileName} <span className="text-ink-400">({humanSize(d.fileSize ?? 0)})</span>
+                        </a>
+                      );
+                    })()}
                   </td>
                   <td>
                     <div className="flex items-center gap-2">

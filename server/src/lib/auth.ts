@@ -123,8 +123,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   if (!token) return res.status(401).json({ error: "unauthorized" });
   try {
     const payload = jwt.verify(token, SECRET) as any;
-    // sessionId(sid) 클레임이 있는 토큰은 서버측 무효화 검사. 없는 레거시 토큰은 그대로 통과 (7일이면 만료).
-    if (payload.sid && (await isSessionRevoked(payload.sid))) {
+    // sid 없는 레거시 토큰은 서버측 세션 무효화(revokedAt) 를 적용할 수 없으므로 거부.
+    // 강제 로그아웃·계정 비활성화 즉시 차단이 보장되어야 하기 때문.
+    if (!payload.sid) {
+      return res.status(401).json({ error: "session expired", code: "LEGACY_TOKEN" });
+    }
+    if (await isSessionRevoked(payload.sid)) {
       return res.status(401).json({ error: "session revoked", code: "SESSION_REVOKED" });
     }
     const realUser = await getCachedUser(payload.id);

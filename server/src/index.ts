@@ -495,6 +495,10 @@ const server = app.listen(PORT, () => {
   import("./jobs/autoClockOut.js").then((m) => m.startAutoClockOut()).catch((e) => {
     console.error("[autoClockOut] 스케줄러 로드 실패:", e);
   });
+  // DB 유지보수 잡 — 매일 KST 03:00, 만료된 세션/토큰/접근 로그 정리.
+  import("./jobs/dbMaintenance.js").then((m) => m.startDbMaintenance()).catch((e) => {
+    console.error("[dbMaintenance] 스케줄러 로드 실패:", e);
+  });
 });
 
 // === Graceful shutdown ===

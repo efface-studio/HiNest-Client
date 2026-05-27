@@ -21,7 +21,7 @@ import type { Readable } from "node:stream";
  *     → 전부 이관 끝난 뒤 (보통 1~2주) SUPABASE_* env 를 제거해 완전히 S3 전용.
  *  3) **둘 다 없을 시 (로컬 dev)**: `isStorageEnabled()` 가 false → upload 라우트가 디스크 경로로 fallback.
  *
- * 왜: Render Free 디스크는 재시작 시 휘발성이라 프로덕션에선 오브젝트 스토리지 필수.
+ * 왜: Fargate/컨테이너 로컬 디스크는 재시작 시 휘발성이라 프로덕션에선 오브젝트 스토리지 필수.
  * 서버 프록시 방식(= /uploads/:key 로 서버 거쳐서 다운로드) 은 CSP/인증/Content-Disposition
  * 방어선을 유지하기 위해 그대로 둠. 클라이언트가 직접 presigned URL 로 가는 구성은 다음 단계.
  */
@@ -35,7 +35,7 @@ const S3_ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID?.trim();
 const S3_SECRET_KEY = process.env.AWS_SECRET_ACCESS_KEY?.trim();
 
 // S3 활성 조건: region + bucket 은 반드시. 자격증명은 2가지 경로 지원.
-//  1) 정적 키 (AWS_ACCESS_KEY_ID / SECRET) — Render 같은 외부 PaaS, 로컬 개발
+//  1) 정적 키 (AWS_ACCESS_KEY_ID / SECRET) — 로컬 개발, 외부 PaaS
 //  2) IAM 역할 (ECS Task Role, EC2 Instance Profile) — SDK 가 메타데이터 서비스에서 자동 회수
 // 2번은 환경변수가 없어도 되므로, 여기선 region+bucket 만 보고 S3 클라이언트를 생성.
 // 키가 있으면 명시 주입, 없으면 SDK default credential chain 에 맡김 (ECS → task role).

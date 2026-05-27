@@ -110,7 +110,7 @@ function readCache<T>(path: string, maxAgeMs?: number): T | null {
  * 캐시된 값이 있으면 즉시 onCached 로 전달 → UI 가 바로 렌더.
  * 동시에 네트워크 요청을 쏴서 새 값이 오면 onFresh 로 재렌더.
  * 에러는 onError 로. 인증 만료 등 onError 가 처리해야 함.
- * Render Free 의 3~5초 콜드스타트를 최초 방문 이후 체감상 제거.
+ * Fargate 배포에서 최초 방문 이후 API 응답 체감 속도를 크게 단축.
  *
  * 반환 Promise 는 "네트워크 완료" 시 resolve. await 해도 되지만 보통 fire-and-forget.
  */

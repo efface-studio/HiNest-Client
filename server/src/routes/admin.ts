@@ -619,11 +619,12 @@ router.post("/positions/reorder", async (req, res) => {
     return res.status(400).json({ error: "ids 가 현재 직급 목록과 일치하지 않습니다" });
   }
 
-  await prisma.$transaction(
-    ids.map((id: string, i: number) =>
-      prisma.position.update({ where: { id }, data: { rank: i } }),
-    ),
-  );
+  // 배열 형태는 timeout 미지원이라 callback 형태로 변경 — 직급 수십 개 reorder 안전.
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < ids.length; i++) {
+      await tx.position.update({ where: { id: ids[i] }, data: { rank: i } });
+    }
+  }, { timeout: 8_000 });
   await writeLog(u.id, "POSITION_REORDER", undefined, `${ids.length}건`);
   res.json({ ok: true });
 });

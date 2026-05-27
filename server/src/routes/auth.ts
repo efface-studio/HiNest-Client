@@ -203,7 +203,13 @@ router.post("/signup", async (req, res) => {
         team: created.team, position: created.position,
         avatarColor: created.avatarColor, avatarUrl: created.avatarUrl, superAdmin: created.superAdmin,
       };
-    }, { isolationLevel: "Serializable" });
+    }, {
+      isolationLevel: "Serializable",
+      // 명시적 timeout — 기본 5초는 bcrypt 비번 해싱이 끝나기 전 lock 잡을 수 있음을
+      // 고려하면 짧다. 트랜잭션은 짧고 (updateMany + create + update), Serializable
+      // retry 까지 고려해 10초.
+      timeout: 10_000,
+    });
   } catch (e: any) {
     // 동시성 충돌 또는 race 결과. 메시지는 통일.
     if (e?._http === 400) return res.status(400).json({ error: e.message });
@@ -613,6 +619,10 @@ router.post("/password-reset/confirm", async (req, res) => {
       where: { userId: row.userId, id: { not: row.id }, usedAt: null, expiresAt: { gt: new Date() } },
       data: { expiresAt: new Date() },
     });
+  }, {
+    // 4 step 트랜잭션 — 사용자 update + session revoke + 토큰 사용 처리 + 다른 토큰 무효화.
+    // 명시적 8초 timeout — 기본 5초보다 여유. 그래도 응답 30초 안엔 끝나도록.
+    timeout: 8_000,
   });
 
   // 캐시 evict — _sessionCache 30초 TTL 동안 공격자 세션이 통과하던 잔류 윈도우 제거.

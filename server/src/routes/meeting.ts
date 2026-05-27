@@ -540,6 +540,9 @@ router.patch("/:id", async (req, res) => {
             : d.projectId ?? undefined,
       },
     });
+  }, {
+    // 명시적 timeout — viewer 가 수십명일 때 deleteMany + createMany 가 길어질 수 있어 8초.
+    timeout: 8_000,
   });
   await writeLog(u.id, "MEETING_UPDATE", updated.id);
 

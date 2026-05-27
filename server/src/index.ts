@@ -96,6 +96,20 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
+// === Request ID 미들웨어 ===
+// 각 요청에 고유 ID 를 붙여 access log / error log / superadmin 로그 뷰에서
+// "이 5xx 가 그 요청이었음" 을 상호참조할 수 있게 한다. 응답 헤더 X-Request-ID 로
+// 클라에도 노출 — 사용자 버그 리포트 시 그 ID 만 받으면 서버 로그 즉시 검색 가능.
+//
+// 형식: <epoch36>-<rand36>  (예: l4hk2x-a3f9)
+import crypto from "node:crypto";
+app.use((req, res, next) => {
+  const rid = `${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`;
+  (req as any).requestId = rid;
+  res.setHeader("X-Request-ID", rid);
+  next();
+});
+
 // HTTP 액세스 라인을 인메모리 버퍼에 적재 — \"GET /api/x 200 12ms\" 형식.
 // query string 안의 token/password/secret/key 같은 값은 마스킹해 개발자 콘솔의 \"서버 로그\" 탭에서
 // 우연히 노출되지 않도록 차단.
@@ -130,7 +144,8 @@ app.use((req, res, next) => {
     if (ACCESS_LOG_SKIP_PATHS.has(req.path) && res.statusCode < 400) return;
     const dur = Date.now() - start;
     const url = req.originalUrl || req.url;
-    pushHttpLog(`${req.method} ${scrubUrl(url)} ${res.statusCode} ${dur}ms`);
+    const rid = (req as any).requestId;
+    pushHttpLog(`${rid} ${req.method} ${scrubUrl(url)} ${res.statusCode} ${dur}ms`);
   });
   next();
 });
@@ -344,7 +359,9 @@ function sanitizeDownloadName(s: string): string {
 }
 
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
+  const rid = (req as any).requestId;
+  // request id 를 stack 앞에 박아 access log 와 error log 를 한 줄로 검색 가능.
+  console.error(`[err:${rid}]`, err);
   const status = typeof err.status === "number" ? err.status : 500;
   // 500 계열 예상치 못한 에러는 내부 메시지 유출 방지 — DB/Prisma 오류가 그대로 나가지 않도록.
   // 4xx 는 우리가 직접 throw 한 의도된 에러라 message 노출 허용.
@@ -357,7 +374,7 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
         status,
         method: req.method,
         path: req.path,
-        message: String(err?.message ?? err ?? "Unknown"),
+        message: `[${rid}] ${String(err?.message ?? err ?? "Unknown")}`,
         stack: String(err?.stack ?? ""),
         userId: (req as any).user?.id ?? null,
         ua: (req.headers["user-agent"] || "").slice(0, 200) || null,
@@ -365,7 +382,9 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
       });
     } catch { /* 로깅 실패가 응답을 막지 않게 */ }
   }
-  res.status(status).json({ error: msg });
+  // 응답에도 request id 박아서 (이미 미들웨어가 헤더로 보냄) 클라가 알 수 있게 body 에도 포함.
+  // 사용자 버그 리포트 → 우리가 이 ID 만 있으면 서버 로그 한 번에 검색.
+  res.status(status).json({ error: msg, requestId: rid });
 });
 
 // 방어: Prisma 등 async 에러로 프로세스가 죽지 않도록

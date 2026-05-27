@@ -72,8 +72,7 @@ export default function ProjectPage() {
 
   // project 로딩이 끝나기 전에도 id 만 있으면 자식들이 fetch 를 시작하도록
   // 껍데기를 먼저 렌더한다. 이렇게 해야 /api/project/:id + events + webhook 3개가
-  // 직렬이 아니라 동시에 나간다 (Render 콜드스타트 + IAD↔SIN 왕복이 직렬로 쌓이면
-  // 체감 3~5초, 병렬이면 ~1초).
+  // 직렬이 아니라 동시에 나간다 (요청이 직렬로 쌓이면 체감 3~5초, 병렬이면 ~1초).
   if (err && !project) {
     return (
       <div className="text-center py-16 text-slate-400">

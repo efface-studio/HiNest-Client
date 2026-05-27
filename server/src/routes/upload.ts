@@ -13,7 +13,7 @@ import { isStorageEnabled, uploadFile } from "../lib/storage.js";
  *     기존 클라이언트 코드·DB 저장값이 그대로 유지됨. 실제 파일은 서버가 프록시해서 내려줌.
  *  3. 비활성화 시 (로컬 dev) → 과거와 동일하게 uploads/ 디렉터리에 파일 기록.
  *
- * Render Free 디스크는 재시작 시 날아가기 때문에 프로덕션은 반드시 Supabase 경로를 쓴다.
+ * Fargate/컨테이너 로컬 디스크는 재시작 시 휘발성이므로 프로덕션은 반드시 Supabase 경로를 쓴다.
  */
 
 const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");

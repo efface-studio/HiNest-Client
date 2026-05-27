@@ -126,24 +126,24 @@ model Session {
 /// 팀/프로젝트 — 사이드바 "팀" 카테고리 아래에 자신이 참여중인 프로젝트가 표시됨.
 /// 멤버는 ProjectMember 로 연결, 생성자는 자동으로 OWNER 로 들어감.
 model Project {
-  id             String           @id @default(cuid())
-  name           String
-  description    String?
-  color          String           @default("#3B5CF0")
-  status         String           @default("ACTIVE") // ACTIVE | ARCHIVED
-  createdById    String
-  createdBy      User             @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Cascade)
-  createdAt      DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
-  members        ProjectMember[]
-  events         ProjectEvent[]
-  webhooks       WebhookChannel[]
-  meetings       Meeting[]
-  documents      Document[]
-  folders        Folder[]
-  qaItems        ProjectQaItem[]
+  id              String           @id @default(cuid())
+  name            String
+  description     String?
+  color           String           @default("#3B5CF0")
+  status          String           @default("ACTIVE") // ACTIVE | ARCHIVED
+  createdById     String
+  createdBy       User             @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  members         ProjectMember[]
+  events          ProjectEvent[]
+  webhooks        WebhookChannel[]
+  meetings        Meeting[]
+  documents       Document[]
+  folders         Folder[]
+  qaItems         ProjectQaItem[]
   // 전사 캘린더(Event) 중 이 프로젝트 범위로 공유된 일정
-  scheduleEvents Event[]
+  scheduleEvents  Event[]
   serviceAccounts ServiceAccount[] @relation("ProjectServiceAccounts")
 }
 
@@ -753,6 +753,10 @@ model Document {
 
   @@index([projectId, updatedAt])
   @@index([deletedAt])
+  // 폴더별 문서 목록 — 문서함이 깊어지면 folderId 단독 필터가 자주 들어와 인덱스 필수.
+  @@index([folderId, deletedAt])
+  // 작성자 본인의 문서 (마이페이지 / 검색) — authorId 단독 필터도 자주 들어옴.
+  @@index([authorId, updatedAt(sort: Desc)])
 }
 
 model Approval {
@@ -805,6 +809,13 @@ model AuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt(sort: Desc)])
+  // 운영자 콘솔의 "특정 사용자의 최근 활동" 조회 패턴 최적화.
+  // writeLog() 가 매 액션마다 INSERT 하는데 조회는 userId + 최신순으로 자주 들어옴.
+  // 단일 createdAt 인덱스만 있던 시절엔 userId 필터가 풀스캔 + 정렬이라 audit log 가 100만 row
+  // 넘어가는 순간 admin 페이지가 timeout 났다.
+  @@index([userId, createdAt(sort: Desc)])
+  // action 단위 집계 — LOGIN_FAIL / PWD_RESET 등 보안 이벤트 모니터링용.
+  @@index([action, createdAt(sort: Desc)])
 }
 
 /// 회의록 — 노션 스타일 리치 텍스트 에디터(TipTap) 의 JSON 도큐먼트를 content 에 저장.
@@ -814,20 +825,20 @@ model AuditLog {
 ///   SPECIFIC  선택된 개별 유저만 (viewers 릴레이션)
 /// 작성자는 무조건 조회·수정 가능. ADMIN 은 전역 열람.
 model Meeting {
-  id          String               @id @default(cuid())
+  id          String              @id @default(cuid())
   title       String
   /// TipTap JSON document. HTML 이 아닌 구조화된 노드 트리.
   content     Json
-  visibility  String               @default("ALL") // ALL | PROJECT | SPECIFIC
+  visibility  String              @default("ALL") // ALL | PROJECT | SPECIFIC
   projectId   String?
-  project     Project?             @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  project     Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
   authorId    String
-  author      User                 @relation("MeetingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  author      User                @relation("MeetingAuthor", fields: [authorId], references: [id], onDelete: Cascade)
   viewers     MeetingViewer[]
   revisions   MeetingRevision[]
   attachments MeetingAttachment[]
-  createdAt   DateTime             @default(now())
-  updatedAt   DateTime             @updatedAt
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
   deletedAt   DateTime?
   deletedById String?
 

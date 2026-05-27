@@ -146,6 +146,10 @@ router.patch("/leave/:id", async (req, res) => {
     include: { user: { select: { team: true } } },
   });
   if (!existing) return res.status(404).json({ error: "not found" });
+  // 본인 휴가를 직접 결재하는 것은 역할 무관 금지.
+  if (existing.userId === u.id) {
+    return res.status(403).json({ error: "본인의 휴가를 직접 심사할 수 없어요" });
+  }
   // MANAGER 는 자기 팀 휴가만 심사 가능.
   if (u.role === "MANAGER") {
     const me = await prisma.user.findUnique({ where: { id: u.id }, select: { team: true } });

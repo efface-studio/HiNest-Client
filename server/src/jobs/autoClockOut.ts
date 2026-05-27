@@ -15,8 +15,9 @@
  *  - KST(Asia/Seoul) 고정. 서버는 UTC 로 돌아도 OK — Intl.DateTimeFormat 으로 KST 계산.
  *
  * 스케일:
- *  - 현재 설계는 단일 인스턴스 가정(Render Starter 등). 멀티 인스턴스 배포로 가면
- *    advisory lock 또는 전용 cron 워커로 옮겨야 중복 실행이 안 남.
+ *  - 현재 설계는 단일 인스턴스 기준. Fargate 에서 멀티 태스크로 스케일아웃 시
+ *    updateMany WHERE checkOut IS NULL 조건 덕분에 중복 처리 없이 안전.
+ *    (같은 행을 여러 태스크가 동시에 업데이트해도 두 번째 이후는 0건 반환으로 멱등)
  */
 
 import { prisma } from "../lib/db.js";

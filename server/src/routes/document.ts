@@ -445,9 +445,12 @@ router.get("/", async (req, res) => {
   else if (scope === "private") ands.push({ scope: "PRIVATE", authorId: u.id });
   else if (scope === "custom") ands.push({ scope: "CUSTOM" });
   else if (scope === "public") ands.push({ scope: "ALL" });
+  // 상한 500 — 프로젝트 문서와 동일. 누적 워크스페이스에서 전체 결과 없이
+  // 수십 MB 페이로드가 나오는 것을 방지. UX 는 폴더/검색으로 좁혀지므로 영향 없음.
   const docs = await prisma.document.findMany({
     where: { AND: ands },
     orderBy: { updatedAt: "desc" },
+    take: 500,
     include: {
       author: { select: { name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
       folder: { select: { name: true } },

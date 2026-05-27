@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
@@ -1725,12 +1726,15 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         />
       )}
 
-      {/* ===== 메모 편집/열람 모달 ===== */}
+      {/* ===== 메모 편집/열람 모달 — Suspense fallback 도 body 에 portal 해서 overflow/transform 계층 우회 ===== */}
       {memoTarget !== null && (
         <Suspense fallback={
-          <div className="fixed inset-0 z-50 grid place-items-center bg-[color:var(--c-bg)]">
-            <div className="text-[12px] text-ink-400">에디터 불러오는 중…</div>
-          </div>
+          createPortal(
+            <div className="fixed inset-0 z-[60] grid place-items-center bg-[color:var(--c-bg)]">
+              <div className="text-[12px] text-ink-400">에디터 불러오는 중…</div>
+            </div>,
+            document.body
+          )
         }>
           <DocMemoModal
             doc={memoTarget === "new" ? null : (memoTarget as MemoDoc)}

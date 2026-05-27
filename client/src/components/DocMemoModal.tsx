@@ -1,12 +1,15 @@
 /**
- * DocMemoModal — 문서함 내 리치텍스트 메모 작성·열람 패널.
+ * DocMemoModal — 문서함 리치텍스트 메모 작성·열람 패널.
  *
- * 레이아웃:
- *   - TopBar(48px + safe-area) 아래부터 화면을 채움 → 상단바 침범 없음
- *   - 헤더: 닫기 · 제목 · 공개범위 · 저장/취소 (버튼은 여기 한 군데만)
- *   - 본문: 태그 + TipTap 에디터
+ * 레이아웃 전략:
+ *   - createPortal(…, document.body) 로 DOM 트리 최상단에 붙임
+ *     → overflow-y:auto / -webkit-overflow-scrolling:touch / transform 등 조상 요소의
+ *       스태킹·컨테이닝 블록 문제를 완전히 우회.
+ *   - top 오프셋은 <header> 요소의 getBoundingClientRect().bottom 을 실측해서 적용
+ *     → macOS Electron 28px 드래그바, iOS safe-area, 임시/미리보기 배너 높이를 자동 반영.
  */
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 
@@ -55,8 +58,11 @@ const SCOPE_DESC: Record<DocScope, string> = {
   CUSTOM: "지정한 구성원만 열람",
 };
 
-// TopBar 높이 — AppLayout TopBar minHeight(48px) + safe-area-inset-top
-const TOPBAR_HEIGHT = "calc(48px + env(safe-area-inset-top))";
+/** <header> 요소의 뷰포트 하단 좌표를 실측해 반환. 없으면 48 px 폴백. */
+function measureHeaderBottom(): number {
+  const h = document.querySelector("header");
+  return h ? Math.round(h.getBoundingClientRect().bottom) : 48;
+}
 
 export default function DocMemoModal({
   doc,
@@ -89,6 +95,29 @@ export default function DocMemoModal({
 
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+
+  // ===== TopBar 하단 오프셋 실측 =====
+  // createPortal 로 body 에 붙은 fixed 패널의 top 값을 <header> 실측으로 결정.
+  // - 초기값: 렌더 시점에 동기 측정 (flash 없음)
+  // - useLayoutEffect: 마운트 직후 재측정 + ResizeObserver(배너 토글 등 동적 높이 변화)
+  const [topOffset, setTopOffset] = useState<number>(measureHeaderBottom);
+
+  useLayoutEffect(() => {
+    function measure() {
+      setTopOffset(measureHeaderBottom());
+    }
+    measure();
+
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(measure) : null;
+    const header = document.querySelector("header");
+    if (ro && header) ro.observe(header);
+    window.addEventListener("resize", measure);
+
+    return () => {
+      ro?.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, []);
 
   useEffect(() => {
     if (scope !== "CUSTOM" || allUsers.length > 0) return;
@@ -179,12 +208,13 @@ export default function DocMemoModal({
     ? allUsers.filter((u) => u.name.includes(userSearch) || (u.team ?? "").includes(userSearch))
     : allUsers;
 
-  return (
+  // ===== 렌더 — portal 로 body 에 직접 붙임 =====
+  return createPortal(
     <>
-      {/* 모달 패널 — TopBar 아래부터 시작해 상단바를 침범하지 않음 */}
+      {/* 메인 패널 — TopBar 바로 아래부터 화면 하단까지 */}
       <div
-        className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-[color:var(--c-bg)]"
-        style={{ top: TOPBAR_HEIGHT }}
+        className="fixed left-0 right-0 bottom-0 z-[60] flex flex-col bg-[color:var(--c-bg)]"
+        style={{ top: topOffset }}
       >
         {/* ===== 헤더 ===== */}
         <div className="flex-shrink-0 flex items-center gap-2 px-4 h-12 border-b border-ink-150 bg-[color:var(--c-surface)]">
@@ -235,8 +265,9 @@ export default function DocMemoModal({
                 )}
               </button>
 
+              {/* 범위 드롭다운 — z-[70] 로 패널(z-60) 위에 */}
               {scopeOpen && (
-                <div className="absolute right-0 top-full mt-1 w-[230px] bg-[color:var(--c-surface)] border border-ink-200 rounded-xl shadow-xl z-10 overflow-hidden">
+                <div className="absolute right-0 top-full mt-1 w-[230px] bg-[color:var(--c-surface)] border border-ink-200 rounded-xl shadow-xl z-[70] overflow-hidden">
                   {(["ALL", "TEAM", "PRIVATE", "CUSTOM"] as DocScope[]).map((s) => (
                     <button
                       key={s}
@@ -261,7 +292,7 @@ export default function DocMemoModal({
             </div>
           )}
 
-          {/* 액션 버튼 — 헤더에만 두고 하단 중복 제거 */}
+          {/* 액션 버튼 */}
           <div className="flex items-center gap-1.5 flex-shrink-0 ml-1">
             {editMode ? (
               <>
@@ -278,7 +309,7 @@ export default function DocMemoModal({
           </div>
         </div>
 
-        {/* 오류 띠 — 저장 시도 후 실패했을 때만 노출 */}
+        {/* 오류 띠 */}
         {err && (
           <div className="flex-shrink-0 flex items-center gap-2 px-4 py-2 bg-rose-50 border-b border-rose-200 text-[12px] text-rose-700">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -307,7 +338,7 @@ export default function DocMemoModal({
                 onChange={(e) => setUserSearch(e.target.value)}
               />
               {userSearch && (
-                <div className="absolute left-0 top-full mt-1 w-[200px] bg-white border border-ink-200 rounded-xl shadow-lg z-20 max-h-[180px] overflow-y-auto">
+                <div className="absolute left-0 top-full mt-1 w-[200px] bg-white border border-ink-200 rounded-xl shadow-lg z-[70] max-h-[180px] overflow-y-auto">
                   {filteredUsers.filter((u) => !scopeUserIds.includes(u.id)).length === 0 ? (
                     <div className="px-3 py-2 text-[12px] text-ink-500">없음</div>
                   ) : (
@@ -385,11 +416,15 @@ export default function DocMemoModal({
         </div>
       </div>
 
-      {/* 드롭다운 외부 클릭 닫기 */}
+      {/* 범위 드롭다운 외부 클릭 닫기 — z-[59] (패널 z-60 보다 아래, 나머지 페이지 위) */}
       {scopeOpen && (
-        <div className="fixed inset-0 z-40" onClick={() => setScopeOpen(false)} />
+        <div
+          className="fixed inset-0 z-[59]"
+          onClick={() => setScopeOpen(false)}
+        />
       )}
-    </>
+    </>,
+    document.body
   );
 }
 

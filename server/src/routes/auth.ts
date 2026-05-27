@@ -14,6 +14,7 @@ import {
   signSuper,
   setSuperCookie,
   clearSuperCookie,
+  clearImpCookie,
   verifySuperToken,
   SUPER_TTL_SEC,
   requireSuperAdminStepUp,
@@ -58,6 +59,13 @@ export async function generateUniqueEmployeeNo(): Promise<string> {
   return `HB${Date.now().toString().slice(-8)}`;
 }
 
+// === User enumeration 방어 ===
+// 로그인 응답 본문은 4가지 분기(존재X / 비활성 / 잠금 / 비번오답) 모두 같은 모양이어야 한다.
+// 이전엔 "남은 시도: N회" 접미사 / ACCOUNT_LOCKED 코드 / 잠금 안내 메시지가 분기마다 달라서
+// 공격자가 응답만 보고 "이 이메일이 가입돼 있나?" 를 100% 판정할 수 있었다.
+// 잠겨있던 본인은 메일로 받은 재설정 링크로 해제할 수 있으니 안내가 없어도 막히지 않는다.
+const GENERIC_LOGIN_ERROR = "잘못된 이메일 또는 비밀번호";
+
 router.post("/login", async (req, res) => {
   const parsed = loginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid input" });
@@ -67,21 +75,19 @@ router.post("/login", async (req, res) => {
 
   // === 타이밍 공격 방어 ===
   // 이메일이 없어도 / 비활성이어도 / 잠겨있어도, 일단 bcrypt.compare 는 항상 한 번 수행.
-  // 그래야 \"가입된 이메일\" 과 \"없는 이메일\" 의 응답 시간 차이가 사라져 이메일 enumeration 불가.
+  // 그래야 "가입된 이메일" 과 "없는 이메일" 의 응답 시간 차이가 사라져 이메일 enumeration 불가.
   // 분기 결과(로그/응답)는 그 후 균일하게 처리.
   const hashToCompare = user?.passwordHash ?? TIMING_DUMMY_HASH;
   const compareOk = await bcrypt.compare(password, hashToCompare);
 
-  // 사용자 부재 / 비활성 / 잠금 — 메시지는 같게(이메일 존재 노출 X). 잠금 케이스만 별도 코드 반환.
+  // 사용자 부재 / 비활성 — 응답은 다른 분기와 같은 모양.
   if (!user || !user.active) {
-    return res.status(401).json({ error: "잘못된 이메일 또는 비밀번호" });
+    return res.status(401).json({ error: GENERIC_LOGIN_ERROR });
   }
+  // 잠금 — 감사 로그는 남기되, 응답 본문은 일반 실패와 동일하게 (enumeration 방어).
   if (user.lockedAt) {
     await writeLog(user.id, "LOGIN_BLOCKED", user.email, "account locked", req.ip);
-    return res.status(401).json({
-      error: "계정이 잠겨있습니다. 관리자에게 문의해 주세요.",
-      code: "ACCOUNT_LOCKED",
-    });
+    return res.status(401).json({ error: GENERIC_LOGIN_ERROR });
   }
 
   const ok = compareOk;
@@ -95,16 +101,11 @@ router.post("/login", async (req, res) => {
     });
     if (shouldLock) {
       await writeLog(user.id, "LOGIN_LOCKED", user.email, `fails=${nextCount}`, req.ip);
-      return res.status(401).json({
-        error: "비밀번호 5회 오류로 계정이 잠겼습니다. 관리자에게 문의해 주세요.",
-        code: "ACCOUNT_LOCKED",
-      });
+    } else {
+      await writeLog(user.id, "LOGIN_FAIL", user.email, `fails=${nextCount}/5`, req.ip);
     }
-    await writeLog(user.id, "LOGIN_FAIL", user.email, `fails=${nextCount}/5`, req.ip);
-    const remaining = 5 - nextCount;
-    return res.status(401).json({
-      error: `잘못된 이메일 또는 비밀번호 (남은 시도: ${remaining}회)`,
-    });
+    // 응답은 일관 — "남은 시도", "잠겼습니다" 등 enumeration 단서가 되는 정보 제거.
+    return res.status(401).json({ error: GENERIC_LOGIN_ERROR });
   }
 
   // 성공 시 카운터 리셋.
@@ -202,7 +203,13 @@ router.post("/signup", async (req, res) => {
         team: created.team, position: created.position,
         avatarColor: created.avatarColor, avatarUrl: created.avatarUrl, superAdmin: created.superAdmin,
       };
-    }, { isolationLevel: "Serializable" });
+    }, {
+      isolationLevel: "Serializable",
+      // 명시적 timeout — 기본 5초는 bcrypt 비번 해싱이 끝나기 전 lock 잡을 수 있음을
+      // 고려하면 짧다. 트랜잭션은 짧고 (updateMany + create + update), Serializable
+      // retry 까지 고려해 10초.
+      timeout: 10_000,
+    });
   } catch (e: any) {
     // 동시성 충돌 또는 race 결과. 메시지는 통일.
     if (e?._http === 400) return res.status(400).json({ error: e.message });
@@ -257,6 +264,10 @@ router.post("/logout", requireAuth, async (req, res) => {
   }
   clearAuthCookie(res);
   clearSuperCookie(res);
+  // 임퍼소네이트 쿠키도 함께 클리어 — 같은 브라우저로 다시 로그인했을 때 이전 impersonation
+  // 컨텍스트가 의도치 않게 되살아나는 걸 막는다. 이전엔 clearImpCookie 호출이 빠져서
+  // 1시간 동안 잔류하다 같은 super-admin 로그인 시 자동 재활성화됐었다.
+  clearImpCookie(res);
   res.json({ ok: true });
 });
 
@@ -294,9 +305,11 @@ router.post("/step-up", requireAuth, async (req, res) => {
 });
 
 /* ===== 총관리자 step-up 비밀번호 최초 설정 / 변경 =====
- * - 최초 설정: 본인이 super 권한이고 superPasswordHash 가 null 이면 currentPassword 없이 설정 가능.
- * - 변경: currentPassword(현재 super 비번) 가 일치해야 함.
- * 정책: 8~128자, 본인의 일반 로그인 비밀번호와 다르게 (재사용 방지).
+ * 보안 정책:
+ *   - 최초 설정: 본인의 "일반 로그인 비밀번호" 를 다시 입력해야 함 — 세션 쿠키만 탈취된
+ *     공격자가 step-up 비번을 마음대로 처음 설정하고 그 비번으로 step-up 하는 우회를 차단.
+ *   - 변경: 기존 super 비번 검증.
+ *   - 8~128자, 본인의 일반 로그인 비밀번호와 다르게 (재사용 방지).
  */
 router.post("/super-password", requireAuth, async (req, res) => {
   const u = (req as any).user;
@@ -312,8 +325,8 @@ router.post("/super-password", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "일반 로그인 비밀번호와 달라야 해요" });
   }
 
-  // 변경 모드면 current 검증 — null 이면 \"최초 설정\" 으로 간주.
   if (user.superPasswordHash) {
+    // 변경 모드 — 기존 super 비번으로 본인 확인.
     const rawCur = String(req.body?.current ?? "");
     const current = rawCur.length > 128 ? rawCur.slice(0, 128) : rawCur;
     if (!current) return res.status(400).json({ error: "현재 총관리자 비밀번호가 필요해요" });
@@ -321,6 +334,17 @@ router.post("/super-password", requireAuth, async (req, res) => {
     if (!ok) {
       await writeLog(user.id, "SUPER_PW_CHANGE_FAIL", undefined, undefined, req.ip);
       return res.status(401).json({ error: "현재 총관리자 비밀번호가 일치하지 않아요" });
+    }
+  } else {
+    // 최초 설정 모드 — 세션 쿠키 단독으로 super 비번을 새로 만드는 우회를 막기 위해
+    // "일반 로그인 비밀번호" 를 다시 입력받아 검증한다. (cookie != "본인 확인")
+    const rawLogin = String(req.body?.loginPassword ?? "");
+    const loginPw = rawLogin.length > 128 ? rawLogin.slice(0, 128) : rawLogin;
+    if (!loginPw) return res.status(400).json({ error: "로그인 비밀번호로 본인 확인이 필요해요" });
+    const ok = await bcrypt.compare(loginPw, user.passwordHash);
+    if (!ok) {
+      await writeLog(user.id, "SUPER_PW_SET_FAIL", undefined, "login-pw mismatch", req.ip);
+      return res.status(401).json({ error: "로그인 비밀번호가 일치하지 않아요" });
     }
   }
 
@@ -449,10 +473,22 @@ function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");
 }
 
+/**
+ * 비밀번호 재설정 메일에 들어가는 base URL.
+ *
+ * 보안:
+ *   프로덕션에서는 반드시 환경변수 PUBLIC_APP_URL 을 사용한다. 요청 Host 헤더 fallback 을
+ *   허용하면 공격자가 password-reset/request 호출 시 Host: attacker.example 로 위장해
+ *   피해자에게 자기 도메인이 박힌 리셋 링크를 메일로 보내게 만들 수 있다 (Host header injection).
+ *
+ *   - NODE_ENV === "production" 이고 PUBLIC_APP_URL 이 없으면 안전하게 default 운영 도메인 사용.
+ *   - 개발 환경에서만 Host 헤더 fallback 허용.
+ */
+const PROD_DEFAULT_APP_URL = "https://nest.hi-vits.com";
 function appBaseUrl(req: { headers: { host?: string }; protocol?: string }) {
-  // 프로덕션 도메인은 PUBLIC_APP_URL 로 명시. 미설정 시 요청 호스트 fallback (개발 편의).
   const fromEnv = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
   if (fromEnv) return fromEnv;
+  if (process.env.NODE_ENV === "production") return PROD_DEFAULT_APP_URL;
   const host = req.headers?.host ?? "localhost:5173";
   const proto = host.startsWith("localhost") ? "http" : "https";
   return `${proto}://${host}`;
@@ -560,7 +596,12 @@ router.post("/password-reset/confirm", async (req, res) => {
 
   const passwordHash = await bcrypt.hash(newPassword, 12);
 
-  // 트랜잭션: 비밀번호 교체 + 잠금 해제 + 모든 세션 revoke + 토큰 사용 처리 + 같은 유저 다른 미사용 토큰 무효화
+  // 트랜잭션: 비밀번호 교체 + 잠금 해제 + 모든 세션 revoke + 토큰 사용 처리 + 같은 유저 다른 미사용 토큰 무효화.
+  // revoke 대상 세션 id 를 미리 수집해서 트랜잭션 후에 캐시 evict 까지 묶는다.
+  const sessionsToEvict = await prisma.session.findMany({
+    where: { userId: row.userId, revokedAt: null },
+    select: { id: true },
+  });
   await prisma.$transaction(async (tx) => {
     await tx.user.update({
       where: { id: row.userId },
@@ -578,12 +619,15 @@ router.post("/password-reset/confirm", async (req, res) => {
       where: { userId: row.userId, id: { not: row.id }, usedAt: null, expiresAt: { gt: new Date() } },
       data: { expiresAt: new Date() },
     });
+  }, {
+    // 4 step 트랜잭션 — 사용자 update + session revoke + 토큰 사용 처리 + 다른 토큰 무효화.
+    // 명시적 8초 timeout — 기본 5초보다 여유. 그래도 응답 30초 안엔 끝나도록.
+    timeout: 8_000,
   });
 
-  // 캐시된 세션 revoke 상태 즉시 반영 — 다른 기기에서 다음 요청에 401.
-  // (Session 모델의 revokedAt 을 _sessionCache 가 30초 캐싱하지만 evictSessionCache 로 즉시 무효화.)
-  // ※ 모든 세션을 일일이 evict 하긴 비싸므로, 캐시는 TTL 만 신뢰. 30초 이내 잔존 세션이 있을 수 있음 — 허용 범위.
-  // (필요시 evictSessionCache 를 모든 sessionId 에 대해 호출하도록 확장.)
+  // 캐시 evict — _sessionCache 30초 TTL 동안 공격자 세션이 통과하던 잔류 윈도우 제거.
+  // 사용자가 비번 재설정으로 공격자를 끊어내려는 시나리오에선 이 30초가 치명적이라 즉시 무효화.
+  for (const s of sessionsToEvict) evictSessionCache(s.id);
 
   await writeLog(row.userId, "PWD_RESET_CONFIRM", row.user.email, undefined, req.ip);
 
@@ -603,7 +647,5 @@ function escapeAttr(s: string) {
   return escapeHtml(s);
 }
 
-// evictSessionCache 가 import 만 되고 미사용 시 lint 경고 — 향후 확장 자리표시.
-void evictSessionCache;
 
 export default router;

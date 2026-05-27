@@ -22,8 +22,24 @@ const patchSchema = z.object({
 router.get("/", async (req, res) => {
   const u = (req as any).user;
   const userId = req.query.userId ? String(req.query.userId) : u.id;
-  if (userId !== u.id && u.role === "MEMBER")
-    return res.status(403).json({ error: "forbidden" });
+  // 권한 정책 (permissions catalog 기준):
+  //   - 본인 일지: 누구나 (자기 자신)
+  //   - 타인 일지: MEMBER 불가, MANAGER 는 같은 팀까지만, ADMIN 만 전사 열람
+  // 이전엔 MANAGER 가 모든 부서 일지를 볼 수 있어 개인정보 노출 우려 컸음.
+  if (userId !== u.id) {
+    if (u.role === "MEMBER") return res.status(403).json({ error: "forbidden" });
+    if (u.role === "MANAGER") {
+      const [me, target] = await Promise.all([
+        prisma.user.findUnique({ where: { id: u.id }, select: { team: true } }),
+        prisma.user.findUnique({ where: { id: userId }, select: { team: true } }),
+      ]);
+      // 팀 미지정이거나 다른 팀이면 거부 — null/undefined 동일 취급 안 함(둘 다 null 이면 거부).
+      if (!me?.team || !target?.team || me.team !== target.team) {
+        return res.status(403).json({ error: "forbidden" });
+      }
+    }
+    // ADMIN 은 통과.
+  }
   const list = await prisma.journal.findMany({
     where: { userId, deletedAt: null },
     orderBy: { date: "desc" },

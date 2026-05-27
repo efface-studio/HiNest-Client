@@ -458,7 +458,7 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
           }}
         >
           {info.imageUrl ? (
-            <img src={info.imageUrl} alt={info.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} />
+            <img src={info.imageUrl} alt={info.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
           ) : (
             <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 700, letterSpacing: "-0.02em" }}>
               {info.title?.[0] ?? "?"}

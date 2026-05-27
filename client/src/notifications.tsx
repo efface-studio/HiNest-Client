@@ -183,10 +183,19 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
     connect();
 
-    const t = setInterval(reload, 30_000);
+    // SSE fallback 폴링 — SSE 가 끊겼을 때만 의미가 있다.
+    // 비용 절감:
+    //   - 30초 → 90초. SSE 가 살아있으면 어차피 push 로 동기화되므로 fallback 빈도 낮춰도 안전.
+    //   - 탭 hidden 이면 폴링 자체를 중단 (visibility 복귀 시 한 번 reload + interval 재무장).
+    let t: number | null = null;
+    function startPoll() { if (t === null) t = window.setInterval(reload, 90_000); }
+    function stopPoll() { if (t !== null) { window.clearInterval(t); t = null; } }
+    if (document.visibilityState === "visible") startPoll();
 
     function onVisibility() {
-      if (document.visibilityState !== "visible") return;
+      if (document.visibilityState !== "visible") { stopPoll(); return; }
+      // 보이는 상태로 복귀 — fallback 폴링 재무장.
+      startPoll();
       // SSE 가 살아있으면 실시간 push 로 이미 동기화됨 — reload() 생략.
       // SSE 가 끊긴 상태(재연결 대기 중)에서만 전체 재조회.
       if (esRef.current && esRef.current.readyState !== EventSource.CLOSED) return;
@@ -196,7 +205,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
     return () => {
       if (retry) clearTimeout(retry);
-      clearInterval(t);
+      stopPoll();
       esRef.current?.close();
       esRef.current = null;
       document.removeEventListener("visibilitychange", onVisibility);

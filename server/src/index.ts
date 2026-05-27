@@ -37,6 +37,7 @@ import snippetRouter from "./routes/snippet.js";
 import { shareLinkAuthedRouter, shareLinkPublicRouter } from "./routes/shareLink.js";
 import { folderShareLinkAuthedRouter } from "./routes/folderShareLink.js";
 import serviceAccountRouter from "./routes/serviceAccount.js";
+import desktopDownloadRouter from "./routes/desktopDownload.js";
 import path from "node:path";
 import mime from "mime-types";
 import { installConsoleHook, pushHttpLog, pushErrorEvent } from "./lib/logBuffer.js";
@@ -96,6 +97,20 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
+// === Request ID 미들웨어 ===
+// 각 요청에 고유 ID 를 붙여 access log / error log / superadmin 로그 뷰에서
+// "이 5xx 가 그 요청이었음" 을 상호참조할 수 있게 한다. 응답 헤더 X-Request-ID 로
+// 클라에도 노출 — 사용자 버그 리포트 시 그 ID 만 받으면 서버 로그 즉시 검색 가능.
+//
+// 형식: <epoch36>-<rand36>  (예: l4hk2x-a3f9)
+import crypto from "node:crypto";
+app.use((req, res, next) => {
+  const rid = `${Date.now().toString(36)}-${crypto.randomBytes(3).toString("hex")}`;
+  (req as any).requestId = rid;
+  res.setHeader("X-Request-ID", rid);
+  next();
+});
+
 // HTTP 액세스 라인을 인메모리 버퍼에 적재 — \"GET /api/x 200 12ms\" 형식.
 // query string 안의 token/password/secret/key 같은 값은 마스킹해 개발자 콘솔의 \"서버 로그\" 탭에서
 // 우연히 노출되지 않도록 차단.
@@ -116,12 +131,22 @@ function scrubUrl(raw: string): string {
   const qs = params.toString();
   return qs ? `${path}?${qs}` : path;
 }
+// HTTP access log — 매 요청마다 in-memory 링버퍼에 적재.
+// 비용 절감:
+//   - ALB/Fargate healthcheck 가 GET /api/health 를 매 30초씩 두드리는데, 200 OK 만
+//     남기는 라인은 정보가 없고 CloudWatch ingestion(=USD/GB) 만 가산된다.
+//   - GET /api/notification/stream 도 SSE long-poll 시작 핸드셰이크가 끊임없이 찍힘.
+//   - 위 두 경로는 정상 200/204 일 때만 스킵. 비정상 응답(5xx, 4xx)은 그대로 기록해야
+//     장애 진단이 가능.
+const ACCESS_LOG_SKIP_PATHS = new Set(["/api/health", "/api/notification/stream"]);
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {
+    if (ACCESS_LOG_SKIP_PATHS.has(req.path) && res.statusCode < 400) return;
     const dur = Date.now() - start;
     const url = req.originalUrl || req.url;
-    pushHttpLog(`${req.method} ${scrubUrl(url)} ${res.statusCode} ${dur}ms`);
+    const rid = (req as any).requestId;
+    pushHttpLog(`${rid} ${req.method} ${scrubUrl(url)} ${res.statusCode} ${dur}ms`);
   });
   next();
 });
@@ -137,14 +162,28 @@ app.use((req, res, next) => {
   const origin = String(req.headers.origin || "");
   const referer = String(req.headers.referer || "");
   // Origin 이 있으면 그걸로 검증. 없으면 Referer 의 origin 을 뽑아 검증.
-  // 둘 다 없으면 브라우저 외 클라이언트(스크립트/네이티브 앱)로 간주해 통과 — 쿠키/JWT 체크는 그대로 작동.
   let sender = origin;
   if (!sender && referer) {
     try { sender = new URL(referer).origin; } catch { sender = ""; }
   }
-  if (!sender) return next();
-  if (CORS_ORIGINS.includes(sender)) return next();
-  return res.status(403).json({ error: "origin not allowed" });
+  if (sender) {
+    if (CORS_ORIGINS.includes(sender)) return next();
+    return res.status(403).json({ error: "origin not allowed" });
+  }
+  // Origin / Referer 둘 다 없는 경우 — CSRF 핵심 위협은 "브라우저가 자동으로 cookie 를
+  // 실어 보내는" 시나리오라, cookie 가 함께 오는 경우만 차단한다.
+  //   - 정상 브라우저 (web/Electron): 항상 Origin 송신
+  //   - 네이티브 앱 / curl / 웹훅: Authorization 또는 토큰 헤더로 인증, cookie 안 씀
+  // 이 정책으로 위 cookie + no Origin 조합(= CSRF 시도)이 차단되고, 정상 비-브라우저는
+  // 영향 없음. 이전엔 무조건 통과해 SameSite 우회 공격에 노출됐었다.
+  const hasCookieAuth =
+    !!req.cookies?.["hinest_token"] ||
+    !!req.cookies?.["hinest_super"] ||
+    !!req.cookies?.["hinest_imp"];
+  if (hasCookieAuth) {
+    return res.status(403).json({ error: "origin required for cookie-authenticated requests" });
+  }
+  return next();
 });
 
 // 레이트 리밋 — 브루트포스/DoS 방어.
@@ -200,6 +239,22 @@ app.use("/api", rateLimitMiddleware);
 // 전역 API 레이트 리밋 — 라우트별 특수 limiter 는 그 뒤에 추가로 씌운다.
 // (login/upload 는 더 엄격한 limiter 가 먼저 적용됨)
 app.use("/api", apiLimiter);
+
+// 비밀번호 재설정 요청은 1회당 메일 1건 발송이라 enumeration 방어가 있어도
+// IP 당 분당 100건씩 던지면 메일 폭격이 된다. IP 당 시간당 10건으로 묶어둔다.
+// 정상 사용자라면 시간당 10건은 절대 도달 불가능 (1번 받고 받았는지 확인 + 재요청 1~2회면 충분).
+const passwordResetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1시간
+  limit: 10,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  message: { error: "요청이 너무 많습니다. 잠시 후 다시 시도해 주세요." },
+});
+app.use("/api/auth/password-reset/request", passwordResetLimiter);
+
+// 데스크톱 앱 다운로드 — 인증 불필요, GitHub Releases 스트리밍 프록시.
+// 자체 도메인으로 일관된 URL 을 제공해 브라우저 Safe Browsing 평판을 쌓는다.
+app.use("/api/download", desktopDownloadRouter);
 
 app.use("/api/auth", loginLimiter, authRouter);
 app.use("/api/me", meRouter);
@@ -309,7 +364,9 @@ function sanitizeDownloadName(s: string): string {
 }
 
 app.use((err: any, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
+  const rid = (req as any).requestId;
+  // request id 를 stack 앞에 박아 access log 와 error log 를 한 줄로 검색 가능.
+  console.error(`[err:${rid}]`, err);
   const status = typeof err.status === "number" ? err.status : 500;
   // 500 계열 예상치 못한 에러는 내부 메시지 유출 방지 — DB/Prisma 오류가 그대로 나가지 않도록.
   // 4xx 는 우리가 직접 throw 한 의도된 에러라 message 노출 허용.
@@ -322,7 +379,7 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
         status,
         method: req.method,
         path: req.path,
-        message: String(err?.message ?? err ?? "Unknown"),
+        message: `[${rid}] ${String(err?.message ?? err ?? "Unknown")}`,
         stack: String(err?.stack ?? ""),
         userId: (req as any).user?.id ?? null,
         ua: (req.headers["user-agent"] || "").slice(0, 200) || null,
@@ -330,7 +387,9 @@ app.use((err: any, req: express.Request, res: express.Response, _next: express.N
       });
     } catch { /* 로깅 실패가 응답을 막지 않게 */ }
   }
-  res.status(status).json({ error: msg });
+  // 응답에도 request id 박아서 (이미 미들웨어가 헤더로 보냄) 클라가 알 수 있게 body 에도 포함.
+  // 사용자 버그 리포트 → 우리가 이 ID 만 있으면 서버 로그 한 번에 검색.
+  res.status(status).json({ error: msg, requestId: rid });
 });
 
 // 방어: Prisma 등 async 에러로 프로세스가 죽지 않도록
@@ -428,7 +487,7 @@ async function backfillNoticeLinks() {
   }
 }
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`[HiNest API] http://localhost:${PORT}`);
   backfillNoticeLinks();
   backfillUserIdentity();
@@ -436,4 +495,49 @@ app.listen(PORT, () => {
   import("./jobs/autoClockOut.js").then((m) => m.startAutoClockOut()).catch((e) => {
     console.error("[autoClockOut] 스케줄러 로드 실패:", e);
   });
+});
+
+// === Graceful shutdown ===
+// ECS Fargate 가 배포 중 task 교체할 때 SIGTERM 을 30초 grace 안에 보낸다.
+// 그 30초 동안 진행 중인 요청을 정상 처리하고, 새 요청은 받지 않으며, DB 연결을
+// 닫아야 한다. 그래야 사용자가 "갑자기 끊겼다" / 502 를 안 보고, prisma 연결도
+// pgBouncer/RDS 풀에 dangling 으로 남지 않는다.
+//
+// 흐름:
+//   1) SIGTERM 수신 → server.close() (새 연결 거부, 기존 요청 finish 대기)
+//   2) prisma.$disconnect() (커넥션 풀 cleanup)
+//   3) 25초 안에 안 끝나면 process.exit(1) — Fargate 가 SIGKILL 보내기 직전 자체 종료.
+let shuttingDown = false;
+function shutdown(signal: string) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[shutdown] ${signal} received — draining connections`);
+  const forceTimer = setTimeout(() => {
+    console.error("[shutdown] 25s timeout — forcing exit");
+    process.exit(1);
+  }, 25_000);
+  server.close(async (err) => {
+    if (err) console.error("[shutdown] server.close error:", err);
+    try {
+      const { prisma } = await import("./lib/db.js");
+      await prisma.$disconnect();
+      console.log("[shutdown] prisma disconnected");
+    } catch (e) {
+      console.error("[shutdown] prisma disconnect failed:", e);
+    }
+    clearTimeout(forceTimer);
+    console.log("[shutdown] clean exit");
+    process.exit(0);
+  });
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
+
+// uncaughtException / unhandledRejection — 로깅만 하고 프로세스는 유지.
+// (exit 시키면 ECS 가 재시작하지만 그 사이 사용자는 끊김 — 일시적 에러는 흘려보내는 게 운영상 안전)
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason);
 });

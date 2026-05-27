@@ -508,7 +508,7 @@ function UserAvatar({ u, size }: { u: DirUser; size: number }) {
       style={{ width: size, height: size, background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3D54C4") }}
     >
       {u.avatarUrl ? (
-        <img src={u.avatarUrl} alt={u.name} className="absolute inset-0 w-full h-full object-cover" />
+        <img src={u.avatarUrl} alt={u.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
       ) : (
         <div
           className="absolute inset-0 grid place-items-center text-white font-extrabold"

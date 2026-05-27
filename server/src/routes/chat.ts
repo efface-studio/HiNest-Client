@@ -148,6 +148,8 @@ router.post("/rooms", async (req, res) => {
       data: {
         name: `DM:${u.id}:${other}`,
         type: "DIRECT",
+        // DM 도 createdById 박아둠 — 통계/감사 목적 일관성. 삭제는 양쪽 모두 못 함(둘 다 보존 필요).
+        createdById: u.id,
         members: { create: [{ userId: u.id }, { userId: other }] },
       },
       include: {
@@ -167,6 +169,8 @@ router.post("/rooms", async (req, res) => {
     data: {
       name: d.name,
       type: d.type,
+      // 그룹/팀 방의 생성자 — DELETE /rooms/:id 권한 판정에 사용.
+      createdById: u.id,
       members: { create: memberIds.map((userId) => ({ userId })) },
     },
     include: {
@@ -177,6 +181,67 @@ router.post("/rooms", async (req, res) => {
   await writeLog(u.id, "ROOM_CREATE", room.id, `${d.type}:${d.name}`);
   broadcastToRoom(room.id, "chat:room", { kind: "create", roomId: room.id });
   res.json({ room });
+});
+
+/**
+ * 그룹방(또는 팀방) 삭제.
+ *
+ * 권한:
+ *   - 그룹 생성자(createdById === u.id)
+ *   - ADMIN
+ *   - 그 외는 403. (DM 은 누구도 삭제 불가 — 보존 정책)
+ *
+ * 동작:
+ *   - 트랜잭션으로 메시지·반응·읽음표시·멤버 cascade 제거 후 방 삭제
+ *     (Prisma onDelete: Cascade 가 schema 에 박혀있어 chatRoom.delete 한 번이면 자동 정리)
+ *   - 모든 멤버에게 chat:room { kind: "deleted" } 푸시 → 클라가 방 목록에서 즉시 제거
+ *
+ * 보존:
+ *   - 메시지 단순 soft-delete 가 아니라 방 통째로 제거 — 사용자가 "삭제" 의도로 누른 게
+ *     맞으니 message row 까지 hard delete. 감사 필요 시 AuditLog 에 ROOM_DELETE + 방
+ *     이름/멤버수만 남김.
+ */
+router.delete("/rooms/:id", async (req, res) => {
+  const u = (req as any).user;
+  const id = req.params.id;
+  const room = await prisma.chatRoom.findUnique({
+    where: { id },
+    select: { id: true, name: true, type: true, createdById: true, _count: { select: { members: true } } },
+  });
+  if (!room) return res.status(404).json({ error: "방을 찾을 수 없어요" });
+  // DM 은 양쪽 모두 보존 — 한쪽이 지우면 상대도 잃음. 안전상 거부.
+  if (room.type === "DIRECT") {
+    return res.status(403).json({ error: "1:1 대화는 삭제할 수 없어요" });
+  }
+  const isCreator = !!room.createdById && room.createdById === u.id;
+  const isAdmin = u.role === "ADMIN";
+  if (!isCreator && !isAdmin) {
+    // 메시지 통일 — "왜 안 되는지" 너무 자세히 알려주지 않음
+    // (그룹방 생성자/ADMIN 만 가능하다고 일관되게 안내).
+    return res.status(403).json({ error: "그룹 생성자 또는 관리자만 삭제할 수 있어요" });
+  }
+  // 삭제 직전, 멤버 ID 들을 받아 broadcast 용으로 보관 (cascade 후엔 못 읽음).
+  // RoomMember 까지 cascade 되니 broadcastToRoom 은 빈 set 을 받게 됨 → 사전 수집 필수.
+  const memberIds = (
+    await prisma.roomMember.findMany({ where: { roomId: id }, select: { userId: true } })
+  ).map((m) => m.userId);
+
+  // ChatRoom.delete → 스키마의 onDelete: Cascade 가 RoomMember/ChatMessage/MessageReaction
+  // 모두 자동 정리. 명시적 트랜잭션 불필요.
+  await prisma.chatRoom.delete({ where: { id } });
+  await writeLog(
+    u.id,
+    "ROOM_DELETE",
+    id,
+    `${room.type}:${room.name} members=${room._count.members} by=${isCreator ? "creator" : "admin"}`,
+    req.ip,
+  );
+
+  // SSE 푸시 — 클라가 사이드바/탭에서 즉시 방 제거 + 활성 채팅창 닫기.
+  // broadcastToRoom 은 roomId 기반인데 방은 이미 삭제됐으니, 멤버 개개인에게 직접 publishMany.
+  publishMany(memberIds, "chat:room", { kind: "deleted", roomId: id });
+
+  res.json({ ok: true });
 });
 
 /**

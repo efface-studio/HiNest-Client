@@ -1,8 +1,12 @@
 # SES + 비밀번호 재설정 메일 발송 진단 워크플로우.
 # 1) nest.hi-vits.com 도메인 verify 상태
 # 2) developer.seojiwan@gmail.com 이메일 verify 상태
-# 3) CloudWatch 에서 최근 EMAIL_FALLBACK 마커 + PWD_RESET 관련 로그 추출
-#    → SES 가 발송 거부하면 메일 본문(재설정 링크) 이 콘솔로 흘러나옴
+# 3) CloudWatch 에서 최근 EMAIL_FALLBACK 마커 + AuditLog PWD_RESET 추출
+#
+# 보안 노트:
+#   이전엔 reset-password URL 본문을 그대로 grep 해서 GitHub Actions 로그에
+#   토큰을 평문으로 흘렸음. 지금은 email.ts 가 본문을 로그에 안 쓰고,
+#   이 워크플로우도 본문 grep 단계를 제거함.
 name: Diagnose SES + password reset
 on:
   workflow_dispatch:
@@ -45,15 +49,6 @@ jobs:
             --log-group-name "$LOG_GROUP" \
             --start-time "$START" \
             --filter-pattern "EMAIL_FALLBACK" \
-            --region "$AWS_REGION" \
-            --query 'events[*].message' --output text || echo "(no logs)"
-
-          echo ""
-          echo "=========== filter: 비밀번호 재설정 본문 (reset-password URL 포함) ==========="
-          aws logs filter-log-events \
-            --log-group-name "$LOG_GROUP" \
-            --start-time "$START" \
-            --filter-pattern "reset-password" \
             --region "$AWS_REGION" \
             --query 'events[*].message' --output text || echo "(no logs)"
 

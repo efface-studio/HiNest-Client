@@ -755,7 +755,7 @@ function AccountCard({
                     style={{ background: a.ownerUser.avatarUrl ? "transparent" : a.ownerUser.avatarColor }}
                   >
                     {a.ownerUser.avatarUrl ? (
-                      <img src={a.ownerUser.avatarUrl} alt={a.ownerUser.name} className="w-full h-full object-cover" />
+                      <img src={a.ownerUser.avatarUrl} alt={a.ownerUser.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                     ) : (
                       a.ownerUser.name[0]
                     )}
@@ -1102,7 +1102,7 @@ function AccountModal({
                 }}
               >
                 {previewSrc ? (
-                  <img src={previewSrc} alt="" className="w-[78%] h-[78%] object-contain" referrerPolicy="no-referrer" />
+                  <img src={previewSrc} alt="" className="w-[78%] h-[78%] object-contain" referrerPolicy="no-referrer" loading="lazy" decoding="async"/>
                 ) : (
                   <span className="text-xl leading-none">{CATEGORY_META[form.category].emoji}</span>
                 )}

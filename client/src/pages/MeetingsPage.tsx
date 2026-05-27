@@ -335,7 +335,7 @@ function AuthorChip({ author }: { author: MeetingRow["author"] }) {
         style={{ background: author.avatarUrl ? "transparent" : author.avatarColor }}
       >
         {author.avatarUrl ? (
-          <img src={author.avatarUrl} alt={author.name} className="w-full h-full object-cover" />
+          <img src={author.avatarUrl} alt={author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
         ) : (
           (author.name[0] ?? "?")
         )}

@@ -599,8 +599,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                 <img
                   src={user.avatarUrl}
                   alt={user.name ?? ""}
-                  className="avatar avatar-sm object-cover"
-                />
+                  className="avatar avatar-sm object-cover" loading="lazy" decoding="async"/>
               ) : (
                 <div
                   className="avatar avatar-sm"

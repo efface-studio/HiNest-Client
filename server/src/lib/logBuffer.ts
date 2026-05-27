@@ -16,11 +16,19 @@ export type LogEntry = {
   msg: string;
 };
 
-const MAX = 9999;
+// in-memory 링버퍼 크기.
+// 비용/메모리 관점:
+//   각 항목은 평균 200B (시각 + 레벨 + 메시지). MAX 9999 일 땐 약 2MB 가 ECS task
+//   RSS 에 상주. 운영 시 superadmin 콘솔에서 보는 윈도우는 보통 500~1000줄이고,
+//   2000줄 이상은 grep 으로 보는 게 더 빠름. 2000 으로 줄여 컨테이너 메모리 여유를 확보.
+//   (장기 보관은 CloudWatch — 이건 어디까지나 실시간 뷰어용.)
+const MAX = 2000;
 const buf: LogEntry[] = [];
 
+// 한 줄 상한도 2000자로 축소 — stack trace 한 덩어리도 충분히 들어가고, 그 이상은
+// 메시지가 큰 객체 dump 라 보통 의미보단 노이즈. CloudWatch 비용 + RSS 둘 다 절감.
 function pushEntry(level: LogLevel, msg: string) {
-  buf.push({ ts: Date.now(), level, msg: msg.length > 4000 ? msg.slice(0, 4000) + "…" : msg });
+  buf.push({ ts: Date.now(), level, msg: msg.length > 2000 ? msg.slice(0, 2000) + "…" : msg });
   if (buf.length > MAX) buf.splice(0, buf.length - MAX);
 }
 
@@ -153,20 +161,30 @@ export function installConsoleHook() {
       .join(" ");
   }
 
+  /** 비밀번호 재설정 토큰처럼 URL 쿼리에 들어가는 평문 비밀을 마지막 방어선에서 제거.
+   *  메일 코드 / 직접 console.log 등에서 빠뜨려도 인메모리 버퍼·CloudWatch 양쪽에서 가린다. */
+  function scrubSecrets(s: string): string {
+    // token=<base64url-ish or hex 20+자>
+    return s
+      .replace(/(token=)[A-Za-z0-9_\-]{16,}/g, "$1<redacted>")
+      .replace(/(reset-password\?token=)[^\s"'&<>]+/gi, "$1<redacted>")
+      .replace(/(Bearer\s+)[A-Za-z0-9._\-]{16,}/g, "$1<redacted>");
+  }
+
   console.log = (...args: any[]) => {
-    pushEntry("info", fmt(args));
+    pushEntry("info", scrubSecrets(fmt(args)));
     origLog(...args);
   };
   console.info = (...args: any[]) => {
-    pushEntry("info", fmt(args));
+    pushEntry("info", scrubSecrets(fmt(args)));
     origInfo(...args);
   };
   console.warn = (...args: any[]) => {
-    pushEntry("warn", fmt(args));
+    pushEntry("warn", scrubSecrets(fmt(args)));
     origWarn(...args);
   };
   console.error = (...args: any[]) => {
-    pushEntry("error", fmt(args));
+    pushEntry("error", scrubSecrets(fmt(args)));
     origError(...args);
   };
 }

@@ -37,6 +37,8 @@ type ActiveRoomInfo = {
   onBack: () => void;
   onTitleClick?: () => void;
   isSettings?: boolean;
+  /** 모바일 풀스크린 모드에서 채팅 패널 자체를 닫을 때 사용. desktop 에선 undefined. */
+  onClose?: () => void;
 };
 
 export default function ChatFab() {
@@ -140,6 +142,9 @@ export default function ChatFab() {
             isMobile
               ? {
                   // 모바일: 풀스크린 페이지처럼. 하단 네비/홈인디케이터 영역 safe-area 반영.
+                  // ※ 절대 위치 계산 대신 flex column 으로 변경 — 이전엔 헤더는 padding 안에,
+                  //    본문은 absolute top:86 (border-box 기준) 으로 두면서 safe-area-top 만큼
+                  //    헤더 일부가 본문에 가려져 모바일에서 뒤로가기 버튼이 사라져 보였음.
                   inset: 0,
                   width: "100vw",
                   height: "100dvh",
@@ -154,11 +159,13 @@ export default function ChatFab() {
                   fontFamily: FONT,
                   color: C.ink,
                   letterSpacing: "-0.015em",
+                  display: "flex",
+                  flexDirection: "column",
                   transition:
                     "opacity .22s cubic-bezier(.22,.61,.36,1), transform .26s cubic-bezier(.22,.61,.36,1)",
                 }
               : {
-                  // 데스크톱: 기존 우하단 플로팅 팝업.
+                  // 데스크톱: 기존 우하단 플로팅 팝업. flex column 으로 통일.
                   right: "max(12px, env(safe-area-inset-right))",
                   bottom: "calc(96px + env(safe-area-inset-bottom))",
                   width: "min(380px, calc(100vw - 24px))",
@@ -173,6 +180,8 @@ export default function ChatFab() {
                   letterSpacing: "-0.015em",
                   boxShadow:
                     "0 20px 50px rgba(25, 31, 40, .14), 0 4px 12px rgba(25, 31, 40, .06)",
+                  display: "flex",
+                  flexDirection: "column",
                   transition:
                     "opacity .28s cubic-bezier(.22,.61,.36,1), transform .32s cubic-bezier(.22,.61,.36,1)",
                 }
@@ -180,7 +189,15 @@ export default function ChatFab() {
         >
           {/* ===== 헤더 ===== */}
           {activeRoom ? (
-            <RoomHeader info={activeRoom} />
+            <RoomHeader
+              info={{
+                ...activeRoom,
+                // 모바일 풀스크린에선 방 안에서도 패널 자체를 닫을 수 있어야 한다.
+                // 기존엔 onBack(=방 목록으로) 만 있어 두 번 눌러야 닫혔고,
+                // 그마저도 safe-area 겹침으로 뒤로가기 버튼이 안 보였음.
+                onClose: isMobile ? () => setOpen(false) : undefined,
+              }}
+            />
           ) : (
             <ListHeader
               chatUnread={chatUnread}
@@ -189,12 +206,12 @@ export default function ChatFab() {
             />
           )}
 
-          {/* ===== 본문 — 설정 화면에서는 헤더가 얇아지므로 top을 50으로 올림 ===== */}
+          {/* ===== 본문 — flex:1 로 남은 공간 모두 채움 ===== */}
           <div
             style={{
-              position: "absolute",
-              top: activeRoom?.isSettings ? 50 : 86,
-              bottom: 0, left: 0, right: 0,
+              flex: 1,
+              minHeight: 0,        // 자식의 overflow 가 동작하도록
+              position: "relative",
               background: C.surface,
             }}
           >
@@ -284,6 +301,7 @@ function ListHeader({
         justifyContent: "space-between",
         gap: 10,
         background: C.surface,
+        flexShrink: 0,
       }}
     >
       <div style={{ minWidth: 0 }}>
@@ -354,13 +372,15 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
       <div
         style={{
           padding: "12px 14px 4px",
-          display: "flex", alignItems: "center",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
           background: C.surface,
+          flexShrink: 0,
         }}
       >
         <button
           onClick={info.onBack}
           title="뒤로"
+          aria-label="뒤로"
           style={{
             width: 34, height: 34, borderRadius: 999,
             background: C.gray100, color: C.ink,
@@ -375,6 +395,7 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
+        {info.onClose && <HeaderCloseButton onClose={info.onClose} />}
       </div>
     );
   }
@@ -387,11 +408,13 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
         alignItems: "center",
         gap: 10,
         background: C.surface,
+        flexShrink: 0,
       }}
     >
       <button
         onClick={info.onBack}
         title="뒤로"
+        aria-label="뒤로"
         style={{
           width: 34, height: 34, borderRadius: 999,
           background: C.gray100, color: C.ink,
@@ -458,7 +481,36 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
           </div>
         </div>
       </button>
+
+      {/* 모바일 풀스크린에선 패널 자체를 닫는 X — 방 안에서도 한 탭으로 빠져나갈 수 있게.
+          desktop 에선 onClose 미전달 → 렌더링 안 됨 (외부에 띄운 팝업이라 별도 닫기 불필요). */}
+      {info.onClose && <HeaderCloseButton onClose={info.onClose} />}
     </div>
+  );
+}
+
+/** 헤더 우측 X — 모바일 풀스크린 채팅을 한 번에 닫는 버튼. */
+function HeaderCloseButton({ onClose }: { onClose: () => void }) {
+  return (
+    <button
+      onClick={onClose}
+      title="채팅 닫기"
+      aria-label="채팅 닫기"
+      style={{
+        width: 34, height: 34, borderRadius: 999,
+        background: C.gray100, color: C.ink,
+        border: 0, cursor: "pointer",
+        display: "grid", placeItems: "center",
+        flexShrink: 0,
+        transition: "background .12s ease",
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = C.gray200)}
+      onMouseLeave={(e) => (e.currentTarget.style.background = C.gray100)}
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M18 6 6 18M6 6l12 12" />
+      </svg>
+    </button>
   );
 }
 

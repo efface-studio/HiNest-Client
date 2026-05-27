@@ -503,8 +503,9 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
       <aside
         className={`
           w-[232px] bg-white border-r border-ink-150 flex flex-col flex-shrink-0
-          md:static md:translate-x-0
-          fixed inset-y-0 left-0 z-40
+          md:static md:translate-x-0 md:h-auto
+          fixed top-0 left-0 z-40
+          h-[100dvh]
           transition-transform duration-200 ease-out
           ${mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
         `}
@@ -583,10 +584,13 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
         )}
 
         <div
-          className="border-t border-ink-150 p-2 flex-shrink-0"
+          className="border-t border-ink-150 px-2 pt-2 flex-shrink-0"
           style={{
             // iOS 홈 인디케이터 영역 흡수 — 모바일 드로어가 화면 끝까지 닿을 때 가려지지 않도록.
-            paddingBottom: "calc(8px + env(safe-area-inset-bottom))",
+            // 이전엔 calc(8px + safe-area) 였지만 iOS PWA 에서 chip 아래로 ~42px 의 빈 공간이
+            // 시각적으로 두드러져 사용자가 "이상한 공간" 으로 인식했음. safe-area 만 남기고
+            // 추가 8px 은 제거 — 인디케이터 바로 위까지 chip 이 닿게.
+            paddingBottom: "max(8px, env(safe-area-inset-bottom))",
           }}
         >
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-ink-50">
@@ -652,7 +656,17 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           onOpenNav={() => setMobileNavOpen(true)}
           safeAreaTop={topSlot === "topbar"}
         />
-        <main className="flex-1 overflow-y-auto">
+        <main
+          className="flex-1 overflow-y-auto"
+          style={{
+            // iOS 러버밴드 오버스크롤 방지 — 사용자가 페이지 상단에서 더 끌어내리면
+            // 그 동작이 부모 요소로 전파되어 TopBar 가 잠시 사라지며 그 자리에 본문이
+            // 노출되는 \"뚫림\" 현상이 발생했다. contain 으로 main 안에서만 스크롤 처리.
+            overscrollBehaviorY: "contain",
+            // iOS Safari momentum scrolling 안정화.
+            WebkitOverflowScrolling: "touch",
+          }}
+        >
           <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 md:py-6">
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>
               {/* /preview 같은 비-라우터-childless 진입 시엔 children 으로 직접 받음. 그 외엔 Outlet. */}

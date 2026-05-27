@@ -352,6 +352,14 @@ router.delete("/folders/:id", async (req, res) => {
 // fileUrl 은 반드시 우리 업로드 경로 형식이어야 함 — javascript:, data:, 외부 URL,
 // 그리고 path traversal(../) 모두 차단. (chat.ts 와 동일 정책)
 const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
+
+// TipTap JSON 최대 크기 — 회의록(512KB) 과 동일 기준.
+// 이미지 다수 포함해도 통상 수백 KB 안. 너무 크면 Postgres JSONB 파싱/응답 비용 급등.
+const DOC_CONTENT_MAX = 512_000;
+
+function sizeOfJson(v: unknown): number {
+  try { return JSON.stringify(v ?? "").length; } catch { return Number.MAX_SAFE_INTEGER; }
+}
 const docSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().max(2000).optional(),
@@ -363,6 +371,8 @@ const docSchema = z.object({
   fileSize: z.number().int().nonnegative().max(500_000_000).optional(),
   // 태그는 콤마로 구분된 문자열. UI에서 20개 이상 넣을 일 없음.
   tags: z.string().max(500).optional(),
+  /// TipTap JSON — 메모 타입 문서에만 사용. null/undefined 이면 파일 문서.
+  content: z.any().optional(),
   scope: z.enum(["ALL", "TEAM", "PRIVATE", "CUSTOM"]).optional(),
   scopeTeam: z.string().max(80).nullable().optional(),
   // scopeUserIds — folderCreateSchema 와 동일 기준 50명 상한.
@@ -453,6 +463,11 @@ router.post("/", async (req, res) => {
   const d = parsed.data;
   const projectId = d.projectId ?? null;
 
+  // 메모 content 크기 상한.
+  if (d.content !== undefined && d.content !== null && sizeOfJson(d.content) > DOC_CONTENT_MAX) {
+    return res.status(400).json({ error: "메모 내용이 너무 큽니다 (최대 512KB)" });
+  }
+
   if (projectId) {
     if (!(await assertProjectMember(u, projectId))) {
       return res.status(403).json({ error: "해당 프로젝트에 접근 권한이 없습니다" });
@@ -467,6 +482,7 @@ router.post("/", async (req, res) => {
         fileType: d.fileType,
         fileSize: d.fileSize,
         tags: d.tags,
+        content: d.content ?? null,
         authorId: u.id,
         scope: "ALL",
         scopeTeam: null,
@@ -493,6 +509,7 @@ router.post("/", async (req, res) => {
       fileType: d.fileType,
       fileSize: d.fileSize,
       tags: d.tags,
+      content: d.content ?? null,
       authorId: u.id,
       scope,
       scopeTeam,
@@ -542,6 +559,7 @@ router.patch("/:id", async (req, res) => {
     ...(d.description !== undefined && { description: d.description }),
     ...(d.folderId !== undefined && { folderId: d.folderId }),
     ...(d.tags !== undefined && { tags: d.tags }),
+    ...(d.content !== undefined && { content: d.content ?? null }),
   };
   if (touchesVisibility) {
     if (d.projectId !== undefined) {
@@ -569,11 +587,17 @@ router.patch("/:id", async (req, res) => {
     }
   }
 
-  // 변경 전 스냅샷을 DocumentRevision 에 남김 — title/description/fileUrl 의 실질 변경이
-  // 있을 때만 기록해 잡음을 줄인다. 폴더 이동·태그 변경만으로는 리비전을 찍지 않음.
+  // content 크기 상한.
+  if (d.content !== undefined && d.content !== null && sizeOfJson(d.content) > DOC_CONTENT_MAX) {
+    return res.status(400).json({ error: "메모 내용이 너무 큽니다 (최대 512KB)" });
+  }
+
+  // 변경 전 스냅샷을 DocumentRevision 에 남김 — title/description/fileUrl/content 의 실질
+  // 변경이 있을 때만 기록해 잡음을 줄인다. 폴더 이동·태그 변경만으로는 리비전을 찍지 않음.
   const contentChanged =
     (d.title !== undefined && d.title !== exist.title) ||
-    (d.description !== undefined && d.description !== exist.description);
+    (d.description !== undefined && d.description !== exist.description) ||
+    (d.content !== undefined && JSON.stringify(d.content) !== JSON.stringify((exist as any).content));
   if (contentChanged) {
     try {
       await prisma.documentRevision.create({
@@ -585,6 +609,7 @@ router.patch("/:id", async (req, res) => {
           fileName: exist.fileName,
           fileType: exist.fileType,
           fileSize: exist.fileSize,
+          content: (exist as any).content ?? null,
           editorId: u.id,
         },
       });

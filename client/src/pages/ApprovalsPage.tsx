@@ -634,8 +634,10 @@ function ApprovalDetail({
           ) : (
             <div className="text-[12px] text-ink-400">아직 댓글이 없어요.</div>
           )}
-          <div className="mt-2 flex items-start gap-2">
-            <div className="flex-1 relative">
+          {/* min-w-0 — 안 주면 flex-1 자식의 textarea 가 자기 폭을 못 줄여 부모를 밀고
+              우측 등록 버튼이 컨테이너 바깥으로 잘려 보이는 현상이 발생했다. */}
+          <div className="mt-2 flex items-start gap-2 min-w-0">
+            <div className="flex-1 min-w-0 relative">
               <textarea
                 className="input w-full pb-5"
                 rows={2}
@@ -649,16 +651,24 @@ function ApprovalDetail({
                   }
                 }}
               />
-              {/* 글자 수 표시 — 한도 근처에서만 색상 강조. */}
+              {/* 글자 수 표시 — 한도 근처에서만 색상 강조.
+                  right-3 으로 살짝 안쪽에 배치 — 이전 right-2 는 둥근 모서리에 일부 가려져
+                  "0/2000" 의 슬래시가 잘려 보였다. */}
               <div
-                className={`absolute right-2 bottom-1 text-[10px] tabular pointer-events-none ${
+                className={`absolute right-3 bottom-1.5 text-[10px] tabular pointer-events-none select-none ${
                   commentBody.length >= 2000 ? "text-rose-500 font-bold" : commentBody.length >= 1800 ? "text-amber-500" : "text-ink-400"
                 }`}
               >
                 {commentBody.length}/2000
               </div>
             </div>
-            <button className="btn-primary" disabled={posting || !commentBody.trim()} onClick={postComment}>
+            {/* flex-shrink-0 — 좁은 부모에서 button 이 줄어들거나 잘리지 않도록.
+                기존엔 textarea 가 폭을 강하게 잡아 button 일부가 컨테이너 밖으로 밀려났음. */}
+            <button
+              className="btn-primary flex-shrink-0"
+              disabled={posting || !commentBody.trim()}
+              onClick={postComment}
+            >
               {posting ? "..." : "등록"}
             </button>
           </div>

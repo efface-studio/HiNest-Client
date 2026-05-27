@@ -85,6 +85,7 @@ html, body, #root {
 body {
   font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     Inter, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+  overscroll-behavior: none;
 }
 * { -webkit-tap-highlight-color: transparent; }
 .font-mono, code, pre, .tabular {

@@ -425,7 +425,7 @@ function MembersTab({
                 style={{ background: m.user.avatarUrl ? "transparent" : m.user.avatarColor }}
               >
                 {m.user.avatarUrl ? (
-                  <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" />
+                  <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                 ) : (
                   m.user.name[0]
                 )}
@@ -498,7 +498,7 @@ function MembersTab({
                   style={{ background: u.avatarUrl ? "transparent" : u.avatarColor }}
                 >
                   {u.avatarUrl ? (
-                    <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
+                    <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                   ) : (
                     u.name[0]
                   )}

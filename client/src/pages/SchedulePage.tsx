@@ -863,7 +863,7 @@ function EventModal({
                             style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3B5CF0") }}
                           >
                             {u.avatarUrl ? (
-                              <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
+                              <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                             ) : (
                               u.name[0]
                             )}
@@ -920,7 +920,7 @@ function EventModal({
                             style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3B5CF0") }}
                           >
                             {u.avatarUrl ? (
-                              <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
+                              <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                             ) : (
                               u.name[0]
                             )}

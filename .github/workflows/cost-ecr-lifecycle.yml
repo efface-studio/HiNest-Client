@@ -1,0 +1,134 @@
+# ECR 저장소 이미지 라이프사이클 정책 — 오래된 이미지 자동 삭제.
+#
+# 무엇이 문제였나:
+#   deploy-server.yml 이 매 push 마다 새 이미지를 푸시하는데, 라이프사이클이 없으면
+#   ECR 에 모든 빌드가 영구 보관된다. 이미지 한 개당 ~200MB, 한 달에 ~30번 빌드면 6GB,
+#   1년이면 70GB+. Seoul 리전 ECR storage $0.10/GB-month 라 매월 누적.
+#
+# 정책:
+#   - tag 가 "v..." 또는 "release-..." 인 릴리스 태그: 영구 보관 (rollback 용)
+#   - tag 가 "buildcache" (BuildKit 캐시): 영구 보관 — 다음 빌드 속도/네트워크 효율
+#   - 그 외 SHA / latest 태그: 최근 10개만 유지, 30일 이전은 삭제
+#
+# 사용:
+#   gh workflow run cost-ecr-lifecycle.yml
+#
+# 멱등 — 이미 같은 정책이면 noop.
+name: Cost — ECR lifecycle policy
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECR_REPOSITORY: hinest-server
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::149536482210:role/github-deploy-hinest
+          role-session-name: gha-ecr-lifecycle-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: 현재 저장된 이미지 개수
+        run: |
+          COUNT=$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --region "$AWS_REGION" \
+            --query 'length(imageDetails)' --output text 2>/dev/null || echo 0)
+          TOTAL_MB=$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --region "$AWS_REGION" \
+            --query 'sum(imageDetails[*].imageSizeInBytes) / `1048576`' --output text 2>/dev/null || echo 0)
+          echo "현재 이미지: $COUNT 개, 합 ${TOTAL_MB} MB"
+
+      - name: 라이프사이클 정책 적용
+        run: |
+          cat > policy.json <<'EOF'
+          {
+            "rules": [
+              {
+                "rulePriority": 1,
+                "description": "Keep release / version tags forever (rollback)",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": ["v", "release-"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 9999
+                },
+                "action": { "type": "expire" }
+              },
+              {
+                "rulePriority": 2,
+                "description": "Keep buildcache forever (BuildKit cache layer)",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPrefixList": ["buildcache"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 9999
+                },
+                "action": { "type": "expire" }
+              },
+              {
+                "rulePriority": 3,
+                "description": "SHA / latest 태그: 최근 10개만 유지",
+                "selection": {
+                  "tagStatus": "tagged",
+                  "tagPatternList": ["*"],
+                  "countType": "imageCountMoreThan",
+                  "countNumber": 10
+                },
+                "action": { "type": "expire" }
+              },
+              {
+                "rulePriority": 4,
+                "description": "untagged: 7일 지나면 삭제 (orphan layer)",
+                "selection": {
+                  "tagStatus": "untagged",
+                  "countType": "sinceImagePushed",
+                  "countUnit": "days",
+                  "countNumber": 7
+                },
+                "action": { "type": "expire" }
+              }
+            ]
+          }
+          EOF
+
+          aws ecr put-lifecycle-policy \
+            --repository-name "$ECR_REPOSITORY" \
+            --lifecycle-policy-text file://policy.json \
+            --region "$AWS_REGION"
+          echo "✓ 라이프사이클 정책 적용 완료"
+
+      - name: 미리보기 — 정책 평가 (실제 삭제 X)
+        run: |
+          aws ecr start-lifecycle-policy-preview \
+            --repository-name "$ECR_REPOSITORY" \
+            --region "$AWS_REGION" >/dev/null 2>&1 || true
+
+          # preview 완료 대기 (최대 90초)
+          for i in 1 2 3 4 5 6 7 8 9; do
+            P=$(aws ecr get-lifecycle-policy-preview \
+                  --repository-name "$ECR_REPOSITORY" \
+                  --region "$AWS_REGION" \
+                  --query 'status' --output text 2>/dev/null || echo "")
+            if [ "$P" = "COMPLETE" ]; then break; fi
+            sleep 10
+          done
+
+          echo ""
+          echo "=== 다음 실행 시 정리될 이미지 (미리보기) ==="
+          aws ecr get-lifecycle-policy-preview \
+            --repository-name "$ECR_REPOSITORY" \
+            --region "$AWS_REGION" \
+            --query 'previewResults[*].[imageTags, action.type]' --output table 2>/dev/null \
+            || echo "(아직 정리 대상 없음)"

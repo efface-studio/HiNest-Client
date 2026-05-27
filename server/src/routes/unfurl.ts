@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { z } from "zod";
+import { lookup } from "node:dns/promises";
 import { requireAuth } from "../lib/auth.js";
 
 /**
@@ -52,20 +53,64 @@ function cacheSet(k: string, v: Meta) {
   cache.set(k, { data: v, expires: Date.now() + CACHE_TTL_MS });
 }
 
-/** 사설망 / loopback / link-local IP 호스트 차단. DNS resolve 까지 하면 좋지만 일단
- *  hostname 문자열 기반 차단으로도 흔한 SSRF 시도는 막힘. */
+/** 사설망 / loopback / link-local 호스트명 차단(1차).
+ *  실제 SSRF 방어는 아래 isBlockedIp + assertHostSafe 로 DNS resolve 결과까지 검증. */
 function isBlockedHost(hostname: string): boolean {
   const h = hostname.toLowerCase();
   if (h === "localhost" || h.endsWith(".localhost")) return true;
   if (h === "metadata.google.internal") return true; // GCP IMDS
-  if (h === "169.254.169.254") return true; // AWS IMDS v1/v2
-  if (/^127\./.test(h)) return true;
-  if (/^10\./.test(h)) return true;
-  if (/^192\.168\./.test(h)) return true;
-  if (/^172\.(1[6-9]|2\d|3[01])\./.test(h)) return true;
-  if (h === "::1" || h.startsWith("[::1]")) return true;
-  if (/^fc[0-9a-f]{2}:/.test(h) || /^fd[0-9a-f]{2}:/.test(h)) return true; // ULA
+  if (h === "metadata.goog") return true;
   return false;
+}
+
+/** v4 / v6 모두 커버하는 사설·loopback·link-local·ULA·CGNAT 검사.
+ *  Fargate 의 ECS Task Metadata(169.254.170.2), AWS IMDS(169.254.169.254) 모두 link-local 로 잡힘. */
+function isBlockedIp(addr: string, family: 4 | 6): boolean {
+  if (family === 4) {
+    const m = addr.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
+    if (!m) return true; // 파싱 실패 → 안전하게 차단
+    const [a, b] = [Number(m[1]), Number(m[2])];
+    if (a === 0) return true; // "this network"
+    if (a === 10) return true; // RFC1918
+    if (a === 127) return true; // loopback
+    if (a === 169 && b === 254) return true; // link-local (IMDS 포함)
+    if (a === 172 && b >= 16 && b <= 31) return true; // RFC1918
+    if (a === 192 && b === 168) return true; // RFC1918
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    if (a >= 224) return true; // multicast / reserved
+    return false;
+  }
+  // v6
+  const v = addr.toLowerCase();
+  if (v === "::" || v === "::1") return true;
+  if (v.startsWith("fe80:")) return true; // link-local
+  if (/^f[cd][0-9a-f]{2}:/.test(v)) return true; // ULA
+  if (v.startsWith("ff")) return true; // multicast
+  // IPv4-mapped: ::ffff:a.b.c.d → 안쪽 v4 로 재검사
+  const mapped = v.match(/^::ffff:(\d+\.\d+\.\d+\.\d+)$/);
+  if (mapped) return isBlockedIp(mapped[1], 4);
+  return false;
+}
+
+/** hostname 을 DNS resolve 해서 모든 IP 가 public 인지 검증. 하나라도 사설/loopback 이면 throw. */
+async function assertHostSafe(hostname: string): Promise<void> {
+  if (isBlockedHost(hostname)) throw new Error("host not allowed");
+  // IP 리터럴이면 그 자체로 검사
+  const ipLiteralV4 = /^\d+\.\d+\.\d+\.\d+$/.test(hostname);
+  const ipLiteralV6 = hostname.includes(":");
+  if (ipLiteralV4) {
+    if (isBlockedIp(hostname, 4)) throw new Error("host not allowed");
+    return;
+  }
+  if (ipLiteralV6) {
+    if (isBlockedIp(hostname.replace(/^\[|\]$/g, ""), 6)) throw new Error("host not allowed");
+    return;
+  }
+  const addrs = await lookup(hostname, { all: true });
+  if (!addrs.length) throw new Error("host not allowed");
+  for (const { address, family } of addrs) {
+    if (isBlockedIp(address, family as 4 | 6)) throw new Error("host not allowed");
+  }
 }
 
 const META_RE = /<meta[^>]+>/gi;
@@ -161,7 +206,9 @@ router.post("/", async (req, res) => {
   if (url.protocol !== "http:" && url.protocol !== "https:") {
     return res.status(400).json({ error: "http(s) only" });
   }
-  if (isBlockedHost(url.hostname)) {
+  try {
+    await assertHostSafe(url.hostname);
+  } catch {
     return res.status(400).json({ error: "host not allowed" });
   }
 
@@ -171,15 +218,45 @@ router.post("/", async (req, res) => {
   const ac = new AbortController();
   const t = setTimeout(() => ac.abort(), 5000);
   try {
-    const r = await fetch(url.toString(), {
-      signal: ac.signal,
-      redirect: "follow",
-      headers: {
-        // 일부 사이트(GitHub, X)는 user-agent 가 비면 차단/404. 일반 브라우저 처럼 위장.
-        "user-agent": "Mozilla/5.0 (compatible; HiNestBot/1.0; +unfurl)",
-        accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      },
-    });
+    // redirect: "manual" 로 직접 처리 — 매 hop 마다 호스트 재검증해서 SSRF 우회 차단.
+    // 30x → Location 헤더 추출 → 다시 assertHostSafe → 최대 3회.
+    let target = url;
+    let r: Response | null = null;
+    const MAX_HOPS = 3;
+    for (let hop = 0; hop < MAX_HOPS + 1; hop++) {
+      r = await fetch(target.toString(), {
+        signal: ac.signal,
+        redirect: "manual",
+        headers: {
+          // 일부 사이트(GitHub, X)는 user-agent 가 비면 차단/404. 일반 브라우저 처럼 위장.
+          "user-agent": "Mozilla/5.0 (compatible; HiNestBot/1.0; +unfurl)",
+          accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        },
+      });
+      // 30x 면 Location 따라가기 전에 재검증
+      if (r.status >= 300 && r.status < 400) {
+        const loc = r.headers.get("location");
+        if (!loc) break;
+        let next: URL;
+        try {
+          next = new URL(loc, target);
+        } catch {
+          return res.status(400).json({ error: "bad redirect" });
+        }
+        if (next.protocol !== "http:" && next.protocol !== "https:") {
+          return res.status(400).json({ error: "http(s) only" });
+        }
+        try {
+          await assertHostSafe(next.hostname);
+        } catch {
+          return res.status(400).json({ error: "host not allowed" });
+        }
+        target = next;
+        continue;
+      }
+      break;
+    }
+    if (!r) return res.status(200).json({ url: url.toString() });
     if (!r.ok) {
       return res.status(200).json({ url: url.toString() });
     }
@@ -192,7 +269,7 @@ router.post("/", async (req, res) => {
     const buf = await r.arrayBuffer();
     const limited = buf.byteLength > 1_000_000 ? buf.slice(0, 1_000_000) : buf;
     const html = new TextDecoder("utf-8", { fatal: false }).decode(limited);
-    const meta = extractMeta(html, new URL(r.url));
+    const meta = extractMeta(html, target);
     cacheSet(url.toString(), meta);
     res.json(meta);
   } catch (e: any) {

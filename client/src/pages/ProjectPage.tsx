@@ -193,7 +193,7 @@ export default function ProjectPage() {
                   title={m.user.name}
                 >
                   {m.user.avatarUrl ? (
-                    <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" />
+                    <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                   ) : (
                     m.user.name[0]
                   )}

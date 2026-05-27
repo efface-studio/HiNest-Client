@@ -9,6 +9,8 @@ export type Room = {
   id: string;
   name: string;
   type: "GROUP" | "DIRECT" | "TEAM";
+  /** 그룹/팀방 생성자 — DELETE 권한 판정. legacy row 는 null. */
+  createdById?: string | null;
   members: RoomMember[];
   messages: {
     content: string;

@@ -115,13 +115,16 @@ export default function SuperStepUpGate({ children }: { children: React.ReactNod
     } finally { setLoading(false); }
   }
 
-  async function submitSetup(next: string, confirm: string) {
+  async function submitSetup(next: string, confirm: string, loginPassword: string) {
     setErr("");
     if (next !== confirm) { setErr("새 비밀번호가 일치하지 않아요"); return; }
     if (next.length < 8) { setErr("8자 이상 입력해 주세요"); return; }
+    if (!loginPassword) { setErr("로그인 비밀번호로 본인 확인이 필요해요"); return; }
     setLoading(true);
     try {
-      await api("/api/auth/super-password", { method: "POST", json: { next } });
+      // 세션 쿠키만 탈취된 공격자가 super 비번을 마음대로 처음 설정하지 못하도록
+      // 로그인 비번을 함께 보내 본인 확인 (서버 정책과 일치).
+      await api("/api/auth/super-password", { method: "POST", json: { next, loginPassword } });
       // 설정 직후 자동으로 step-up 진행 — 사용자 한 번 더 입력 안 해도 되도록.
       const res = await api<{ expiresAt: number }>("/api/auth/step-up", { method: "POST", json: { password: next } });
       setNeedsSetup(false);
@@ -661,28 +664,35 @@ function SuperPwSetupForm({
   loading,
   onCancel,
 }: {
-  onSubmit: (next: string, confirm: string) => void;
+  onSubmit: (next: string, confirm: string, loginPassword: string) => void;
   err: string;
   loading: boolean;
   onCancel: () => void;
 }) {
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [loginPw, setLoginPw] = useState("");
   return (
     <form
-      onSubmit={(e) => { e.preventDefault(); onSubmit(next, confirm); }}
+      onSubmit={(e) => { e.preventDefault(); onSubmit(next, confirm, loginPw); }}
       className="space-y-3"
     >
       <div className="p-3 rounded-md bg-brand-50 border border-brand-100 text-[12px] text-brand-700">
-        개발자 권한이 부여됐어요. 처음 진입이라 <b>개발자 전용 비밀번호</b> 를 설정해 주세요. (8자 이상, 일반 로그인 비밀번호와 달라야 함)
+        개발자 권한이 부여됐어요. 처음 진입이라 <b>개발자 전용 비밀번호</b> 를 설정해 주세요.
+        (8자 이상, 일반 로그인 비밀번호와 달라야 함)
+        <div className="mt-1.5 text-ink-500">본인 확인을 위해 <b>현재 로그인 비밀번호</b> 도 함께 입력해 주세요.</div>
+      </div>
+      <div>
+        <label className="field-label">현재 로그인 비밀번호</label>
+        <input className="input" type="password" autoFocus value={loginPw} onChange={(e) => setLoginPw(e.target.value)} minLength={1} maxLength={128} required autoComplete="current-password" />
       </div>
       <div>
         <label className="field-label">새 개발자 비밀번호</label>
-        <input className="input" type="password" autoFocus value={next} onChange={(e) => setNext(e.target.value)} minLength={8} maxLength={128} required />
+        <input className="input" type="password" value={next} onChange={(e) => setNext(e.target.value)} minLength={8} maxLength={128} required autoComplete="new-password" />
       </div>
       <div>
         <label className="field-label">한 번 더 입력</label>
-        <input className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} minLength={8} maxLength={128} required />
+        <input className="input" type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} minLength={8} maxLength={128} required autoComplete="new-password" />
       </div>
       {err && (
         <div className="flex items-start gap-2 p-2.5 rounded-md bg-red-50 border border-red-100 text-[12px] font-semibold text-red-700">
@@ -694,7 +704,7 @@ function SuperPwSetupForm({
       )}
       <div className="flex items-center gap-2 pt-1">
         <button type="button" className="btn-ghost" onClick={onCancel} disabled={loading}>취소</button>
-        <button className="btn-primary btn-lg flex-1" disabled={loading || !next || !confirm}>
+        <button className="btn-primary btn-lg flex-1" disabled={loading || !next || !confirm || !loginPw}>
           {loading ? "설정 중…" : "설정하고 진입"}
         </button>
       </div>

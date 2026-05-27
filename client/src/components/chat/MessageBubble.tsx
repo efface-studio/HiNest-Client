@@ -580,8 +580,7 @@ function ImageLightbox({
           objectFit: "contain",
           borderRadius: 8,
           boxShadow: "0 16px 48px rgba(0,0,0,.4)",
-        }}
-      />
+        }} loading="lazy" decoding="async"/>
       <button
         type="button"
         onClick={onClose}

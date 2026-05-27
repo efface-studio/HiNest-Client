@@ -1547,7 +1547,7 @@ function UserAvatar({ name, color, imageUrl }: { name: string; color: string; im
     <div className="w-9 h-9 rounded-full grid place-items-center text-white text-[13px] font-extrabold flex-shrink-0 overflow-hidden"
       style={{ background: imageUrl ? "transparent" : color, letterSpacing: "-0.02em" }}>
       {imageUrl ? (
-        <img src={imageUrl} alt={name} className="w-full h-full object-cover" />
+        <img src={imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
       ) : (
         name?.[0] ?? "?"
       )}

@@ -595,7 +595,7 @@ function ApprovalDetail({
                 </div>
                 <div className="w-8 h-8 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 overflow-hidden" style={{ background: s.reviewer.avatarUrl ? "transparent" : s.reviewer.avatarColor }}>
                   {s.reviewer.avatarUrl ? (
-                    <img src={s.reviewer.avatarUrl} alt={s.reviewer.name} className="w-full h-full object-cover" />
+                    <img src={s.reviewer.avatarUrl} alt={s.reviewer.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                   ) : (
                     s.reviewer.name[0]
                   )}
@@ -618,7 +618,7 @@ function ApprovalDetail({
               {full.comments.map((c) => (
                 <div key={c.id} className="panel p-3 flex items-start gap-2.5">
                   <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 overflow-hidden" style={{ background: c.author.avatarUrl ? "transparent" : c.author.avatarColor }}>
-                    {c.author.avatarUrl ? <img src={c.author.avatarUrl} alt={c.author.name} className="w-full h-full object-cover" /> : c.author.name[0]}
+                    {c.author.avatarUrl ? <img src={c.author.avatarUrl} alt={c.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/> : c.author.name[0]}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-baseline gap-1.5 flex-wrap">
@@ -1014,7 +1014,7 @@ function CreateModal({
                     {checked && <span className="w-5 h-5 rounded bg-brand-500 text-white text-[10px] font-bold grid place-items-center tabular">{idx + 1}</span>}
                     <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold overflow-hidden" style={{ background: d.avatarUrl ? "transparent" : (d.avatarColor ?? "#3D54C4") }}>
                       {d.avatarUrl ? (
-                        <img src={d.avatarUrl} alt={d.name} className="w-full h-full object-cover" />
+                        <img src={d.avatarUrl} alt={d.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                       ) : (
                         d.name[0]
                       )}

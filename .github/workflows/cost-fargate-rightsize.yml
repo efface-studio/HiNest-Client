@@ -1,0 +1,161 @@
+# Fargate task definition 의 cpu/memory 만 바꿔 새 리비전 등록 + 서비스 롤아웃.
+#
+# 사용:
+#   gh workflow run cost-fargate-rightsize.yml -f cpu=256 -f memory=512
+#
+# 정책:
+#   - cpu/memory 는 AWS Fargate 의 정상 조합만 허용 (256/512, 512/1024 등).
+#   - 새 리비전 등록 → update-service → services-stable 대기 → /api/health 체크.
+#   - 헬스 체크 실패 시 직전 리비전으로 자동 롤백.
+#
+# 사전 진단:
+#   gh workflow run cost-fargate-diagnose.yml  # 7일 CPU/Mem 보고 안전한지 확인
+name: Cost — Fargate rightsize apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      cpu:
+        description: "새 CPU units (256 / 512 / 1024 / 2048 / 4096)"
+        required: true
+        type: choice
+        options: ["256", "512", "1024", "2048", "4096"]
+      memory:
+        description: "새 메모리 MB (512/1024/2048/3072/4096/...)"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: ap-northeast-2
+  ECS_CLUSTER: hinest-prod
+  ECS_SERVICE: hinest-server
+  TASK_FAMILY: hinest-server
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::149536482210:role/github-deploy-hinest
+          role-session-name: gha-rightsize-${{ github.run_id }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: AWS Fargate 정상 조합 검증
+        run: |
+          CPU=${{ github.event.inputs.cpu }}
+          MEM=${{ github.event.inputs.memory }}
+          # https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-cpu-memory-error.html
+          case "$CPU" in
+            256)  ALLOWED="512 1024 2048" ;;
+            512)  ALLOWED="1024 2048 3072 4096" ;;
+            1024) ALLOWED="2048 3072 4096 5120 6144 7168 8192" ;;
+            2048) ALLOWED="$(seq 4096 1024 16384 | tr '\n' ' ')" ;;
+            4096) ALLOWED="$(seq 8192 1024 30720 | tr '\n' ' ')" ;;
+            *)    echo "::error::알 수 없는 CPU=$CPU"; exit 1 ;;
+          esac
+          if ! echo " $ALLOWED " | grep -q " $MEM "; then
+            echo "::error::CPU=$CPU 에 허용되는 MEM 값: $ALLOWED"
+            exit 1
+          fi
+          echo "✓ 조합 OK: CPU=$CPU / MEM=$MEM"
+
+      - name: 직전 리비전 (롤백 대비)
+        id: prev
+        run: |
+          CURRENT=$(aws ecs describe-services \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --region "$AWS_REGION" \
+            --query 'services[0].taskDefinition' --output text)
+          echo "직전 리비전: $CURRENT"
+          echo "arn=$CURRENT" >> "$GITHUB_OUTPUT"
+
+      - name: 새 task definition 등록
+        id: new
+        run: |
+          TD=$(aws ecs describe-task-definition \
+            --task-definition "$TASK_FAMILY" \
+            --region "$AWS_REGION" \
+            --query 'taskDefinition')
+          # 등록 시 사용할 수 없는 메타 필드 제거.
+          NEW=$(echo "$TD" | jq \
+            --arg cpu "${{ github.event.inputs.cpu }}" \
+            --arg mem "${{ github.event.inputs.memory }}" '
+              .cpu = $cpu | .memory = $mem |
+              del(.taskDefinitionArn, .revision, .status, .requiresAttributes,
+                  .compatibilities, .registeredAt, .registeredBy)
+            ')
+          echo "$NEW" > new-td.json
+          NEW_ARN=$(aws ecs register-task-definition \
+            --cli-input-json file://new-td.json \
+            --region "$AWS_REGION" \
+            --query 'taskDefinition.taskDefinitionArn' --output text)
+          echo "새 리비전: $NEW_ARN"
+          echo "arn=$NEW_ARN" >> "$GITHUB_OUTPUT"
+
+      - name: 서비스 업데이트
+        run: |
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.new.outputs.arn }}" \
+            --force-new-deployment \
+            --region "$AWS_REGION" >/dev/null
+          echo "롤아웃 시작."
+
+      - name: 안정화 대기
+        id: stable
+        run: |
+          # 10분 안에 안정화 안 되면 fail → 다음 step 에서 롤백.
+          if aws ecs wait services-stable \
+              --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+              --region "$AWS_REGION"; then
+            echo "ok=1" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=0" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: 헬스 체크
+        id: health
+        if: steps.stable.outputs.ok == '1'
+        run: |
+          OK=0
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://api.nest.hi-vits.com/api/health || true)
+            echo "attempt $i: HTTP=$code"
+            if [ "$code" = "200" ]; then OK=1; break; fi
+            sleep 5
+          done
+          echo "ok=$OK" >> "$GITHUB_OUTPUT"
+          if [ "$OK" = "0" ]; then echo "::warning::health check 실패 — 롤백 수행"; fi
+
+      - name: 롤백 (실패 시)
+        if: steps.stable.outputs.ok != '1' || steps.health.outputs.ok != '1'
+        run: |
+          echo "::error::배포 실패 — 직전 리비전으로 자동 롤백"
+          aws ecs update-service \
+            --cluster "$ECS_CLUSTER" --service "$ECS_SERVICE" \
+            --task-definition "${{ steps.prev.outputs.arn }}" \
+            --force-new-deployment \
+            --region "$AWS_REGION" >/dev/null
+          aws ecs wait services-stable \
+            --cluster "$ECS_CLUSTER" --services "$ECS_SERVICE" \
+            --region "$AWS_REGION"
+          exit 1
+
+      - name: 완료 요약
+        if: success()
+        run: |
+          echo "✅ rightsize 완료"
+          echo "  before: ${{ steps.prev.outputs.arn }}"
+          echo "  after : ${{ steps.new.outputs.arn }}"
+          echo "  cpu=${{ github.event.inputs.cpu }} mem=${{ github.event.inputs.memory }}"
+          echo ""
+          echo "다음 단계: 24시간 모니터링 후 안정 확인."
+          echo "  - CloudWatch ECS service CPUUtilization / MemoryUtilization"
+          echo "  - 사용자 보고된 느림 / 에러 없음 확인"
+          echo "  - 문제 발견 시 cost-fargate-rightsize.yml 을 다시 실행해 원상복귀"

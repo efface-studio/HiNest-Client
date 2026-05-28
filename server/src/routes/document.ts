@@ -400,6 +400,8 @@ router.get("/", async (req, res) => {
   const q = rawQ.length > 128 ? rawQ.slice(0, 128) : rawQ;
   const scope = req.query.scope ? String(req.query.scope) : "all";
   const projectId = req.query.projectId ? String(req.query.projectId) : null;
+  // type=memo → content NOT NULL (TipTap JSON); type=file → 파일 문서만; 미지정 → 전체.
+  const docType = req.query.type ? String(req.query.type) : undefined;
 
   if (projectId) {
     // 프로젝트 문서 — 멤버십만 검증.
@@ -445,6 +447,9 @@ router.get("/", async (req, res) => {
   else if (scope === "private") ands.push({ scope: "PRIVATE", authorId: u.id });
   else if (scope === "custom") ands.push({ scope: "CUSTOM" });
   else if (scope === "public") ands.push({ scope: "ALL" });
+  // 타입 필터: memo=content 있는 것, file=파일 문서, 미지정=전체.
+  if (docType === "memo") ands.push({ content: { not: null } });
+  else if (docType === "file") ands.push({ content: null });
   // 상한 500 — 프로젝트 문서와 동일. 누적 워크스페이스에서 전체 결과 없이
   // 수십 MB 페이로드가 나오는 것을 방지. UX 는 폴더/검색으로 좁혀지므로 영향 없음.
   const docs = await prisma.document.findMany({

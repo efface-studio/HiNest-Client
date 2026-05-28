@@ -3,7 +3,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
 import { api } from "../api";
-import Logo from "./Logo";
+import BrandLockup from "./BrandLockup";
 import NotificationBell from "./NotificationBell";
 import SearchModal from "./SearchModal";
 import ChatFab from "./ChatFab";
@@ -530,7 +530,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             height: "calc(48px + env(safe-area-inset-top))",
           }}
         >
-          <Logo size={20} />
+          <BrandLockup height={28} />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-5">

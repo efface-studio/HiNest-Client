@@ -25,7 +25,7 @@ export type MemoDoc = {
   folderId?: string | null;
   tags?: string | null;
   authorId?: string;
-  author: { name: string; avatarColor: string; avatarUrl?: string | null };
+  author?: { name: string; avatarColor: string; avatarUrl?: string | null };
   createdAt: string;
   updatedAt: string;
 };
@@ -273,14 +273,14 @@ export default function DocMemoModal({
               <div className="flex items-center gap-2 mb-4 text-[12px] text-ink-400">
                 <div
                   className="w-5 h-5 rounded grid place-items-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden"
-                  style={{ background: doc.author.avatarUrl ? "transparent" : (doc.author.avatarColor ?? "#6B7280") }}
+                  style={{ background: doc.author?.avatarUrl ? "transparent" : (doc.author?.avatarColor ?? "#6B7280") }}
                 >
-                  {doc.author.avatarUrl
+                  {doc.author?.avatarUrl
                     ? <img src={doc.author.avatarUrl} alt={doc.author.name} className="w-full h-full object-cover" />
-                    : doc.author.name[0]
+                    : (doc.author?.name?.[0] ?? "?")
                   }
                 </div>
-                <span className="font-semibold text-ink-600">{doc.author.name}</span>
+                <span className="font-semibold text-ink-600">{doc.author?.name ?? "알 수 없음"}</span>
                 <span className="text-ink-200">·</span>
                 <span>{dateStr}</span>
                 {!projectId && (

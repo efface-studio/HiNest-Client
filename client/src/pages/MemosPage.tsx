@@ -20,7 +20,7 @@ type Memo = {
   folderId?: string | null;
   tags?: string | null;
   authorId?: string;
-  author: { name: string; avatarColor: string; avatarUrl?: string | null };
+  author?: { name: string; avatarColor: string; avatarUrl?: string | null };
   createdAt: string;
   updatedAt: string;
 };
@@ -118,15 +118,15 @@ function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
       <div className="flex items-center gap-2 mt-auto pt-1">
         <div
           className="w-5 h-5 rounded-full grid place-items-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden"
-          style={{ background: memo.author.avatarUrl ? "transparent" : (memo.author.avatarColor ?? "#6B7280") }}
+          style={{ background: memo.author?.avatarUrl ? "transparent" : (memo.author?.avatarColor ?? "#6B7280") }}
         >
-          {memo.author.avatarUrl ? (
+          {memo.author?.avatarUrl ? (
             <img src={memo.author.avatarUrl} alt={memo.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
           ) : (
-            memo.author.name[0]
+            memo.author?.name?.[0] ?? "?"
           )}
         </div>
-        <span className="text-[11px] text-ink-500 dark:text-ink-400 truncate flex-1">{memo.author.name}</span>
+        <span className="text-[11px] text-ink-500 dark:text-ink-400 truncate flex-1">{memo.author?.name ?? "알 수 없음"}</span>
         <span className="text-[11px] text-ink-400 dark:text-ink-500 flex-shrink-0">{relativeDate(memo.updatedAt)}</span>
       </div>
     </button>

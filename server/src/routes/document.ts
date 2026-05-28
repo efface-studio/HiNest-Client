@@ -380,6 +380,13 @@ const docSchema = z.object({
   projectId: z.string().max(64).nullable().optional(),
 });
 
+// 생성/수정 응답에 작성자·폴더를 함께 실어 보낸다 — 목록 조회(GET)와 동일한 형태.
+// 이게 없으면 클라이언트(메모 카드·뷰어)가 author 를 읽다가 크래시.
+const DOC_RELATIONS = {
+  author: { select: { name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+  folder: { select: { name: true } },
+} as const;
+
 function visibilityWhere(u: { id: string; team: string | null; role: string }) {
   if (u.role === "ADMIN") return {};
   const ors: any[] = [
@@ -497,6 +504,7 @@ router.post("/", async (req, res) => {
         scopeUserIds: null,
         projectId,
       },
+      include: DOC_RELATIONS,
     });
     await writeLog(u.id, "DOC_CREATE", doc.id, d.title);
     return res.json({ document: doc });
@@ -523,6 +531,7 @@ router.post("/", async (req, res) => {
       scopeTeam,
       scopeUserIds,
     },
+    include: DOC_RELATIONS,
   });
   await writeLog(u.id, "DOC_CREATE", doc.id, d.title);
   res.json({ document: doc });
@@ -624,7 +633,11 @@ router.patch("/:id", async (req, res) => {
     } catch {}
   }
 
-  const doc = await prisma.document.update({ where: { id: exist.id }, data: updateData });
+  const doc = await prisma.document.update({
+    where: { id: exist.id },
+    data: updateData,
+    include: DOC_RELATIONS,
+  });
   await writeLog(u.id, "DOC_UPDATE", doc.id);
   res.json({ document: doc });
 });

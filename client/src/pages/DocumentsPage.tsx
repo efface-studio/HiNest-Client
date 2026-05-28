@@ -176,10 +176,12 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   async function load(aliveRef?: { current: boolean }) {
     // 프로젝트 선택 시엔 projectId 필터. scope 필터는 프로젝트 내에선 의미 없음(멤버십이 권한).
     const pid = activeProjectId;
+    // 전역 문서함은 파일 문서만 — 메모는 별도 /memos 페이지로 분리됨.
+    // 프로젝트 문서함은 메모·파일 모두 표시(프로젝트 메모는 프로젝트에 귀속).
     const qs = (extra: string) =>
       pid
         ? `projectId=${encodeURIComponent(pid)}&${extra}`
-        : `scope=${scopeTab}&${extra}`;
+        : `scope=${scopeTab}&type=file&${extra}`;
     try {
       const [f, d] = await Promise.all([
         api<{ folders: Folder[] }>(

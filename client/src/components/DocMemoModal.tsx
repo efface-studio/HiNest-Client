@@ -79,7 +79,6 @@ export default function DocMemoModal({
     doc?.content ?? { type: "doc", content: [{ type: "paragraph" }] }
   );
   const [scope, setScope] = useState<DocScope>(doc?.scope ?? initialScope);
-  const [scopeOpen, setScopeOpen] = useState(false);
   const [tags, setTags] = useState(doc?.tags ?? "");
 
   const [scopeUserIds, setScopeUserIds] = useState<string[]>(
@@ -219,57 +218,8 @@ export default function DocMemoModal({
             </div>
           </div>
 
-          {/* 오른쪽: 공개 범위 + 액션 */}
+          {/* 오른쪽: 액션 (공개 범위는 본문 카드에서 선택) */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
-            {!projectId && (
-              <div className="relative">
-                <button
-                  type="button"
-                  disabled={!editMode}
-                  onClick={() => editMode && setScopeOpen((o) => !o)}
-                  className={`flex items-center gap-1 px-2.5 h-7 rounded-full text-[11px] font-bold border transition select-none ${
-                    scope === "PRIVATE" ? "bg-rose-50 border-rose-200 text-rose-700"
-                    : scope === "TEAM" ? "bg-sky-50 border-sky-200 text-sky-700"
-                    : scope === "CUSTOM" ? "bg-violet-50 border-violet-200 text-violet-700"
-                    : "bg-emerald-50 border-emerald-200 text-emerald-700"
-                  } ${editMode ? "cursor-pointer hover:opacity-80" : "cursor-default opacity-70"}`}
-                >
-                  <ScopeIcon scope={scope} />
-                  <span>{SCOPE_LABEL[scope]}</span>
-                  {editMode && (
-                    <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  )}
-                </button>
-
-                {/* 범위 드롭다운 */}
-                {scopeOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-[220px] bg-[color:var(--c-surface)] border border-ink-200 rounded-xl shadow-xl z-[70] overflow-hidden">
-                    {(["ALL", "TEAM", "PRIVATE", "CUSTOM"] as DocScope[]).map((s) => (
-                      <button
-                        key={s}
-                        type="button"
-                        onClick={() => { setScope(s); setScopeOpen(false); }}
-                        className={`w-full flex items-start gap-3 px-4 py-2.5 hover:bg-ink-50 transition text-left ${scope === s ? "bg-brand-50" : ""}`}
-                      >
-                        <ScopeIcon scope={s} className="mt-0.5 flex-shrink-0 text-ink-500" />
-                        <div>
-                          <div className={`text-[12px] font-bold ${scope === s ? "text-brand-700" : "text-ink-800"}`}>{SCOPE_LABEL[s]}</div>
-                          <div className="text-[11px] text-ink-500">{SCOPE_DESC[s]}</div>
-                        </div>
-                        {scope === s && (
-                          <svg className="ml-auto flex-shrink-0 text-brand-600" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                            <polyline points="20 6 9 17 4 12" />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {editMode ? (
               <>
                 <button className="btn-ghost btn-sm" onClick={handleCancel} disabled={saving}>
@@ -294,51 +244,6 @@ export default function DocMemoModal({
           <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2 bg-rose-50 border-b border-rose-200 text-[12px] text-rose-700">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
             {err}
-          </div>
-        )}
-
-        {/* CUSTOM 열람자 선택 패널 */}
-        {editMode && scope === "CUSTOM" && (
-          <div className="flex-shrink-0 border-b border-ink-150 bg-violet-50/60 px-5 py-2 flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-bold text-violet-700">열람 가능:</span>
-            {scopeUserIds.map((uid) => {
-              const u = allUsers.find((x) => x.id === uid);
-              return (
-                <span key={uid} className="flex items-center gap-1 bg-white border border-violet-200 rounded-full px-2 py-0.5 text-[11px] font-bold text-violet-800">
-                  {u?.name ?? uid.slice(0, 8)}
-                  <button type="button" onClick={() => setScopeUserIds((p) => p.filter((x) => x !== uid))} className="text-violet-400 hover:text-violet-700">×</button>
-                </span>
-              );
-            })}
-            <div className="relative">
-              <input
-                className="h-6 px-2 text-[11px] border border-violet-200 rounded-full focus:outline-none focus:ring-1 focus:ring-violet-400 w-28 bg-white"
-                placeholder="이름 검색"
-                value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
-              />
-              {userSearch && (
-                <div className="absolute left-0 top-full mt-1 w-[200px] bg-white border border-ink-200 rounded-xl shadow-lg z-[70] max-h-[180px] overflow-y-auto">
-                  {filteredUsers.filter((u) => !scopeUserIds.includes(u.id)).length === 0 ? (
-                    <div className="px-3 py-2 text-[12px] text-ink-500">없음</div>
-                  ) : filteredUsers.filter((u) => !scopeUserIds.includes(u.id)).map((u) => (
-                    <button key={u.id} type="button"
-                      onClick={() => { setScopeUserIds((p) => [...p, u.id]); setUserSearch(""); }}
-                      className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-ink-50 text-left"
-                    >
-                      <div className="w-5 h-5 rounded grid place-items-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden"
-                        style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#6B7280") }}>
-                        {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" /> : u.name[0]}
-                      </div>
-                      <span className="text-[12px] text-ink-800 font-semibold">
-                        {u.name}
-                        {u.team && <span className="text-ink-400 font-normal ml-1">· {u.team}</span>}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           </div>
         )}
 
@@ -378,6 +283,20 @@ export default function DocMemoModal({
                 <span className="font-semibold text-ink-600">{doc.author.name}</span>
                 <span className="text-ink-200">·</span>
                 <span>{dateStr}</span>
+                {!projectId && (
+                  <>
+                    <span className="text-ink-200">·</span>
+                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold ${
+                      scope === "PRIVATE" ? "bg-rose-50 text-rose-700"
+                      : scope === "TEAM" ? "bg-sky-50 text-sky-700"
+                      : scope === "CUSTOM" ? "bg-violet-50 text-violet-700"
+                      : "bg-emerald-50 text-emerald-700"
+                    }`}>
+                      <ScopeIcon scope={scope} />
+                      {SCOPE_LABEL[scope]}
+                    </span>
+                  </>
+                )}
               </div>
             )}
 
@@ -398,8 +317,89 @@ export default function DocMemoModal({
               </div>
             ) : null}
 
+            {/* ── 공개 범위 (편집 모드 · 전역 메모) — 회의록과 동일한 카드형 선택 ── */}
+            {editMode && !projectId && (
+              <div className="mt-5 rounded-2xl border border-ink-150 bg-[color:var(--c-surface)] p-4">
+                <div className="flex items-center gap-1.5 mb-3">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-400">
+                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" /><circle cx="12" cy="12" r="3" />
+                  </svg>
+                  <span className="text-[12px] font-bold text-ink-700">공개 범위</span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {(["ALL", "TEAM", "PRIVATE", "CUSTOM"] as DocScope[]).map((s) => {
+                    const active = scope === s;
+                    return (
+                      <button
+                        key={s}
+                        type="button"
+                        onClick={() => setScope(s)}
+                        className={`text-left p-3 rounded-xl border-2 transition ${
+                          active ? "border-brand-500 bg-brand-50" : "border-ink-150 hover:bg-ink-50"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <ScopeIcon scope={s} size={13} className={active ? "text-brand-600" : "text-ink-400"} />
+                          <span className={`text-[12.5px] font-bold ${active ? "text-brand-700" : "text-ink-800"}`}>{SCOPE_LABEL[s]}</span>
+                        </div>
+                        <div className="text-[11px] text-ink-500 leading-snug">{SCOPE_DESC[s]}</div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* CUSTOM — 열람자 지정 */}
+                {scope === "CUSTOM" && (
+                  <div className="mt-3 pt-3 border-t border-ink-100 flex flex-wrap items-center gap-2">
+                    <span className="text-[11px] font-bold text-violet-700">열람 가능:</span>
+                    {scopeUserIds.length === 0 && (
+                      <span className="text-[11px] text-ink-400">아직 선택된 구성원이 없어요</span>
+                    )}
+                    {scopeUserIds.map((uid) => {
+                      const u = allUsers.find((x) => x.id === uid);
+                      return (
+                        <span key={uid} className="flex items-center gap-1 bg-white border border-violet-200 rounded-full px-2 py-0.5 text-[11px] font-bold text-violet-800">
+                          {u?.name ?? uid.slice(0, 8)}
+                          <button type="button" onClick={() => setScopeUserIds((p) => p.filter((x) => x !== uid))} className="text-violet-400 hover:text-violet-700">×</button>
+                        </span>
+                      );
+                    })}
+                    <div className="relative">
+                      <input
+                        className="h-6 px-2 text-[11px] border border-violet-200 rounded-full focus:outline-none focus:ring-1 focus:ring-violet-400 w-28 bg-white"
+                        placeholder="이름 검색"
+                        value={userSearch}
+                        onChange={(e) => setUserSearch(e.target.value)}
+                      />
+                      {userSearch && (
+                        <div className="absolute left-0 top-full mt-1 w-[200px] bg-white border border-ink-200 rounded-xl shadow-lg z-[70] max-h-[180px] overflow-y-auto">
+                          {filteredUsers.filter((u) => !scopeUserIds.includes(u.id)).length === 0 ? (
+                            <div className="px-3 py-2 text-[12px] text-ink-500">없음</div>
+                          ) : filteredUsers.filter((u) => !scopeUserIds.includes(u.id)).map((u) => (
+                            <button key={u.id} type="button"
+                              onClick={() => { setScopeUserIds((p) => [...p, u.id]); setUserSearch(""); }}
+                              className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-ink-50 text-left"
+                            >
+                              <div className="w-5 h-5 rounded grid place-items-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden"
+                                style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#6B7280") }}>
+                                {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" /> : u.name[0]}
+                              </div>
+                              <span className="text-[12px] text-ink-800 font-semibold">
+                                {u.name}
+                                {u.team && <span className="text-ink-400 font-normal ml-1">· {u.team}</span>}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── 구분선 ── */}
-            <div className="border-t border-ink-100 mt-4 mb-6" />
+            <div className="border-t border-ink-100 mt-5 mb-6" />
 
             {/* ── TipTap 에디터 ── */}
             <Suspense fallback={
@@ -422,34 +422,29 @@ export default function DocMemoModal({
           </div>
         </div>
       </div>
-
-      {/* 범위 드롭다운 외부 클릭 닫기 */}
-      {scopeOpen && (
-        <div className="fixed inset-0 z-[59]" onClick={() => setScopeOpen(false)} />
-      )}
     </>,
     document.body
   );
 }
 
-function ScopeIcon({ scope, className = "" }: { scope: DocScope; className?: string }) {
+function ScopeIcon({ scope, className = "", size = 10 }: { scope: DocScope; className?: string; size?: number }) {
   if (scope === "PRIVATE") return (
-    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
     </svg>
   );
   if (scope === "TEAM") return (
-    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
   if (scope === "CUSTOM") return (
-    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" /><polyline points="12 8 12 12 14 14" />
     </svg>
   );
   return (
-    <svg className={className} width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <svg className={className} width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
     </svg>
   );

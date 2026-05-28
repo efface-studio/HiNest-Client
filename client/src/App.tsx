@@ -33,6 +33,7 @@ import {
   UserProfilePage,
   AdminPage,
   SuperAdminPage,
+  MemosPage,
 } from "./routes";
 
 /**
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="meetings/:id" element={<MeetingDetailPage />} />
           <Route path="accounts" element={<ServiceAccountsPage />} />
           <Route path="snippets" element={<SnippetsPage />} />
+          <Route path="memos" element={<MemosPage />} />
           <Route path="users/:id" element={<UserProfilePage />} />
           <Route
             path="admin"

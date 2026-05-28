@@ -8,6 +8,7 @@ import ShareLinkModal from "../components/ShareLinkModal";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
 import type { MemoDoc } from "../components/DocMemoModal";
 import { safeUploadUrl } from "../lib/safeUrl";
+import { downloadFromUrl, downloadBlob } from "../lib/download";
 
 // DocMemoModal 은 TipTap(무거운 번들)을 포함 → 실제 열릴 때만 로드.
 const DocMemoModal = lazy(() => import("../components/DocMemoModal"));
@@ -719,7 +720,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     const url = new URL(d.fileUrl, window.location.origin);
     url.searchParams.set("download", "1");
     if (d.fileName) url.searchParams.set("name", d.fileName);
-    triggerDownload(url.toString());
+    downloadFromUrl(url.toString(), d.fileName ?? "");
   }
 
   // 폴더 전체 — 서버에서 ZIP 스트림으로 내려옴. 큰 폴더는 시간이 꽤 걸릴 수 있음.
@@ -746,29 +747,10 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       const cd = res.headers.get("Content-Disposition") || "";
       const mName = /filename\*=UTF-8''([^;]+)/i.exec(cd) || /filename="?([^";]+)"?/i.exec(cd);
       const fname = mName ? decodeURIComponent(mName[1]) : `${f.name}.zip`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = fname;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadBlob(blob, fname);
     } catch (err: any) {
       await alertAsync({ title: "폴더 다운로드 실패", description: err?.message ?? String(err) });
     }
-  }
-
-  // 새 탭에서 열되 Content-Disposition: attachment 헤더 때문에 바로 다운로드로 떨어진다.
-  // target=_blank 로 열어야 현재 페이지가 navigate 되지 않음.
-  function triggerDownload(href: string) {
-    const a = document.createElement("a");
-    a.href = href;
-    a.target = "_blank";
-    a.rel = "noopener";
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
   }
 
   // ===== 문서 드래그앤드롭 이동 =====

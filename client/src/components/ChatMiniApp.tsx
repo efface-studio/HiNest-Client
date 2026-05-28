@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import { useNotifications } from "../notifications";
 import { resolvePresence } from "../lib/presence";
+import { downloadFromUrl } from "../lib/download";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import { SnippetSlashMenu, type SnippetSlashHandle } from "./chat/SnippetSlashMenu";
 import {
@@ -1941,14 +1942,7 @@ function buildMessageActions(
       key: "download",
       label: "다운로드",
       icon: ActionIcons.download,
-      onSelect: () => {
-        const a = document.createElement("a");
-        a.href = m.fileUrl!;
-        a.download = m.fileName || "";
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      },
+      onSelect: () => downloadFromUrl(m.fileUrl!, m.fileName || ""),
     });
   }
 

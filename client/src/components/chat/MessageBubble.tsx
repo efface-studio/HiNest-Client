@@ -6,6 +6,7 @@ import { api } from "../../api";
 import { alertAsync } from "../ConfirmHost";
 import { parseCodeSegments } from "../../lib/codeDetect";
 import { copyToClipboard } from "../../lib/clipboard";
+import { downloadFromUrl } from "../../lib/download";
 import { useModalDismiss } from "../../lib/useModalDismiss";
 import { highlightCode } from "../../lib/syntaxHighlight";
 import { LangIcon } from "../../lib/langIcon";
@@ -252,13 +253,7 @@ function ChatVideoPlayer({ src, fileName }: { src: string; fileName: string | nu
   const download = () => {
     const url = src + (src.includes("?") ? "&" : "?") + "download=1"
       + (fileName ? `&name=${encodeURIComponent(fileName)}` : "");
-    const a = document.createElement("a");
-    a.href = url;
-    a.rel = "noopener";
-    if (fileName) a.setAttribute("download", fileName);
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+    downloadFromUrl(url, fileName ?? "");
     close();
   };
   const pip = async () => {

@@ -6,6 +6,8 @@
  * - PDF: 브라우저 `window.print()` 를 새 창으로 띄워 "PDF 로 저장" 옵션 제공.
  */
 
+import { downloadBlob } from "./download";
+
 // xlsx-js-style: xlsx(SheetJS CE) 의 drop-in 포크. 셀 스타일(채우기/테두리/폰트) 쓰기 지원.
 // 약 470KB — 관리자 페이지 외에선 거의 안 쓰므로 동적 import 로 초기 번들에서 제외.
 let _xlsxPromise: Promise<typeof import("xlsx-js-style")> | null = null;
@@ -128,14 +130,7 @@ export function downloadCSV<T>(filename: string, rows: T[], columns: TableColumn
   // UTF-8 BOM — Excel 이 utf-8 로 읽도록 힌트
   const csv = "\uFEFF" + header + "\r\n" + body;
   const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename.endsWith(".csv") ? filename : `${filename}.csv`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 500);
+  downloadBlob(blob, filename.endsWith(".csv") ? filename : `${filename}.csv`);
 }
 
 /**

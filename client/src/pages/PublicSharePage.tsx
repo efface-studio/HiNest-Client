@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import { fmtSize } from "../lib/fmt";
+import { downloadBlob } from "../lib/download";
 
 /**
  * 외부 공유 링크 수신 페이지 — 로그인 없이 접근. 토큰을 URL 세그먼트로 받아
@@ -55,17 +56,10 @@ export default function PublicSharePage() {
         return;
       }
       const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
       const defaultName = meta?.kind === "folder"
         ? `${meta.document?.title ?? "folder"}.zip`
         : (meta?.document?.fileName ?? meta?.document?.title ?? "download");
-      a.download = defaultName;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      URL.revokeObjectURL(url);
+      downloadBlob(blob, defaultName);
       // 다운로드 카운트가 올라갔을 테니 메타 새로 가져옴.
       const r2 = await fetch(`/api/public-share/${encodeURIComponent(token)}`);
       if (r2.ok) setMeta(await r2.json());

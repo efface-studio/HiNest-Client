@@ -737,6 +737,9 @@ model Folder {
   shareLinks FolderShareLink[]
 
   @@index([projectId])
+  // document.ts 의 폴더 서브트리 BFS(collectFolderSubtree) 와 ZIP walk() 가
+  // where:{parentId} 를 반복 조회한다. 인덱스가 없으면 트리 레벨마다 Folder 풀스캔.
+  @@index([parentId])
 }
 
 model Document {

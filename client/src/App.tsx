@@ -34,6 +34,7 @@ import {
   AdminPage,
   SuperAdminPage,
   MemosPage,
+  PayrollPage,
 } from "./routes";
 
 /**
@@ -113,6 +114,14 @@ export default function App() {
           <Route path="accounts" element={<ServiceAccountsPage />} />
           <Route path="snippets" element={<SnippetsPage />} />
           <Route path="memos" element={<MemosPage />} />
+          <Route
+            path="payroll"
+            element={
+              <AdminOnly>
+                <PayrollPage />
+              </AdminOnly>
+            }
+          />
           <Route path="users/:id" element={<UserProfilePage />} />
           <Route
             path="admin"

@@ -552,6 +552,14 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
               >
                 {({ isActive }) => (<><ShieldIcon active={isActive} /><span>관리자</span></>)}
               </NavLink>
+              <NavLink
+                to="/payroll"
+                className={({ isActive }) => navClass(isActive)}
+                onMouseEnter={() => prefetchRoute("/payroll")}
+                onFocus={() => prefetchRoute("/payroll")}
+              >
+                {({ isActive }) => (<><PayrollIcon active={isActive} /><span>급여명세서</span></>)}
+              </NavLink>
               {user?.superAdmin && (
                 <NavLink
                   to="/super-admin"
@@ -1127,6 +1135,7 @@ function CardIcon({ active }: I) { return svgBase(!!active, <><rect x="3" y="6" 
 function KeyIcon({ active }: I) { return svgBase(!!active, <><circle cx="7.5" cy="15.5" r="4.5" /><path d="m10.5 12.5 10-10M17 7l3 3M15.5 8.5l3 3" /></>); }
 function SnippetIcon({ active }: I) { return svgBase(!!active, <><path d="m8 3-4 4 4 4M16 3l4 4-4 4" /><path d="M14 4 10 20" /></>); }
 function ShieldIcon({ active }: I) { return svgBase(!!active, <><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /><path d="m9 12 2 2 4-4" /></>); }
+function PayrollIcon({ active }: I) { return svgBase(!!active, <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>); }
 function DevIcon({ active }: I) { return svgBase(!!active, <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>); }
 function CrownIcon({ active }: I) { return svgBase(!!active, <><path d="M3 18h18" /><path d="M3 8l4 5 5-8 5 8 4-5v10H3z" /></>); }
 const _unused_swInv = swInv;

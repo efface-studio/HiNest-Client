@@ -27,6 +27,7 @@ export const loadUserProfile = () => import("./pages/UserProfilePage");
 export const loadAdmin = () => import("./pages/AdminPage");
 export const loadSuperAdmin = () => import("./pages/SuperAdminPage");
 export const loadMemos = () => import("./pages/MemosPage");
+export const loadPayroll = () => import("./pages/PayrollPage");
 
 export const SchedulePage = lazy(loadSchedule);
 export const AttendancePage = lazy(loadAttendance);
@@ -47,6 +48,7 @@ export const UserProfilePage = lazy(loadUserProfile);
 export const AdminPage = lazy(loadAdmin);
 export const SuperAdminPage = lazy(loadSuperAdmin);
 export const MemosPage = lazy(loadMemos);
+export const PayrollPage = lazy(loadPayroll);
 
 /** 사이드바 경로별 prefetch 함수 매핑 — hover/focus 시 호출해 청크 선로딩. */
 export const ROUTE_PREFETCH: Record<string, () => Promise<unknown>> = {
@@ -66,4 +68,5 @@ export const ROUTE_PREFETCH: Record<string, () => Promise<unknown>> = {
   "/accounts": loadAccounts,
   "/snippets": loadSnippets,
   "/memos": loadMemos,
+  "/payroll": loadPayroll,
 };

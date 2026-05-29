@@ -194,7 +194,7 @@ export default function MemosPage() {
     if (scopeTab === "team") params.set("scope", "team");
     else if (scopeTab === "private") params.set("scope", "private");
     if (debouncedQ) params.set("q", debouncedQ);
-    api<{ documents: Memo[] }>(`/api/documents?${params}`)
+    api<{ documents: Memo[] }>(`/api/document?${params}`)
       .then((r) => setMemos(r.documents))
       .catch(() => setMemos([]))
       .finally(() => setLoading(false));

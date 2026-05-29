@@ -258,6 +258,11 @@ router.get("/search", async (req, res) => {
   if (!q) return res.json({ hits: [] });
 
   const now = new Date();
+  // roomId IN (...) 로 방 소속을 거른다. room.members.some 은 메시지 행마다 평가되는
+  // correlated subquery 라 (roomId, createdAt) 인덱스를 못 쓰고 풀스캔에 가깝다.
+  // 내가 속한 방 id 를 먼저 뽑아 IN 으로 넘기면 인덱스 probe 로 떨어진다(search.ts 와 동일 패턴).
+  const myRoomMems = await prisma.roomMember.findMany({ where: { userId: u.id }, select: { roomId: true } });
+  const myRoomIds = myRoomMems.map((m) => m.roomId);
   const raw = await prisma.chatMessage.findMany({
     where: {
       deletedAt: null,
@@ -268,7 +273,7 @@ router.get("/search", async (req, res) => {
         { scheduledAt: { lte: now } },
         { senderId: u.id },
       ],
-      room: { members: { some: { userId: u.id } } },
+      roomId: { in: myRoomIds.length ? myRoomIds : ["__none__"] },
     },
     orderBy: { createdAt: "desc" },
     take: 80,

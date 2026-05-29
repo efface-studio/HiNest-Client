@@ -3,6 +3,7 @@ import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
+import { safeExternalUrl } from "../lib/safeUrl";
 
 /**
  * 서비스 계정 레지스트리 — 회사에서 쓰는 AWS/Vercel/GitHub/테스트 계정을 한 곳에 모으는 페이지.
@@ -741,9 +742,15 @@ function AccountCard({
             {a.url && (
               <div className="flex items-center gap-1.5 text-ink-700">
                 <span className="text-ink-400 w-14 flex-shrink-0">URL</span>
-                <a href={a.url} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline truncate">
-                  {a.url}
-                </a>
+                {/* href 는 http(s) 만 허용 — javascript:/data: 스킴 저장형 XSS 차단.
+                    안전하지 않으면 링크 대신 평문으로만 노출(텍스트는 React 가 escape). */}
+                {safeExternalUrl(a.url) ? (
+                  <a href={safeExternalUrl(a.url)!} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline truncate">
+                    {a.url}
+                  </a>
+                ) : (
+                  <span className="truncate text-ink-500" title={a.url}>{a.url}</span>
+                )}
               </div>
             )}
             <div className="flex items-center gap-1.5 text-ink-700">

@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
+import { safeUploadUrl } from "../lib/safeUrl";
 import { useTheme } from "../theme";
 import PageHeader from "../components/PageHeader";
 import SuperStepUpGate from "../components/SuperStepUpGate";
@@ -651,11 +652,14 @@ function ChatAuditPanel() {
 }
 
 function AuditAttachment({ msg }: { msg: Message }) {
-  if (!msg.fileUrl) return null;
-  if (msg.kind === "IMAGE") return <img src={msg.fileUrl} alt={msg.fileName ?? ""} loading="lazy" decoding="async" className="max-h-56 rounded mb-1" />;
-  if (msg.kind === "VIDEO") return <video src={msg.fileUrl} controls className="max-h-56 rounded mb-1" />;
+  // 다른 모든 첨부 렌더 지점(MessageBubble·ChatMiniApp·DocumentsPage 등)과 동일하게
+  // /uploads/ 경로만 허용 — 비정상 스킴(javascript:/data:)이 src/href 로 들어가는 것을 방어.
+  const fileUrl = safeUploadUrl(msg.fileUrl);
+  if (!fileUrl) return null;
+  if (msg.kind === "IMAGE") return <img src={fileUrl} alt={msg.fileName ?? ""} loading="lazy" decoding="async" className="max-h-56 rounded mb-1" />;
+  if (msg.kind === "VIDEO") return <video src={fileUrl} controls className="max-h-56 rounded mb-1" />;
   return (
-    <a href={msg.fileUrl} target="_blank" rel="noreferrer"
+    <a href={fileUrl} target="_blank" rel="noreferrer"
       className="flex items-center gap-2 p-2 rounded-md mb-1 bg-ink-50 border border-ink-200 no-underline">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />

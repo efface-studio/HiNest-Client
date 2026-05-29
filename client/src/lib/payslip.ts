@@ -141,23 +141,38 @@ function esc(s: unknown): string {
     .replace(/>/g, "&gt;");
 }
 
-/**
- * 인쇄/PDF 저장용 standalone HTML 문서. 한국 임금명세서 양식을 충실히 렌더.
- * 브라우저 "대상: PDF 로 저장" 으로 PDF 화. 이메일 첨부(서버) 에서도 같은 마크업 재사용 가능.
- */
-export function payslipPrintHTML(p: Payslip): string {
+// 명세서 양식 CSS — 전부 .psheet 로 스코프. 일반 hex 색상 + 시스템 폰트만 사용해
+// html2canvas(PDF 변환) 가 modern color(oklch 등) 파싱에서 깨지지 않도록 한다.
+const SHEET_CSS = `
+.psheet, .psheet * { box-sizing: border-box; }
+.psheet { font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Segoe UI", sans-serif; color: #1F2937; background: #FFFFFF; padding: 24px; }
+.psheet .doc { max-width: 720px; margin: 0 auto; }
+.psheet h1 { font-size: 20px; text-align: center; margin: 0 0 4px; letter-spacing: -0.01em; }
+.psheet .sub { text-align: center; color: #6B7280; font-size: 12px; margin-bottom: 18px; }
+.psheet table { width: 100%; border-collapse: collapse; }
+.psheet .grid td, .psheet .grid th { border: 1px solid #C9CDD2; padding: 7px 10px; font-size: 12.5px; }
+.psheet .grid th { background: #EEF2F7; font-weight: 700; text-align: center; }
+.psheet .lbl { background: #F8FAFC; font-weight: 600; }
+.psheet .amt { text-align: right; }
+.psheet .c { text-align: center; }
+.psheet .mt { margin-top: 14px; }
+.psheet .total td { font-weight: 800; background: #EEF2F7; }
+.psheet .net { margin-top: 12px; border: 2px solid #4B5563; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-radius: 4px; }
+.psheet .net .k { font-size: 14px; font-weight: 800; }
+.psheet .net .v { font-size: 20px; font-weight: 800; }
+.psheet .memo { margin-top: 18px; text-align: center; font-size: 13px; color: #374151; }
+.psheet .foot { margin-top: 22px; text-align: center; font-size: 13px; font-weight: 700; }
+`;
+
+/** 명세서 본문 마크업(.psheet 래퍼). <style> 없이 DOM 조각만. */
+function payslipSheetMarkup(p: Payslip): string {
   const rows = Math.max(p.earnings.length, p.deductions.length);
   const itemRows: string[] = [];
   for (let i = 0; i < rows; i++) {
     const e = p.earnings[i];
     const d = p.deductions[i];
     itemRows.push(
-      `<tr>
-        <td class="lbl">${e ? esc(e.label) : ""}</td>
-        <td class="amt">${e ? won(e.amount) : ""}</td>
-        <td class="lbl">${d ? esc(d.label) : ""}</td>
-        <td class="amt">${d ? won(d.amount) : ""}</td>
-      </tr>`,
+      `<tr><td class="lbl">${e ? esc(e.label) : ""}</td><td class="amt">${e ? won(e.amount) : ""}</td><td class="lbl">${d ? esc(d.label) : ""}</td><td class="amt">${d ? won(d.amount) : ""}</td></tr>`,
     );
   }
 
@@ -184,40 +199,10 @@ export function payslipPrintHTML(p: Payslip): string {
       </table>`
     : "";
 
-  return `<!doctype html>
-<html lang="ko">
-<head>
-<meta charset="utf-8" />
-<title>${esc(p.year)}년 ${esc(p.month)}월 임금명세서 - ${esc(p.employeeName)}</title>
-<style>
-  * { box-sizing: border-box; }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Segoe UI", sans-serif; color: #1F2937; margin: 0; padding: 28px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .doc { max-width: 720px; margin: 0 auto; }
-  h1 { font-size: 20px; text-align: center; margin: 0 0 4px; letter-spacing: -0.01em; }
-  .sub { text-align: center; color: #6B7280; font-size: 12px; margin-bottom: 18px; }
-  table { width: 100%; border-collapse: collapse; }
-  .grid td, .grid th { border: 1px solid #C9CDD2; padding: 7px 10px; font-size: 12.5px; }
-  .grid th { background: #EEF2F7; font-weight: 700; text-align: center; }
-  .lbl { background: #F8FAFC; font-weight: 600; }
-  .amt { text-align: right; font-variant-numeric: tabular-nums; }
-  .c { text-align: center; }
-  .mt { margin-top: 14px; }
-  .info td { font-size: 12.5px; }
-  .total td { font-weight: 800; background: #EEF2F7; }
-  .net { margin-top: 12px; border: 2px solid #4B5563; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-radius: 4px; }
-  .net .k { font-size: 14px; font-weight: 800; }
-  .net .v { font-size: 20px; font-weight: 800; font-variant-numeric: tabular-nums; }
-  .memo { margin-top: 18px; text-align: center; font-size: 13px; color: #374151; }
-  .foot { margin-top: 22px; text-align: center; font-size: 13px; font-weight: 700; }
-  @media print { body { padding: 12mm; } .doc { max-width: none; } }
-</style>
-</head>
-<body>
-  <div class="doc">
+  return `<div class="psheet"><div class="doc">
     <h1>${esc(p.year)}년 ${String(p.month).padStart(2, "0")}월분 임금명세서</h1>
     <div class="sub">${esc(p.companyName || DEFAULT_COMPANY)}</div>
-
-    <table class="grid info">
+    <table class="grid">
       <tr>
         <td class="lbl" style="width:18%">성명</td><td style="width:32%">${esc(p.employeeName)}</td>
         <td class="lbl" style="width:18%">생년월일(사번)</td><td style="width:32%">${esc(p.idNumber || "-")}</td>
@@ -231,7 +216,6 @@ export function payslipPrintHTML(p: Payslip): string {
         <td class="lbl">지급일</td><td>${esc(p.payDate || "-")}</td>
       </tr>
     </table>
-
     <table class="grid mt">
       <tr><th colspan="2">지급</th><th colspan="2">공제</th></tr>
       <tr>
@@ -244,21 +228,34 @@ export function payslipPrintHTML(p: Payslip): string {
         <td>공제액 계</td><td class="amt">${won(p.totalDeductions)}</td>
       </tr>
     </table>
-
-    <div class="net">
-      <span class="k">실수령액</span>
-      <span class="v">${won(p.netPay)}</span>
-    </div>
-
+    <div class="net"><span class="k">실수령액</span><span class="v">${won(p.netPay)}</span></div>
     ${attBlock}
     ${calcBlock}
-
     ${p.memo ? `<div class="memo">${esc(p.memo)}</div>` : ""}
     <div class="foot">${esc(p.companyName || DEFAULT_COMPANY)}</div>
-  </div>
-  <script>
-    window.onload = function () { setTimeout(function () { window.focus(); window.print(); }, 120); };
-  </script>
+  </div></div>`;
+}
+
+/** <style> + 본문 마크업. 오프스크린 컨테이너(PDF 변환) 에 그대로 주입 가능. */
+export function payslipInnerHTML(p: Payslip): string {
+  return `<style>${SHEET_CSS}</style>${payslipSheetMarkup(p)}`;
+}
+
+/**
+ * 인쇄/PDF 저장용 standalone HTML 문서. 한국 임금명세서 양식을 충실히 렌더.
+ * 브라우저 "대상: PDF 로 저장" 으로 PDF 화.
+ */
+export function payslipPrintHTML(p: Payslip): string {
+  return `<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<title>${esc(p.year)}년 ${esc(p.month)}월 임금명세서 - ${esc(p.employeeName)}</title>
+<style>html,body{margin:0;-webkit-print-color-adjust:exact;print-color-adjust:exact;}@media print{.psheet{padding:12mm;}.psheet .doc{max-width:none;}}</style>
+</head>
+<body>
+  ${payslipInnerHTML(p)}
+  <script>window.onload=function(){setTimeout(function(){window.focus();window.print();},120);};</script>
 </body>
 </html>`;
 }

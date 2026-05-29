@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db.js";
 import { requireAuth, requireAdmin, writeLog } from "../lib/auth.js";
+import { sendEmailWithAttachment } from "../lib/email.js";
 
 /* ===== 급여(임금)명세서 =====
  * - 작성·수정·삭제·목록(전체)·발송: ADMIN 전용.
@@ -274,6 +275,80 @@ router.delete("/:id", requireAdmin, async (req, res) => {
   });
   await writeLog(u.id, "PAYSLIP_DELETE", exist.id);
   res.json({ ok: true });
+});
+
+/* ===== 메일 발송 (ADMIN) =====
+ * 클라이언트가 명세서를 PDF(base64)로 렌더해 보내면, 서버는 직원 계정 이메일로 첨부 발송.
+ * PDF 는 클라가 만든다(서버에 Chromium/폰트 안 올리려고). 서버는 매직바이트/크기만 검증.
+ * 발송 성공 시에만 sentAt/sentTo 기록 — 실패 시 502, 상태 안 바꿈.
+ */
+const PDF_MAX_BYTES = 6_000_000; // 디코드 후 6MB 상한(전역 JSON 2mb 제한과 별개 안전망).
+
+const sendSchema = z.object({
+  // base64 는 원본보다 ~33% 크다. 6MB PDF ≈ 8MB base64.
+  pdfBase64: z.string().min(1).max(8_000_000),
+});
+
+function escHtml(s: unknown): string {
+  return String(s ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+router.post("/:id/send", requireAdmin, async (req, res) => {
+  const u = (req as any).user;
+  const parsed = sendSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "invalid input" });
+
+  const p = await prisma.payslip.findFirst({
+    where: { id: req.params.id, deletedAt: null },
+    select: PAYSLIP_SELECT,
+  });
+  if (!p) return res.status(404).json({ error: "not found" });
+
+  const to = p.employee?.email;
+  if (!to) return res.status(400).json({ error: "직원 계정 이메일이 없어요" });
+
+  // base64 → 버퍼. PDF 매직바이트("%PDF-")와 크기 검증으로 엉뚱한 첨부 차단.
+  const pdf = Buffer.from(parsed.data.pdfBase64, "base64");
+  if (pdf.length === 0 || pdf.length > PDF_MAX_BYTES) {
+    return res.status(400).json({ error: "PDF 크기가 올바르지 않아요" });
+  }
+  if (pdf.subarray(0, 5).toString("latin1") !== "%PDF-") {
+    return res.status(400).json({ error: "PDF 형식이 아니에요" });
+  }
+
+  const company = p.companyName || "주식회사 하이비츠";
+  const subject = `[${company}] ${p.year}년 ${p.month}월 급여명세서`;
+  const filename = `payslip_${p.year}_${String(p.month).padStart(2, "0")}.pdf`;
+  const text =
+    `${p.employeeName}님, ${p.year}년 ${p.month}월 급여명세서를 첨부드립니다.\n\n` +
+    `본 메일은 발신 전용입니다.\n${company}`;
+  const html =
+    `<div style="font-family:sans-serif;font-size:14px;color:#1F2937;line-height:1.6">` +
+    `<p>${escHtml(p.employeeName)}님, ${p.year}년 ${p.month}월 급여명세서를 첨부드립니다.</p>` +
+    `<p style="color:#6B7280;font-size:12px">본 메일은 발신 전용입니다.<br/>${escHtml(company)}</p>` +
+    `</div>`;
+
+  const result = await sendEmailWithAttachment({
+    to,
+    subject,
+    text,
+    html,
+    attachments: [{ filename, contentBase64: parsed.data.pdfBase64, contentType: "application/pdf" }],
+  });
+  if (!result.ok) {
+    return res.status(502).json({ error: "메일 발송에 실패했어요", reason: result.reason });
+  }
+
+  const updated = await prisma.payslip.update({
+    where: { id: p.id },
+    data: { sentAt: new Date(), sentTo: to },
+    select: PAYSLIP_SELECT,
+  });
+  await writeLog(u.id, "PAYSLIP_SEND", p.id, `${p.year}-${p.month} ${p.employeeName}`);
+  res.json({ payslip: updated });
 });
 
 export default router;

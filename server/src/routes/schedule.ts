@@ -99,6 +99,10 @@ router.get("/", async (req, res) => {
   const events = await prisma.event.findMany({
     where,
     orderBy: { startAt: "asc" },
+    // from/to 는 선택값 — 클라이언트(SchedulePage·DashboardPage)는 항상 보내지만,
+    // 인증된 사용자가 둘 다 생략하면 가시 범위의 전체 이벤트가 무제한으로 내려간다.
+    // document.ts 의 take:500 과 동일한 방어적 상한 — 실제 달력 윈도우는 한참 밑.
+    take: 2000,
     include: {
       author: { select: { name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
       project: { select: { id: true, name: true, color: true } },

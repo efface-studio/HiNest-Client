@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
+import { confirmAsync } from "./ConfirmHost";
 
 const MeetingEditor = lazy(() => import("./MeetingEditor"));
 
@@ -68,9 +69,11 @@ export default function DocMemoModal({
   projectId,
   onClose,
   onSaved,
+  onDeleted,
 }: Props) {
   const { user } = useAuth();
 
+  // 편집·삭제 가능 여부: 작성자 본인 또는 전사 ADMIN. (서버 DELETE 권한과 동일)
   const isMine = !doc || doc.authorId === user?.id || user?.role === "ADMIN";
   const [editMode, setEditMode] = useState(!doc);
 
@@ -90,6 +93,7 @@ export default function DocMemoModal({
   const [userSearch, setUserSearch] = useState("");
 
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   // ===== TopBar 하단 오프셋 실측 =====
@@ -178,6 +182,29 @@ export default function DocMemoModal({
     setEditMode(false);
   }
 
+  // ===== 삭제 ===== (작성자/ADMIN 만 버튼 노출 + 서버에서 한 번 더 검증)
+  async function handleDelete() {
+    if (!doc || deleting) return;
+    const ok = await confirmAsync({
+      title: "메모 삭제",
+      description: `"${doc.title || "제목 없음"}" 메모를 삭제할까요? 삭제하면 목록에서 사라져요.`,
+      confirmLabel: "삭제",
+      cancelLabel: "취소",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setDeleting(true);
+    setErr(null);
+    try {
+      await api(`/api/document/${doc.id}`, { method: "DELETE" });
+      onDeleted?.(doc.id);
+      onClose();
+    } catch (e: any) {
+      setErr(e?.message ?? "삭제에 실패했어요");
+      setDeleting(false);
+    }
+  }
+
   const handleContentChange = useCallback((json: any) => setContent(json), []);
 
   const filteredUsers = userSearch.trim()
@@ -231,9 +258,21 @@ export default function DocMemoModal({
               </>
             ) : (
               isMine && (
-                <button className="btn-ghost btn-sm" onClick={() => setEditMode(true)}>
-                  편집
-                </button>
+                <>
+                  {doc && (
+                    <button
+                      className="btn-ghost btn-sm text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/30"
+                      onClick={handleDelete}
+                      disabled={deleting}
+                      title="메모 삭제"
+                    >
+                      {deleting ? "삭제 중…" : "삭제"}
+                    </button>
+                  )}
+                  <button className="btn-ghost btn-sm" onClick={() => setEditMode(true)} disabled={deleting}>
+                    편집
+                  </button>
+                </>
               )
             )}
           </div>

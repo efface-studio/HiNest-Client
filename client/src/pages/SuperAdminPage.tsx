@@ -4,6 +4,7 @@ import { api } from "../api";
 import { useTheme } from "../theme";
 import PageHeader from "../components/PageHeader";
 import SuperStepUpGate from "../components/SuperStepUpGate";
+import { ErrorBoundary } from "../components/ErrorBoundary";
 import SessionsPanel from "../components/superadmin/SessionsPanel";
 import ErrorsPanel from "../components/superadmin/ErrorsPanel";
 import HealthPanel from "../components/superadmin/HealthPanel";
@@ -200,22 +201,24 @@ function SuperAdminContent() {
         <TabBtn active={tab === "twofa"} onClick={() => setTab("twofa")}>2FA 정책</TabBtn>
         <TabBtn active={tab === "roles"} onClick={() => setTab("roles")}>역할 권한</TabBtn>
       </div>
-      {tab === "logs" && <LogsPanel />}
-      {tab === "chat" && chatUnlocked && <ChatAuditPanel />}
-      {tab === "api" && <ApiSpecPanel />}
-      {tab === "console" && <ConsolePanel />}
-      {tab === "server" && <ServerLogsPanel />}
-      {tab === "nav" && <NavVisibilityPanel />}
-      {tab === "sessions" && <SessionsPanel />}
-      {tab === "errors" && <ErrorsPanel />}
-      {tab === "health" && <HealthPanel />}
-      {tab === "trash" && <TrashPanel />}
-      {tab === "audit" && <AuditPanel />}
-      {tab === "flags" && <FlagsPanel />}
-      {tab === "tokens" && <TokensPanel />}
-      {tab === "security" && <SecurityPanel />}
-      {tab === "twofa" && <TwoFAPanel />}
-      {tab === "roles" && <RolePermissionsPanel />}
+      <ErrorBoundary resetKey={tab} fallback={(err, reset) => <TabErrorFallback err={err} reset={reset} />}>
+        {tab === "logs" && <LogsPanel />}
+        {tab === "chat" && chatUnlocked && <ChatAuditPanel />}
+        {tab === "api" && <ApiSpecPanel />}
+        {tab === "console" && <ConsolePanel />}
+        {tab === "server" && <ServerLogsPanel />}
+        {tab === "nav" && <NavVisibilityPanel />}
+        {tab === "sessions" && <SessionsPanel />}
+        {tab === "errors" && <ErrorsPanel />}
+        {tab === "health" && <HealthPanel />}
+        {tab === "trash" && <TrashPanel />}
+        {tab === "audit" && <AuditPanel />}
+        {tab === "flags" && <FlagsPanel />}
+        {tab === "tokens" && <TokensPanel />}
+        {tab === "security" && <SecurityPanel />}
+        {tab === "twofa" && <TwoFAPanel />}
+        {tab === "roles" && <RolePermissionsPanel />}
+      </ErrorBoundary>
       {chatPwOpen && (
         <ChatAuditPwModal
           onClose={() => setChatPwOpen(false)}
@@ -223,6 +226,36 @@ function SuperAdminContent() {
         />
       )}
     </>
+  );
+}
+
+/**
+ * 탭 패널 단위 에러 폴백.
+ * 최상위 ErrorBoundary 가 전체 화면을 가리던 문제를 해결하기 위해, 패널 영역만
+ * 별도 바운더리로 감싸 한 탭이 throw 해도 탭 바·다른 탭은 살아있게 한다.
+ * 개발자 콘솔이므로 메시지뿐 아니라 스택 상단도 인라인으로 노출해 바로 진단 가능하게.
+ */
+function TabErrorFallback({ err, reset }: { err: Error; reset: () => void }) {
+  return (
+    <div className="panel p-6" role="alert">
+      <div className="flex items-start gap-3">
+        <div className="text-[22px] leading-none" aria-hidden>⚠️</div>
+        <div className="min-w-0 flex-1">
+          <div className="text-[14px] font-extrabold text-ink-900 mb-1">이 탭을 표시하는 중 오류가 발생했어요</div>
+          <div className="text-[12px] text-ink-500 mb-3">다른 탭은 정상 동작해요. 아래 오류 내용을 확인하거나 다시 시도해 주세요.</div>
+          <div className="rounded-lg p-3 font-mono text-[11.5px] break-all whitespace-pre-wrap"
+               style={{ background: "var(--c-surface-3)", color: "var(--c-danger)" }}>
+            {err.message || err.name}
+            {err.stack && (
+              <div className="mt-1.5 text-ink-500" style={{ fontSize: 10.5 }}>
+                {err.stack.split("\n").slice(1, 4).join("\n")}
+              </div>
+            )}
+          </div>
+          <button className="btn-ghost btn-xs mt-3" onClick={reset}>다시 시도</button>
+        </div>
+      </div>
+    </div>
   );
 }
 

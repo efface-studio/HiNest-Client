@@ -70,9 +70,26 @@ export default function SuperAdminPage() {
         title="개발자 콘솔"
         description="시스템 전반의 활동 로그와 모든 대화를 조회할 수 있습니다."
       />
-      <SuperStepUpGate>
-        <SuperAdminContent />
-      </SuperStepUpGate>
+      {/*
+        페이지 레벨 ErrorBoundary — 게이트/콘텐츠 최상위(탭 바·훅 등 패널 바깥)에서
+        나는 throw 를 여기서 잡는다. 이게 없으면 그런 에러가 App 최상위 라우트
+        바운더리까지 올라가 사이드바 포함 화면 전체가 덮였음(패널 안쪽만 감싼
+        탭 레벨 바운더리로는 못 잡던 영역). 폴백이 에러를 인라인 노출해 진단 가능.
+      */}
+      <ErrorBoundary
+        fallback={(err, reset) => (
+          <DevErrorFallback
+            err={err}
+            reset={reset}
+            title="개발자 콘솔을 표시하는 중 오류가 발생했어요"
+            hint="왼쪽 사이드바로 다른 메뉴는 이동할 수 있어요. 아래 오류 내용을 확인해 주세요."
+          />
+        )}
+      >
+        <SuperStepUpGate>
+          <SuperAdminContent />
+        </SuperStepUpGate>
+      </ErrorBoundary>
     </div>
   );
 }
@@ -201,7 +218,17 @@ function SuperAdminContent() {
         <TabBtn active={tab === "twofa"} onClick={() => setTab("twofa")}>2FA 정책</TabBtn>
         <TabBtn active={tab === "roles"} onClick={() => setTab("roles")}>역할 권한</TabBtn>
       </div>
-      <ErrorBoundary resetKey={tab} fallback={(err, reset) => <TabErrorFallback err={err} reset={reset} />}>
+      <ErrorBoundary
+        resetKey={tab}
+        fallback={(err, reset) => (
+          <DevErrorFallback
+            err={err}
+            reset={reset}
+            title="이 탭을 표시하는 중 오류가 발생했어요"
+            hint="다른 탭은 정상 동작해요. 아래 오류 내용을 확인하거나 다시 시도해 주세요."
+          />
+        )}
+      >
         {tab === "logs" && <LogsPanel />}
         {tab === "chat" && chatUnlocked && <ChatAuditPanel />}
         {tab === "api" && <ApiSpecPanel />}
@@ -230,19 +257,19 @@ function SuperAdminContent() {
 }
 
 /**
- * 탭 패널 단위 에러 폴백.
- * 최상위 ErrorBoundary 가 전체 화면을 가리던 문제를 해결하기 위해, 패널 영역만
- * 별도 바운더리로 감싸 한 탭이 throw 해도 탭 바·다른 탭은 살아있게 한다.
- * 개발자 콘솔이므로 메시지뿐 아니라 스택 상단도 인라인으로 노출해 바로 진단 가능하게.
+ * 개발자 콘솔용 인라인 에러 폴백.
+ * 최상위 라우트 ErrorBoundary 의 기본 폴백은 에러를 접힌 "기술 정보" 안에 숨겨
+ * 진단이 불가능했음. 개발자 콘솔에선 메시지 + 스택 상단을 그대로 노출해 바로 원인을
+ * 볼 수 있게 한다. 페이지 레벨(게이트·콘텐츠 최상위)·탭 레벨(개별 패널) 양쪽에서 재사용.
  */
-function TabErrorFallback({ err, reset }: { err: Error; reset: () => void }) {
+function DevErrorFallback({ err, reset, title, hint }: { err: Error; reset: () => void; title: string; hint: string }) {
   return (
     <div className="panel p-6" role="alert">
       <div className="flex items-start gap-3">
         <div className="text-[22px] leading-none" aria-hidden>⚠️</div>
         <div className="min-w-0 flex-1">
-          <div className="text-[14px] font-extrabold text-ink-900 mb-1">이 탭을 표시하는 중 오류가 발생했어요</div>
-          <div className="text-[12px] text-ink-500 mb-3">다른 탭은 정상 동작해요. 아래 오류 내용을 확인하거나 다시 시도해 주세요.</div>
+          <div className="text-[14px] font-extrabold text-ink-900 mb-1">{title}</div>
+          <div className="text-[12px] text-ink-500 mb-3">{hint}</div>
           <div className="rounded-lg p-3 font-mono text-[11.5px] break-all whitespace-pre-wrap"
                style={{ background: "var(--c-surface-3)", color: "var(--c-danger)" }}>
             {err.message || err.name}

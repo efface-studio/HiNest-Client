@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { useNotifications } from "../notifications";
-import ChatMiniApp from "./ChatMiniApp";
+// highlight.js(~92KB) 등 무거운 의존성을 끌고오므로 초기 번들에서 분리한다.
+// 채팅 패널은 사용자가 처음 열 때(mounted=true) 비로소 마운트되므로 lazy 로딩이 안전.
+const ChatMiniApp = lazy(() => import("./ChatMiniApp"));
 
 /**
  * 우하단 플로팅 채팅 버튼 — 토스(Toss) 스타일 팝업.
@@ -215,7 +217,9 @@ export default function ChatFab() {
               background: C.surface,
             }}
           >
-            <ChatMiniApp active={open} onActiveRoomChange={setActiveRoom} createGroupRequestId={createReq} openRoomRequest={openRoomReq} />
+            <Suspense fallback={null}>
+              <ChatMiniApp active={open} onActiveRoomChange={setActiveRoom} createGroupRequestId={createReq} openRoomRequest={openRoomReq} />
+            </Suspense>
           </div>
         </div>
       )}

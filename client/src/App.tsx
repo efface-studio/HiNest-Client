@@ -114,14 +114,8 @@ export default function App() {
           <Route path="accounts" element={<ServiceAccountsPage />} />
           <Route path="snippets" element={<SnippetsPage />} />
           <Route path="memos" element={<MemosPage />} />
-          <Route
-            path="payroll"
-            element={
-              <AdminOnly>
-                <PayrollPage />
-              </AdminOnly>
-            }
-          />
+          {/* 급여명세서 — 관리자는 전체 관리, 직원은 본인 것만 열람(페이지 내부에서 분기) */}
+          <Route path="payroll" element={<PayrollPage />} />
           <Route path="users/:id" element={<UserProfilePage />} />
           <Route
             path="admin"

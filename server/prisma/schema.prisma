@@ -104,6 +104,8 @@ model User {
   serviceAccountsCreated  ServiceAccount[]       @relation("ServiceAccountCreator")
   snippets                Snippet[]              @relation("SnippetOwner")
   sessions                Session[]
+  payslips                Payslip[]              @relation("PayslipEmployee")
+  payslipsCreated         Payslip[]              @relation("PayslipCreatedBy")
 }
 
 /// 활성 로그인 세션 — JWT 만 쓸 땐 서버측 강제 로그아웃이 불가했음.
@@ -769,6 +771,52 @@ model Document {
   @@index([folderId, deletedAt])
   // 작성자 본인의 문서 (마이페이지 / 검색) — authorId 단독 필터도 자주 들어옴.
   @@index([authorId, updatedAt(sort: Desc)])
+}
+
+/// 급여명세서(임금명세서) — 관리자(ADMIN)만 작성·수정·삭제·발송. 직원 본인은 자기 것만 열람.
+/// 발급 시점의 직원 표시정보(이름/부서/직위 등)는 스냅샷으로 저장 → 이후 직원 정보가
+/// 바뀌어도 과거 명세서는 고정. 금액은 원(KRW) 정수, 정산 항목은 음수 가능.
+model Payslip {
+  id              String    @id @default(cuid())
+  // 귀속월
+  year            Int
+  month           Int // 1~12
+  // 직원 (HiNest 계정 연결 — 본인 열람 + 계정 이메일 자동 발송 대상)
+  employeeId      String
+  employee        User      @relation("PayslipEmployee", fields: [employeeId], references: [id], onDelete: Cascade)
+  // ── 발급 시점 스냅샷(표시용) ──
+  companyName     String    @default("주식회사 하이비츠")
+  employeeName    String
+  department      String?
+  position        String?
+  joinDate        String? // 입사일 표기 (양식 그대로 문자열)
+  payDate         String? // 지급일 표기
+  idNumber        String? // 생년월일(사번) 표기 — PII, 선택값
+  // ── 항목/근태/계산 (구조화 JSON) ──
+  earnings        Json // [{ label: string, amount: number }]
+  deductions      Json // [{ label: string, amount: number }]
+  attendance      Json? // { workDays, totalHours, overtimeHours, nightHours, holidayHours, hourlyWage, familyCount }
+  calcRows        Json? // [{ item, formula, amount }]
+  memo            String?   @default("귀하의 노고에 감사드립니다.")
+  // ── 합계 (서버에서 계산 후 저장 → 목록 조회 빠르게) ──
+  totalEarnings   Int       @default(0)
+  totalDeductions Int       @default(0)
+  netPay          Int       @default(0)
+  // ── 발송 상태 ──
+  sentAt          DateTime?
+  sentTo          String? // 실제 발송된 수신 이메일 스냅샷
+  // ── 감사 ──
+  createdById     String
+  createdBy       User      @relation("PayslipCreatedBy", fields: [createdById], references: [id])
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  // 직원별 귀속월 조회 (본인 열람 / 중복 체크)
+  @@index([employeeId, year, month])
+  // 월별 전체 조회 (관리자 목록)
+  @@index([year, month])
+  @@index([deletedAt])
 }
 
 model Approval {

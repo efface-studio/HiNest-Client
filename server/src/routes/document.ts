@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import archiver from "archiver";
+import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { downloadFile, isStorageEnabled } from "../lib/storage.js";
@@ -455,8 +456,12 @@ router.get("/", async (req, res) => {
   else if (scope === "custom") ands.push({ scope: "CUSTOM" });
   else if (scope === "public") ands.push({ scope: "ALL" });
   // 타입 필터: memo=content 있는 것, file=파일 문서, 미지정=전체.
-  if (docType === "memo") ands.push({ content: { not: null } });
-  else if (docType === "file") ands.push({ content: null });
+  // ⚠️ content 는 Json? 컬럼 — 리터럴 null 필터({ content: null })는 Prisma 가
+  //    클라이언트 검증 단계에서 throw 한다(런타임 500). 반드시 Prisma.AnyNull/DbNull/JsonNull
+  //    센티넬을 써야 한다. AnyNull = DB NULL 과 JSON null 둘 다 매칭 → "내용 없음(파일)" 을
+  //    가장 안전하게 표현. 메모는 그 여집합(실제 content 보유).
+  if (docType === "memo") ands.push({ NOT: { content: { equals: Prisma.AnyNull } } });
+  else if (docType === "file") ands.push({ content: { equals: Prisma.AnyNull } });
   // 상한 500 — 프로젝트 문서와 동일. 누적 워크스페이스에서 전체 결과 없이
   // 수십 MB 페이로드가 나오는 것을 방지. UX 는 폴더/검색으로 좁혀지므로 영향 없음.
   const docs = await prisma.document.findMany({

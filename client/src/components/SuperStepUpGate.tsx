@@ -502,7 +502,13 @@ function DesktopBiometricPanel({
                   )}
                 </div>
                 <div className="text-[10.5px] text-ink-400 tabular mt-0.5 truncate">
-                  ID {d.deviceId.slice(0, 8)}
+                  {/*
+                    서버는 보안상 deviceId 를 응답에서 제외한다(auth.ts: select 에 deviceId 없음
+                    — 세션 탈취 시 step-up 우회 악용 방지). 따라서 d.deviceId 는 항상 undefined 라
+                    여기서 .slice 하면 전체 게이트가 throw 했음. 감사 로그와 동일하게 행 id 앞 8자를
+                    식별자로 쓴다(서버: row.id.slice(0,8)).
+                  */}
+                  ID {d.id.slice(0, 8)}
                 </div>
               </div>
               <div className="text-[12px] text-ink-600 tabular">

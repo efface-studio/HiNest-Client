@@ -1308,14 +1308,19 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                           </svg>
                         </div>
                       )}
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <div className={`text-[13px] font-bold text-ink-900 ${d.content != null ? "hover:text-brand-700" : ""}`}>{d.title}</div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <div
+                            className={`text-[13px] font-bold text-ink-900 truncate max-w-[160px] sm:max-w-[280px] lg:max-w-[400px] ${d.content != null ? "hover:text-brand-700" : ""}`}
+                            title={d.title}
+                          >
+                            {d.title}
+                          </div>
                           {d.content != null && (
-                            <span className="text-[10px] font-bold px-1.5 py-[1px] rounded bg-violet-50 text-violet-700">메모</span>
+                            <span className="text-[10px] font-bold px-1.5 py-[1px] rounded bg-violet-50 text-violet-700 flex-shrink-0">메모</span>
                           )}
                           {d.scope && d.scope !== "ALL" && (
-                            <span className={`text-[10px] font-bold px-1.5 py-[1px] rounded ${
+                            <span className={`text-[10px] font-bold px-1.5 py-[1px] rounded flex-shrink-0 ${
                               d.scope === "PRIVATE" ? "bg-rose-50 text-rose-700"
                               : d.scope === "TEAM" ? "bg-sky-50 text-sky-700"
                               : "bg-violet-50 text-violet-700"
@@ -1347,8 +1352,10 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                         </span>
                       );
                       return (
-                        <a href={safe} target="_blank" rel="noreferrer" className="text-[12px] font-bold text-brand-600 hover:underline tabular">
-                          {d.fileName} <span className="text-ink-400">({humanSize(d.fileSize ?? 0)})</span>
+                        <a href={safe} target="_blank" rel="noreferrer" title={d.fileName ?? undefined}
+                          className="inline-flex items-center gap-1 max-w-[180px] sm:max-w-[260px] align-middle text-[12px] font-bold text-brand-600 hover:underline tabular">
+                          <span className="truncate">{d.fileName}</span>
+                          <span className="text-ink-400 flex-shrink-0">({humanSize(d.fileSize ?? 0)})</span>
                         </a>
                       );
                     })()}

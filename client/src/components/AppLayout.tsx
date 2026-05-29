@@ -426,6 +426,7 @@ const COMM_NAV: NavItem[] = [
 const RESOURCE_NAV: NavItem[] = [
   { to: "/documents", label: "문서함", icon: DocsIcon },
   { to: "/memos", label: "메모", icon: MemoIcon },
+  { to: "/payroll", label: "급여명세서", icon: PayrollIcon },
   { to: "/expense", label: "법인카드", icon: CardIcon },
   { to: "/accounts", label: "계정 관리", icon: KeyIcon },
   { to: "/snippets", label: "스니펫", icon: SnippetIcon },
@@ -551,14 +552,6 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                 onFocus={() => prefetchRoute("/admin")}
               >
                 {({ isActive }) => (<><ShieldIcon active={isActive} /><span>관리자</span></>)}
-              </NavLink>
-              <NavLink
-                to="/payroll"
-                className={({ isActive }) => navClass(isActive)}
-                onMouseEnter={() => prefetchRoute("/payroll")}
-                onFocus={() => prefetchRoute("/payroll")}
-              >
-                {({ isActive }) => (<><PayrollIcon active={isActive} /><span>급여명세서</span></>)}
               </NavLink>
               {user?.superAdmin && (
                 <NavLink

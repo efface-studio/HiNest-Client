@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import PayslipComposer from "../components/PayslipComposer";
 import PayslipPreview from "../components/PayslipPreview";
@@ -9,12 +10,15 @@ import { type Payslip, type EmployeeOption, won } from "../lib/payslip";
 const NOW = new Date();
 
 /**
- * 급여명세서 관리(ADMIN) 페이지.
- * - 연/월/직원으로 명세서 목록 조회.
- * - 작성·수정(PayslipComposer), 미리보기·PDF(PayslipPreview), 삭제.
- * 라우트는 AdminOnly 로 보호되므로 이 페이지는 관리자 권한을 전제한다.
+ * 급여명세서 페이지.
+ * - ADMIN: 연/월/직원 필터 + 작성·수정·삭제·미리보기(전체 관리).
+ * - 일반 직원: 본인 명세서만 열람(읽기 전용) + 미리보기·PDF.
+ * 권한 분기는 화면에서 하되, 실제 데이터 접근 제어는 서버가 강제한다
+ * (목록 GET 은 본인 것만, /employees 는 ADMIN 전용).
  */
 export default function PayrollPage() {
+  const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [list, setList] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
@@ -28,12 +32,13 @@ export default function PayrollPage() {
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!isAdmin) return; // /employees 는 ADMIN 전용 — 직원은 호출하지 않음(403 방지).
     let alive = true;
     api<{ employees: EmployeeOption[] }>("/api/payslip/employees")
       .then((r) => alive && setEmployees(r.employees))
       .catch(() => {});
     return () => { alive = false; };
-  }, []);
+  }, [isAdmin]);
 
   useEffect(() => {
     let alive = true;
@@ -90,13 +95,15 @@ export default function PayrollPage() {
   return (
     <div>
       <PageHeader
-        title="급여명세서"
-        description="직원별 임금명세서를 작성·발송하고 보관합니다."
-        right={
+        title={isAdmin ? "급여명세서" : "내 급여명세서"}
+        description={isAdmin
+          ? "직원별 임금명세서를 작성·발송하고 보관합니다."
+          : "발급된 임금명세서를 확인하고 PDF로 저장할 수 있어요."}
+        right={isAdmin ? (
           <button className="btn-primary" onClick={() => { setEditTarget(null); setComposing(true); }}>
             + 새 명세서
           </button>
-        }
+        ) : undefined}
       />
 
       {/* 필터 */}
@@ -108,10 +115,12 @@ export default function PayrollPage() {
           <option value={0}>전체 월</option>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
         </select>
-        <select className="input w-auto" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
-          <option value="">전체 직원</option>
-          {employees.map((e) => <option key={e.id} value={e.id}>{e.name}{e.team ? ` · ${e.team}` : ""}</option>)}
-        </select>
+        {isAdmin && (
+          <select className="input w-auto" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+            <option value="">전체 직원</option>
+            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}{e.team ? ` · ${e.team}` : ""}</option>)}
+          </select>
+        )}
       </div>
 
       <div className="card p-0 overflow-hidden overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
@@ -132,7 +141,9 @@ export default function PayrollPage() {
               <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">불러오는 중…</td></tr>
             )}
             {!loading && list.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">명세서가 없습니다. “+ 새 명세서”로 작성하세요.</td></tr>
+              <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+                {isAdmin ? "명세서가 없습니다. “+ 새 명세서”로 작성하세요." : "아직 발급된 급여명세서가 없어요."}
+              </td></tr>
             )}
             {!loading && list.map((p) => (
               <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/50">
@@ -151,14 +162,18 @@ export default function PayrollPage() {
                 </td>
                 <td className="px-4 py-3 text-right whitespace-nowrap">
                   <button className="text-[12px] text-brand-600 hover:underline" onClick={() => setPreview(p)}>보기</button>
-                  <button className="text-[12px] text-ink-600 hover:underline ml-3" onClick={() => { setEditTarget(p); setComposing(true); }}>수정</button>
-                  <button
-                    className="text-[12px] text-rose-500 hover:underline ml-3 disabled:opacity-50"
-                    onClick={() => remove(p)}
-                    disabled={busyId === p.id}
-                  >
-                    {busyId === p.id ? "삭제 중…" : "삭제"}
-                  </button>
+                  {isAdmin && (
+                    <>
+                      <button className="text-[12px] text-ink-600 hover:underline ml-3" onClick={() => { setEditTarget(p); setComposing(true); }}>수정</button>
+                      <button
+                        className="text-[12px] text-rose-500 hover:underline ml-3 disabled:opacity-50"
+                        onClick={() => remove(p)}
+                        disabled={busyId === p.id}
+                      >
+                        {busyId === p.id ? "삭제 중…" : "삭제"}
+                      </button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -166,7 +181,7 @@ export default function PayrollPage() {
         </table>
       </div>
 
-      {composing && (
+      {isAdmin && composing && (
         <PayslipComposer
           initial={editTarget}
           employees={employees}
@@ -181,7 +196,7 @@ export default function PayrollPage() {
         <PayslipPreview
           payslip={preview}
           onClose={() => setPreview(null)}
-          onEdit={() => { setEditTarget(preview); setPreview(null); setComposing(true); }}
+          onEdit={isAdmin ? () => { setEditTarget(preview); setPreview(null); setComposing(true); } : undefined}
         />
       )}
     </div>

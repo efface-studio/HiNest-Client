@@ -106,6 +106,10 @@ model User {
   sessions                Session[]
   payslips                Payslip[]              @relation("PayslipEmployee")
   payslipsCreated         Payslip[]              @relation("PayslipCreatedBy")
+
+  // autoClockOut 스케줄러가 매 60초 where:{active, autoClockOutTime} 로 조회한다.
+  // 인덱스가 없으면 매 분 User 풀스캔(1440회/일). 대부분 null 이라 인덱스는 작게 유지된다.
+  @@index([autoClockOutTime])
 }
 
 /// 활성 로그인 세션 — JWT 만 쓸 땐 서버측 강제 로그아웃이 불가했음.

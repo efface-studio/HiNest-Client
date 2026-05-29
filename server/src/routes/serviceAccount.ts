@@ -35,7 +35,10 @@ const baseSchema = z.object({
   serviceName: z.string().trim().min(1).max(80),
   category: z.enum(CATEGORIES).optional().default("OTHER"),
   loginId: z.string().trim().max(200).optional().nullable(),
-  url: z.string().trim().url().max(500).optional().nullable().or(z.literal("")),
+  // .url() 만으론 javascript:/data: 스킴이 통과한다(저장형 XSS). http(s) 만 허용하도록 refine.
+  url: z.string().trim().url().max(500)
+    .refine((u) => /^https?:\/\//i.test(u), { message: "http 또는 https URL 만 허용됩니다" })
+    .optional().nullable().or(z.literal("")),
   // 커스텀 로고 — 서버에 업로드된 /uploads/... 경로 (또는 외부 URL). 빈 문자열/ null 이면 자동 추측으로 되돌림.
   iconUrl: z.string().trim().max(500).optional().nullable().or(z.literal("")),
   iconShape: z.enum(["SQUIRCLE", "CIRCLE"]).optional(),

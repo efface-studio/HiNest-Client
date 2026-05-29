@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
+import { safeExternalUrl } from "../../lib/safeUrl";
 
 /**
  * 메시지 본문 안 첫 URL 의 OG/Twitter Card 메타를 가져와 카드로 표시.
@@ -72,13 +73,18 @@ export function LinkPreview({ url, mine }: { url: string; mine: boolean }) {
 
   if (!meta || (!meta.title && !meta.description && !meta.image)) return null;
 
+  // href 는 http(s) 만 허용 — unfurl 응답 url 이 비정상 스킴(javascript:/data:)이면
+  // 클릭형 카드 자체를 그리지 않는다(방어적, ServiceAccountsPage 와 동일 정책).
+  const safeUrl = safeExternalUrl(meta.url);
+  if (!safeUrl) return null;
+
   const host = (() => {
-    try { return new URL(meta.url).host; } catch { return ""; }
+    try { return new URL(safeUrl).host; } catch { return ""; }
   })();
 
   return (
     <a
-      href={meta.url}
+      href={safeUrl}
       target="_blank"
       rel="noopener noreferrer"
       onClick={(e) => {
@@ -86,7 +92,7 @@ export function LinkPreview({ url, mine }: { url: string; mine: boolean }) {
         const bridge = (window as any).hinest;
         if (bridge?.openExternal) {
           e.preventDefault();
-          bridge.openExternal(meta.url).catch(() => {});
+          bridge.openExternal(safeUrl).catch(() => {});
         }
       }}
       style={{
@@ -133,6 +139,8 @@ export function LinkPreview({ url, mine }: { url: string; mine: boolean }) {
               width={12}
               height={12}
               loading="lazy"
+              // 제3자 파비콘 호스트에 현재 페이지(Referer) 를 흘리지 않는다.
+              referrerPolicy="no-referrer"
               style={{ flexShrink: 0, borderRadius: 2 }}
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).style.display = "none";

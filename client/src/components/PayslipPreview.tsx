@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useModalDismiss } from "../lib/useModalDismiss";
 import {
   type Payslip,
@@ -16,13 +17,27 @@ export default function PayslipPreview({
   payslip,
   onClose,
   onEdit,
+  onSend,
 }: {
   payslip: Payslip;
   onClose: () => void;
   onEdit?: () => void;
+  /** 관리자 전용 — 직원 계정 이메일로 PDF 발송. await 동안 버튼이 "발송 중…". */
+  onSend?: () => Promise<void> | void;
 }) {
   useModalDismiss(true, onClose);
+  const [sending, setSending] = useState(false);
   const p = payslip;
+
+  async function handleSend() {
+    if (!onSend || sending) return;
+    setSending(true);
+    try {
+      await onSend();
+    } finally {
+      setSending(false);
+    }
+  }
   const rows = Math.max(p.earnings.length, p.deductions.length);
   const att = attendanceEntries(p.attendance);
   const calc = p.calcRows ?? [];
@@ -42,6 +57,15 @@ export default function PayslipPreview({
             {onEdit && (
               <button className="btn-ghost text-[13px]" onClick={onEdit}>
                 수정
+              </button>
+            )}
+            {onSend && (
+              <button
+                className="btn-ghost text-[13px] text-brand-600 disabled:opacity-50"
+                onClick={handleSend}
+                disabled={sending}
+              >
+                {sending ? "발송 중…" : (p.sentAt ? "재발송" : "메일 발송")}
               </button>
             )}
             <button className="btn-ghost text-[13px]" onClick={() => openPayslipPrint(p)}>

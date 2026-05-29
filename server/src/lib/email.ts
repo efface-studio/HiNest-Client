@@ -1,4 +1,4 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
+import { SESClient, SendEmailCommand, SendRawEmailCommand } from "@aws-sdk/client-ses";
 
 /**
  * 메일 발송 헬퍼 — AWS SES 사용.
@@ -64,6 +64,148 @@ export async function sendEmail(payload: EmailPayload): Promise<{ ok: boolean; m
     logFallback(payload, `SES error: ${e?.message ?? String(e)}`);
     return { ok: false, reason: e?.message ?? String(e) };
   }
+}
+
+export type EmailAttachment = {
+  /** ASCII 파일명 권장 — 비-ASCII 는 안전 문자로 치환된다. */
+  filename: string;
+  /** 순수 base64(데이터 URI 접두어 없음). */
+  contentBase64: string;
+  /** MIME 타입 — 기본 application/pdf. */
+  contentType?: string;
+};
+
+/**
+ * 첨부 포함 메일 발송 — SendRawEmailCommand 로 직접 MIME 을 만들어 보낸다.
+ * 첨부가 없으면 일반 sendEmail 경로로 위임(코드 중복 없음).
+ * sendEmail 과 동일하게 실패해도 throw 하지 않고 {ok:false}; 본문은 절대 로그 안 함.
+ */
+export async function sendEmailWithAttachment(
+  payload: EmailPayload & { attachments?: EmailAttachment[] },
+): Promise<{ ok: boolean; messageId?: string; reason?: string }> {
+  const attachments = payload.attachments ?? [];
+  if (attachments.length === 0) return sendEmail(payload);
+
+  if (!FROM) {
+    logFallback(payload, "SES_FROM_ADDRESS 미설정");
+    return { ok: false, reason: "SES_FROM_ADDRESS not configured" };
+  }
+  try {
+    const raw = buildRawMime(FROM, payload, attachments);
+    const cmd = new SendRawEmailCommand({
+      Destinations: [payload.to],
+      RawMessage: { Data: new TextEncoder().encode(raw) },
+    });
+    const r = await ses().send(cmd);
+    return { ok: true, messageId: r.MessageId };
+  } catch (e: any) {
+    logFallback(payload, `SES raw error: ${e?.message ?? String(e)}`);
+    return { ok: false, reason: e?.message ?? String(e) };
+  }
+}
+
+/* ===== MIME 빌더 (첨부 메일용) ===== */
+
+const CRLF = "\r\n";
+
+function b64(s: string): string {
+  return Buffer.from(s, "utf8").toString("base64");
+}
+
+/** base64 문자열을 76자마다 CRLF 로 접는다(RFC 2045). */
+function foldBase64(s: string): string {
+  const lines: string[] = [];
+  for (let i = 0; i < s.length; i += 76) lines.push(s.slice(i, i + 76));
+  return lines.join(CRLF);
+}
+
+/**
+ * 헤더용 UTF-8 인코딩(RFC 2047 encoded-word).
+ * 멀티바이트 경계가 안 깨지게 ~45바이트 이하로 쪼개 각각 =?UTF-8?B?..?= 로.
+ */
+function encodeHeaderUtf8(s: string): string {
+  // 순수 ASCII 면 그대로(가독성).
+  if (/^[\x20-\x7E]*$/.test(s)) return s;
+  const enc = new TextEncoder();
+  const chunks: string[] = [];
+  let cur = "";
+  let curBytes = 0;
+  for (const ch of s) {
+    const n = enc.encode(ch).length;
+    if (curBytes + n > 45 && cur) {
+      chunks.push(cur);
+      cur = "";
+      curBytes = 0;
+    }
+    cur += ch;
+    curBytes += n;
+  }
+  if (cur) chunks.push(cur);
+  return chunks.map((c) => `=?UTF-8?B?${b64(c)}?=`).join(`${CRLF} `);
+}
+
+/** 첨부 파일명 — ASCII 안전 문자만. 경로/따옴표/제어문자 제거, 비면 기본값. */
+function sanitizeFilename(name: string): string {
+  const cleaned = name
+    .replace(/[\\/:*?"<>|\r\n\t]+/g, "_")
+    .replace(/[^\x20-\x7E]+/g, "")
+    .trim();
+  return cleaned || "attachment.pdf";
+}
+
+function buildRawMime(
+  from: string,
+  payload: EmailPayload,
+  attachments: EmailAttachment[],
+): string {
+  const rand = () => `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+  const mixed = `mixed_${rand()}`;
+  const alt = `alt_${rand()}`;
+
+  const head = [
+    `From: ${from}`,
+    `To: ${payload.to}`,
+    `Subject: ${encodeHeaderUtf8(payload.subject)}`,
+    "MIME-Version: 1.0",
+    `Content-Type: multipart/mixed; boundary="${mixed}"`,
+  ].join(CRLF);
+
+  // 본문 파트 — html 있으면 alternative(text+html), 없으면 text 단독.
+  // 한글 본문 안전하게 base64 인코딩.
+  let bodyPart: string;
+  if (payload.html) {
+    bodyPart =
+      `Content-Type: multipart/alternative; boundary="${alt}"${CRLF}${CRLF}` +
+      `--${alt}${CRLF}` +
+      `Content-Type: text/plain; charset=UTF-8${CRLF}` +
+      `Content-Transfer-Encoding: base64${CRLF}${CRLF}` +
+      `${foldBase64(b64(payload.text))}${CRLF}${CRLF}` +
+      `--${alt}${CRLF}` +
+      `Content-Type: text/html; charset=UTF-8${CRLF}` +
+      `Content-Transfer-Encoding: base64${CRLF}${CRLF}` +
+      `${foldBase64(b64(payload.html))}${CRLF}${CRLF}` +
+      `--${alt}--`;
+  } else {
+    bodyPart =
+      `Content-Type: text/plain; charset=UTF-8${CRLF}` +
+      `Content-Transfer-Encoding: base64${CRLF}${CRLF}` +
+      foldBase64(b64(payload.text));
+  }
+
+  const segments: string[] = [head, "", `--${mixed}`, bodyPart];
+  for (const att of attachments) {
+    const ct = att.contentType || "application/pdf";
+    const name = sanitizeFilename(att.filename);
+    segments.push(`--${mixed}`);
+    segments.push(
+      `Content-Type: ${ct}; name="${name}"${CRLF}` +
+        `Content-Disposition: attachment; filename="${name}"${CRLF}` +
+        `Content-Transfer-Encoding: base64${CRLF}${CRLF}` +
+        foldBase64(att.contentBase64),
+    );
+  }
+  segments.push(`--${mixed}--`);
+  return segments.join(CRLF);
 }
 
 /**

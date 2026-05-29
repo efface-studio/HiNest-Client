@@ -4,8 +4,9 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import PayslipComposer from "../components/PayslipComposer";
 import PayslipPreview from "../components/PayslipPreview";
-import { confirmAsync } from "../components/ConfirmHost";
+import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import { type Payslip, type EmployeeOption, won } from "../lib/payslip";
+import { payslipToPdfBase64 } from "../lib/payslipPdf";
 
 const NOW = new Date();
 
@@ -30,6 +31,7 @@ export default function PayrollPage() {
   const [editTarget, setEditTarget] = useState<Payslip | null>(null);
   const [preview, setPreview] = useState<Payslip | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [sendingId, setSendingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return; // /employees 는 ADMIN 전용 — 직원은 호출하지 않음(403 방지).
@@ -87,6 +89,40 @@ export default function PayrollPage() {
       setList((prev) => prev.filter((x) => x.id !== p.id));
     } finally {
       setBusyId(null);
+    }
+  }
+
+  // 명세서를 PDF 로 만들어 직원 계정 이메일로 발송. 클라에서 PDF 렌더 → 서버가 SES 첨부.
+  async function sendMail(p: Payslip) {
+    const to = p.employee?.email;
+    if (!to) {
+      await alertAsync({ title: "발송 불가", description: "직원 계정 이메일이 없어요." });
+      return;
+    }
+    const ok = await confirmAsync({
+      title: "급여명세서 메일 발송",
+      description: `${p.employeeName} (${to})에게 ${p.year}년 ${p.month}월 명세서를 PDF로 발송할까요?`,
+      confirmLabel: "발송",
+      cancelLabel: "취소",
+    });
+    if (!ok) return;
+    setSendingId(p.id);
+    try {
+      const pdfBase64 = await payslipToPdfBase64(p);
+      const r = await api<{ payslip: Payslip }>(`/api/payslip/${p.id}/send`, {
+        method: "POST",
+        json: { pdfBase64 },
+      });
+      setList((prev) => prev.map((x) => (x.id === p.id ? r.payslip : x)));
+      setPreview((prev) => (prev && prev.id === p.id ? r.payslip : prev));
+      await alertAsync({ title: "발송 완료", description: `${p.employeeName}님에게 메일을 보냈어요.` });
+    } catch (e: any) {
+      await alertAsync({
+        title: "발송 실패",
+        description: e?.data?.error || e?.message || "잠시 후 다시 시도해주세요.",
+      });
+    } finally {
+      setSendingId(null);
     }
   }
 
@@ -166,6 +202,13 @@ export default function PayrollPage() {
                     <>
                       <button className="text-[12px] text-ink-600 hover:underline ml-3" onClick={() => { setEditTarget(p); setComposing(true); }}>수정</button>
                       <button
+                        className="text-[12px] text-brand-600 hover:underline ml-3 disabled:opacity-50"
+                        onClick={() => sendMail(p)}
+                        disabled={sendingId === p.id}
+                      >
+                        {sendingId === p.id ? "발송 중…" : (p.sentAt ? "재발송" : "메일 발송")}
+                      </button>
+                      <button
                         className="text-[12px] text-rose-500 hover:underline ml-3 disabled:opacity-50"
                         onClick={() => remove(p)}
                         disabled={busyId === p.id}
@@ -197,6 +240,7 @@ export default function PayrollPage() {
           payslip={preview}
           onClose={() => setPreview(null)}
           onEdit={isAdmin ? () => { setEditTarget(preview); setPreview(null); setComposing(true); } : undefined}
+          onSend={isAdmin ? () => sendMail(preview) : undefined}
         />
       )}
     </div>

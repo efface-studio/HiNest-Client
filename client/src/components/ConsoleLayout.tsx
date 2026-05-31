@@ -32,8 +32,10 @@ export default function ConsoleLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
 
+  // 회사 관리는 플랫폼 운영자뿐 아니라 개발자(superAdmin)에게도 노출 — 개발자는 최상위
+  // 권한이므로 테넌트 가입 승인까지 직접 처리할 수 있어야 한다.
   const links: ConsoleLink[] = [
-    user?.platformAdmin && { to: "/platform", label: "회사 관리", desc: "테넌트 가입·승인·정지", icon: CompanyIcon },
+    (user?.platformAdmin || user?.superAdmin) && { to: "/platform", label: "회사 관리", desc: "테넌트 가입·승인·정지", icon: CompanyIcon },
     user?.superAdmin && { to: "/super-admin", label: "개발자 콘솔", desc: "로그·감사·시스템 설정", icon: TerminalIcon },
   ].filter(Boolean) as ConsoleLink[];
 
@@ -70,6 +72,20 @@ export default function ConsoleLayout() {
           </span>
         </div>
 
+        {hasCompany && (
+          <div className="px-2 pt-3 flex-shrink-0">
+            <button
+              onClick={() => nav("/")}
+              className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-white/75 bg-white/[0.06] hover:bg-white/[0.12] hover:text-white transition"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
+              </svg>
+              서비스로 돌아가기
+            </button>
+          </div>
+        )}
+
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-1">
           {links.map((l) => (
             <NavLink key={l.to} to={l.to} className={({ isActive }) => itemClass(isActive)}>
@@ -92,17 +108,6 @@ export default function ConsoleLayout() {
           className="border-t border-white/10 px-2 py-2 flex-shrink-0 space-y-1"
           style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
         >
-          {hasCompany && (
-            <button
-              onClick={() => nav("/")}
-              className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-[12.5px] font-semibold text-white/60 hover:bg-white/[0.06] hover:text-white/90 transition"
-            >
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m12 19-7-7 7-7" /><path d="M19 12H5" />
-              </svg>
-              서비스로 돌아가기
-            </button>
-          )}
           <div className="flex items-center gap-2 px-3 py-2">
             <div
               className="avatar avatar-sm flex-shrink-0"

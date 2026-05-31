@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import BrandLockup from "./BrandLockup";
 
 /**
  * 운영 콘솔 셸 — 총관리자(개발자)/플랫폼 운영자 전용. 회사 앱(AppLayout)과
@@ -86,7 +87,7 @@ export default function ConsoleLayout() {
           />
         )}
         <div className="px-5 h-[52px] flex items-center gap-2 border-b border-white/10 flex-shrink-0">
-          <span className="text-[15px] font-extrabold tracking-tight">HiNest</span>
+          <BrandLockup height={20} onDark />
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide"
             style={{ background: "var(--c-brand)", color: "#fff" }}
@@ -168,7 +169,7 @@ export default function ConsoleLayout() {
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="h-[48px] px-4 flex items-center gap-2">
-            <span className="text-[14px] font-extrabold tracking-tight">HiNest</span>
+            <BrandLockup height={18} onDark />
             <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md uppercase" style={{ background: "var(--c-brand)" }}>
               운영 콘솔
             </span>

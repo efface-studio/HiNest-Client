@@ -4,6 +4,7 @@ import { prisma } from "../lib/db.js";
 import { requireAuth, verifySuperToken, writeLog } from "../lib/auth.js";
 import { notifyMany } from "../lib/notify.js";
 import { publishMany } from "../lib/sse.js";
+import { allSameCompanyUsers } from "../lib/tenantValidate.js";
 
 /**
  * SSE 채팅 브로드캐스트.
@@ -165,6 +166,8 @@ router.post("/rooms", async (req, res) => {
 
   if (!d.name) return res.status(400).json({ error: "방 이름이 필요합니다" });
   const memberIds = Array.from(new Set([u.id, ...d.memberIds]));
+  if (!(await allSameCompanyUsers(memberIds)))
+    return res.status(400).json({ error: "멤버 중 일부를 찾을 수 없습니다" });
   const room = await prisma.chatRoom.create({
     data: {
       name: d.name,

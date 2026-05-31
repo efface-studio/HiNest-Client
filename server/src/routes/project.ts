@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { generateWebhookToken } from "./webhook.js";
+import { allSameCompanyUsers } from "../lib/tenantValidate.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -61,6 +62,8 @@ router.post("/", async (req, res) => {
   const d = parsed.data;
   // 생성자는 OWNER 로 자동 포함. 중복 제거.
   const memberSet = new Set<string>([u.id, ...(d.memberIds ?? [])]);
+  if (!(await allSameCompanyUsers(Array.from(memberSet))))
+    return res.status(400).json({ error: "초대한 멤버 중 일부를 찾을 수 없어요." });
   const project = await prisma.project.create({
     data: {
       name: d.name,
@@ -663,6 +666,8 @@ router.post("/:id/member", async (req, res) => {
   if (targetRole === "OWNER" && !(me?.role === "OWNER" || u.role === "ADMIN")) {
     return res.status(403).json({ error: "OWNER 역할은 기존 OWNER 또는 시스템 관리자만 부여할 수 있어요" });
   }
+  if (!(await allSameCompanyUsers([body.data.userId])))
+    return res.status(400).json({ error: "추가하려는 멤버를 찾을 수 없어요." });
   const created = await prisma.projectMember.upsert({
     where: { projectId_userId: { projectId: req.params.id, userId: body.data.userId } },
     update: { role: targetRole },

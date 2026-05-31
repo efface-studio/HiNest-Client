@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { notify, notifyMany } from "../lib/notify.js";
+import { allSameCompanyUsers } from "../lib/tenantValidate.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -180,6 +181,8 @@ router.post("/:id/revise", async (req, res) => {
 
   const reviewers = Array.from(new Set(d.reviewerIds.filter((id) => id !== u.id)));
   if (!reviewers.length) return res.status(400).json({ error: "결재자를 1명 이상 선택해주세요" });
+  if (!(await allSameCompanyUsers(reviewers)))
+    return res.status(400).json({ error: "결재자 중 일부를 찾을 수 없어요." });
   let dataJson: string | null = null;
   if (d.data !== undefined && d.data !== null) {
     const serialized = JSON.stringify(d.data);
@@ -225,6 +228,8 @@ router.post("/", async (req, res) => {
 
   const reviewers = Array.from(new Set(d.reviewerIds.filter((id) => id !== u.id)));
   if (!reviewers.length) return res.status(400).json({ error: "결재자를 1명 이상 선택해주세요" });
+  if (!(await allSameCompanyUsers(reviewers)))
+    return res.status(400).json({ error: "결재자 중 일부를 찾을 수 없어요." });
 
   // d.data 는 z.any() 라 서버에서 다시 한 번 크기 제한. 결재 양식별 폼 JSON
   // (출장 지역/경비 등) 이 들어가는 자리라 수 KB 면 충분. 전역 json limit(2mb)

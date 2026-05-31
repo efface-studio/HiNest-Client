@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { notifyMany } from "../lib/notify.js";
+import { allSameCompanyUsers } from "../lib/tenantValidate.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -159,6 +160,8 @@ router.post("/", async (req, res) => {
   const me = await prisma.user.findUnique({ where: { id: u.id } });
 
   const targets = (d.targetUserIds ?? []).filter((id) => id && id !== u.id);
+  if (targets.length && !(await allSameCompanyUsers(targets)))
+    return res.status(400).json({ error: "대상자 중 일부를 찾을 수 없어요." });
 
   const ev = await prisma.event.create({
     data: {

@@ -2,14 +2,18 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, requirePlatformAdmin, writeLog } from "../lib/auth.js";
+import { runUnscoped } from "../lib/tenant.js";
 
 /**
- * 플랫폼 운영자 전용 API — 회사(테넌트) 가입 승인 워크플로우.
- * 모든 라우트는 platformAdmin 만 접근 가능하며 테넌트를 가로질러 동작한다.
- * (회사 내부 admin/superAdmin 과 구분 — 그쪽은 /api/admin.)
+ * 플랫폼 운영 API — 회사(테넌트) 가입 승인 워크플로우.
+ * platformAdmin 또는 개발자(superAdmin)만 접근하며 테넌트를 가로질러 동작한다.
+ * (회사 내부 admin 과 구분 — 그쪽은 /api/admin.)
  */
 const router = Router();
-router.use(requireAuth, requirePlatformAdmin);
+// 이 라우트들은 본질적으로 전 회사를 가로지른다(목록·승인 등). platformAdmin 은 세션
+// 자체가 스코프 우회지만 superAdmin 은 평소 자기 회사로 스코프되므로, 이 구간만 명시적으로
+// 스코프를 해제해 모든 회사 데이터를 읽고 쓸 수 있게 한다.
+router.use(requireAuth, requirePlatformAdmin, (_req, _res, next) => runUnscoped(() => next()));
 
 const VALID_STATUS = ["PENDING", "ACTIVE", "SUSPENDED", "REJECTED"] as const;
 

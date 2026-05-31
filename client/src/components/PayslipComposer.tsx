@@ -216,8 +216,8 @@ export default function PayslipComposer({
           <Field label="생년월일(사번)" value={idNumber} onChange={setIdNumber} max={40} />
           <Field label="부서" value={department} onChange={setDepartment} max={60} />
           <Field label="직위" value={position} onChange={setPosition} max={60} />
-          <Field label="입사일" value={joinDate} onChange={setJoinDate} max={40} placeholder="2025-01-01" />
-          <Field label="지급일" value={payDate} onChange={setPayDate} max={40} placeholder="2026-05-25" />
+          <Field label="입사일" value={joinDate} onChange={setJoinDate} max={10} placeholder="2025-01-01" mask={maskDate} inputMode="numeric" />
+          <Field label="지급일" value={payDate} onChange={setPayDate} max={10} placeholder="2026-05-25" mask={maskDate} inputMode="numeric" />
           <div className="sm:col-span-2">
             <Field label="회사명" value={companyName} onChange={setCompanyName} max={100} />
           </div>
@@ -295,14 +295,31 @@ export default function PayslipComposer({
   );
 }
 
+// 숫자만 받아 YYYY-MM-DD 로 자동 하이픈. 8자리 초과는 버리고, 월/일은 2자리 완성 시 상한 보정(12월·31일).
+function maskDate(raw: string): string {
+  const d = raw.replace(/\D/g, "").slice(0, 8);
+  const y = d.slice(0, 4);
+  let mo = d.slice(4, 6);
+  let da = d.slice(6, 8);
+  if (mo.length === 2 && Number(mo) > 12) mo = "12";
+  if (da.length === 2 && Number(da) > 31) da = "31";
+  let out = y;
+  if (d.length > 4) out += "-" + mo;
+  if (d.length > 6) out += "-" + da;
+  return out;
+}
+
 function Field({
-  label, value, onChange, max, placeholder,
+  label, value, onChange, max, placeholder, mask, inputMode,
 }: {
   label: string;
   value: string;
   onChange: (v: string) => void;
   max?: number;
   placeholder?: string;
+  /** 입력값 변환기(예: 날짜 자동 하이픈). 주면 onChange 직전에 적용. */
+  mask?: (v: string) => string;
+  inputMode?: "text" | "numeric";
 }) {
   return (
     <div>
@@ -312,7 +329,8 @@ function Field({
         value={value}
         maxLength={max}
         placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
+        inputMode={inputMode}
+        onChange={(e) => onChange(mask ? mask(e.target.value) : e.target.value)}
       />
     </div>
   );

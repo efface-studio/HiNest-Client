@@ -15,9 +15,10 @@ import { useTheme } from "../theme";
  *
  * 마크 폴리곤 좌표는 원본 그대로 보존.
  */
-export default function BrandLockup({ height = 30 }: { height?: number }) {
+export default function BrandLockup({ height = 30, onDark }: { height?: number; onDark?: boolean }) {
   const { resolved } = useTheme();
-  const isDark = resolved === "dark";
+  // onDark: 항상 어두운 표면(예: 운영 콘솔 사이드바)에 얹힐 때 테마와 무관하게 밝은 워드마크 강제.
+  const isDark = onDark ?? resolved === "dark";
   const textColor = isDark ? "#FFFFFF" : "#0C1020";
   const dotColor = isDark ? "#A5B8FF" : "#3B5CF0";
 

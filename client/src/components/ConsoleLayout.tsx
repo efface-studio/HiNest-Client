@@ -1,5 +1,7 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import BrandLockup from "./BrandLockup";
 
 /**
  * 운영 콘솔 셸 — 총관리자(개발자)/플랫폼 운영자 전용. 회사 앱(AppLayout)과
@@ -32,6 +34,20 @@ export default function ConsoleLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
 
+  // macOS Electron 창모드에선 신호등 버튼이 좌상단 콘텐츠를 침범한다 — AppLayout 과
+  // 동일하게 상단에 드래그 가능한 28px 여백을 두어 로고/본문이 가려지지 않게 한다.
+  // 전체화면에선 신호등이 숨으므로 여백 제거.
+  const isMacDesktop = !!window.hinest?.isDesktop && window.hinest?.platform === "darwin";
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    if (!isMacDesktop || !window.hinest?.onFullscreenChange) return;
+    const off = window.hinest.onFullscreenChange((fs) => setIsFullscreen(fs));
+    return () => {
+      try { off?.(); } catch {}
+    };
+  }, [isMacDesktop]);
+  const showTitlebarSpace = isMacDesktop && !isFullscreen;
+
   // 회사 관리는 플랫폼 운영자뿐 아니라 개발자(superAdmin)에게도 노출 — 개발자는 최상위
   // 권한이므로 테넌트 가입 승인까지 직접 처리할 수 있어야 한다.
   const links: ConsoleLink[] = [
@@ -62,8 +78,18 @@ export default function ConsoleLayout() {
         className="hidden md:flex w-[252px] flex-col flex-shrink-0 bg-ink-900 text-white"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
+        {/* 신호등 영역용 드래그 가능 상단바 — 사이드바 배경과 통일 */}
+        {showTitlebarSpace && (
+          <div
+            style={{
+              height: 28,
+              // @ts-expect-error drag region
+              WebkitAppRegion: "drag",
+            }}
+          />
+        )}
         <div className="px-5 h-[52px] flex items-center gap-2 border-b border-white/10 flex-shrink-0">
-          <span className="text-[15px] font-extrabold tracking-tight">HiNest</span>
+          <BrandLockup tone="dark" height={24} subtitle={false} />
           <span
             className="text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide"
             style={{ background: "var(--c-brand)", color: "#fff" }}
@@ -130,12 +156,23 @@ export default function ConsoleLayout() {
 
       {/* ===== 모바일 상단바 + 본문 ===== */}
       <div className="flex-1 min-w-0 flex flex-col">
+        {/* 신호등 영역용 드래그 가능 상단바 — 본문 배경과 통일 */}
+        {showTitlebarSpace && (
+          <div
+            className="bg-ink-50 flex-shrink-0"
+            style={{
+              height: 28,
+              // @ts-expect-error drag region
+              WebkitAppRegion: "drag",
+            }}
+          />
+        )}
         <header
           className="md:hidden bg-ink-900 text-white flex-shrink-0"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="h-[48px] px-4 flex items-center gap-2">
-            <span className="text-[14px] font-extrabold tracking-tight">HiNest</span>
+            <BrandLockup tone="dark" height={22} subtitle={false} />
             <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md uppercase" style={{ background: "var(--c-brand)" }}>
               운영 콘솔
             </span>

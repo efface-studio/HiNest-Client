@@ -1,97 +1,115 @@
 import { useTheme } from "../theme";
 
 /**
- * BrandLockup — 새 HiNest 로고 (기하 마크 + "HiNest." 워드마크) 인라인 SVG.
+ * BrandLockup — HiNest 로고 (블루 타일 마크 + "HiNest" 워드마크 + "Workplace Platform" 서브).
  *
- * 디자이너가 준 light/dark export(HiNest-logo-light.svg / -dark.svg)를 인라인화한 것.
- * 두 파일의 차이는 ① 배경 사각형 색 ② 워드마크 글자/점 색뿐이라, 한 컴포넌트에서
- * 테마(resolved)로 색만 전환한다.
+ * 디자이너가 준 light/dark export(HiNest-라이트.svg / HiNest-다크.svg)를 인라인화한 것.
+ * 두 파일의 차이는 ① 배경 사각형 색 ② 워드마크/서브 글자색뿐이라, 한 컴포넌트에서
+ * 색만 전환한다.
  *
  * export 원본 대비 의도적으로 바꾼 점:
- *  - 배경 사각형 제거 → 사이드바에 투명하게 얹힘 (원본의 bg rect 는 export 미리보기용)
- *  - 워드마크가 원본에선 미정의 `.wm` 클래스에 의존해 깨지므로 브랜드 폰트(Pretendard)로 렌더
- *    (원본 파일 desc 의 "outline the text before production" 지침을 코드 렌더로 대체)
- *  - gradient id 는 페이지 내 충돌 방지를 위해 `hn-` 프리픽스
+ *  - 배경 사각형 제거 → 사이드바에 투명하게 얹힘 (원본 bg rect 는 export 미리보기용)
+ *  - 워드마크/서브가 원본에선 미정의 `.wm`/`.mono` 클래스에 의존해 깨지므로 브랜드 폰트
+ *    (Pretendard / JetBrains Mono)로 HTML 텍스트로 렌더 — SVG <text> 폭 추정 없이 안전
+ *  - gradient/filter id 는 페이지 충돌 방지로 `hn-` 프리픽스
+ *  - 타일·마크 폴리곤 좌표는 원본 그대로 보존
  *
- * 마크 폴리곤 좌표는 원본 그대로 보존.
+ * tone: 색 강제. 콘솔처럼 테마와 무관하게 항상 어두운 표면 위에 얹힐 땐 tone="dark".
+ *       미지정 시 현재 테마(resolved)를 따른다.
  */
-export default function BrandLockup({ height = 30 }: { height?: number }) {
+export default function BrandLockup({
+  height = 30,
+  tone,
+  subtitle = true,
+}: {
+  height?: number;
+  tone?: "light" | "dark";
+  subtitle?: boolean;
+}) {
   const { resolved } = useTheme();
-  const isDark = resolved === "dark";
-  const textColor = isDark ? "#FFFFFF" : "#0C1020";
-  const dotColor = isDark ? "#A5B8FF" : "#3B5CF0";
+  const onDark = tone ? tone === "dark" : resolved === "dark";
+  const textColor = onDark ? "#FFFFFF" : "#0C1020";
+  const subColor = onDark ? "rgba(255,255,255,0.6)" : "#5A6072";
 
-  // 원본 viewBox 1080×320 에서 상하 여백만 잘라 헤더에 꽉 차게. 가로는 워드마크
-  // 클리핑 방지를 위해 그대로 유지.
-  const vbX = 0;
-  const vbY = 56;
-  const vbW = 1080;
-  const vbH = 236;
-  const width = (height * vbW) / vbH;
+  // 타일(188) 기준 비율을 원본(워드마크 104 / 서브 35 / 타일 188)에 맞춰 환산.
+  const wordSize = Math.round(height * 0.55);
+  const subSize = Math.max(7, Math.round(height * 0.2));
+  const gap = Math.round(height * 0.34);
 
   return (
-    <svg
-      width={width}
-      height={height}
-      viewBox={`${vbX} ${vbY} ${vbW} ${vbH}`}
-      xmlns="http://www.w3.org/2000/svg"
-      role="img"
-      aria-label="HiNest"
-      className="select-none"
-    >
-      <defs>
-        <linearGradient id="hn-bl1" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#4A7FFF" />
-          <stop offset="100%" stopColor="#1E4FD4" />
-        </linearGradient>
-        <linearGradient id="hn-bl2" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#5B8DFF" />
-          <stop offset="100%" stopColor="#2A5DE8" />
-        </linearGradient>
-        <linearGradient id="hn-bl-light" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#8FB3FF" />
-          <stop offset="100%" stopColor="#5B8DFF" />
-        </linearGradient>
-        <linearGradient id="hn-bl-dark" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#2A5DE8" />
-          <stop offset="100%" stopColor="#1A3FB5" />
-        </linearGradient>
-      </defs>
-
-      {/* ── 기하 마크 (원본 좌표 보존) ── */}
-      <g transform="translate(40,40)">
-        <g transform="translate(120,120) scale(2.0)">
-          <polygon points="-58,-18 -38,-33 -38,52 -58,62" fill="url(#hn-bl-dark)" />
-          <polygon points="-38,-33 -12,-33 -12,52 -38,52" fill="url(#hn-bl2)" />
-          <polygon points="-58,-18 -38,-33 -12,-33 -32,-18" fill="url(#hn-bl-light)" />
-          <polygon points="-38,-33 -25,-47 0,-47 -12,-33" fill="url(#hn-bl1)" />
-          <polygon points="-32,-18 -12,-33 0,-47 -20,-33" fill="url(#hn-bl-dark)" />
-          <polygon points="-12,10 12,5 12,24 -12,29" fill="url(#hn-bl-light)" />
-          <polygon points="-12,10 12,5 12,24 -12,29" fill="url(#hn-bl2)" opacity="0.55" />
-          <polygon points="38,-33 58,-18 58,62 38,52" fill="url(#hn-bl-dark)" />
-          <polygon points="12,-33 38,-33 38,52 12,52" fill="url(#hn-bl2)" />
-          <polygon points="38,-33 58,-18 32,-18 12,-33" fill="url(#hn-bl-light)" />
-          <polygon points="12,-33 38,-33 25,-47 0,-47" fill="url(#hn-bl1)" />
-          <polygon points="38,-33 58,-18 45,-33 25,-47" fill="url(#hn-bl-dark)" />
-          <rect x="-32" y="-13" width="11" height="11" fill="#FFFFFF" rx="1.5" />
-          <rect x="-32" y="15" width="11" height="11" fill="#FFFFFF" rx="1.5" />
-          <rect x="21" y="-13" width="11" height="11" fill="#FFFFFF" rx="1.5" />
-          <rect x="21" y="15" width="11" height="11" fill="#FFFFFF" rx="1.5" />
-        </g>
-      </g>
-
-      {/* ── 워드마크 (브랜드 폰트로 렌더) ── */}
-      <text
-        x="320"
-        y="220"
-        fontFamily='"Pretendard Variable", Pretendard, -apple-system, sans-serif'
-        fontWeight={800}
-        fontSize={196}
-        letterSpacing="-0.04em"
+    <div className="inline-flex items-center select-none" style={{ gap }} aria-label="HiNest">
+      {/* ── 블루 타일 + 흰 마크 (원본 좌표 보존, 상하좌우 여백만 크롭) ── */}
+      <svg
+        width={height}
+        height={height}
+        viewBox="112 122 224 224"
+        xmlns="http://www.w3.org/2000/svg"
+        role="img"
+        aria-hidden
+        style={{ flexShrink: 0 }}
       >
-        <tspan fill={textColor}>HiNest</tspan>
-        <tspan fill={dotColor}>.</tspan>
-      </text>
-    </svg>
+        <defs>
+          <linearGradient id="hn-tile" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#5B8DFF" />
+            <stop offset="55%" stopColor="#3B5CF0" />
+            <stop offset="100%" stopColor="#1E4FD4" />
+          </linearGradient>
+          <filter id="hn-tshadow" x="-30%" y="-30%" width="160%" height="160%">
+            <feDropShadow dx="0" dy="9" stdDeviation="14" floodColor="#1E37B8" floodOpacity="0.42" />
+          </filter>
+        </defs>
+
+        <rect x="130" y="136" width="188" height="188" rx="44" fill="url(#hn-tile)" filter="url(#hn-tshadow)" />
+        <rect x="130" y="136" width="188" height="188" rx="44" fill="none" stroke="#FFFFFF" strokeOpacity="0.18" strokeWidth="1.5" />
+
+        <g transform="translate(224,227.6262626) scale(0.94949494)">
+          <polygon points="-58,-18 -38,-33 -38,52 -58,62" fill="#FFFFFF" opacity="0.55" />
+          <polygon points="-38,-33 -12,-33 -12,52 -38,52" fill="#FFFFFF" opacity="0.82" />
+          <polygon points="-58,-18 -38,-33 -12,-33 -32,-18" fill="#FFFFFF" />
+          <polygon points="-38,-33 -25,-47 0,-47 -12,-33" fill="#FFFFFF" opacity="0.92" />
+          <polygon points="-32,-18 -12,-33 0,-47 -20,-33" fill="#FFFFFF" opacity="0.55" />
+          <polygon points="-12,10 12,5 12,24 -12,29" fill="#FFFFFF" />
+          <polygon points="-12,10 12,5 12,24 -12,29" fill="#FFFFFF" opacity="0.4" />
+          <polygon points="38,-33 58,-18 58,62 38,52" fill="#FFFFFF" opacity="0.55" />
+          <polygon points="12,-33 38,-33 38,52 12,52" fill="#FFFFFF" opacity="0.82" />
+          <polygon points="38,-33 58,-18 32,-18 12,-33" fill="#FFFFFF" />
+          <polygon points="12,-33 38,-33 25,-47 0,-47" fill="#FFFFFF" opacity="0.92" />
+          <polygon points="38,-33 58,-18 45,-33 25,-47" fill="#FFFFFF" opacity="0.55" />
+          <rect x="-32" y="-13" width="11" height="11" fill="#3B5CF0" rx="1.5" />
+          <rect x="-32" y="15" width="11" height="11" fill="#3B5CF0" rx="1.5" />
+          <rect x="21" y="-13" width="11" height="11" fill="#3B5CF0" rx="1.5" />
+          <rect x="21" y="15" width="11" height="11" fill="#3B5CF0" rx="1.5" />
+        </g>
+      </svg>
+
+      {/* ── 워드마크 + 서브 (브랜드 폰트로 렌더) ── */}
+      <span className="flex flex-col" style={{ lineHeight: 1 }}>
+        <span
+          style={{
+            fontFamily: '"Pretendard Variable", Pretendard, -apple-system, sans-serif',
+            fontWeight: 800,
+            fontSize: wordSize,
+            letterSpacing: "-0.03em",
+            color: textColor,
+          }}
+        >
+          HiNest
+        </span>
+        {subtitle && (
+          <span
+            style={{
+              fontFamily: '"JetBrains Mono", "SF Mono", Menlo, monospace',
+              fontSize: subSize,
+              letterSpacing: "0.12em",
+              color: subColor,
+              marginTop: Math.round(height * 0.12),
+              whiteSpace: "nowrap",
+            }}
+          >
+            Workplace Platform
+          </span>
+        )}
+      </span>
+    </div>
   );
 }

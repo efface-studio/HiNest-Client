@@ -32,6 +32,8 @@ export default function PayrollPage() {
   const [preview, setPreview] = useState<Payslip | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulk, setBulk] = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     if (!isAdmin) return; // /employees 는 ADMIN 전용 — 직원은 호출하지 않음(403 방지).
@@ -45,6 +47,7 @@ export default function PayrollPage() {
   useEffect(() => {
     let alive = true;
     setLoading(true);
+    setSelected(new Set()); // 필터가 바뀌면 선택 초기화 — 안 보이는 행이 선택된 채 발송되는 일 방지.
     const q = new URLSearchParams();
     q.set("year", String(year));
     if (month) q.set("month", String(month));
@@ -126,7 +129,81 @@ export default function PayrollPage() {
     }
   }
 
+  function toggle(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) => (prev.size === list.length ? new Set() : new Set(list.map((p) => p.id))));
+  }
+
+  function selectUnsent() {
+    setSelected(new Set(list.filter((p) => !p.sentAt).map((p) => p.id)));
+  }
+
+  // 선택한 명세서를 순차 발송. 각 건 클라에서 PDF 렌더 → 서버 SES 첨부.
+  // 순차로 도는 이유: 첨부 PDF 가 건당 최대 6MB라 동시 다발 POST 는 메모리·SES 레이트 부담.
+  async function sendBulk() {
+    const sel = list.filter((p) => selected.has(p.id));
+    if (sel.length === 0) return;
+    const resendCount = sel.filter((p) => p.sentAt).length;
+    const noEmailCount = sel.filter((p) => !p.employee?.email).length;
+    const ok = await confirmAsync({
+      title: "급여명세서 일괄 발송",
+      description:
+        `선택한 ${sel.length}건을 PDF로 발송할까요?` +
+        (resendCount > 0 ? `\n· 이미 발송된 ${resendCount}건 재발송 포함` : "") +
+        (noEmailCount > 0 ? `\n· 이메일 없는 ${noEmailCount}건은 건너뜁니다` : ""),
+      confirmLabel: "발송",
+      cancelLabel: "취소",
+    });
+    if (!ok) return;
+
+    const failed: { p: Payslip; reason: string }[] = [];
+    setBulk({ done: 0, total: sel.length });
+    for (let i = 0; i < sel.length; i++) {
+      const p = sel[i];
+      try {
+        const to = p.employee?.email;
+        if (!to) throw new Error("직원 계정 이메일이 없어요.");
+        const pdfBase64 = await payslipToPdfBase64(p);
+        const r = await api<{ payslip: Payslip }>(`/api/payslip/${p.id}/send`, {
+          method: "POST",
+          json: { pdfBase64 },
+        });
+        setList((prev) => prev.map((x) => (x.id === p.id ? r.payslip : x)));
+        setPreview((prev) => (prev && prev.id === p.id ? r.payslip : prev));
+      } catch (e: any) {
+        failed.push({ p, reason: e?.data?.error || e?.message || "알 수 없는 오류" });
+      }
+      setBulk({ done: i + 1, total: sel.length });
+    }
+    setBulk(null);
+    // 실패 건만 선택 유지 → 그대로 “선택 발송”을 다시 누르면 재시도.
+    setSelected(new Set(failed.map((f) => f.p.id)));
+
+    const okCount = sel.length - failed.length;
+    if (failed.length === 0) {
+      await alertAsync({ title: "일괄 발송 완료", description: `${okCount}건을 모두 발송했어요.` });
+    } else {
+      const lines = failed.slice(0, 5).map((f) => `· ${f.p.employeeName}: ${f.reason}`).join("\n");
+      const more = failed.length > 5 ? `\n외 ${failed.length - 5}건` : "";
+      await alertAsync({
+        title: "일괄 발송 결과",
+        description: `성공 ${okCount}건 · 실패 ${failed.length}건\n\n${lines}${more}\n\n실패 건은 선택된 상태로 남아 있어요. 다시 “선택 발송”을 누르면 재시도합니다.`,
+      });
+    }
+  }
+
   const years = Array.from({ length: 6 }, (_, i) => NOW.getFullYear() - i + 1);
+  const sentCount = list.filter((p) => p.sentAt).length;
+  const unsentCount = list.length - sentCount;
+  const allSelected = list.length > 0 && selected.size === list.length;
 
   return (
     <div>
@@ -144,25 +221,55 @@ export default function PayrollPage() {
 
       {/* 필터 */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <select className="input w-auto" value={year} onChange={(e) => setYear(Number(e.target.value))}>
+        <select className="input w-auto" value={year} disabled={bulk !== null} onChange={(e) => setYear(Number(e.target.value))}>
           {years.map((y) => <option key={y} value={y}>{y}년</option>)}
         </select>
-        <select className="input w-auto" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+        <select className="input w-auto" value={month} disabled={bulk !== null} onChange={(e) => setMonth(Number(e.target.value))}>
           <option value={0}>전체 월</option>
           {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
         </select>
         {isAdmin && (
-          <select className="input w-auto" value={employeeId} onChange={(e) => setEmployeeId(e.target.value)}>
+          <select className="input w-auto" value={employeeId} disabled={bulk !== null} onChange={(e) => setEmployeeId(e.target.value)}>
             <option value="">전체 직원</option>
             {employees.map((e) => <option key={e.id} value={e.id}>{e.name}{e.team ? ` · ${e.team}` : ""}</option>)}
           </select>
         )}
       </div>
 
+      {/* 발송 현황 + 일괄 발송 (ADMIN) */}
+      {isAdmin && (
+        <div className="flex flex-wrap items-center gap-2 mb-3">
+          <span className="text-[12.5px] text-ink-500">
+            총 {list.length}건 · 발송 <b className="text-brand-700">{sentCount}</b> · 미발송 <b className="text-ink-700">{unsentCount}</b>
+            {selected.size > 0 && <> · 선택 <b className="text-ink-900">{selected.size}</b></>}
+          </span>
+          <div className="flex-1" />
+          <button className="btn-ghost btn-xs" onClick={selectUnsent} disabled={bulk !== null || unsentCount === 0}>
+            미발송만 선택
+          </button>
+          <button className="btn-primary btn-xs" onClick={sendBulk} disabled={bulk !== null || selected.size === 0}>
+            {bulk ? `발송 중… ${bulk.done}/${bulk.total}` : `선택 발송${selected.size ? ` (${selected.size})` : ""}`}
+          </button>
+        </div>
+      )}
+
       <div className="card p-0 overflow-hidden overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
         <table className="w-full text-sm min-w-[760px]">
           <thead className="bg-slate-50 text-slate-500 text-xs">
             <tr>
+              {isAdmin && (
+                <th className="px-4 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    className="accent-brand-600 w-4 h-4 align-middle"
+                    checked={allSelected}
+                    ref={(el) => { if (el) el.indeterminate = selected.size > 0 && !allSelected; }}
+                    onChange={toggleAll}
+                    disabled={bulk !== null || list.length === 0}
+                    aria-label="전체 선택"
+                  />
+                </th>
+              )}
               <th className="text-left px-4 py-3">직원</th>
               <th className="text-left px-4 py-3">귀속</th>
               <th className="text-right px-4 py-3">지급액</th>
@@ -174,15 +281,27 @@ export default function PayrollPage() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">불러오는 중…</td></tr>
+              <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-10 text-center text-slate-400">불러오는 중…</td></tr>
             )}
             {!loading && list.length === 0 && (
-              <tr><td colSpan={7} className="px-4 py-10 text-center text-slate-400">
+              <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-10 text-center text-slate-400">
                 {isAdmin ? "명세서가 없습니다. “+ 새 명세서”로 작성하세요." : "아직 발급된 급여명세서가 없어요."}
               </td></tr>
             )}
             {!loading && list.map((p) => (
-              <tr key={p.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+              <tr key={p.id} className={`border-t border-slate-100 hover:bg-slate-50/50 ${isAdmin && selected.has(p.id) ? "bg-brand-50/40" : ""}`}>
+                {isAdmin && (
+                  <td className="px-4 py-3">
+                    <input
+                      type="checkbox"
+                      className="accent-brand-600 w-4 h-4 align-middle"
+                      checked={selected.has(p.id)}
+                      onChange={() => toggle(p.id)}
+                      disabled={bulk !== null}
+                      aria-label={`${p.employeeName} 선택`}
+                    />
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <div className="font-medium text-ink-900">{p.employeeName}</div>
                   {p.department && <div className="text-[11.5px] text-ink-500">{p.department}</div>}
@@ -204,14 +323,14 @@ export default function PayrollPage() {
                       <button
                         className="text-[12px] text-brand-600 hover:underline ml-3 disabled:opacity-50"
                         onClick={() => sendMail(p)}
-                        disabled={sendingId === p.id}
+                        disabled={sendingId === p.id || bulk !== null}
                       >
                         {sendingId === p.id ? "발송 중…" : (p.sentAt ? "재발송" : "메일 발송")}
                       </button>
                       <button
                         className="text-[12px] text-rose-500 hover:underline ml-3 disabled:opacity-50"
                         onClick={() => remove(p)}
-                        disabled={busyId === p.id}
+                        disabled={busyId === p.id || bulk !== null}
                       >
                         {busyId === p.id ? "삭제 중…" : "삭제"}
                       </button>

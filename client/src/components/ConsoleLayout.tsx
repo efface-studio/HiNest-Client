@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 
@@ -32,6 +33,18 @@ export default function ConsoleLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
 
+  // macOS 데스크톱 창모드에서 신호등(트래픽라이트) 버튼 영역 확보 (AppLayout 과 동일) — HiNest 로고 겹침 방지.
+  const isMacDesktop = !!window.hinest?.isDesktop && window.hinest?.platform === "darwin";
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  useEffect(() => {
+    if (!isMacDesktop || !window.hinest?.onFullscreenChange) return;
+    const off = window.hinest.onFullscreenChange((fs) => setIsFullscreen(fs));
+    return () => {
+      try { off?.(); } catch {}
+    };
+  }, [isMacDesktop]);
+  const showTitlebarSpace = isMacDesktop && !isFullscreen;
+
   // 회사 관리는 플랫폼 운영자뿐 아니라 개발자(superAdmin)에게도 노출 — 개발자는 최상위
   // 권한이므로 테넌트 가입 승인까지 직접 처리할 수 있어야 한다.
   const links: ConsoleLink[] = [
@@ -62,6 +75,16 @@ export default function ConsoleLayout() {
         className="hidden md:flex w-[252px] flex-col flex-shrink-0 bg-ink-900 text-white"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
+        {/* 신호등 버튼용 드래그 가능 여백 — macOS 창모드에서만 */}
+        {showTitlebarSpace && (
+          <div
+            style={{
+              height: 28,
+              // @ts-expect-error drag region
+              WebkitAppRegion: "drag",
+            }}
+          />
+        )}
         <div className="px-5 h-[52px] flex items-center gap-2 border-b border-white/10 flex-shrink-0">
           <span className="text-[15px] font-extrabold tracking-tight">HiNest</span>
           <span
@@ -130,6 +153,16 @@ export default function ConsoleLayout() {
 
       {/* ===== 모바일 상단바 + 본문 ===== */}
       <div className="flex-1 min-w-0 flex flex-col">
+        {showTitlebarSpace && (
+          <div
+            className="bg-ink-50"
+            style={{
+              height: 28,
+              // @ts-expect-error drag region
+              WebkitAppRegion: "drag",
+            }}
+          />
+        )}
         <header
           className="md:hidden bg-ink-900 text-white flex-shrink-0"
           style={{ paddingTop: "env(safe-area-inset-top)" }}

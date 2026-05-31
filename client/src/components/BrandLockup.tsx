@@ -21,10 +21,13 @@ export default function BrandLockup({
   height = 30,
   tone,
   subtitle = true,
+  admin = false,
 }: {
   height?: number;
   tone?: "light" | "dark";
   subtitle?: boolean;
+  /** 관리자 콘솔 변형 — 워드마크 옆 ADMIN 배지 + "관리자 콘솔" 서브. */
+  admin?: boolean;
 }) {
   const { resolved } = useTheme();
   const onDark = tone ? tone === "dark" : resolved === "dark";
@@ -36,8 +39,17 @@ export default function BrandLockup({
   const subSize = Math.max(7, Math.round(height * 0.2));
   const gap = Math.round(height * 0.34);
 
+  // 관리자 콘솔 변형 — 디자이너 admin export(HiNest-Admin-라이트/다크.svg)의
+  // ADMIN 배지 색·서브 문구를 tone 에 맞춰 재현. 작은 사이즈에서도 읽히도록
+  // 배지 글자는 비율 환산 + 최소 8px 하한.
+  const subText = admin ? "관리자 콘솔 · Admin Console" : "Workplace Platform";
+  const badgeFont = Math.max(8, Math.round(wordSize * 0.46));
+  const badge = onDark
+    ? { bg: "rgba(110,137,255,0.18)", border: "rgba(165,184,255,0.45)", text: "#A5B8FF" }
+    : { bg: "rgba(59,92,240,0.10)", border: "rgba(59,92,240,0.30)", text: "#1E37B8" };
+
   return (
-    <div className="inline-flex items-center select-none" style={{ gap }} aria-label="HiNest">
+    <div className="inline-flex items-center select-none" style={{ gap }} aria-label={admin ? "HiNest 관리자 콘솔" : "HiNest"}>
       {/* ── 블루 타일 + 흰 마크 (원본 좌표 보존, 상하좌우 여백만 크롭) ── */}
       <svg
         width={height}
@@ -82,31 +94,52 @@ export default function BrandLockup({
         </g>
       </svg>
 
-      {/* ── 워드마크 + 서브 (브랜드 폰트로 렌더) ── */}
+      {/* ── 워드마크 (+ ADMIN 배지) + 서브 (브랜드 폰트로 렌더) ── */}
       <span className="flex flex-col" style={{ lineHeight: 1 }}>
-        <span
-          style={{
-            fontFamily: '"Pretendard Variable", Pretendard, -apple-system, sans-serif',
-            fontWeight: 800,
-            fontSize: wordSize,
-            letterSpacing: "-0.03em",
-            color: textColor,
-          }}
-        >
-          HiNest
+        <span className="flex items-center" style={{ gap: Math.round(wordSize * 0.36) }}>
+          <span
+            style={{
+              fontFamily: '"Pretendard Variable", Pretendard, -apple-system, sans-serif',
+              fontWeight: 800,
+              fontSize: wordSize,
+              letterSpacing: "-0.03em",
+              color: textColor,
+            }}
+          >
+            HiNest
+          </span>
+          {admin && (
+            <span
+              style={{
+                fontFamily: '"Pretendard Variable", Pretendard, sans-serif',
+                fontWeight: 700,
+                fontSize: badgeFont,
+                letterSpacing: "0.06em",
+                color: badge.text,
+                background: badge.bg,
+                border: `1px solid ${badge.border}`,
+                borderRadius: 999,
+                padding: `${Math.max(1, Math.round(badgeFont * 0.34))}px ${Math.round(badgeFont * 0.72)}px`,
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              ADMIN
+            </span>
+          )}
         </span>
         {subtitle && (
           <span
             style={{
               fontFamily: '"JetBrains Mono", "SF Mono", Menlo, monospace',
               fontSize: subSize,
-              letterSpacing: "0.12em",
+              letterSpacing: admin ? "0.06em" : "0.12em",
               color: subColor,
               marginTop: Math.round(height * 0.12),
               whiteSpace: "nowrap",
             }}
           >
-            Workplace Platform
+            {subText}
           </span>
         )}
       </span>

@@ -88,14 +88,8 @@ export default function ConsoleLayout() {
             }}
           />
         )}
-        <div className="px-5 h-[52px] flex items-center gap-2 border-b border-white/10 flex-shrink-0">
-          <BrandLockup tone="dark" height={24} subtitle={false} />
-          <span
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide"
-            style={{ background: "var(--c-brand)", color: "#fff" }}
-          >
-            운영 콘솔
-          </span>
+        <div className="px-5 h-[52px] flex items-center border-b border-white/10 flex-shrink-0">
+          <BrandLockup tone="dark" admin height={28} />
         </div>
 
         {hasCompany && (
@@ -172,10 +166,7 @@ export default function ConsoleLayout() {
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="h-[48px] px-4 flex items-center gap-2">
-            <BrandLockup tone="dark" height={22} subtitle={false} />
-            <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md uppercase" style={{ background: "var(--c-brand)" }}>
-              운영 콘솔
-            </span>
+            <BrandLockup tone="dark" admin subtitle={false} height={24} />
             <div className="ml-auto flex items-center gap-1">
               {hasCompany && (
                 <button onClick={() => nav("/")} className="text-[12px] font-semibold text-white/70 hover:text-white px-2 py-1">

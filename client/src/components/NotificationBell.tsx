@@ -63,7 +63,7 @@ export default function NotificationBell() {
         )}
       </button>
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[360px] panel shadow-pop z-50 p-0 overflow-hidden">
+        <div className="absolute right-0 top-full mt-2 w-[360px] max-w-[calc(100vw-1.5rem)] panel shadow-pop z-50 p-0 overflow-hidden">
           <div className="section-head">
             <div className="title">알림</div>
             <div className="flex items-center gap-1">

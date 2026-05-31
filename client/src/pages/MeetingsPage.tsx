@@ -395,16 +395,16 @@ function StatCard({
     violet: { bg: "rgba(124,58,237,0.10)", fg: "#7C3AED" },
   }[accent];
   return (
-    <div className="panel p-4 flex items-center gap-3">
+    <div className="panel p-3 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3">
       <div
-        className="w-10 h-10 rounded-xl grid place-items-center flex-shrink-0"
+        className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl grid place-items-center flex-shrink-0"
         style={{ background: a.bg, color: a.fg }}
       >
         {icon}
       </div>
-      <div className="min-w-0">
-        <div className="text-[11px] font-bold text-ink-500 uppercase tracking-[0.06em] truncate">{label}</div>
-        <div className="text-[19px] font-extrabold text-ink-900 mt-0.5 tabular-nums">{value}</div>
+      <div className="min-w-0 w-full">
+        <div className="text-[10.5px] sm:text-[11px] font-bold text-ink-500 uppercase tracking-[0.04em] leading-tight">{label}</div>
+        <div className="text-[18px] sm:text-[19px] font-extrabold text-ink-900 mt-0.5 tabular-nums">{value}</div>
       </div>
     </div>
   );

@@ -224,10 +224,15 @@ export function requireSuperAdmin(req: Request, res: Response, next: NextFunctio
   next();
 }
 
-/** 플랫폼 운영자 전용 — 회사 가입 승인 등 테넌트를 가로지르는 최상위 작업. */
+/**
+ * 플랫폼 운영(회사 가입 승인 등 테넌트를 가로지르는 최상위 작업) 접근 가드.
+ * 플랫폼 운영자(platformAdmin)뿐 아니라 개발자(superAdmin)도 허용한다 — 개발자는
+ * 최상위 권한이므로 회사 관리 콘솔을 항상 볼 수 있어야 한다. (스코프 우회는 라우터에서
+ * runUnscoped 로 명시 처리 — superAdmin 세션은 평소 자기 회사로 스코프되기 때문.)
+ */
 export function requirePlatformAdmin(req: Request, res: Response, next: NextFunction) {
   const u = (req as any).user as AuthUser | undefined;
-  if (!u || !u.platformAdmin) return res.status(403).json({ error: "forbidden" });
+  if (!u || (!u.platformAdmin && !u.superAdmin)) return res.status(403).json({ error: "forbidden" });
   next();
 }
 

@@ -77,7 +77,8 @@ function SuperOnly({ children }: { children: React.ReactNode }) {
 
 function PlatformOnly({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  if (!user?.platformAdmin) return <Navigate to="/" replace />;
+  // 개발자(superAdmin)도 회사 관리에 접근 가능 — 최상위 권한이므로 항상 허용.
+  if (!user?.platformAdmin && !user?.superAdmin) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

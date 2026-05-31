@@ -37,7 +37,22 @@ export type EmailPayload = {
   text: string;
   /** HTML 본문 — 가능하면 동봉. 없으면 text 만 보냄. */
   html?: string;
+  /**
+   * 답장 받을 주소(addr-spec, ASCII). 설정하면 수신자가 "답장"을 눌렀을 때
+   * 발신주소(no-reply)가 아니라 이 주소로 회신이 간다. 예: 발송한 담당자 이메일.
+   */
+  replyTo?: string;
+  /** replyTo 표시 이름(선택). 비-ASCII(한글)도 헤더에서 안전하게 인코딩된다. */
+  replyToName?: string;
 };
+
+/**
+ * 주소 헤더 값 구성(Reply-To 등). 이름이 있으면 `=?UTF-8?B?..?= <email>`,
+ * 없으면 bare email. encoded-word 는 ASCII 라 raw MIME / SES 양쪽에서 안전.
+ */
+function formatAddressHeader(email: string, name?: string): string {
+  return name ? `${encodeHeaderUtf8(name)} <${email}>` : email;
+}
 
 export async function sendEmail(payload: EmailPayload): Promise<{ ok: boolean; messageId?: string; reason?: string }> {
   if (!FROM) {
@@ -48,6 +63,9 @@ export async function sendEmail(payload: EmailPayload): Promise<{ ok: boolean; m
     const cmd = new SendEmailCommand({
       Source: FROM,
       Destination: { ToAddresses: [payload.to] },
+      ...(payload.replyTo
+        ? { ReplyToAddresses: [formatAddressHeader(payload.replyTo, payload.replyToName)] }
+        : {}),
       Message: {
         Subject: { Data: payload.subject, Charset: "UTF-8" },
         Body: {
@@ -165,6 +183,9 @@ function buildRawMime(
   const head = [
     `From: ${from}`,
     `To: ${payload.to}`,
+    ...(payload.replyTo
+      ? [`Reply-To: ${formatAddressHeader(payload.replyTo, payload.replyToName)}`]
+      : []),
     `Subject: ${encodeHeaderUtf8(payload.subject)}`,
     "MIME-Version: 1.0",
     `Content-Type: multipart/mixed; boundary="${mixed}"`,

@@ -315,6 +315,8 @@ function payslipEmailHtml(a: {
   totalDeductions: number;
   netPay: number;
   metaLines: string[];
+  /** 발송한 담당자 이메일 — 있으면 "담당자에게 회신" 버튼(mailto)을 노출. */
+  replyToEmail?: string;
 }): string {
   const FONT =
     "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Apple SD Gothic Neo','Malgun Gothic',sans-serif";
@@ -323,6 +325,18 @@ function payslipEmailHtml(a: {
         .map(escHtml)
         .join("<br/>")}</p>`
     : "";
+  // 담당자 회신 버튼(mailto) — 제목 프리필. encodeURIComponent 출력은 ASCII 라 href 속성에 안전.
+  const replyBtn = a.replyToEmail
+    ? `<table role="presentation" cellpadding="0" cellspacing="0" style="margin:20px 0 2px"><tr>` +
+      `<td style="border-radius:10px;background:#3B5CF0">` +
+      `<a href="mailto:${escHtml(a.replyToEmail)}?subject=${encodeURIComponent(`[문의] ${a.year}년 ${a.month}월 급여명세서`)}" ` +
+      `style="display:inline-block;padding:11px 22px;font-size:13.5px;font-weight:700;color:#FFFFFF;text-decoration:none">담당자에게 회신</a>` +
+      `</td></tr></table>`
+    : "";
+  // 회신 가능하면 푸터에서 "발신 전용" 문구를 빼고 회신 안내로 대체.
+  const footerNote = a.replyToEmail
+    ? `문의 사항은 위 <b>담당자에게 회신</b> 버튼으로 연락해 주세요.<br/>${escHtml(a.company)}`
+    : `본 메일은 발신 전용입니다. 문의는 담당자에게 연락해 주세요.<br/>${escHtml(a.company)}`;
   return (
     `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${a.year}년 ${a.month}월 급여명세서 · 실수령액 ${wonKR(a.netPay)}</div>` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:24px 0;font-family:${FONT}">` +
@@ -352,10 +366,11 @@ function payslipEmailHtml(a: {
     `</td></tr></table>` +
     meta +
     `<p style="margin:16px 0 0;font-size:13px;color:#374151;line-height:1.6">자세한 지급·공제 내역은 첨부된 PDF 명세서를 확인해 주세요.</p>` +
+    replyBtn +
     `</td></tr>` +
     // 푸터
     `<tr><td style="padding:16px 28px;background:#FAFAFB;border-top:1px solid #EEF0F2">` +
-    `<div style="font-size:11.5px;color:#9CA3AF;line-height:1.6">본 메일은 발신 전용입니다. 문의는 담당자에게 연락해 주세요.<br/>${escHtml(a.company)}</div>` +
+    `<div style="font-size:11.5px;color:#9CA3AF;line-height:1.6">${footerNote}</div>` +
     `</td></tr>` +
     `</table></td></tr></table>`
   );
@@ -388,11 +403,20 @@ router.post("/:id/send", requireAdmin, async (req, res) => {
   const subject = `[${company}] ${p.year}년 ${p.month}월 급여명세서`;
   const filename = `payslip_${p.year}_${String(p.month).padStart(2, "0")}.pdf`;
 
+  // 발송을 누른 담당자(요청한 ADMIN) — 수신자가 회신할 주소로 사용.
+  // AuthUser.email/name 은 항상 존재하지만 방어적으로 truthy 체크.
+  const replyToEmail = (u.email as string) || undefined;
+  const replyToName = (u.name as string) || undefined;
+
   // 부서·직위·지급일 메타 — 값이 있는 줄만 노출.
   const metaLines = [
     [p.department, p.position].filter(Boolean).join(" · "),
     p.payDate ? `지급일 ${p.payDate}` : "",
   ].filter(Boolean);
+
+  const contactLine = replyToEmail
+    ? `문의: ${replyToName ? `${replyToName} ` : ""}<${replyToEmail}> (이 메일에 회신하셔도 됩니다)`
+    : "본 메일은 발신 전용입니다.";
 
   const text =
     `${p.employeeName}님, ${p.year}년 ${p.month}월 급여명세서를 보내드립니다.\n\n` +
@@ -400,7 +424,7 @@ router.post("/:id/send", requireAdmin, async (req, res) => {
     `· 공제 합계: ${wonKR(p.totalDeductions)}\n` +
     `· 실수령액: ${wonKR(p.netPay)}\n\n` +
     `자세한 내역은 첨부된 PDF 명세서를 확인해 주세요.\n\n` +
-    `본 메일은 발신 전용입니다.\n${company}`;
+    `${contactLine}\n${company}`;
 
   const html = payslipEmailHtml({
     company,
@@ -411,6 +435,7 @@ router.post("/:id/send", requireAdmin, async (req, res) => {
     totalDeductions: p.totalDeductions,
     netPay: p.netPay,
     metaLines,
+    replyToEmail,
   });
 
   const result = await sendEmailWithAttachment({
@@ -418,6 +443,8 @@ router.post("/:id/send", requireAdmin, async (req, res) => {
     subject,
     text,
     html,
+    replyTo: replyToEmail,
+    replyToName,
     attachments: [{ filename, contentBase64: parsed.data.pdfBase64, contentType: "application/pdf" }],
   });
   if (!result.ok) {

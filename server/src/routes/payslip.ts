@@ -296,6 +296,71 @@ function escHtml(s: unknown): string {
     .replace(/>/g, "&gt;");
 }
 
+function wonKR(n: number): string {
+  return `${Number(n || 0).toLocaleString("ko-KR")}원`;
+}
+
+/**
+ * 급여명세서 안내 메일 HTML.
+ * 이메일 클라이언트(Gmail/Outlook/Apple Mail) 호환을 위해 table 레이아웃 + 인라인 스타일만 사용.
+ * 브랜드 색(#3B5CF0) 헤더 + 실수령액 강조 요약 카드. 상세 내역은 첨부 PDF 에 있으므로
+ * 본문엔 비밀/민감정보가 없다(합계 수준 요약만).
+ */
+function payslipEmailHtml(a: {
+  company: string;
+  employeeName: string;
+  year: number;
+  month: number;
+  totalEarnings: number;
+  totalDeductions: number;
+  netPay: number;
+  metaLines: string[];
+}): string {
+  const FONT =
+    "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Apple SD Gothic Neo','Malgun Gothic',sans-serif";
+  const meta = a.metaLines.length
+    ? `<p style="margin:16px 0 0;font-size:12.5px;color:#6B7280;line-height:1.7">${a.metaLines
+        .map(escHtml)
+        .join("<br/>")}</p>`
+    : "";
+  return (
+    `<div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent">${a.year}년 ${a.month}월 급여명세서 · 실수령액 ${wonKR(a.netPay)}</div>` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:24px 0;font-family:${FONT}">` +
+    `<tr><td align="center">` +
+    `<table role="presentation" cellpadding="0" cellspacing="0" style="width:480px;max-width:480px;background:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #E5E7EB">` +
+    // 헤더 (브랜드 바)
+    `<tr><td style="background:#3B5CF0;padding:24px 28px">` +
+    `<div style="color:#C9D5FF;font-size:12px;font-weight:700;letter-spacing:.04em">${escHtml(a.company)}</div>` +
+    `<div style="color:#FFFFFF;font-size:20px;font-weight:800;margin-top:5px">${a.year}년 ${a.month}월 급여명세서</div>` +
+    `</td></tr>` +
+    // 본문
+    `<tr><td style="padding:28px 28px 24px">` +
+    `<p style="margin:0 0 18px;font-size:15px;color:#111827;line-height:1.6"><b>${escHtml(a.employeeName)}</b>님, ${a.year}년 ${a.month}월 급여명세서를 보내드립니다.</p>` +
+    // 요약 카드
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF3FF;border-radius:12px">` +
+    `<tr><td style="padding:18px 20px">` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">` +
+    `<tr><td style="font-size:13px;color:#4B5563;padding:3px 0">지급 합계</td><td align="right" style="font-size:13px;color:#111827;font-weight:600;padding:3px 0">${wonKR(a.totalEarnings)}</td></tr>` +
+    `<tr><td style="font-size:13px;color:#4B5563;padding:3px 0">공제 합계</td><td align="right" style="font-size:13px;color:#DC2626;font-weight:600;padding:3px 0">${wonKR(a.totalDeductions)}</td></tr>` +
+    `</table>` +
+    `<div style="border-top:1px solid #D6E0FF;margin-top:12px;padding-top:12px">` +
+    `<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>` +
+    `<td style="font-size:14px;color:#1D3AB8;font-weight:700;vertical-align:middle">실수령액</td>` +
+    `<td align="right" style="font-size:22px;color:#1D3AB8;font-weight:800;vertical-align:middle">${wonKR(a.netPay)}</td>` +
+    `</tr></table>` +
+    `</div>` +
+    `</td></tr></table>` +
+    meta +
+    `<p style="margin:16px 0 0;font-size:13px;color:#374151;line-height:1.6">자세한 지급·공제 내역은 첨부된 PDF 명세서를 확인해 주세요.</p>` +
+    `</td></tr>` +
+    // 푸터
+    `<tr><td style="padding:16px 28px;background:#FAFAFB;border-top:1px solid #EEF0F2">` +
+    `<div style="font-size:11.5px;color:#9CA3AF;line-height:1.6">본 메일은 발신 전용입니다. 문의는 담당자에게 연락해 주세요.<br/>${escHtml(a.company)}</div>` +
+    `</td></tr>` +
+    `</table></td></tr></table>`
+  );
+}
+
 router.post("/:id/send", requireAdmin, async (req, res) => {
   const u = (req as any).user;
   const parsed = sendSchema.safeParse(req.body);
@@ -322,14 +387,31 @@ router.post("/:id/send", requireAdmin, async (req, res) => {
   const company = p.companyName || "주식회사 하이비츠";
   const subject = `[${company}] ${p.year}년 ${p.month}월 급여명세서`;
   const filename = `payslip_${p.year}_${String(p.month).padStart(2, "0")}.pdf`;
+
+  // 부서·직위·지급일 메타 — 값이 있는 줄만 노출.
+  const metaLines = [
+    [p.department, p.position].filter(Boolean).join(" · "),
+    p.payDate ? `지급일 ${p.payDate}` : "",
+  ].filter(Boolean);
+
   const text =
-    `${p.employeeName}님, ${p.year}년 ${p.month}월 급여명세서를 첨부드립니다.\n\n` +
+    `${p.employeeName}님, ${p.year}년 ${p.month}월 급여명세서를 보내드립니다.\n\n` +
+    `· 지급 합계: ${wonKR(p.totalEarnings)}\n` +
+    `· 공제 합계: ${wonKR(p.totalDeductions)}\n` +
+    `· 실수령액: ${wonKR(p.netPay)}\n\n` +
+    `자세한 내역은 첨부된 PDF 명세서를 확인해 주세요.\n\n` +
     `본 메일은 발신 전용입니다.\n${company}`;
-  const html =
-    `<div style="font-family:sans-serif;font-size:14px;color:#1F2937;line-height:1.6">` +
-    `<p>${escHtml(p.employeeName)}님, ${p.year}년 ${p.month}월 급여명세서를 첨부드립니다.</p>` +
-    `<p style="color:#6B7280;font-size:12px">본 메일은 발신 전용입니다.<br/>${escHtml(company)}</p>` +
-    `</div>`;
+
+  const html = payslipEmailHtml({
+    company,
+    employeeName: p.employeeName,
+    year: p.year,
+    month: p.month,
+    totalEarnings: p.totalEarnings,
+    totalDeductions: p.totalDeductions,
+    netPay: p.netPay,
+    metaLines,
+  });
 
   const result = await sendEmailWithAttachment({
     to,

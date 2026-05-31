@@ -4,7 +4,7 @@ import cookieParser from "cookie-parser";
 import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
-import { requireAuth } from "./lib/auth.js";
+import { requireAuth, NATIVE_ORIGINS } from "./lib/auth.js";
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import usersRouter from "./routes/users.js";
@@ -39,6 +39,7 @@ import { folderShareLinkAuthedRouter } from "./routes/folderShareLink.js";
 import serviceAccountRouter from "./routes/serviceAccount.js";
 import payslipRouter from "./routes/payslip.js";
 import desktopDownloadRouter from "./routes/desktopDownload.js";
+import platformRouter from "./routes/platform.js";
 import path from "node:path";
 import mime from "mime-types";
 import { installConsoleHook, pushHttpLog, pushErrorEvent } from "./lib/logBuffer.js";
@@ -86,9 +87,12 @@ app.use(
 );
 
 // CORS — 프로덕션은 CLIENT_ORIGIN 만 허용. 개발에선 로컬호스트 편의 허용.
-const CORS_ORIGINS = IS_PROD
+// Capacitor 네이티브 앱 WebView origin(capacitor://localhost, https://localhost)은 prod/dev 모두 허용 —
+// 네이티브는 어느 환경에서든 배포된 API 서버로 붙는다. 이 목록은 아래 CSRF Origin 체크에도 그대로 쓰인다.
+const CORS_ORIGINS = (IS_PROD
   ? [ORIGIN]
-  : [ORIGIN, "http://localhost:1000", "http://127.0.0.1:1000"];
+  : [ORIGIN, "http://localhost:1000", "http://127.0.0.1:1000"]
+).concat(NATIVE_ORIGINS);
 app.use(
   cors({
     origin: CORS_ORIGINS,
@@ -261,6 +265,7 @@ app.use("/api/auth", loginLimiter, authRouter);
 app.use("/api/me", meRouter);
 app.use("/api/feature-flags", featureFlagsRouter);
 app.use("/api/admin", adminRouter);
+app.use("/api/platform", platformRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/schedule", scheduleRouter);
 app.use("/api/attendance", attendanceRouter);

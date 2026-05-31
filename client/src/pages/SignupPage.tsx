@@ -128,6 +128,18 @@ export default function SignupPage() {
               로그인
             </Link>
           </div>
+
+          {/* 초대키가 없는 신규 회사는 회사 등록 신청으로 안내 */}
+          <div className="mt-4 text-center text-[12.5px]">
+            <span className="text-ink-400">초대키가 없는 새 회사인가요? </span>
+            <Link
+              to="/company-signup"
+              className="font-semibold transition"
+              style={{ color: "var(--c-brand)" }}
+            >
+              회사 등록 신청
+            </Link>
+          </div>
         </div>
       </main>
     </div>

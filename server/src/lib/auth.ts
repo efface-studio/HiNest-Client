@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import type { Request, Response, NextFunction } from "express";
 import { prisma } from "./db.js";
+import { runWithTenant } from "./tenant.js";
 
 // JWT_SECRET 은 언제나 필수. NODE_ENV 누락/오탈자로 프로덕션에서 하드코딩 fallback 이 쓰이는
 // 사고를 막기 위해, 개발 모드에서도 명시적으로 .env 에 지정하도록 강제한다.
@@ -83,15 +84,45 @@ const COOKIE_BASE = {
   path: "/",
 };
 
+// Capacitor 네이티브 앱 WebView 의 origin — iOS: capacitor://localhost, Android: https://localhost.
+// 이 origin 들은 API 서버(예: nest.hi-vits.com)와 cross-site 라서 SameSite=Lax 쿠키가 전송되지 않는다.
+// 따라서 네이티브에서 들어온 요청에만 SameSite=None;Secure 로 발급해 cross-site 전송을 허용한다.
+// 웹/데스크톱은 기존 Lax 를 유지(추가 방어선) — 어차피 Origin 체크 CSRF 미들웨어가 양쪽 다 보호한다.
+export const NATIVE_ORIGINS = (process.env.CAPACITOR_ORIGINS ?? "capacitor://localhost,https://localhost")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+function isNativeOrigin(req?: Request): boolean {
+  const o = req?.headers?.origin;
+  return !!o && NATIVE_ORIGINS.includes(o);
+}
+
+// 네이티브 origin 이면 cross-site 쿠키(None;Secure), 아니면 기존 Lax 베이스.
+// set/clear 가 같은 base 를 써야 브라우저가 쿠키를 실제로 지운다 — 호출부에서 req 를 함께 넘길 것.
+function cookieBase(req?: Request) {
+  if (isNativeOrigin(req)) {
+    return { httpOnly: true, sameSite: "none" as const, secure: true, path: "/" };
+  }
+  return COOKIE_BASE;
+}
+
 export interface AuthUser {
   id: string;
   role: string;
   name: string;
   email: string;
   superAdmin: boolean;
+  // 소속 회사(테넌트) id. 플랫폼 운영자는 null.
+  companyId: string | null;
+  // 플랫폼 운영자 — 테넌트를 가로지르는 최상위 권한 (회사 가입 승인 등).
+  platformAdmin: boolean;
 }
 
-export function signToken(user: { id: string; role: string; name: string; email: string }, sessionId?: string) {
+export function signToken(
+  user: { id: string; role: string; name: string; email: string; companyId?: string | null },
+  sessionId?: string,
+) {
   return jwt.sign({ ...user, sid: sessionId }, SECRET, { expiresIn: "7d" });
 }
 
@@ -107,15 +138,15 @@ export async function createSession(userId: string, req: Request): Promise<strin
   return s.id;
 }
 
-export function setAuthCookie(res: Response, token: string) {
+export function setAuthCookie(res: Response, token: string, req?: Request) {
   res.cookie(COOKIE, token, {
-    ...COOKIE_BASE,
+    ...cookieBase(req),
     maxAge: 1000 * 60 * 60 * 24 * 7,
   });
 }
 
-export function clearAuthCookie(res: Response) {
-  res.clearCookie(COOKIE, COOKIE_BASE);
+export function clearAuthCookie(res: Response, req?: Request) {
+  res.clearCookie(COOKIE, cookieBase(req));
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
@@ -161,6 +192,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       name: activeUser.name,
       email: activeUser.email,
       superAdmin: activeUser.superAdmin,
+      companyId: activeUser.companyId ?? null,
+      platformAdmin: activeUser.platformAdmin,
     } as AuthUser;
     // 핸들러에서 user row 가 또 필요하면 재조회하지 말고 이거 쓰기 — /api/me 처럼
     // 인증만 거치고 바로 user 필드를 되돌려주는 엔드포인트에서 DB 왕복 1번 절약.
@@ -168,7 +201,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
     (req as any).realUser = realUser;
     (req as any).impersonatedById = impersonatedById;
     (req as any).sessionId = payload.sid ?? null;
-    next();
+    // 이후 모든 핸들러를 테넌트 컨텍스트 안에서 실행 → Prisma 쿼리가 자동으로 companyId 로 스코프된다.
+    // 플랫폼 운영자(platformAdmin)는 테넌트를 가로지르므로 bypass=true 로 스코프를 해제한다.
+    runWithTenant(
+      { companyId: activeUser.companyId ?? null, bypass: !!activeUser.platformAdmin },
+      () => next(),
+    );
   } catch {
     return res.status(401).json({ error: "unauthorized" });
   }
@@ -186,6 +224,13 @@ export function requireSuperAdmin(req: Request, res: Response, next: NextFunctio
   next();
 }
 
+/** 플랫폼 운영자 전용 — 회사 가입 승인 등 테넌트를 가로지르는 최상위 작업. */
+export function requirePlatformAdmin(req: Request, res: Response, next: NextFunction) {
+  const u = (req as any).user as AuthUser | undefined;
+  if (!u || !u.platformAdmin) return res.status(403).json({ error: "forbidden" });
+  next();
+}
+
 /* ---- Super admin step-up (비밀번호 재인증) ---- */
 export function signSuper(userId: string) {
   return jwt.sign({ sub: userId, kind: "super" }, SECRET, {
@@ -193,15 +238,15 @@ export function signSuper(userId: string) {
   });
 }
 
-export function setSuperCookie(res: Response, token: string) {
+export function setSuperCookie(res: Response, token: string, req?: Request) {
   res.cookie(SUPER_COOKIE, token, {
-    ...COOKIE_BASE,
+    ...cookieBase(req),
     maxAge: SUPER_TTL_SEC * 1000,
   });
 }
 
-export function clearSuperCookie(res: Response) {
-  res.clearCookie(SUPER_COOKIE, COOKIE_BASE);
+export function clearSuperCookie(res: Response, req?: Request) {
+  res.clearCookie(SUPER_COOKIE, cookieBase(req));
 }
 
 export function verifySuperToken(req: Request, userId: string): { exp: number } | null {
@@ -240,15 +285,15 @@ export function signImpersonate(actorId: string, targetId: string) {
   });
 }
 
-export function setImpCookie(res: Response, token: string) {
+export function setImpCookie(res: Response, token: string, req?: Request) {
   res.cookie(IMP_COOKIE, token, {
-    ...COOKIE_BASE,
+    ...cookieBase(req),
     maxAge: IMP_TTL_SEC * 1000,
   });
 }
 
-export function clearImpCookie(res: Response) {
-  res.clearCookie(IMP_COOKIE, COOKIE_BASE);
+export function clearImpCookie(res: Response, req?: Request) {
+  res.clearCookie(IMP_COOKIE, cookieBase(req));
 }
 
 /** 진짜 super-admin 권한 체크 — 임퍼소네이션 중에도 원본 사용자가 super 면 통과시키는 변종.

@@ -230,7 +230,7 @@ router.post("/auth/verify", requireAuth, async (req, res) => {
   const fresh = await prisma.user.findUnique({ where: { id: u.id } });
   if (fresh?.superAdmin) {
     const token = signSuper(fresh.id);
-    setSuperCookie(res, token);
+    setSuperCookie(res, token, req);
     await writeLog(fresh.id, "SUPER_STEPUP_OK_PASSKEY", undefined, stored.deviceName ?? undefined, req.ip);
     return res.json({ ok: true, super: true, expiresAt: Date.now() + SUPER_TTL_SEC * 1000 });
   }

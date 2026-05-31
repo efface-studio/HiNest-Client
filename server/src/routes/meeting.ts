@@ -434,6 +434,7 @@ router.post("/", async (req, res) => {
         d.visibility === "SPECIFIC" && d.viewerIds?.length
           ? {
               create: Array.from(new Set(d.viewerIds.filter((id) => id !== u.id))).map((userId) => ({
+                companyId: u.companyId,
                 userId,
               })),
             }

@@ -197,7 +197,7 @@ router.post("/:id/revise", async (req, res) => {
       requesterId: u.id,
       revisedFromId: orig.id,
       steps: {
-        create: reviewers.map((rid, idx) => ({ reviewerId: rid, order: idx + 1 })),
+        create: reviewers.map((rid, idx) => ({ companyId: u.companyId, reviewerId: rid, order: idx + 1 })),
       },
     },
     include: { steps: true },
@@ -246,7 +246,7 @@ router.post("/", async (req, res) => {
       amount: d.amount,
       requesterId: u.id,
       steps: {
-        create: reviewers.map((rid, idx) => ({ reviewerId: rid, order: idx + 1 })),
+        create: reviewers.map((rid, idx) => ({ companyId: u.companyId, reviewerId: rid, order: idx + 1 })),
       },
     },
     include: { steps: true },

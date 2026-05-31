@@ -1,3 +1,19 @@
+/**
+ * API 오리진. 일반 웹/데스크톱(Electron) 빌드에서는 빈 문자열 → 기존처럼 상대경로
+ * 그대로 (동작 변화 없음). Capacitor 네이티브 빌드에서는 웹 자산이
+ * capacitor://localhost 에서 로드돼 상대경로가 서버에 닿지 않으므로, 빌드시
+ * VITE_API_BASE 로 절대 오리진(예: https://nest.hi-vits.com)을 주입한다.
+ */
+export const API_BASE: string =
+  ((import.meta as any).env?.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") ?? "";
+
+/** 상대 API/자산 경로를 현재 빌드에 맞는 절대 URL 로. 절대 URL 은 그대로 통과. */
+export function apiUrl(path: string): string {
+  if (!API_BASE) return path;
+  if (/^[a-z]+:\/\//i.test(path)) return path;
+  return path.startsWith("/") ? API_BASE + path : path;
+}
+
 export async function api<T = any>(
   path: string,
   init: RequestInit & { json?: any } = {}
@@ -19,7 +35,7 @@ export async function api<T = any>(
   }
   const res = preview
     ? await (await import("./lib/previewMock")).previewMockFetch(path, { ...init, json: init.json })
-    : await fetch(path, {
+    : await fetch(apiUrl(path), {
         ...init,
         headers,
         body,

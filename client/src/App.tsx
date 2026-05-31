@@ -7,12 +7,16 @@ import ConfirmHost from "./components/ConfirmHost";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
+import CompanySignupPage from "./pages/CompanySignupPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import DownloadPage from "./pages/DownloadPage";
 import PublicSharePage from "./pages/PublicSharePage";
 import PreviewEntry from "./pages/PreviewEntry";
+import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
+import TermsPage from "./pages/TermsPage";
 import AppLayout from "./components/AppLayout";
+import ConsoleLayout from "./components/ConsoleLayout";
 import DashboardPage from "./pages/DashboardPage";
 import {
   SchedulePage,
@@ -35,6 +39,7 @@ import {
   SuperAdminPage,
   MemosPage,
   PayrollPage,
+  PlatformPage,
 } from "./routes";
 
 /**
@@ -70,6 +75,20 @@ function SuperOnly({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PlatformOnly({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user?.platformAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
+// 운영 콘솔 진입 가드 — 개발자(superAdmin) 또는 플랫폼 운영자(platformAdmin)만.
+// 회사 ADMIN 은 여기 들어오지 못하고 회사 앱(/admin)에 그대로 머문다.
+function ConsoleOnly({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (!user?.superAdmin && !user?.platformAdmin) return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   // 라우트 단위 ErrorBoundary 의 reset 트리거 — 다음 페이지로 이동하면 자동 초기화.
   // 이렇게 안 하면 한 페이지에서 에러 나면 다른 메뉴로 가도 fallback 이 계속 보임.
@@ -84,9 +103,12 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/company-signup" element={<CompanySignupPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/reset-password" element={<ResetPasswordPage />} />
         <Route path="/download" element={<DownloadPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/terms" element={<TermsPage />} />
         <Route path="/share/:token" element={<PublicSharePage />} />
         <Route path="/preview" element={<PreviewEntry />} />
         <Route
@@ -123,6 +145,27 @@ export default function App() {
               <AdminOnly>
                 <AdminPage />
               </AdminOnly>
+            }
+          />
+        </Route>
+
+        {/* 운영 콘솔 — 회사 앱(AppLayout)과 완전히 분리된 별도 셸/라우트 트리.
+            총관리자(개발자)·플랫폼 운영자 전용. 회사 사이드바에는 노출되지 않는다. */}
+        <Route
+          element={
+            <Protected>
+              <ConsoleOnly>
+                <ConsoleLayout />
+              </ConsoleOnly>
+            </Protected>
+          }
+        >
+          <Route
+            path="platform"
+            element={
+              <PlatformOnly>
+                <PlatformPage />
+              </PlatformOnly>
             }
           />
           <Route

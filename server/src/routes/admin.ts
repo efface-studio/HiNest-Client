@@ -1104,7 +1104,7 @@ router.post("/console", requireSuperAdminStepUp, async (req, res) => {
       else if (target.superAdmin) { result = err("다른 개발자 계정으로는 볼 수 없습니다"); }
       else {
         const tok = signImpersonate(u.id, target.id);
-        setImpCookie(res, tok);
+        setImpCookie(res, tok, req);
         await writeLog(u.id, "IMPERSONATE_START", target.id, target.name, req.ip);
         result = out([
           `OK · 이제 ${target.name} (${target.email}) 으로 로그인됩니다`,
@@ -1115,7 +1115,7 @@ router.post("/console", requireSuperAdminStepUp, async (req, res) => {
     } else if (head === "unimp") {
       const real = (req as any).realUser;
       const impedId = (req as any).impersonatedById;
-      clearImpCookie(res);
+      clearImpCookie(res, req);
       if (impedId && real?.id) {
         await writeLog(real.id, "IMPERSONATE_END", (req as any).user?.id, undefined, req.ip);
       }
@@ -1906,7 +1906,7 @@ router.post("/impersonate/:id", requireSuperAdminStepUp, async (req, res) => {
   if (target.superAdmin) return res.status(403).json({ error: "다른 개발자 계정으로는 볼 수 없습니다" });
 
   const tok = signImpersonate(me.id, target.id);
-  setImpCookie(res, tok);
+  setImpCookie(res, tok, req);
   await writeLog(me.id, "IMPERSONATE_START", target.id, target.name, req.ip);
   res.json({ ok: true, target: { id: target.id, name: target.name } });
 });

@@ -116,9 +116,33 @@ router.post("/login", async (req, res) => {
     });
   }
 
+  // ── 회사(테넌트) 상태 게이트 ──
+  // 가입 승인된(ACTIVE) 회사의 사용자만 로그인 허용. 플랫폼 운영자는 회사 소속이 없으므로 통과.
+  // 비밀번호가 이미 맞은 뒤이므로 enumeration 누수 없음 (자격증명을 아는 사람에게만 노출).
+  if (!user.platformAdmin) {
+    const company = user.companyId
+      ? await prisma.company.findUnique({ where: { id: user.companyId }, select: { status: true } })
+      : null;
+    const status = company?.status ?? null;
+    if (status !== "ACTIVE") {
+      await writeLog(user.id, "LOGIN_BLOCKED_COMPANY", user.email, `company=${user.companyId ?? "none"} status=${status ?? "none"}`, req.ip);
+      const code =
+        status === "PENDING" ? "COMPANY_PENDING"
+        : status === "SUSPENDED" ? "COMPANY_SUSPENDED"
+        : status === "REJECTED" ? "COMPANY_REJECTED"
+        : "COMPANY_INACTIVE";
+      const error =
+        status === "PENDING" ? "가입 승인 대기 중입니다. 승인 후 로그인할 수 있어요."
+        : status === "SUSPENDED" ? "일시 정지된 회사 계정입니다. 운영자에게 문의해 주세요."
+        : status === "REJECTED" ? "가입이 반려된 회사입니다. 운영자에게 문의해 주세요."
+        : "사용할 수 없는 회사 계정입니다.";
+      return res.status(403).json({ error, code });
+    }
+  }
+
   const sid = await createSession(user.id, req);
-  const token = signToken({ id: user.id, role: user.role, name: user.name, email: user.email }, sid);
-  setAuthCookie(res, token);
+  const token = signToken({ id: user.id, role: user.role, name: user.name, email: user.email, companyId: user.companyId }, sid);
+  setAuthCookie(res, token, req);
   await writeLog(user.id, "LOGIN", user.email, `sid=${sid}`, req.ip);
 
   res.json({
@@ -162,12 +186,23 @@ router.post("/signup", async (req, res) => {
   const passwordHash = await bcrypt.hash(password, 12);
   const employeeNo = await generateUniqueEmployeeNo();
 
+  // 초대키 발급자의 회사를 신규 유저에게 승계 (멀티테넌시).
+  // 발급자/회사를 못 찾으면 기본 회사로 폴백 — 단일 회사 단계의 레거시 키 호환.
+  let targetCompanyId = "company_default";
+  if (key.createdById) {
+    const inviter = await prisma.user.findUnique({
+      where: { id: key.createdById },
+      select: { companyId: true },
+    });
+    if (inviter?.companyId) targetCompanyId = inviter.companyId;
+  }
+
   // ===== Atomic claim + create =====
   // 이전엔 (1) findUnique 로 used=false 확인 → (2) user.create → (3) inviteKey.update used=true 였는데
   // (1) 과 (3) 사이에 같은 초대키로 동시 요청이 들어오면 둘 다 used=false 를 보고 통과 → 키 1개로 N명 가입.
   // updateMany({ where:{id, used:false}, data:{used:true} }) 는 \"하나만 통과\" 를 DB 가 보장하므로
   // 트랜잭션 안에서 이 결과 count 를 보고 분기하면 어떤 동시성 시나리오에서도 단 한 명만 가입한다.
-  let user: { id: string; email: string; name: string; role: string; team: string | null; position: string | null; avatarColor: string; avatarUrl: string | null; superAdmin: boolean };
+  let user: { id: string; email: string; name: string; role: string; team: string | null; position: string | null; avatarColor: string; avatarUrl: string | null; superAdmin: boolean; companyId: string | null };
   try {
     user = await prisma.$transaction(async (tx) => {
       const now = new Date();
@@ -191,6 +226,7 @@ router.post("/signup", async (req, res) => {
           team: key.team,
           position: key.position,
           employeeNo,
+          companyId: targetCompanyId,
         },
       });
       // usedById 는 user.id 가 있어야 채울 수 있어 같은 트랜잭션 안에서 추가 update.
@@ -202,6 +238,7 @@ router.post("/signup", async (req, res) => {
         id: created.id, email: created.email, name: created.name, role: created.role,
         team: created.team, position: created.position,
         avatarColor: created.avatarColor, avatarUrl: created.avatarUrl, superAdmin: created.superAdmin,
+        companyId: created.companyId,
       };
     }, {
       isolationLevel: "Serializable",
@@ -219,8 +256,8 @@ router.post("/signup", async (req, res) => {
   }
 
   const sid = await createSession(user.id, req);
-  const token = signToken({ id: user.id, role: user.role, name: user.name, email: user.email }, sid);
-  setAuthCookie(res, token);
+  const token = signToken({ id: user.id, role: user.role, name: user.name, email: user.email, companyId: user.companyId }, sid);
+  setAuthCookie(res, token, req);
   await writeLog(user.id, "SIGNUP", user.email, `invite:${inviteKey} sid=${sid}`, req.ip);
 
   // 신규 가입 안내 — 본인 제외 모든 활성 사용자에게 종 + SSE 알림.
@@ -250,6 +287,66 @@ router.post("/signup", async (req, res) => {
   });
 });
 
+/* ===== 회사 가입 신청 (멀티테넌시) =====
+ * 누구나 회사를 신청할 수 있다. 신청 시 Company(status=PENDING) + 첫 ADMIN User 를 생성.
+ * 플랫폼 운영자가 승인(ACTIVE)하기 전까지는 로그인이 차단되므로 세션/쿠키를 발급하지 않는다.
+ */
+const companySignupSchema = z.object({
+  companyName: z.string().min(1).max(200),
+  contactName: z.string().min(1).max(100),
+  email: z.string().email().max(200),
+  password: z.string().min(8).max(128),
+  contactPhone: z.string().max(40).optional(),
+  bizRegNo: z.string().max(40).optional(),
+});
+
+router.post("/company-signup", async (req, res) => {
+  const parsed = companySignupSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "입력값을 확인해주세요 (비밀번호는 8자 이상)" });
+  const { companyName, contactName, email, password, contactPhone, bizRegNo } = parsed.data;
+
+  // 이메일은 글로벌 유니크 — 트랜잭션 안 unique 위반으로도 막히지만 빠른 분기용 사전 체크.
+  const existing = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (existing) return res.status(400).json({ error: "이미 가입된 이메일입니다" });
+
+  const passwordHash = await bcrypt.hash(password, 12);
+  const employeeNo = await generateUniqueEmployeeNo();
+
+  let companyId: string;
+  try {
+    companyId = await prisma.$transaction(async (tx) => {
+      const company = await tx.company.create({
+        data: {
+          name: companyName,
+          status: "PENDING",
+          contactName,
+          contactEmail: email,
+          contactPhone: contactPhone ?? null,
+          bizRegNo: bizRegNo ?? null,
+        },
+      });
+      await tx.user.create({
+        data: {
+          email,
+          name: contactName,
+          passwordHash,
+          role: "ADMIN", // 회사의 첫 관리자
+          employeeNo,
+          companyId: company.id,
+        },
+      });
+      return company.id;
+    });
+  } catch (e: any) {
+    if (e?.code === "P2002") return res.status(400).json({ error: "이미 가입된 이메일이거나 충돌이 발생했습니다" });
+    throw e;
+  }
+
+  await writeLog(null, "COMPANY_SIGNUP", companyId, `${companyName} / ${email}`, req.ip);
+  // 승인 전까지 로그인 불가 — 세션/쿠키 발급하지 않는다.
+  res.json({ ok: true, status: "PENDING" });
+});
+
 router.post("/logout", requireAuth, async (req, res) => {
   // 현재 세션 row 도 revoke — 다른 디바이스 세션은 유지.
   const sid = (req as any).sessionId as string | null;
@@ -262,12 +359,12 @@ router.post("/logout", requireAuth, async (req, res) => {
       evictSessionCache(sid);
     } catch { /* ignore */ }
   }
-  clearAuthCookie(res);
-  clearSuperCookie(res);
+  clearAuthCookie(res, req);
+  clearSuperCookie(res, req);
   // 임퍼소네이트 쿠키도 함께 클리어 — 같은 브라우저로 다시 로그인했을 때 이전 impersonation
   // 컨텍스트가 의도치 않게 되살아나는 걸 막는다. 이전엔 clearImpCookie 호출이 빠져서
   // 1시간 동안 잔류하다 같은 super-admin 로그인 시 자동 재활성화됐었다.
-  clearImpCookie(res);
+  clearImpCookie(res, req);
   res.json({ ok: true });
 });
 
@@ -299,7 +396,7 @@ router.post("/step-up", requireAuth, async (req, res) => {
   }
 
   const token = signSuper(user.id);
-  setSuperCookie(res, token);
+  setSuperCookie(res, token, req);
   await writeLog(user.id, "SUPER_STEPUP_OK", undefined, `ttl=${SUPER_TTL_SEC}s`, req.ip);
   res.json({ ok: true, expiresAt: Date.now() + SUPER_TTL_SEC * 1000 });
 });
@@ -434,14 +531,14 @@ router.post("/desktop-biometric/stepup", requireAuth, async (req, res) => {
 
   await prisma.desktopBiometric.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } });
   const token = signSuper(user.id);
-  setSuperCookie(res, token);
+  setSuperCookie(res, token, req);
   await writeLog(user.id, "SUPER_STEPUP_OK_DESKTOP_BIO", row.id.slice(0, 8), row.deviceName ?? undefined, req.ip);
   res.json({ ok: true, expiresAt: Date.now() + SUPER_TTL_SEC * 1000 });
 });
 
 router.post("/step-down", requireAuth, async (req, res) => {
   const u = (req as any).user;
-  clearSuperCookie(res);
+  clearSuperCookie(res, req);
   await writeLog(u.id, "SUPER_STEPDOWN", undefined, undefined, req.ip);
   res.json({ ok: true });
 });

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api } from "../api";
+import { api, apiUrl } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
@@ -350,7 +350,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       const form = new FormData();
       form.append("file", file);
       // 문서함 전용 엔드포인트 — 서버에서 500MB 까지 허용.
-      const res = await fetch("/api/upload/document", { method: "POST", body: form, credentials: "include" });
+      const res = await fetch(apiUrl("/api/upload/document"), { method: "POST", body: form, credentials: "include" });
       if (!res.ok) throw new Error((await res.json()).error);
       const json = await res.json();
       setDocForm((p) => ({
@@ -382,7 +382,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     }
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("/api/upload/document", { method: "POST", body: form, credentials: "include" });
+    const res = await fetch(apiUrl("/api/upload/document"), { method: "POST", body: form, credentials: "include" });
     if (!res.ok) throw new Error((await res.json()).error);
     const up = await res.json();
     const fallbackScope: DocScope =
@@ -477,7 +477,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
           } else {
             const form = new FormData();
             form.append("file", f);
-            const res = await fetch("/api/upload/document", { method: "POST", body: form, credentials: "include" });
+            const res = await fetch(apiUrl("/api/upload/document"), { method: "POST", body: form, credentials: "include" });
             if (!res.ok) throw new Error((await res.json()).error);
             const up = await res.json();
             await api("/api/document", {
@@ -729,7 +729,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   // fetch 로 받아 Blob 으로 내려받으면: 에러 시 JSON 본문을 파싱해 alertAsync 로 안내 가능.
   async function downloadFolder(f: Folder) {
     try {
-      const res = await fetch(`/api/document/folders/${f.id}/download`, { credentials: "include" });
+      const res = await fetch(apiUrl(`/api/document/folders/${f.id}/download`), { credentials: "include" });
       if (!res.ok) {
         let msg = `다운로드 실패 (HTTP ${res.status})`;
         try {

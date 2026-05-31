@@ -69,6 +69,7 @@ router.post("/", async (req, res) => {
       createdById: u.id,
       members: {
         create: Array.from(memberSet).map((uid) => ({
+          companyId: u.companyId,
           userId: uid,
           role: uid === u.id ? "OWNER" : "MEMBER",
         })),
@@ -504,6 +505,7 @@ router.post("/:id/qa", async (req, res) => {
         ? {
             attachments: {
               create: d.attachments.map((a) => ({
+                companyId: u.companyId,
                 url: a.url,
                 name: a.name,
                 mimeType: a.mimeType,

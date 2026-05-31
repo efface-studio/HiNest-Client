@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { api } from "./api";
+import { api, apiUrl } from "./api";
 import { deliverPendingNotifications, markSeen } from "./lib/desktopNotify";
 import { shouldDeliverNotif } from "./lib/notifPrefs";
 
@@ -137,7 +137,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     };
     function connect() {
       try {
-        const es = new EventSource("/api/notification/stream", { withCredentials: true });
+        const es = new EventSource(apiUrl("/api/notification/stream"), { withCredentials: true });
         esRef.current = es;
         es.addEventListener("notification", (ev: MessageEvent) => {
           try {

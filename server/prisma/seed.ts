@@ -3,7 +3,17 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+// 기본 회사(테넌트) — 기존 단일 회사 데이터의 귀속처. 마이그레이션과 동일한 고정 id.
+const DEFAULT_COMPANY_ID = "company_default";
+
 async function main() {
+  // 기본 회사 보장 (마이그레이션이 이미 만들었으면 멱등)
+  await prisma.company.upsert({
+    where: { id: DEFAULT_COMPANY_ID },
+    update: {},
+    create: { id: DEFAULT_COMPANY_ID, name: "주식회사 하이비츠", status: "ACTIVE" },
+  });
+
   // 기본 관리자 (Super Admin)
   const email = "admin@hinest.local";
   let admin = await prisma.user.findUnique({ where: { email } });
@@ -19,6 +29,7 @@ async function main() {
         position: "시스템관리자",
         team: "경영지원",
         avatarColor: "#36D7B7",
+        companyId: DEFAULT_COMPANY_ID,
       },
     });
 
@@ -117,10 +128,30 @@ async function main() {
         position: a.position,
         team: a.team,
         avatarColor: a.avatarColor,
+        companyId: DEFAULT_COMPANY_ID,
       },
     });
     console.log(`Upserted ${a.email} / ${a.password} (${a.role}${a.superAdmin ? "+SUPER" : ""})`);
   }
+
+  // --- 플랫폼 운영자 (멀티테넌시) ---
+  // 어느 회사에도 속하지 않는 최상위 계정. 회사 가입 승인 콘솔 전용.
+  // 회사 내부 superAdmin 과 구분되며 companyId 는 null.
+  const platformHash = await bcrypt.hash("platform1234", 10);
+  await prisma.user.upsert({
+    where: { email: "platform@hinest.local" },
+    update: { platformAdmin: true, active: true },
+    create: {
+      email: "platform@hinest.local",
+      name: "플랫폼 운영자",
+      passwordHash: platformHash,
+      role: "MEMBER",
+      platformAdmin: true,
+      companyId: null,
+      avatarColor: "#0F172A",
+    },
+  });
+  console.log("Upserted platform@hinest.local / platform1234 (PLATFORM ADMIN)");
 }
 
 main()

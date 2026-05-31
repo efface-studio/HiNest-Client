@@ -150,7 +150,7 @@ router.post("/rooms", async (req, res) => {
         type: "DIRECT",
         // DM 도 createdById 박아둠 — 통계/감사 목적 일관성. 삭제는 양쪽 모두 못 함(둘 다 보존 필요).
         createdById: u.id,
-        members: { create: [{ userId: u.id }, { userId: other }] },
+        members: { create: [{ companyId: u.companyId, userId: u.id }, { companyId: u.companyId, userId: other }] },
       },
       include: {
         members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
@@ -171,7 +171,7 @@ router.post("/rooms", async (req, res) => {
       type: d.type,
       // 그룹/팀 방의 생성자 — DELETE /rooms/:id 권한 판정에 사용.
       createdById: u.id,
-      members: { create: memberIds.map((userId) => ({ userId })) },
+      members: { create: memberIds.map((userId) => ({ companyId: u.companyId, userId })) },
     },
     include: {
       members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },

@@ -18,6 +18,7 @@ import { ROUTE_PREFETCH, loadProject } from "../routes";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
 import { isPreviewMode } from "../lib/previewMock";
+import { isInstalledApp } from "../lib/platform";
 
 /**
  * 사이드바 hover/focus prefetch — 사용자가 클릭하기 전에 해당 페이지 청크를
@@ -553,22 +554,29 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
               >
                 {({ isActive }) => (<><ShieldIcon active={isActive} /><span>관리자</span></>)}
               </NavLink>
-              {user?.superAdmin && (
-                <NavLink
-                  to="/super-admin"
-                  className={({ isActive }) => navClass(isActive)}
-                  onMouseEnter={() => prefetchRoute("/super-admin")}
-                  onFocus={() => prefetchRoute("/super-admin")}
-                >
-                  {({ isActive }) => (<><DevIcon active={isActive} /><span>개발자</span></>)}
-                </NavLink>
-              )}
+            </div>
+          )}
+
+          {/* 운영 콘솔 진입 — 개발자(superAdmin)/플랫폼 운영자(platformAdmin) 전용.
+              실제 화면은 회사 앱과 분리된 별도 셸(ConsoleLayout)에서 렌더된다. 진입하면
+              AppLayout 자체가 언마운트되므로 여기 링크는 "콘솔로 나가기" 성격이다. */}
+          {(user?.superAdmin || user?.platformAdmin) && (
+            <div>
+              <SectionLabel>운영</SectionLabel>
+              <NavLink
+                to={user?.platformAdmin ? "/platform" : "/super-admin"}
+                className={({ isActive }) => navClass(isActive)}
+                onMouseEnter={() => prefetchRoute(user?.platformAdmin ? "/platform" : "/super-admin")}
+                onFocus={() => prefetchRoute(user?.platformAdmin ? "/platform" : "/super-admin")}
+              >
+                {({ isActive }) => (<><DevIcon active={isActive} /><span>운영 콘솔</span></>)}
+              </NavLink>
             </div>
           )}
         </nav>
 
-        {/* 앱 다운로드 — 웹 브라우저로 접속한 경우에만. Electron 에서는 숨김. */}
-        {!window.hinest?.isDesktop && (
+        {/* 앱 다운로드 — 웹 브라우저로 접속한 경우에만. 설치형 앱(데스크톱·모바일)에서는 숨김. */}
+        {!isInstalledApp() && (
           <div className="border-t border-ink-150 px-2 pt-2">
             <NavLink
               to="/download"
@@ -1017,7 +1025,6 @@ const BREADCRUMB: Record<string, string> = {
   "/approvals": "전자결재",
   "/expense": "법인카드",
   "/admin": "관리자",
-  "/super-admin": "개발자",
   "/profile": "내 프로필",
 };
 
@@ -1130,5 +1137,4 @@ function SnippetIcon({ active }: I) { return svgBase(!!active, <><path d="m8 3-4
 function ShieldIcon({ active }: I) { return svgBase(!!active, <><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /><path d="m9 12 2 2 4-4" /></>); }
 function PayrollIcon({ active }: I) { return svgBase(!!active, <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>); }
 function DevIcon({ active }: I) { return svgBase(!!active, <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>); }
-function CrownIcon({ active }: I) { return svgBase(!!active, <><path d="M3 18h18" /><path d="M3 8l4 5 5-8 5 8 4-5v10H3z" /></>); }
 const _unused_swInv = swInv;

@@ -25,5 +25,11 @@ declare global {
       onUpdateDownloaded?: (cb: (info: { version: string; notes?: string }) => void) => () => void;
       onUpdateProgress?: (cb: (p: { percent: number }) => void) => () => void;
     };
+    // Capacitor 가 네이티브(iOS/Android) WebView 에 주입하는 전역.
+    // @capacitor/core 를 import 하지 않고 런타임 감지에만 쓰는 최소 타입.
+    Capacitor?: {
+      isNativePlatform?: () => boolean;
+      getPlatform?: () => "ios" | "android" | "web";
+    };
   }
 }

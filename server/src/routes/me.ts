@@ -28,6 +28,8 @@ router.get("/", requireAuth, async (req, res) => {
       avatarColor: user.avatarColor,
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
+      platformAdmin: user.platformAdmin,
+      companyId: user.companyId ?? null,
       isDeveloper: user.isDeveloper,
       employeeNo: user.employeeNo,
       presenceStatus: user.presenceStatus,
@@ -69,7 +71,7 @@ router.patch("/presence", requireAuth, async (req, res) => {
 router.delete("/impersonate", requireAuth, async (req, res) => {
   const real = (req as any).realUser;
   const impedId = (req as any).impersonatedById;
-  clearImpCookie(res);
+  clearImpCookie(res, req);
   if (impedId && real?.id) {
     await writeLog(real.id, "IMPERSONATE_END", (req as any).user?.id, undefined, req.ip);
   }

@@ -323,6 +323,7 @@ router.post(
 
     const ev = await prisma.webhookEvent.create({
       data: {
+        companyId: ch.companyId,
         channelId: ch.id,
         title,
         body,

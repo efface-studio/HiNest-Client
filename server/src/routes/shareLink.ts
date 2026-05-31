@@ -206,7 +206,7 @@ pub.post("/:token/download", async (req, res) => {
     const ok = await bcrypt.compare(password, link.passwordHash);
     if (!ok) {
       await prisma.shareLinkAccess.create({
-        data: { linkId: link.id, action: "AUTH_FAIL", ip: req.ip, userAgent: req.get("user-agent")?.slice(0, 200) },
+        data: { companyId: link.companyId, linkId: link.id, action: "AUTH_FAIL", ip: req.ip, userAgent: req.get("user-agent")?.slice(0, 200) },
       });
       return res.status(401).json({ error: "비밀번호가 올바르지 않아요" });
     }
@@ -229,7 +229,7 @@ pub.post("/:token/download", async (req, res) => {
   }
 
   await prisma.shareLinkAccess.create({
-    data: { linkId: link.id, action: "DOWNLOAD", ip: req.ip, userAgent: req.get("user-agent")?.slice(0, 200) },
+    data: { companyId: link.companyId, linkId: link.id, action: "DOWNLOAD", ip: req.ip, userAgent: req.get("user-agent")?.slice(0, 200) },
   });
 
   const fileName = link.document.fileName ?? link.document.title ?? "download";

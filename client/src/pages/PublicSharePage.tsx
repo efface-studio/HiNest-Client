@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
+import { apiUrl } from "../api";
 import { fmtSize } from "../lib/fmt";
 import { downloadBlob } from "../lib/download";
 
@@ -26,7 +27,7 @@ export default function PublicSharePage() {
 
   useEffect(() => {
     let alive = true;
-    fetch(`/api/public-share/${encodeURIComponent(token)}`)
+    fetch(apiUrl(`/api/public-share/${encodeURIComponent(token)}`))
       .then(async (r) => {
         if (!alive) return;
         if (!r.ok) {
@@ -45,7 +46,7 @@ export default function PublicSharePage() {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch(`/api/public-share/${encodeURIComponent(token)}/download`, {
+      const res = await fetch(apiUrl(`/api/public-share/${encodeURIComponent(token)}/download`), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ password }),
@@ -61,7 +62,7 @@ export default function PublicSharePage() {
         : (meta?.document?.fileName ?? meta?.document?.title ?? "download");
       downloadBlob(blob, defaultName);
       // 다운로드 카운트가 올라갔을 테니 메타 새로 가져옴.
-      const r2 = await fetch(`/api/public-share/${encodeURIComponent(token)}`);
+      const r2 = await fetch(apiUrl(`/api/public-share/${encodeURIComponent(token)}`));
       if (r2.ok) setMeta(await r2.json());
     } catch (e: any) {
       setError(e?.message ?? "다운로드에 실패했어요");

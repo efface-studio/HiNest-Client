@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { api, apiSWR } from "../api";
+import { api, apiSWR, apiUrl } from "../api";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import DatePicker from "./DatePicker";
 import { safeAttachmentUrl } from "../lib/safeUrl";
@@ -271,7 +271,7 @@ export default function ProjectQaList({
   }> {
     const fd = new FormData();
     fd.append("file", file);
-    const r = await fetch("/api/upload", { method: "POST", credentials: "include", body: fd });
+    const r = await fetch(apiUrl("/api/upload"), { method: "POST", credentials: "include", body: fd });
     if (!r.ok) {
       let msg = "업로드 실패";
       try {

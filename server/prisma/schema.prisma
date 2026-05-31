@@ -22,6 +22,12 @@ model User {
   superAdmin         Boolean   @default(false) // 최상위 관리자 - DM/팀 채팅 감사 권한 보유
   // \"HiNest 개발자\" 딱지 — UI 칩 노출 + \"개발 중\" 표시된 페이지 접근 권한.
   isDeveloper        Boolean   @default(false)
+  // ── 멀티테넌시 ──
+  // 소속 회사(테넌트). 플랫폼 운영자(platformAdmin)는 어느 회사에도 속하지 않으므로 null.
+  // 기존 단일 회사 데이터는 마이그레이션에서 기본 회사로 백필된다.
+  companyId          String?
+  // 플랫폼 운영자 — 회사 가입 승인 등 테넌트를 가로지르는 최상위 권한. 회사 내부 superAdmin 과 구분.
+  platformAdmin      Boolean   @default(false)
   position           String? // 사원/대리/과장/팀장/이사 등
   team               String?
   active             Boolean   @default(true)
@@ -67,6 +73,7 @@ model User {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
+  company                 Company?               @relation(fields: [companyId], references: [id])
   inviteKey               InviteKey?             @relation("UsedKey")
   events                  Event[]
   leaves                  Leave[]
@@ -110,6 +117,35 @@ model User {
   // autoClockOut 스케줄러가 매 60초 where:{active, autoClockOutTime} 로 조회한다.
   // 인덱스가 없으면 매 분 User 풀스캔(1440회/일). 대부분 null 이라 인덱스는 작게 유지된다.
   @@index([autoClockOutTime])
+  @@index([companyId])
+}
+
+/// 멀티테넌시 — 가입 신청한 각 회사(테넌트).
+/// 가입 승인 워크플로우: PENDING(승인 대기) → ACTIVE(정상) | REJECTED(반려).
+/// ACTIVE 회사의 사용자만 로그인 가능. SUSPENDED 는 운영자가 일시 정지(로그인 차단, 데이터 보존).
+/// 기존 단일 회사 데이터는 마이그레이션에서 id="company_default" 회사로 백필됨.
+model Company {
+  id             String    @id @default(cuid())
+  name           String // 회사명 (표시용)
+  slug           String?   @unique // URL/식별용 (선택)
+  status         String    @default("PENDING") // PENDING | ACTIVE | SUSPENDED | REJECTED
+  // ── 가입 신청자 정보 (스냅샷) ──
+  contactName    String? // 신청자(첫 관리자) 이름
+  contactEmail   String? // 신청자 이메일
+  contactPhone   String?
+  bizRegNo       String? // 사업자등록번호 (선택)
+  // ── 승인/반려/정지 감사 ──
+  approvedAt     DateTime?
+  approvedById   String? // 승인한 플랫폼 운영자 userId
+  rejectedAt     DateTime?
+  rejectedReason String?
+  suspendedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  users User[]
+
+  @@index([status])
 }
 
 /// 활성 로그인 세션 — JWT 만 쓸 땐 서버측 강제 로그아웃이 불가했음.
@@ -134,6 +170,7 @@ model Session {
 /// 멤버는 ProjectMember 로 연결, 생성자는 자동으로 OWNER 로 들어감.
 model Project {
   id              String           @id @default(cuid())
+  companyId       String?
   name            String
   description     String?
   color           String           @default("#3B5CF0")
@@ -152,12 +189,15 @@ model Project {
   // 전사 캘린더(Event) 중 이 프로젝트 범위로 공유된 일정
   scheduleEvents  Event[]
   serviceAccounts ServiceAccount[] @relation("ProjectServiceAccounts")
+
+  @@index([companyId])
 }
 
 /// 프로젝트별 QA(테스트) 체크리스트 — "무엇을 검증했고 결과가 어땠는지" 남기는 용도.
 /// 기능 배포 전 점검 · 버그 재현/픽스 이력 · 수기 테스트 기록에 쓰임.
 model ProjectQaItem {
   id           String    @id @default(cuid())
+  companyId    String?
   projectId    String
   project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title        String
@@ -190,12 +230,14 @@ model ProjectQaItem {
   @@index([projectId, sortOrder])
   @@index([projectId, assigneeId])
   @@index([projectId, dueDate])
+  @@index([companyId])
 }
 
 /// QA 항목에 첨부된 이미지/영상/파일. 업로드는 공용 `/api/upload` 를 거쳐
 /// 반환된 url/metadata 를 그대로 이 레코드에 저장해둠.
 model ProjectQaAttachment {
   id           String        @id @default(cuid())
+  companyId    String?
   qaItemId     String
   qaItem       ProjectQaItem @relation(fields: [qaItemId], references: [id], onDelete: Cascade)
   /// 업로드 후 내려받을 수 있는 URL (`/uploads/<key>` 형식)
@@ -211,12 +253,14 @@ model ProjectQaAttachment {
   createdAt    DateTime      @default(now())
 
   @@index([qaItemId, createdAt])
+  @@index([companyId])
 }
 
 /// 외부 서비스에서 들어오는 웹훅 이벤트를 받아 프로젝트 안 "채널"로 묶어 노출.
 /// token 은 URL 경로에 들어가 비밀 키 역할 — 외부로 노출되므로 rotate 가능하게 저장.
 model WebhookChannel {
   id            String         @id @default(cuid())
+  companyId     String?
   projectId     String
   project       Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
   name          String
@@ -232,10 +276,12 @@ model WebhookChannel {
   events        WebhookEvent[]
 
   @@index([projectId])
+  @@index([companyId])
 }
 
 model WebhookEvent {
   id         String         @id @default(cuid())
+  companyId  String?
   channelId  String
   channel    WebhookChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
   /// 추출된 제목 — 기본은 payload.title / payload.subject / payload.text 첫줄.
@@ -249,10 +295,12 @@ model WebhookEvent {
   createdAt  DateTime       @default(now())
 
   @@index([channelId, createdAt])
+  @@index([companyId])
 }
 
 model ProjectMember {
   id        String   @id @default(cuid())
+  companyId String?
   projectId String
   project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   userId    String
@@ -262,11 +310,13 @@ model ProjectMember {
 
   @@unique([projectId, userId])
   @@index([userId])
+  @@index([companyId])
 }
 
 /// 프로젝트 전용 일정 — 회사 전체 일정(Event) 과 분리. 월/주/일 뷰에서 쓰임.
 model ProjectEvent {
   id            String    @id @default(cuid())
+  companyId     String?
   projectId     String
   project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   title         String
@@ -287,6 +337,7 @@ model ProjectEvent {
   updatedAt     DateTime  @updatedAt
 
   @@index([projectId, startAt])
+  @@index([companyId])
 }
 
 /// Electron 데스크톱 앱에서 OS Touch ID 로 총관리자 잠금 해제할 수 있게 등록된 기기.
@@ -321,6 +372,7 @@ model Passkey {
 
 model InviteKey {
   id          String    @id @default(cuid())
+  companyId   String?
   key         String    @unique
   email       String?
   name        String?
@@ -334,10 +386,13 @@ model InviteKey {
   createdById String?
   createdAt   DateTime  @default(now())
   expiresAt   DateTime?
+
+  @@index([companyId])
 }
 
 model Event {
   id            String   @id @default(cuid())
+  companyId     String?
   title         String
   content       String?
   scope         String   @default("COMPANY") // COMPANY | TEAM | PROJECT | PERSONAL | TARGETED
@@ -358,10 +413,12 @@ model Event {
   // 월별 캘린더 조회 — 대부분의 read 경로.
   @@index([startAt, endAt])
   @@index([projectId, startAt])
+  @@index([companyId])
 }
 
 model Leave {
   id        String   @id @default(cuid())
+  companyId String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String // ANNUAL | HALF | SICK | OTHER
@@ -375,25 +432,29 @@ model Leave {
   @@index([userId, status])
   // nav.ts 에서 status="PENDING" 전체 카운트 — leading userId 없이 status 단독 스캔 가능하게.
   @@index([status])
+  @@index([companyId])
 }
 
 model Attendance {
-  id       String    @id @default(cuid())
-  userId   String
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  date     String // YYYY-MM-DD
-  checkIn  DateTime?
-  checkOut DateTime?
-  note     String?
+  id        String    @id @default(cuid())
+  companyId String?
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date      String // YYYY-MM-DD
+  checkIn   DateTime?
+  checkOut  DateTime?
+  note      String?
 
   @@unique([userId, date])
   // 디렉터리 페이지가 "오늘 date + userId IN (...)" 로 묶어 조회 →
   // unique 가 만드는 (userId, date) 순서로는 date 선두 조회가 안 되므로 역순 인덱스 추가.
   @@index([date, userId])
+  @@index([companyId])
 }
 
 model Journal {
   id          String    @id @default(cuid())
+  companyId   String?
   userId      String
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   date        String // YYYY-MM-DD
@@ -406,10 +467,12 @@ model Journal {
 
   @@index([userId, date(sort: Desc)])
   @@index([deletedAt])
+  @@index([companyId])
 }
 
 model Notice {
   id          String           @id @default(cuid())
+  companyId   String?
   title       String
   content     String
   pinned      Boolean          @default(false)
@@ -422,11 +485,13 @@ model Notice {
 
   @@index([pinned(sort: Desc), createdAt(sort: Desc)])
   @@index([deletedAt])
+  @@index([companyId])
 }
 
 /// 공지에 남긴 이모지 반응. (noticeId, userId, emoji) 유니크 — 같은 이모지 중복 반응 방지.
 model NoticeReaction {
   id        String   @id @default(cuid())
+  companyId String?
   noticeId  String
   notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
   userId    String
@@ -436,12 +501,14 @@ model NoticeReaction {
 
   @@unique([noticeId, userId, emoji])
   @@index([noticeId])
+  @@index([companyId])
 }
 
 /// 유저별 즐겨찾기(핀). targetType 으로 대상 타입 구분 — "document" | "folder" | "meeting" | "notice" | "project" | "room".
 /// 사이드바 "고정" 섹션에 모으고, 각 객체의 star 버튼에서 토글.
 model Pin {
   id         String   @id @default(cuid())
+  companyId  String?
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   targetType String
@@ -452,11 +519,13 @@ model Pin {
 
   @@unique([userId, targetType, targetId])
   @@index([userId])
+  @@index([companyId])
 }
 
 /// 유저별 알림 환경설정. prefs 는 종별 on/off 맵, dndStart/End 는 "HH:mm".
 model NotificationPref {
   userId    String   @id
+  companyId String?
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   /// {"NOTICE":true,"DM":true,"MENTION":true,"APPROVAL_REQUEST":true,"APPROVAL_REVIEW":true,"SYSTEM":true}
   prefs     Json     @default("{}")
@@ -466,12 +535,15 @@ model NotificationPref {
   /// 이메일 알림 on/off (현재는 구조만; 메일러 붙일 때 사용).
   emailOn   Boolean  @default(false)
   updatedAt DateTime @updatedAt
+
+  @@index([companyId])
 }
 
 /// 문서 외부 공유 링크 — 사내 로그인 없이도 토큰으로 접근.
 /// 보안: 만료시각, 다운로드 횟수 제한, 선택적 비밀번호(bcrypt).
 model DocumentShareLink {
   id           String    @id @default(cuid())
+  companyId    String?
   documentId   String
   document     Document  @relation(fields: [documentId], references: [id], onDelete: Cascade)
   token        String    @unique
@@ -487,11 +559,13 @@ model DocumentShareLink {
   accessLogs ShareLinkAccess[]
 
   @@index([documentId])
+  @@index([companyId])
 }
 
 /// 폴더 외부 공유 링크 — 로그인 없이 폴더 ZIP 을 다운로드.
 model FolderShareLink {
   id           String    @id @default(cuid())
+  companyId    String?
   folderId     String
   folder       Folder    @relation(fields: [folderId], references: [id], onDelete: Cascade)
   token        String    @unique
@@ -505,10 +579,12 @@ model FolderShareLink {
   revokedAt    DateTime?
 
   @@index([folderId])
+  @@index([companyId])
 }
 
 model ShareLinkAccess {
   id        String            @id @default(cuid())
+  companyId String?
   linkId    String
   link      DocumentShareLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
   action    String // VIEW | DOWNLOAD | AUTH_FAIL
@@ -517,12 +593,14 @@ model ShareLinkAccess {
   createdAt DateTime          @default(now())
 
   @@index([linkId, createdAt])
+  @@index([companyId])
 }
 
 /// 결재 템플릿 — 유형/제목/기본 본문/기본 결재라인을 저장해두고 재사용.
 /// scope=ALL 이면 전사 공개, TEAM 이면 해당 팀만, PRIVATE 이면 작성자 본인만.
 model ApprovalTemplate {
   id          String   @id @default(cuid())
+  companyId   String?
   name        String
   type        String
   scope       String   @default("ALL")
@@ -534,11 +612,13 @@ model ApprovalTemplate {
   updatedAt   DateTime @updatedAt
 
   @@index([createdById])
+  @@index([companyId])
 }
 
 /// 유저가 즐겨쓰는 결재라인. reviewerIds 콤마 구분.
 model ApprovalLineFavorite {
   id          String   @id @default(cuid())
+  companyId   String?
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name        String
@@ -546,11 +626,13 @@ model ApprovalLineFavorite {
   createdAt   DateTime @default(now())
 
   @@index([userId])
+  @@index([companyId])
 }
 
 /// 결재에 달린 댓글 — 반려 후 재상신 대화 스레드, 일반 코멘트 모두 여기에 저장.
 model ApprovalComment {
   id         String   @id @default(cuid())
+  companyId  String?
   approvalId String
   approval   Approval @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   authorId   String
@@ -559,11 +641,13 @@ model ApprovalComment {
   createdAt  DateTime @default(now())
 
   @@index([approvalId, createdAt])
+  @@index([companyId])
 }
 
 /// 회의록 수정 스냅샷 — PATCH 마다 이전 content 를 저장해 되돌리기 가능하게.
 model MeetingRevision {
   id        String   @id @default(cuid())
+  companyId String?
   meetingId String
   meeting   Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   title     String
@@ -573,11 +657,13 @@ model MeetingRevision {
   createdAt DateTime @default(now())
 
   @@index([meetingId, createdAt])
+  @@index([companyId])
 }
 
 /// 문서 수정 스냅샷 — title/description/fileUrl 등 변경 시점의 값 보관.
 model DocumentRevision {
   id          String   @id @default(cuid())
+  companyId   String?
   documentId  String
   document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
   title       String
@@ -593,10 +679,12 @@ model DocumentRevision {
   createdAt   DateTime @default(now())
 
   @@index([documentId, createdAt])
+  @@index([companyId])
 }
 
 model ChatRoom {
   id          String        @id @default(cuid())
+  companyId   String?
   name        String
   type        String        @default("GROUP") // GROUP | DIRECT | TEAM
   // 그룹방을 만든 사람 — DELETE /rooms/:id 권한 판정에 사용.
@@ -609,10 +697,12 @@ model ChatRoom {
   messages    ChatMessage[]
 
   @@index([createdById])
+  @@index([companyId])
 }
 
 model RoomMember {
   id         String    @id @default(cuid())
+  companyId  String?
   roomId     String
   userId     String
   lastReadAt DateTime?
@@ -622,10 +712,12 @@ model RoomMember {
   @@unique([roomId, userId])
   // userId 단독 조회 — "내가 속한 방" 검색에서 자주 쓰임
   @@index([userId])
+  @@index([companyId])
 }
 
 model ChatMessage {
   id          String            @id @default(cuid())
+  companyId   String?
   roomId      String
   senderId    String
   content     String
@@ -648,10 +740,12 @@ model ChatMessage {
   @@index([roomId, scheduledAt])
   // after-cursor 증분 폴링 — createdAt 역정렬·범위 조회가 핵심 경로
   @@index([roomId, createdAt])
+  @@index([companyId])
 }
 
 model MessageReaction {
   id        String      @id @default(cuid())
+  companyId String?
   messageId String
   message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
   userId    String
@@ -661,23 +755,31 @@ model MessageReaction {
 
   @@unique([messageId, userId, emoji])
   @@index([messageId])
+  @@index([companyId])
 }
 
 model Team {
   id        String   @id @default(cuid())
-  name      String   @unique
+  companyId String?
+  name      String
   createdAt DateTime @default(now())
+
+  @@unique([companyId, name])
 }
 
 model Position {
   id        String   @id @default(cuid())
-  name      String   @unique
+  companyId String?
+  name      String
   rank      Int      @default(0)
   createdAt DateTime @default(now())
+
+  @@unique([companyId, name])
 }
 
 model CardExpense {
   id         String   @id @default(cuid())
+  companyId  String?
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   usedAt     DateTime
@@ -693,10 +795,12 @@ model CardExpense {
   @@index([userId, usedAt(sort: Desc)])
   // nav.ts 에서 status="PENDING" 전체 카운트에 사용 — status 단독 인덱스 필요.
   @@index([status])
+  @@index([companyId])
 }
 
 model Notification {
   id         String    @id @default(cuid())
+  companyId  String?
   userId     String
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type       String // NOTICE | DM | APPROVAL_REQUEST | APPROVAL_REVIEW | MENTION | SYSTEM
@@ -712,10 +816,12 @@ model Notification {
   @@index([userId, readAt])
   // 리스트 페이지 — 최신순 정렬이 핵심이라 (userId, createdAt desc) 인덱스 추가.
   @@index([userId, createdAt(sort: Desc)])
+  @@index([companyId])
 }
 
 model Folder {
   id           String     @id @default(cuid())
+  companyId    String?
   name         String
   parentId     String?
   parent       Folder?    @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
@@ -740,10 +846,12 @@ model Folder {
   // document.ts 의 폴더 서브트리 BFS(collectFolderSubtree) 와 ZIP walk() 가
   // where:{parentId} 를 반복 조회한다. 인덱스가 없으면 트리 레벨마다 Folder 풀스캔.
   @@index([parentId])
+  @@index([companyId])
 }
 
 model Document {
   id           String              @id @default(cuid())
+  companyId    String?
   title        String
   description  String?
   folderId     String?
@@ -778,6 +886,7 @@ model Document {
   @@index([folderId, deletedAt])
   // 작성자 본인의 문서 (마이페이지 / 검색) — authorId 단독 필터도 자주 들어옴.
   @@index([authorId, updatedAt(sort: Desc)])
+  @@index([companyId])
 }
 
 /// 급여명세서(임금명세서) — 관리자(ADMIN)만 작성·수정·삭제·발송. 직원 본인은 자기 것만 열람.
@@ -785,6 +894,7 @@ model Document {
 /// 바뀌어도 과거 명세서는 고정. 금액은 원(KRW) 정수, 정산 항목은 음수 가능.
 model Payslip {
   id              String    @id @default(cuid())
+  companyId       String?
   // 귀속월
   year            Int
   month           Int // 1~12
@@ -824,10 +934,12 @@ model Payslip {
   // 월별 전체 조회 (관리자 목록)
   @@index([year, month])
   @@index([deletedAt])
+  @@index([companyId])
 }
 
 model Approval {
   id            String            @id @default(cuid())
+  companyId     String?
   type          String // TRIP | EXPENSE | PURCHASE | GENERAL | OFFSITE | OTHER
   title         String
   content       String?
@@ -848,10 +960,12 @@ model Approval {
   comments      ApprovalComment[]
 
   @@index([requesterId, createdAt(sort: Desc)])
+  @@index([companyId])
 }
 
 model ApprovalStep {
   id         String    @id @default(cuid())
+  companyId  String?
   approvalId String
   approval   Approval  @relation(fields: [approvalId], references: [id], onDelete: Cascade)
   reviewerId String
@@ -863,10 +977,12 @@ model ApprovalStep {
 
   @@unique([approvalId, order])
   @@index([reviewerId, status])
+  @@index([companyId])
 }
 
 model AuditLog {
   id        String   @id @default(cuid())
+  companyId String?
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   action    String
@@ -883,6 +999,7 @@ model AuditLog {
   @@index([userId, createdAt(sort: Desc)])
   // action 단위 집계 — LOGIN_FAIL / PWD_RESET 등 보안 이벤트 모니터링용.
   @@index([action, createdAt(sort: Desc)])
+  @@index([companyId])
 }
 
 /// 회의록 — 노션 스타일 리치 텍스트 에디터(TipTap) 의 JSON 도큐먼트를 content 에 저장.
@@ -893,6 +1010,7 @@ model AuditLog {
 /// 작성자는 무조건 조회·수정 가능. ADMIN 은 전역 열람.
 model Meeting {
   id          String              @id @default(cuid())
+  companyId   String?
   title       String
   /// TipTap JSON document. HTML 이 아닌 구조화된 노드 트리.
   content     Json
@@ -912,6 +1030,7 @@ model Meeting {
   @@index([deletedAt])
   @@index([authorId, createdAt])
   @@index([projectId, createdAt])
+  @@index([companyId])
 }
 
 /// 회의록 첨부 — 파일/이미지/영상 또는 외부 링크. content JSON 과 별개로 보관해
@@ -920,6 +1039,7 @@ model Meeting {
 /// kind=FILE/IMAGE/VIDEO 면 url 은 /uploads/<key>, mimeType/sizeBytes 채워짐.
 model MeetingAttachment {
   id           String   @id @default(cuid())
+  companyId    String?
   meetingId    String
   meeting      Meeting  @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   kind         String // FILE | IMAGE | VIDEO | LINK
@@ -932,6 +1052,7 @@ model MeetingAttachment {
   createdAt    DateTime @default(now())
 
   @@index([meetingId, createdAt])
+  @@index([companyId])
 }
 
 /// 비밀번호 재설정 토큰 — 잠긴 계정도 본인 이메일 인증으로 풀 수 있게 한다.
@@ -959,6 +1080,7 @@ model PasswordResetToken {
 /// visibility=SPECIFIC 인 회의록에서 열람 허용된 유저.
 model MeetingViewer {
   id        String  @id @default(cuid())
+  companyId String?
   meetingId String
   meeting   Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
   userId    String
@@ -966,6 +1088,7 @@ model MeetingViewer {
 
   @@unique([meetingId, userId])
   @@index([userId])
+  @@index([companyId])
 }
 
 /// 서비스 계정 레지스트리 — AWS/Vercel/GitHub/외부 SaaS 등의 "누가 어떤 계정을 쓰는지" 기록.
@@ -973,6 +1096,7 @@ model MeetingViewer {
 /// 로그인 ID(이메일/사용자명)·콘솔 URL·담당자·분류·메모만 보관.
 model ServiceAccount {
   id          String   @id @default(cuid())
+  companyId   String?
   serviceName String // "AWS 프로덕션", "Vercel - hinest", "GitHub Org" 등 식별용 이름
   category    String   @default("OTHER") // CLOUD | HOSTING | VCS | PAYMENT | DOMAIN | EMAIL | MONITOR | DB | AI | TESTING | OTHER
   loginId     String? // 로그인 이메일 또는 사용자명
@@ -1009,12 +1133,14 @@ model ServiceAccount {
   @@index([ownerUserId])
   @@index([scope, scopeTeam])
   @@index([projectId])
+  @@index([companyId])
 }
 
 /// 스니펫 라이브러리 — 자주 쓰는 명령/쿼리/regex 등을 저장. 채팅 입력창의 슬래시 자동완성으로 호출.
 /// scope 는 다른 리소스와 동일 패턴: PRIVATE(나만) | ALL(전사). 팀/프로젝트 범위는 후속에서 확장 가능.
 model Snippet {
   id        String   @id @default(cuid())
+  companyId String?
   ownerId   String
   owner     User     @relation("SnippetOwner", fields: [ownerId], references: [id], onDelete: Cascade)
   /// 호출용 짧은 키워드 — 예: "tail-log", "rebase-main". 영문/한글/숫자/하이픈 허용.
@@ -1035,6 +1161,7 @@ model Snippet {
   @@index([ownerId, updatedAt])
   @@index([scope, updatedAt])
   @@index([trigger])
+  @@index([companyId])
 }
 
 /// 역할(ADMIN/MANAGER/MEMBER) 별 기능 권한 토글. 기본값과 다를 때만 row 생성.

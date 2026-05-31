@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { api, invalidateCache } from "../api";
+import { Link } from "react-router-dom";
+import { api, invalidateCache, clearApiCache, apiUrl } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { useTheme, type ThemeMode } from "../theme";
@@ -109,7 +110,7 @@ export default function ProfilePage() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const r = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
+      const r = await fetch(apiUrl("/api/upload"), { method: "POST", body: form, credentials: "include" });
       if (!r.ok) {
         const msg = await r.json().catch(() => ({}));
         throw new Error((msg as any)?.error ?? "업로드 실패");
@@ -347,8 +348,140 @@ export default function ProfilePage() {
               </div>
             </form>
           </div>
+
+          <DangerZonePanel />
         </div>
       </div>
+    </div>
+  );
+}
+
+/* ===== 회원 탈퇴 — 앱스토어/플레이스토어 계정 삭제 요건(앱 내에서 직접 탈퇴 경로 제공) ===== */
+function DangerZonePanel() {
+  const { user } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmText, setConfirmText] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [err, setErr] = useState("");
+
+  const CONFIRM_WORD = "회원탈퇴";
+  const canSubmit = password.length > 0 && confirmText.trim() === CONFIRM_WORD && !loading;
+
+  function close() {
+    if (loading) return;
+    setOpen(false);
+    setPassword("");
+    setConfirmText("");
+    setErr("");
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!canSubmit) return;
+    setErr("");
+    setLoading(true);
+    try {
+      await api("/api/profile/account", { method: "DELETE", json: { password } });
+      // 탈퇴 직후엔 모든 캐시가 무의미 — 싹 비우고 로그인 화면으로.
+      clearApiCache();
+      window.location.href = "/login";
+    } catch (e: any) {
+      setErr(e?.message ?? "탈퇴 처리 중 문제가 발생했어요.");
+      setLoading(false);
+    }
+  }
+
+  // 플랫폼 운영자 계정은 서버에서도 막혀 있어 패널 자체를 숨긴다.
+  if (user?.platformAdmin) return null;
+
+  return (
+    <div className="panel p-6" style={{ borderColor: "color-mix(in srgb, var(--c-danger) 28%, var(--c-border))" }}>
+      <div className="h-sub mb-1" style={{ color: "var(--c-danger)" }}>회원 탈퇴</div>
+      <div className="t-caption mb-4 leading-relaxed">
+        탈퇴하면 이름·연락처 등 개인 식별 정보와 로그인 수단이 삭제되고 계정이 비활성화돼요.
+        회사가 법적으로 보관해야 하는 근태·급여 기록은 익명 처리되어 일정 기간 보존될 수 있어요.
+        {user?.role === "ADMIN" && (
+          <span className="block mt-1.5 font-semibold text-ink-700">
+            관리자는 회사에 다른 관리자가 있어야 탈퇴할 수 있어요.
+          </span>
+        )}
+      </div>
+      <button
+        type="button"
+        className="btn-ghost"
+        style={{ color: "var(--c-danger)", borderColor: "color-mix(in srgb, var(--c-danger) 32%, transparent)" }}
+        onClick={() => setOpen(true)}
+      >
+        회원 탈퇴하기
+      </button>
+
+      {open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: "rgba(0,0,0,0.45)" }}
+          onClick={close}
+        >
+          <div
+            className="panel p-6 w-full max-w-[420px]"
+            style={{ background: "var(--c-surface-1)" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-[17px] font-extrabold text-ink-900 tracking-tight">
+              정말 탈퇴하시겠어요?
+            </div>
+            <div className="t-caption mt-2 leading-relaxed">
+              이 작업은 되돌릴 수 없어요. 계속하려면 현재 비밀번호를 입력하고 아래 칸에{" "}
+              <b className="text-ink-900">{CONFIRM_WORD}</b> 라고 입력해 주세요.
+            </div>
+            <form onSubmit={submit} className="mt-4 space-y-3">
+              <div>
+                <label className="field-label">현재 비밀번호</label>
+                <input
+                  className="input"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete="current-password"
+                  maxLength={200}
+                  autoFocus
+                />
+              </div>
+              <div>
+                <label className="field-label">확인 문구</label>
+                <input
+                  className="input"
+                  value={confirmText}
+                  onChange={(e) => setConfirmText(e.target.value)}
+                  placeholder={CONFIRM_WORD}
+                />
+              </div>
+              {err && <InlineAlert tone="error">{err}</InlineAlert>}
+              <div className="flex justify-end gap-2 pt-1">
+                <button type="button" className="btn-ghost" onClick={close} disabled={loading}>
+                  취소
+                </button>
+                <button
+                  type="submit"
+                  disabled={!canSubmit}
+                  className="transition disabled:opacity-50"
+                  style={{
+                    background: "var(--c-danger)",
+                    color: "#fff",
+                    height: 40,
+                    padding: "0 16px",
+                    borderRadius: 10,
+                    fontSize: 14,
+                    fontWeight: 800,
+                  }}
+                >
+                  {loading ? "탈퇴 처리 중…" : "탈퇴하기"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

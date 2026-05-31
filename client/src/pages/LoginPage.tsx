@@ -3,6 +3,10 @@ import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import Logo from "../components/Logo";
 import SoftInput from "../components/SoftInput";
+import { isInstalledApp } from "../lib/platform";
+
+// 회사(테넌트) 상태로 로그인이 막힌 경우의 코드 — 비밀번호 오류처럼 빨갛게 보이지 않게 별도 톤 처리.
+const COMPANY_ERROR_CODES = ["COMPANY_PENDING", "COMPANY_SUSPENDED", "COMPANY_REJECTED", "COMPANY_INACTIVE"];
 
 /**
  * 로그인 페이지 — Toss 의 \"한 화면에 한 흐름\" 디자인 원칙을 따른다.
@@ -34,7 +38,7 @@ export default function LoginPage() {
       // 서버가 ACCOUNT_LOCKED 같은 코드를 message JSON 에 포함하는 경우를 위해
       // 우선 message 안에 "잠겨" 단어가 있는지로 fallback 판정.
       const isLocked = (e?.code === "ACCOUNT_LOCKED") || /잠겨|잠겼|잠긴|LOCKED/i.test(e?.message ?? "");
-      if (isLocked) setErrCode("ACCOUNT_LOCKED");
+      setErrCode(isLocked ? "ACCOUNT_LOCKED" : (e?.code ?? null));
     } finally {
       setLoading(false);
     }
@@ -84,7 +88,15 @@ export default function LoginPage() {
             {err && (
               <div
                 className="text-[12.5px] font-semibold leading-snug"
-                style={{ color: "var(--c-danger)", paddingTop: 2 }}
+                style={{
+                  color:
+                    errCode === "COMPANY_PENDING"
+                      ? "var(--c-warning)"
+                      : errCode && COMPANY_ERROR_CODES.includes(errCode)
+                        ? "var(--c-text-2)"
+                        : "var(--c-danger)",
+                  paddingTop: 2,
+                }}
               >
                 {err}
                 {errCode === "ACCOUNT_LOCKED" && (
@@ -100,6 +112,11 @@ export default function LoginPage() {
                     >
                       🔑 이메일로 잠금 풀고 비밀번호 재설정
                     </Link>
+                  </div>
+                )}
+                {errCode === "COMPANY_PENDING" && (
+                  <div className="mt-1.5 text-ink-500 font-medium">
+                    승인이 완료되면 같은 이메일로 바로 로그인할 수 있어요.
                   </div>
                 )}
               </div>
@@ -149,8 +166,20 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          {/* 앱 다운로드 — 데스크톱 앱이 아닐 때만 */}
-          {!window.hinest?.isDesktop && (
+          {/* 새 회사 셀프 가입 — 멀티테넌트 진입점 */}
+          <div className="mt-4 text-center text-[12.5px]">
+            <span className="text-ink-400">회사를 새로 시작하시나요? </span>
+            <Link
+              to="/company-signup"
+              className="font-semibold transition"
+              style={{ color: "var(--c-brand)" }}
+            >
+              회사 등록 신청
+            </Link>
+          </div>
+
+          {/* 앱 다운로드 — 설치형 앱(데스크톱·모바일 네이티브) 안에서는 숨김 */}
+          {!isInstalledApp() && (
             <div className="mt-10 text-center">
               <Link
                 to="/download"
@@ -165,6 +194,13 @@ export default function LoginPage() {
               </Link>
             </div>
           )}
+
+          {/* 법적 고지 — 스토어 요건상 어디서든 접근 가능해야 함 */}
+          <div className="mt-8 flex items-center justify-center gap-3 text-[11px] text-ink-400">
+            <Link to="/privacy" className="hover:text-ink-700 transition">개인정보처리방침</Link>
+            <span className="text-ink-300">·</span>
+            <Link to="/terms" className="hover:text-ink-700 transition">이용약관</Link>
+          </div>
         </div>
       </main>
     </div>

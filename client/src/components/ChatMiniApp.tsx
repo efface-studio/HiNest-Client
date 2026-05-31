@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api, apiUrl } from "../api";
 import { useAuth } from "../auth";
 import { useNotifications } from "../notifications";
 import { resolvePresence } from "../lib/presence";
@@ -434,7 +434,7 @@ export default function ChatMiniApp({
     form.append("file", file);
     setUploading(true);
     try {
-      const r = await fetch("/api/upload", { method: "POST", body: form, credentials: "include" });
+      const r = await fetch(apiUrl("/api/upload"), { method: "POST", body: form, credentials: "include" });
       if (!r.ok) throw new Error("upload failed");
       const j = await r.json();
       return { url: j.url, name: j.name, type: j.type, size: j.size, kind: j.kind };

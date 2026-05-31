@@ -642,7 +642,7 @@ function UsersTab({
                   </button>
                   <button
                     className="btn-icon"
-                    title={u.resignedAt ? "퇴사 취소(복직)" : "퇴사 처리"}
+                    title={u.resignedAt ? "퇴사 정보 수정" : "퇴사 처리"}
                     onClick={() => setResignTarget(u)}
                     style={u.resignedAt ? { color: "#3D54C4" } : { color: "#F97316" }}
                   >
@@ -722,13 +722,18 @@ function ResignModal({
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  async function submit() {
+  const origDate = isResigned && user.resignedAt ? user.resignedAt.slice(0, 10) : "";
+  const dateChanged = date !== origDate;
+
+  // 퇴사 처리/퇴사일 정정은 resign, 복직은 unresign. 이미 퇴사자여도 resign 을 다시 호출하면
+  // 서버가 resignedAt 만 새 날짜로 갱신한다(active 는 그대로 false) → 퇴사일 정정 경로.
+  async function run(kind: "resign" | "unresign") {
     setErr(null);
     if (!password) { setErr("비밀번호를 입력해주세요."); return; }
-    if (!isResigned && !date) { setErr("퇴사일을 선택해주세요."); return; }
+    if (kind === "resign" && !date) { setErr("퇴사일을 선택해주세요."); return; }
     setSaving(true);
     try {
-      if (isResigned) {
+      if (kind === "unresign") {
         await api(`/api/admin/users/${user.id}/unresign`, { method: "POST", json: { password } });
       } else {
         await api(`/api/admin/users/${user.id}/resign`, { method: "POST", json: { password, resignedAt: date } });
@@ -749,29 +754,28 @@ function ResignModal({
     <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 p-4" onClick={onClose}>
       <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
-          <h3 className="text-lg font-bold">{isResigned ? "퇴사 취소(복직)" : "퇴사 처리"}</h3>
+          <h3 className="text-lg font-bold">{isResigned ? "퇴사 정보 수정" : "퇴사 처리"}</h3>
           <button onClick={onClose} className="btn-ghost btn-xs">닫기</button>
         </div>
         <div className="text-[12px] text-ink-600 mb-4">
           {user.name} · {user.email}
         </div>
 
-        {isResigned ? (
-          <div className="mb-4 p-3 rounded-md bg-slate-50 border border-ink-100 text-[12px] text-ink-700">
-            현재 퇴사일: <b>{user.resignedAt ? new Date(user.resignedAt).toLocaleDateString("ko-KR") : "-"}</b>
-            <div className="text-ink-500 mt-1">복직 처리하면 해당 계정의 로그인이 다시 허용되고 퇴사 기록이 삭제됩니다.</div>
+        <div className="space-y-3">
+          <div>
+            <label className="field-label">퇴사일</label>
+            <DatePicker value={date} onChange={(v) => setDate(v)} />
           </div>
-        ) : (
-          <div className="space-y-3">
-            <div>
-              <label className="field-label">퇴사일</label>
-              <DatePicker value={date} onChange={(v) => setDate(v)} />
+          {isResigned ? (
+            <div className="p-2.5 rounded-md bg-slate-50 border border-ink-100 text-[11.5px] text-ink-600">
+              날짜를 바꾸고 <b>퇴사일 저장</b>을 누르면 퇴사일만 정정됩니다. <b>복직 처리</b>하면 로그인이 다시 허용되고 퇴사 기록이 삭제됩니다.
             </div>
+          ) : (
             <div className="p-2.5 rounded-md bg-amber-50 border border-amber-200 text-[11.5px] text-amber-800">
               퇴사 처리 시 해당 계정의 로그인이 즉시 차단됩니다. HR 기록은 보존됩니다.
             </div>
-          </div>
-        )}
+          )}
+        </div>
 
         <div className="mt-4">
           <label className="field-label">본인 계정 비밀번호 재확인</label>
@@ -782,7 +786,7 @@ function ResignModal({
             onChange={(e) => setPassword(e.target.value)}
             placeholder="비밀번호를 입력해주세요"
             autoComplete="current-password"
-            onKeyDown={(e) => { if (e.key === "Enter") submit(); }}
+            onKeyDown={(e) => { if (e.key === "Enter" && (!isResigned || dateChanged)) run("resign"); }}
             disabled={saving}
           />
         </div>
@@ -795,14 +799,34 @@ function ResignModal({
 
         <div className="flex justify-end gap-2 mt-5">
           <button className="btn-ghost btn-xs" onClick={onClose} disabled={saving}>취소</button>
-          <button
-            className={isResigned ? "btn-primary btn-xs" : "btn-primary btn-xs"}
-            style={isResigned ? undefined : { background: "#F97316", borderColor: "#F97316" }}
-            onClick={submit}
-            disabled={saving}
-          >
-            {saving ? "처리 중..." : isResigned ? "복직 처리" : "퇴사 처리"}
-          </button>
+          {isResigned ? (
+            <>
+              <button
+                className="btn-ghost btn-xs"
+                onClick={() => run("unresign")}
+                disabled={saving}
+              >
+                {saving ? "처리 중..." : "복직 처리"}
+              </button>
+              <button
+                className="btn-primary btn-xs"
+                onClick={() => run("resign")}
+                disabled={saving || !dateChanged}
+                title={dateChanged ? undefined : "변경된 퇴사일이 없습니다"}
+              >
+                {saving ? "처리 중..." : "퇴사일 저장"}
+              </button>
+            </>
+          ) : (
+            <button
+              className="btn-primary btn-xs"
+              style={{ background: "#F97316", borderColor: "#F97316" }}
+              onClick={() => run("resign")}
+              disabled={saving}
+            >
+              {saving ? "처리 중..." : "퇴사 처리"}
+            </button>
+          )}
         </div>
       </div>
     </div>
@@ -932,6 +956,8 @@ function UserDetailEditModal({
             </Field>
             <Field label="입사일"><DatePicker variant="input" value={form.hireDate} onChange={(v) => set("hireDate", v)} /></Field>
             <Field label="자동 퇴근 시간">
+              {/* 오른쪽 '기준 근무 시각'의 출근/퇴근 서브라벨과 입력칸 높이를 맞추기 위한 빈 줄 */}
+              <div className="text-[11px] font-bold mb-1 select-none" aria-hidden="true">&nbsp;</div>
               <div className="flex items-center gap-2">
                 <div className="flex-1">
                   <TimePicker value={form.autoClockOutTime} onChange={(v) => set("autoClockOutTime", v)} placeholder="(미설정)" />

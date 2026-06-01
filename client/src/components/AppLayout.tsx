@@ -580,8 +580,13 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     <div
       className="flex flex-col bg-ink-50 overflow-hidden"
       style={{
-        // iOS Safari 의 동적 툴바를 고려한 동적 뷰포트 높이. h-screen(100vh) 은 iOS 에서 URL 바 영역만큼 잘려 보임.
-        height: "100dvh",
+        // 셸 잠금(.hinest-shell-lock)이 body 를 position:fixed; inset:0 으로 가시 뷰포트에
+        // 정확히 고정하므로, #root(height:100%) 를 거쳐 여기서도 100% 로 받으면 그 고정 박스에
+        // 픽셀 단위로 일치한다. 예전의 100dvh 는 body 고정 박스(ICB 기준)와 별개로 측정돼
+        // iOS 툴바 전환 구간에서 둘이 어긋나면 하단 네비 아래로 body 배경(--c-bg) 한 줄이
+        // 새어 보였다("safe line"). 100% 로 받아 그 틈을 없앤다. (잠금으로 문서가 스크롤·
+        // 바운스하지 않으므로 옛 100vh 의 iOS URL 바 잘림 문제는 발생하지 않는다.)
+        height: "100%",
       }}
     >
       <PreviewBanner safeAreaTop={topSlot === "preview"} />

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import Logo from "../components/Logo";
+import BrandLockup from "../components/BrandLockup";
 import SoftInput from "../components/SoftInput";
 import { isInstalledApp } from "../lib/platform";
 
@@ -48,7 +48,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
       {/* 상단 — 로고만 살짝 */}
       <header className="px-6 pt-8 pb-4 flex items-center">
-        <Logo size={20} />
+        <BrandLockup height={28} />
       </header>
 
       {/* 본문 — 중앙 정렬, 한 단 */}

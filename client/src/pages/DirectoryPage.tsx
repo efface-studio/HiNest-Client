@@ -243,7 +243,10 @@ function MyProfileHero({
         className="absolute top-0 left-0 w-full h-[3px]"
         style={{ background: `linear-gradient(90deg, ${me.avatarColor ?? "#3D54C4"}, ${me.avatarColor ?? "#3D54C4"}80)` }}
       />
-      <div className="relative flex items-center gap-5 p-5">
+      {/* flex-wrap 필수 — 모바일 통계 줄(아래 w-full)이 같은 행에서 폭을 빼앗아 정보
+          컬럼이 0 으로 눌리면 이름·직급 텍스트가 한 글자씩 세로로 쪼개진다. wrap 으로
+          통계 줄을 다음 줄로 내린다. 데스크톱(md+)은 통계가 인라인이라 한 줄에 다 들어가 wrap 없음. */}
+      <div className="relative flex flex-wrap items-center gap-x-5 gap-y-3 p-5">
         <div className="w-16 h-16 rounded-full flex-shrink-0 shadow-pop overflow-hidden relative" style={{ background: me.avatarUrl ? "transparent" : (me.avatarColor ?? "#3D54C4") }}>
           {me.avatarUrl ? (
             <img src={me.avatarUrl} alt={me.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
@@ -277,7 +280,7 @@ function MyProfileHero({
             <div className="text-[22px] font-extrabold text-ink-900 tabular" style={{ letterSpacing: "-0.02em" }}>{teamCount}</div>
           </div>
         </div>
-        <div className="md:hidden w-full mt-2 flex items-center gap-3 text-[12px] text-ink-500">
+        <div className="md:hidden w-full flex items-center gap-3 text-[12px] text-ink-500">
           <span>동료 <b className="text-ink-900 tabular">{totalCount - 1}</b></span>
           <span className="text-ink-300">·</span>
           <span>팀 <b className="text-ink-900 tabular">{teamCount}</b></span>

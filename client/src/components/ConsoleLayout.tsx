@@ -29,6 +29,28 @@ function TerminalIcon() {
     </svg>
   );
 }
+function LogsIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" />
+    </svg>
+  );
+}
+function SystemIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+function ShieldIcon() {
+  return (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" />
+    </svg>
+  );
+}
 
 export default function ConsoleLayout() {
   const { user, logout } = useAuth();
@@ -48,9 +70,15 @@ export default function ConsoleLayout() {
 
   // 회사 관리는 플랫폼 운영자뿐 아니라 개발자(superAdmin)에게도 노출 — 개발자는 최상위
   // 권한이므로 테넌트 가입 승인까지 직접 처리할 수 있어야 한다.
+  //
+  // 개발자 콘솔은 기능이 너무 몰려 있어 기능별 그룹(로그·감사 / 시스템·운영 / 보안·권한 /
+  // 개발자 도구)으로 쪼개 각각 사이드바 항목으로 노출한다. 라우트는 /super-admin/* 하위.
   const links: ConsoleLink[] = [
     (user?.platformAdmin || user?.superAdmin) && { to: "/platform", label: "회사 관리", desc: "테넌트 가입·승인·정지", icon: CompanyIcon },
-    user?.superAdmin && { to: "/super-admin", label: "개발자 콘솔", desc: "로그·감사·시스템 설정", icon: TerminalIcon },
+    user?.superAdmin && { to: "/super-admin/logs", label: "로그 · 감사", desc: "활동·감사·서버 로그·에러", icon: LogsIcon },
+    user?.superAdmin && { to: "/super-admin/system", label: "시스템 · 운영", desc: "헬스·세션·휴지통·플래그·메뉴", icon: SystemIcon },
+    user?.superAdmin && { to: "/super-admin/security", label: "보안 · 권한", desc: "보안 룰·2FA·역할·API 토큰", icon: ShieldIcon },
+    user?.superAdmin && { to: "/super-admin/devtools", label: "개발자 도구", desc: "API 명세서·콘솔", icon: TerminalIcon },
   ].filter(Boolean) as ConsoleLink[];
 
   // 회사 소속이 있는 운영자만 서비스로 복귀 가능. 순수 플랫폼 운영자(companyId=null)는

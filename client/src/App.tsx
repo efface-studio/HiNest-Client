@@ -170,7 +170,7 @@ export default function App() {
             }
           />
           <Route
-            path="super-admin"
+            path="super-admin/*"
             element={
               <SuperOnly>
                 <SuperAdminPage />

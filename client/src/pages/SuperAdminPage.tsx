@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { safeUploadUrl } from "../lib/safeUrl";
 import { useTheme } from "../theme";
@@ -63,35 +63,57 @@ type ApiSpecRoute = {
   hasBody: boolean;
 };
 
+export type ConsoleGroup = "logs" | "system" | "security" | "devtools";
+
+/** 개발자 콘솔을 기능별 그룹으로 나누고, 각 그룹이 보여줄 탭(패널) 목록을 정의한다.
+ *  사내톡 감사(chat)는 평소 숨김이라 목록에 넣지 않고, 잠금 해제 시 logs 그룹에 동적으로 덧붙인다. */
+const GROUP_TABS: Record<ConsoleGroup, Tab[]> = {
+  logs: ["logs", "audit", "server", "errors"],
+  system: ["health", "sessions", "trash", "flags", "nav"],
+  security: ["security", "twofa", "roles", "tokens"],
+  devtools: ["api", "console"],
+};
+
+const TAB_LABEL: Record<Tab, string> = {
+  logs: "활동 로그", chat: "사내톡 감사", audit: "감사 로그", server: "서버 로그", errors: "에러",
+  health: "헬스", sessions: "세션", trash: "휴지통", flags: "기능 플래그", nav: "메뉴 관리",
+  security: "보안 룰", twofa: "2FA 정책", roles: "역할 권한", tokens: "API 토큰",
+  api: "API 명세서", console: "콘솔",
+};
+
+const GROUP_META: Record<ConsoleGroup, { title: string; description: string }> = {
+  logs: { title: "로그 · 감사", description: "시스템 활동·감사·서버 로그와 에러를 조회합니다." },
+  system: { title: "시스템 · 운영", description: "헬스·세션·휴지통·기능 플래그·메뉴 노출을 관리합니다." },
+  security: { title: "보안 · 권한", description: "보안 룰·2FA 정책·역할 권한·API 토큰을 관리합니다." },
+  devtools: { title: "개발자 도구", description: "API 명세서와 운영 콘솔을 사용합니다." },
+};
+
+/**
+ * 운영 콘솔(개발자) 셸 — 너무 많던 기능을 기능별 그룹(로그·감사 / 시스템·운영 /
+ * 보안·권한 / 개발자 도구)으로 나눠 하위 라우트로 렌더한다.
+ *  - 페이지 레벨 ErrorBoundary + 단계 인증 게이트(SuperStepUpGate)는 여기서 한 번만 감싼다.
+ *    그룹마다 게이트를 따로 두면 사이드바 이동 때마다 "세션 확인 중…" 이 깜빡이고
+ *    서버 세션 확인 왕복이 반복되므로, 셸에 한 번 두고 그 아래에서 그룹을 전환한다.
+ *  - 사내톡 감사 잠금 해제 흐름도 셸에 둔다. 콘솔(devtools)에서 명령을 쳐도 어느 그룹에
+ *    있든 이벤트를 받아 모달을 띄우고, 해제 시 로그·감사 그룹의 사내톡 탭으로 이동시킨다.
+ *  App.tsx 에서 path="super-admin/*" 로 매핑돼 내부 <Routes> 가 나머지 경로를 처리한다.
+ */
 export default function SuperAdminPage() {
   return (
-    <div>
-      <PageHeader
-        eyebrow="관리 › 개발자"
-        title="개발자 콘솔"
-        description="시스템 전반의 활동 로그와 모든 대화를 조회할 수 있습니다."
-      />
-      {/*
-        페이지 레벨 ErrorBoundary — 게이트/콘텐츠 최상위(탭 바·훅 등 패널 바깥)에서
-        나는 throw 를 여기서 잡는다. 이게 없으면 그런 에러가 App 최상위 라우트
-        바운더리까지 올라가 사이드바 포함 화면 전체가 덮였음(패널 안쪽만 감싼
-        탭 레벨 바운더리로는 못 잡던 영역). 폴백이 에러를 인라인 노출해 진단 가능.
-      */}
-      <ErrorBoundary
-        fallback={(err, reset) => (
-          <DevErrorFallback
-            err={err}
-            reset={reset}
-            title="개발자 콘솔을 표시하는 중 오류가 발생했어요"
-            hint="왼쪽 사이드바로 다른 메뉴는 이동할 수 있어요. 아래 오류 내용을 확인해 주세요."
-          />
-        )}
-      >
-        <SuperStepUpGate>
-          <SuperAdminContent />
-        </SuperStepUpGate>
-      </ErrorBoundary>
-    </div>
+    <ErrorBoundary
+      fallback={(err, reset) => (
+        <DevErrorFallback
+          err={err}
+          reset={reset}
+          title="개발자 콘솔을 표시하는 중 오류가 발생했어요"
+          hint="왼쪽 사이드바로 다른 메뉴는 이동할 수 있어요. 아래 오류 내용을 확인해 주세요."
+        />
+      )}
+    >
+      <SuperStepUpGate>
+        <SuperConsoleInner />
+      </SuperStepUpGate>
+    </ErrorBoundary>
   );
 }
 
@@ -110,44 +132,36 @@ function isChatAuditUnlocked(): boolean {
   }
 }
 
-function SuperAdminContent() {
-  // 새로고침 유지 — URL 쿼리로 탭 동기화.
-  const [sp, setSp] = useSearchParams();
-  const raw = sp.get("tab");
+type ChatCtx = { unlocked: boolean; lock: () => void };
+
+/**
+ * 콘솔 셸 — 게이트 통과 후의 실제 콘텐츠. 사내톡 감사 잠금/해제 상태를 한곳에서 들고,
+ * 기능 그룹을 하위 라우트로 렌더한다. (게이트는 SuperAdminPage 에서 이 위를 한 번 감쌈)
+ */
+function SuperConsoleInner() {
+  const nav = useNavigate();
   const [chatUnlocked, setChatUnlocked] = useState<boolean>(() => isChatAuditUnlocked());
   const [chatPwOpen, setChatPwOpen] = useState(false);
 
-  // 콘솔에서 \`chat log\` 명령 시 발사되는 이벤트 — 암호 모달 노출.
+  // 콘솔(개발자 도구)에서 \`chat log\` 명령 시 발사되는 이벤트 — 어느 그룹에 있든 받아서 모달 노출.
   useEffect(() => {
     function onPrompt() { setChatPwOpen(true); }
     window.addEventListener("hinest:chatAuditPrompt", onPrompt);
     return () => window.removeEventListener("hinest:chatAuditPrompt", onPrompt);
   }, []);
 
-  const tab: Tab =
-    raw === "chat" && chatUnlocked ? "chat"
-    : raw === "api" ? "api"
-    : raw === "console" ? "console"
-    : raw === "server" ? "server"
-    : raw === "nav" ? "nav"
-    : raw === "sessions" ? "sessions"
-    : raw === "errors" ? "errors"
-    : raw === "health" ? "health"
-    : raw === "trash" ? "trash"
-    : raw === "audit" ? "audit"
-    : raw === "flags" ? "flags"
-    : raw === "tokens" ? "tokens"
-    : raw === "security" ? "security"
-    : raw === "twofa" ? "twofa"
-    : raw === "roles" ? "roles"
-    : "logs";
+  function lockChat() {
+    try { sessionStorage.removeItem(CHAT_LOG_KEY); } catch {}
+    setChatUnlocked(false);
+    // 잠금 후 사내톡 탭(로그·감사 그룹)을 보고 있었다면 GroupView 가 기본 탭으로 되돌린다.
+  }
 
-  const setTab = (t: Tab) => {
-    const next = new URLSearchParams(sp);
-    if (t === "logs") next.delete("tab");
-    else next.set("tab", t);
-    setSp(next, { replace: true });
-  };
+  // 콘솔 \`chat lock\` 명령으로도 즉시 잠금 가능 — escape hatch.
+  useEffect(() => {
+    function onLock() { lockChat(); }
+    window.addEventListener("hinest:chatAuditLock", onLock);
+    return () => window.removeEventListener("hinest:chatAuditLock", onLock);
+  }, []);
 
   async function unlockChat(pw: string): Promise<boolean> {
     try {
@@ -160,64 +174,94 @@ function SuperAdminContent() {
       } catch {}
       setChatUnlocked(true);
       setChatPwOpen(false);
-      setTab("chat");
+      // 사내톡 감사 탭은 로그·감사 그룹에 있으므로 그쪽으로 이동시켜 바로 보이게 한다.
+      nav("/super-admin/logs?tab=chat");
       return true;
     } catch {
       return false;
     }
   }
 
-  function lockChat() {
-    try { sessionStorage.removeItem(CHAT_LOG_KEY); } catch {}
-    setChatUnlocked(false);
-    // 현재 사내톡 탭 보고 있었으면 활동 로그로 되돌림.
-    if (tab === "chat") setTab("logs");
-  }
-
-  // 콘솔 \`chat lock\` 명령으로도 즉시 잠금 가능 — escape hatch.
-  useEffect(() => {
-    function onLock() { lockChat(); }
-    window.addEventListener("hinest:chatAuditLock", onLock);
-    return () => window.removeEventListener("hinest:chatAuditLock", onLock);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tab]);
+  const chat: ChatCtx = { unlocked: chatUnlocked, lock: lockChat };
 
   return (
     <>
+      <Routes>
+        <Route index element={<Navigate to="logs" replace />} />
+        <Route path="logs" element={<GroupView group="logs" chat={chat} />} />
+        <Route path="system" element={<GroupView group="system" />} />
+        <Route path="security" element={<GroupView group="security" />} />
+        <Route path="devtools" element={<GroupView group="devtools" />} />
+        <Route path="*" element={<Navigate to="logs" replace />} />
+      </Routes>
+      {chatPwOpen && (
+        <ChatAuditPwModal
+          onClose={() => setChatPwOpen(false)}
+          onSubmit={unlockChat}
+        />
+      )}
+    </>
+  );
+}
+
+/** 한 기능 그룹의 탭 바 + 콘텐츠. 탭은 URL ?tab= 로 동기화하되 그룹 내 탭으로만 한정한다. */
+function GroupView({ group, chat }: { group: ConsoleGroup; chat?: ChatCtx }) {
+  // 새로고침 유지 — URL 쿼리로 탭 동기화.
+  const [sp, setSp] = useSearchParams();
+  const raw = sp.get("tab");
+  const chatUnlocked = !!chat?.unlocked;
+
+  // 사내톡 감사(chat)는 잠금 해제됐을 때만 로그·감사 그룹 탭 목록에 덧붙인다.
+  const tabs: Tab[] =
+    group === "logs" && chatUnlocked ? [...GROUP_TABS.logs, "chat"] : GROUP_TABS[group];
+
+  const tab: Tab = raw && (tabs as string[]).includes(raw) ? (raw as Tab) : tabs[0];
+
+  const setTab = (t: Tab) => {
+    const next = new URLSearchParams(sp);
+    if (t === tabs[0]) next.delete("tab");
+    else next.set("tab", t);
+    setSp(next, { replace: true });
+  };
+
+  // 사내톡 감사가 잠기면 남아있는 ?tab=chat 을 정리해 기본 탭으로 되돌린다.
+  useEffect(() => {
+    if (raw === "chat" && !(group === "logs" && chatUnlocked)) {
+      const next = new URLSearchParams(sp);
+      next.delete("tab");
+      setSp(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [raw, chatUnlocked, group]);
+
+  const meta = GROUP_META[group];
+
+  return (
+    <div>
+      <PageHeader eyebrow={`관리 › 개발자 · ${meta.title}`} title={meta.title} description={meta.description} />
       <div className="flex items-center gap-1 mb-4 border-b border-ink-150 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: "thin" }}>
-        <TabBtn active={tab === "logs"} onClick={() => setTab("logs")}>활동 로그</TabBtn>
-        {chatUnlocked && (
-          <div className="flex items-center">
-            <TabBtn active={tab === "chat"} onClick={() => setTab("chat")}>사내톡 감사</TabBtn>
-            <button
-              type="button"
-              onClick={lockChat}
-              className="ml-1 text-ink-500 hover:text-red-600 transition"
-              title="사내톡 감사 즉시 잠그기"
-              aria-label="사내톡 감사 잠그기"
-              style={{ width: 22, height: 22, display: "grid", placeItems: "center", borderRadius: 999 }}
-            >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="11" width="16" height="9" rx="2" />
-                <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-              </svg>
-            </button>
-          </div>
+        {tabs.map((t) =>
+          t === "chat" ? (
+            <div key="chat" className="flex items-center">
+              <TabBtn active={tab === "chat"} onClick={() => setTab("chat")}>{TAB_LABEL.chat}</TabBtn>
+              <button
+                type="button"
+                onClick={() => chat?.lock()}
+                className="ml-1 text-ink-500 hover:text-red-600 transition"
+                title="사내톡 감사 즉시 잠그기"
+                aria-label="사내톡 감사 잠그기"
+                style={{ width: 22, height: 22, display: "grid", placeItems: "center", borderRadius: 999 }}
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="11" width="16" height="9" rx="2" />
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+                </svg>
+              </button>
+            </div>
+          ) : (
+            <TabBtn key={t} active={tab === t} onClick={() => setTab(t)}>{TAB_LABEL[t]}</TabBtn>
+          )
         )}
-        <TabBtn active={tab === "api"} onClick={() => setTab("api")}>API 명세서</TabBtn>
-        <TabBtn active={tab === "console"} onClick={() => setTab("console")}>콘솔</TabBtn>
-        <TabBtn active={tab === "server"} onClick={() => setTab("server")}>서버 로그</TabBtn>
-        <TabBtn active={tab === "nav"} onClick={() => setTab("nav")}>메뉴 관리</TabBtn>
-        <TabBtn active={tab === "sessions"} onClick={() => setTab("sessions")}>세션</TabBtn>
-        <TabBtn active={tab === "errors"} onClick={() => setTab("errors")}>에러</TabBtn>
-        <TabBtn active={tab === "health"} onClick={() => setTab("health")}>헬스</TabBtn>
-        <TabBtn active={tab === "trash"} onClick={() => setTab("trash")}>휴지통</TabBtn>
-        <TabBtn active={tab === "audit"} onClick={() => setTab("audit")}>감사 로그</TabBtn>
-        <TabBtn active={tab === "flags"} onClick={() => setTab("flags")}>기능 플래그</TabBtn>
-        <TabBtn active={tab === "tokens"} onClick={() => setTab("tokens")}>API 토큰</TabBtn>
-        <TabBtn active={tab === "security"} onClick={() => setTab("security")}>보안 룰</TabBtn>
-        <TabBtn active={tab === "twofa"} onClick={() => setTab("twofa")}>2FA 정책</TabBtn>
-        <TabBtn active={tab === "roles"} onClick={() => setTab("roles")}>역할 권한</TabBtn>
       </div>
       <ErrorBoundary
         resetKey={tab}
@@ -230,31 +274,32 @@ function SuperAdminContent() {
           />
         )}
       >
-        {tab === "logs" && <LogsPanel />}
-        {tab === "chat" && chatUnlocked && <ChatAuditPanel />}
-        {tab === "api" && <ApiSpecPanel />}
-        {tab === "console" && <ConsolePanel />}
-        {tab === "server" && <ServerLogsPanel />}
-        {tab === "nav" && <NavVisibilityPanel />}
-        {tab === "sessions" && <SessionsPanel />}
-        {tab === "errors" && <ErrorsPanel />}
-        {tab === "health" && <HealthPanel />}
-        {tab === "trash" && <TrashPanel />}
-        {tab === "audit" && <AuditPanel />}
-        {tab === "flags" && <FlagsPanel />}
-        {tab === "tokens" && <TokensPanel />}
-        {tab === "security" && <SecurityPanel />}
-        {tab === "twofa" && <TwoFAPanel />}
-        {tab === "roles" && <RolePermissionsPanel />}
+        {renderPanel(tab)}
       </ErrorBoundary>
-      {chatPwOpen && (
-        <ChatAuditPwModal
-          onClose={() => setChatPwOpen(false)}
-          onSubmit={unlockChat}
-        />
-      )}
-    </>
+    </div>
   );
+}
+
+function renderPanel(tab: Tab) {
+  switch (tab) {
+    case "logs": return <LogsPanel />;
+    case "chat": return <ChatAuditPanel />;
+    case "api": return <ApiSpecPanel />;
+    case "console": return <ConsolePanel />;
+    case "server": return <ServerLogsPanel />;
+    case "nav": return <NavVisibilityPanel />;
+    case "sessions": return <SessionsPanel />;
+    case "errors": return <ErrorsPanel />;
+    case "health": return <HealthPanel />;
+    case "trash": return <TrashPanel />;
+    case "audit": return <AuditPanel />;
+    case "flags": return <FlagsPanel />;
+    case "tokens": return <TokensPanel />;
+    case "security": return <SecurityPanel />;
+    case "twofa": return <TwoFAPanel />;
+    case "roles": return <RolePermissionsPanel />;
+    default: return null;
+  }
 }
 
 /**

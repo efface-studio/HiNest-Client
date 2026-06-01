@@ -79,9 +79,18 @@ export default function ProjectWebhooks({ projectId }: { projectId: string }) {
     // 채널이 바뀌면 이전 이벤트 리스트를 즉시 비워 잠깐이라도 오인 표시되지 않게.
     setEvents([]);
     loadEvents(selected);
-    // 60초마다 새 이벤트 자동 조회
-    const t = setInterval(() => loadEvents(selected), 60_000);
-    return () => clearInterval(t);
+    // 비용 절감: 60초 주기 자동 조회 + 탭이 보이지 않으면 폴링 정지(다시 보이면 즉시 1회 조회 후 재개).
+    // 앱 전반의 폴링(알림·사내톡·결재 카운트)과 동일한 visibilitychange 패턴.
+    let id: number | null = null;
+    const start = () => { if (id === null) id = window.setInterval(() => loadEvents(selected), 60_000); };
+    const stop = () => { if (id !== null) { window.clearInterval(id); id = null; } };
+    if (document.visibilityState === "visible") start();
+    const onVis = () => {
+      if (document.visibilityState === "visible") { loadEvents(selected); start(); }
+      else stop();
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => { stop(); document.removeEventListener("visibilitychange", onVis); };
     // eslint-disable-next-line
   }, [selected?.id]);
 

@@ -1253,6 +1253,7 @@ const BREADCRUMB: Record<string, string> = {
 
 function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggable?: boolean; onOpenNav?: () => void; safeAreaTop?: boolean }) {
   const loc = useLocation();
+  const { chatUnread } = useNotifications();
   const label = loc.pathname.startsWith("/projects/")
     ? "프로젝트"
     : BREADCRUMB[loc.pathname] ?? "";
@@ -1323,6 +1324,23 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
             </svg>
             <span className="flex-1 text-left">검색</span>
             <span className="kbd">⌘K</span>
+          </button>
+          {/* 사내톡 런처 — 우하단 FAB 대신 상단바 벨 옆에 둔다. 클릭 시 전역 "chat:toggle"
+              이벤트로 ChatFab 패널을 토글한다(패널/리스너는 ChatFab 에 그대로 있음). */}
+          <button
+            className="btn-icon relative"
+            onClick={() => window.dispatchEvent(new CustomEvent("chat:toggle"))}
+            title="사내톡"
+            aria-label={chatUnread > 0 ? `사내톡 · 안 읽은 메시지 ${chatUnread}건` : "사내톡"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+            </svg>
+            {chatUnread > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[16px] h-[16px] px-1 rounded-full bg-danger text-white text-[10px] font-bold grid place-items-center tabular">
+                {chatUnread > 99 ? "99+" : chatUnread}
+              </span>
+            )}
           </button>
           <NotificationBell />
         </div>

@@ -776,28 +776,45 @@ router.get("/folders/:id/download", async (req, res) => {
     if (!ok) return res.status(403).json({ error: "forbidden" });
   }
 
-  // 재귀적으로 하위 폴더까지 순회해 파일 수집. 기존엔 최상위 folderId 만 훑어서
-  // 서브폴더만 있고 루트엔 파일이 없는 폴더를 받으면 404 로 떨어졌음.
+  // 하위 폴더 전체를 BFS 로 수집(트리 깊이당 1쿼리)한 뒤, 문서는 단일 in-쿼리로 한 번에.
+  // 이전 구현은 폴더마다 docs+subs 2쿼리를 재귀로 돌려 폴더 수에 비례한 N+1 이었음.
+  // 서브폴더만 있고 루트엔 파일이 없어도 하위까지 훑으므로 404 로 떨어지지 않음.
+  const rootId = folder.id;
+  type FolderNode = { id: string; name: string; parentId: string | null };
+  const subtree: FolderNode[] = [];
+  let frontier: string[] = [rootId];
+  while (frontier.length) {
+    const children = await prisma.folder.findMany({
+      where: { parentId: { in: frontier } },
+      select: { id: true, name: true, parentId: true },
+    });
+    if (!children.length) break;
+    subtree.push(...children);
+    frontier = children.map((c) => c.id);
+  }
+
+  // 폴더 경로(prefix) 를 메모리에서 계산 — 루트는 빈 문자열.
+  const folderMap = new Map(subtree.map((f) => [f.id, f]));
+  function folderPath(id: string | null): string {
+    if (!id || id === rootId) return "";
+    const f = folderMap.get(id);
+    if (!f) return "";
+    const safe = f.name.replace(/[\\/:*?"<>|]/g, "_");
+    const parent = folderPath(f.parentId);
+    return parent ? `${parent}/${safe}` : safe;
+  }
+
+  const folderIds = [rootId, ...subtree.map((f) => f.id)];
+  const docs = await prisma.document.findMany({
+    where: { folderId: { in: folderIds }, fileUrl: { not: null }, deletedAt: null },
+    select: { fileUrl: true, fileName: true, title: true, folderId: true },
+  });
+
   type Collected = { fileUrl: string; fileName: string | null; title: string; relPath: string };
   const collected: Collected[] = [];
-  async function walk(folderId: string, prefix: string) {
-    const docs = await prisma.document.findMany({
-      where: { folderId, fileUrl: { not: null }, deletedAt: null },
-      select: { fileUrl: true, fileName: true, title: true },
-    });
-    for (const d of docs) {
-      if (d.fileUrl) collected.push({ fileUrl: d.fileUrl, fileName: d.fileName, title: d.title, relPath: prefix });
-    }
-    const subs = await prisma.folder.findMany({
-      where: { parentId: folderId },
-      select: { id: true, name: true },
-    });
-    for (const s of subs) {
-      const safe = s.name.replace(/[\\/:*?"<>|]/g, "_");
-      await walk(s.id, prefix ? `${prefix}/${safe}` : safe);
-    }
+  for (const d of docs) {
+    if (d.fileUrl) collected.push({ fileUrl: d.fileUrl, fileName: d.fileName, title: d.title, relPath: folderPath(d.folderId) });
   }
-  await walk(folder.id, "");
 
   if (collected.length === 0) {
     return res.status(404).json({ error: "폴더에 다운로드할 파일이 없어요" });

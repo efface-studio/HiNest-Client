@@ -48,7 +48,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
       {/* 상단 — 로고만 살짝 */}
       <header className="px-6 pt-8 pb-4 flex items-center">
-        <BrandLockup height={28} />
+        <BrandLockup height={36} />
       </header>
 
       {/* 본문 — 중앙 정렬, 한 단 */}

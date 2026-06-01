@@ -532,7 +532,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             height: "calc(48px + env(safe-area-inset-top))",
           }}
         >
-          <BrandLockup height={28} />
+          <BrandLockup height={34} />
         </div>
 
         <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-5">

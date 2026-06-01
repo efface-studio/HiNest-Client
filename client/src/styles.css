@@ -118,9 +118,17 @@ html.hinest-shell-lock {
 }
 html.hinest-shell-lock body {
   position: fixed;
+  /*
+   * inset:0 (top/right/bottom/left = 0) 만으로 뷰포트 네 변에 고정한다.
+   * width/height:100% 를 함께 주면 안 된다 — top+bottom 과 height 가 동시에 지정되면
+   * 과제약(over-constrained)이라 CSS 가 bottom 을 무시하고 height 로 박스 높이를 정한다
+   * (CSS 2.1 §10.6.4). 그런데 iOS 단독형(standalone) PWA 는 fixed 요소의 height:100% 를
+   * 하단 safe-area(홈 인디케이터) 높이만큼 짧게 계산하는 사례가 있어, body 바닥이 화면
+   * 바닥에 닿지 못하고 in-flow 하단 네비바 아래로 회색 빈 공간이 드러난다.
+   * inset:0 만 쓰면 bottom:0 이 진짜 화면 바닥(safe-area 포함)에 고정돼 이 틈이 사라진다.
+   * 자식(#root → 루트 div)의 height:100% 는 이렇게 확정된 body 높이에 정상적으로 맞춰진다.
+   */
   inset: 0;
-  width: 100%;
-  height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
 }

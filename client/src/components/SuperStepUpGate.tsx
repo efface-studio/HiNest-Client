@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../api";
-import Logo from "./Logo";
+import AdminLockup from "./AdminLockup";
 import { confirmAsync } from "./ConfirmHost";
 import {
   authenticateWithPasskey,
@@ -183,7 +183,7 @@ export default function SuperStepUpGate({ children }: { children: React.ReactNod
     return (
       <div className="min-h-[70vh] grid place-items-center">
         <div className="w-full max-w-[440px]">
-          <div className="flex items-center justify-center mb-5"><Logo size={22} /></div>
+          <div className="flex items-center justify-center mb-5"><AdminLockup variant="compact" /></div>
           <div className="panel p-7 relative overflow-hidden">
             <div className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 rounded-xl bg-ink-900 text-white grid place-items-center">

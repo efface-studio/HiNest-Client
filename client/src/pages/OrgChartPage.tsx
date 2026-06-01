@@ -641,46 +641,94 @@ function TreeStyles() {
 
       .dark .org-vtree-row::before,
       .dark .org-vtree-section::before,
+      .dark .org-vtree-node::before,
       .dark .org-vtree-members::after,
       .dark .org-vtree-member::before,
       .dark .org-vtree-member::after {
         background: rgba(255,255,255,0.14);
       }
 
-      /* 모바일: 멤버 가로 배열은 좁은 폭에서 깨지므로 세로로 변환. */
+      /* 모바일: 가로 중앙정렬 트리는 좁은 폭에서 카드가 넘쳐 연결선이 어긋나므로,
+         좌측 정렬 인덴트 트리(세로 스파인 + 각 노드로 뻗는 수평 tick)로 재구성. */
       @media (max-width: 640px) {
+        .org-vtree { align-items: stretch; }
+        .org-vtree-spine,
+        .org-vtree-spine-inner { align-items: stretch; width: 100%; }
+        /* 팀 트리: 팀 섹션 내부 직급 스파인을 한 단(22px) 들여써 팀>직급 위계 표현 */
+        .org-vtree-spine-inner { padding-left: 22px; }
+        .org-vtree-row,
+        .org-vtree-section { align-items: stretch; }
+
+        /* 세로 스파인: 각 row/section 좌측 12px 풀하이트 수직선.
+           마지막 항목은 노드 중심까지만 그려 'ㄴ'자 코너로 마감(아래로 새는 꼬리 방지). */
+        .org-vtree-row::before,
+        .org-vtree-section::before {
+          left: 12px;
+          top: 0;
+          height: 100%;
+          transform: none;
+        }
+        .org-vtree-row:last-child::before { height: 34px; }
+        .org-vtree-section:last-child::before { height: 46px; }
+
+        /* Level/Team chip: 좌측 스파인에서 수평 tick 으로 연결 */
+        .org-vtree-node {
+          justify-content: flex-start;
+          padding-left: 26px;
+        }
+        .org-vtree-node::before {
+          content: "";
+          position: absolute;
+          left: 12px;
+          top: 50%;
+          width: 14px;
+          height: 2px;
+          background: var(--c-ink-200, #E5E7EB);
+          transform: translateY(-1px);
+        }
+
+        /* 멤버: 세로 나열 + 각자 좌측 서브 스파인(-4px)에서 수평 tick 으로 카드까지 */
         .org-vtree-members {
           flex-direction: column;
           align-items: stretch;
-          gap: 6px;
-          padding-top: 10px;
-          padding-left: 22px;
+          gap: 0;
+          max-width: none;
+          margin: 0;
+          padding-top: 0;
+          padding-left: 38px;
         }
-        .org-vtree-members::after {
-          left: 10px;
+        .org-vtree-members::after { display: none; }
+        .org-vtree-member {
+          padding-top: 10px;
+          padding-left: 16px;
+        }
+        .org-vtree-member::before {
+          display: block;
+          left: -4px;
           top: 0;
-          bottom: 10px;
+          bottom: 0;
+          width: 2px;
           height: auto;
           transform: none;
         }
-        .org-vtree-member {
-          padding-top: 0;
-          padding-left: 14px;
-        }
-        .org-vtree-member::before { display: none; }
+        .org-vtree-member:last-child::before { bottom: auto; height: 31px; }
         .org-vtree-member::after {
-          top: 18px;
-          left: -12px;
+          display: block;
+          top: 31px;
+          left: -4px;
           right: auto;
-          width: 12px;
+          width: 20px;
           height: 2px;
+          transform: none;
         }
         .org-vtree-member:first-child::after,
-        .org-vtree-member:last-child::after {
-          top: 18px;
-          left: -12px;
+        .org-vtree-member:last-child::after,
+        .org-vtree-member:only-child::after {
+          display: block;
+          top: 31px;
+          left: -4px;
           right: auto;
-          width: 12px;
+          width: 20px;
         }
         .org-vtree-member > div {
           display: flex !important;

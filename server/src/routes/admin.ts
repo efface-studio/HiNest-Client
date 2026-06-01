@@ -680,7 +680,7 @@ router.delete("/positions/:id", async (req, res) => {
  * - 인증/권한 미들웨어 이름이 검출되면 auth: \"PUBLIC\" | \"AUTH\" | \"ADMIN\" | \"SUPER\" 로 라벨링.
  * - 정렬: 첫 path segment 별 그룹 + 그 안에서 path 알파벳 순.
  */
-router.get("/api-spec", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/api-spec", requireSuperAdminStepUp, async (req, res) => {
   type SpecRoute = {
     method: string;
     path: string;
@@ -807,7 +807,7 @@ router.get("/api-spec", requireSuperAdminStepUp, async (req, res) => {
 const consoleSchema = z.object({ cmd: z.string().min(1).max(200) });
 
 /** 콘솔 입력창의 @ 자동완성용 — ctx 에 따라 유저/팀/직급 후보 반환. */
-router.get("/console/complete", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/console/complete", requireSuperAdminStepUp, async (req, res) => {
   const ctx = String(req.query.ctx ?? "user").toLowerCase();
   const q = String(req.query.q ?? "").trim();
   const limit = Math.min(20, Math.max(1, parseInt(String(req.query.limit ?? 10), 10) || 10));
@@ -864,7 +864,7 @@ router.get("/console/complete", requireSuperAdminStepUp, async (req, res) => {
   return res.status(400).json({ error: "unknown ctx" });
 });
 
-router.post("/console", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/console", requireSuperAdminStepUp, async (req, res) => {
   const u = (req as any).user;
   const parsed = consoleSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid input" });
@@ -1233,7 +1233,7 @@ router.post("/console", requireSuperAdminStepUp, async (req, res) => {
 /** 채팅 감사 잠금 해제 — 클라에 비번 박지 않도록 서버에서 비교 후 OK 만 반환.
  *  비번은 환경변수 CHAT_AUDIT_PW (없으면 비활성). super-stepup 게이트로 1차 보호 + 비번 2차 보호.
  *  일치 시 클라가 sessionStorage 에 만료시각 박는 정도 — 진짜 권한 가드는 ChatAudit API 자체의 super-stepup. */
-router.post("/chat-audit/unlock", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/chat-audit/unlock", requireSuperAdminStepUp, async (req, res) => {
   const u = (req as any).user;
   const expected = process.env.CHAT_AUDIT_PW || "";
   const got = String(req.body?.password ?? "");
@@ -1260,12 +1260,12 @@ router.post("/chat-audit/unlock", requireSuperAdminStepUp, async (req, res) => {
  *  GET  /api/admin/nav-visibility           전체 NavConfig 행 (disabled 만 의미 있음)
  *  POST /api/admin/nav-visibility           { path, enabled } upsert.
  */
-router.get("/nav-visibility", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/nav-visibility", requireSuperAdminStepUp, async (_req, res) => {
   const rows = await prisma.navConfig.findMany({ orderBy: { path: "asc" } });
   res.json({ items: rows });
 });
 
-router.post("/nav-visibility", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/nav-visibility", requireSuperAdminStepUp, async (req, res) => {
   const u = (req as any).user;
   const schema = z.object({
     path: z.string().min(1).max(120),
@@ -1294,7 +1294,7 @@ router.post("/nav-visibility", requireSuperAdminStepUp, async (req, res) => {
 });
 
 /** 서버 인메모리 로그 — 콘솔 출력 + HTTP 액세스 라인. 프로세스 재기동 시 초기화. */
-router.get("/server-logs", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/server-logs", requireSuperAdminStepUp, async (req, res) => {
   const since = req.query.since ? Number(req.query.since) : undefined;
   const levelRaw = String(req.query.level ?? "");
   const level = (["info", "warn", "error", "http"] as const).includes(levelRaw as any)
@@ -1306,7 +1306,7 @@ router.get("/server-logs", requireSuperAdminStepUp, async (req, res) => {
   res.json({ logs, now: Date.now() });
 });
 
-router.get("/logs", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/logs", requireSuperAdminStepUp, async (req, res) => {
   const limit = Math.min(Number(req.query.limit ?? 200), 500);
   const logs = await prisma.auditLog.findMany({
     orderBy: { createdAt: "desc" },
@@ -1374,12 +1374,12 @@ router.patch("/users/:id/attendance", async (req, res) => {
 /* ===== Feature Flags CRUD ===== */
 import { evictFlagCache } from "../lib/featureFlags.js";
 
-router.get("/feature-flags", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/feature-flags", requireSuperAdminStepUp, async (_req, res) => {
   const rows = await prisma.featureFlag.findMany({ orderBy: { key: "asc" } });
   res.json({ flags: rows });
 });
 
-router.post("/feature-flags", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/feature-flags", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const { key, enabled, scope, targets, description } = req.body ?? {};
   if (typeof key !== "string" || !key.match(/^[a-z][a-z0-9._-]{1,60}$/)) {
@@ -1411,7 +1411,7 @@ router.post("/feature-flags", requireSuperAdminStepUp, async (req, res) => {
   res.json({ flag: row });
 });
 
-router.delete("/feature-flags/:key", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/feature-flags/:key", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   await prisma.featureFlag.delete({ where: { key: req.params.key } });
   evictFlagCache();
@@ -1422,7 +1422,7 @@ router.delete("/feature-flags/:key", requireSuperAdminStepUp, async (req, res) =
 /* ===== 역할 권한 (RolePermission) ===== */
 import { PERMISSION_CATALOG, getEffectiveMatrix, evictPermissionCache, type PermKey } from "../lib/permissions.js";
 
-router.get("/role-permissions", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/role-permissions", requireSuperAdminStepUp, async (_req, res) => {
   const matrix = await getEffectiveMatrix();
   // hidden 키는 UI 에서 노출 안 함 — 카탈로그/매트릭스 둘 다에서 제거.
   const catalog = PERMISSION_CATALOG.filter((c) => !c.hidden);
@@ -1437,7 +1437,7 @@ router.get("/role-permissions", requireSuperAdminStepUp, async (_req, res) => {
   res.json({ catalog, matrix: trimmed });
 });
 
-router.post("/role-permissions", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/role-permissions", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const { role, permKey, enabled } = req.body ?? {};
   if (!["ADMIN", "MANAGER", "MEMBER"].includes(role)) return res.status(400).json({ error: "invalid role" });
@@ -1453,7 +1453,7 @@ router.post("/role-permissions", requireSuperAdminStepUp, async (req, res) => {
   res.json({ ok: true });
 });
 
-router.delete("/role-permissions/:role/:permKey", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/role-permissions/:role/:permKey", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   await prisma.rolePermission.deleteMany({
     where: { role: req.params.role, permKey: req.params.permKey as PermKey },
@@ -1465,7 +1465,7 @@ router.delete("/role-permissions/:role/:permKey", requireSuperAdminStepUp, async
 
 /* ===== 2FA(패스키) 정책 ===== */
 
-router.get("/2fa-policy", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/2fa-policy", requireSuperAdminStepUp, async (_req, res) => {
   const policies = await prisma.twoFactorPolicy.findMany();
   // 누락된 role 은 기본값으로 채워서 반환 — 클라가 3개 row 모두 존재한다고 가정 가능.
   const ROLES = ["ADMIN", "MANAGER", "MEMBER"];
@@ -1474,7 +1474,7 @@ router.get("/2fa-policy", requireSuperAdminStepUp, async (_req, res) => {
   res.json({ policies: merged });
 });
 
-router.post("/2fa-policy", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/2fa-policy", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const { role, requirePasskey, gracePeriodDays } = req.body ?? {};
   if (!["ADMIN", "MANAGER", "MEMBER"].includes(role)) return res.status(400).json({ error: "invalid role" });
@@ -1488,7 +1488,7 @@ router.post("/2fa-policy", requireSuperAdminStepUp, async (req, res) => {
 });
 
 /** 정책에 미충족인 사용자 명단 — 패스키 없음 + 유예기간 초과. */
-router.get("/2fa-policy/non-compliant", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/2fa-policy/non-compliant", requireSuperAdminStepUp, async (_req, res) => {
   const policies = await prisma.twoFactorPolicy.findMany({ where: { requirePasskey: true } });
   if (policies.length === 0) return res.json({ users: [] });
   const now = Date.now();
@@ -1512,10 +1512,10 @@ router.get("/2fa-policy/non-compliant", requireSuperAdminStepUp, async (_req, re
 /* ===== Rate-limit Rules + IP Blocks ===== */
 import { evictSecurityCache } from "../lib/securityRules.js";
 
-router.get("/rate-rules", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/rate-rules", requireSuperAdminStepUp, async (_req, res) => {
   res.json({ rules: await prisma.rateLimitRule.findMany({ orderBy: { createdAt: "desc" } }) });
 });
-router.post("/rate-rules", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/rate-rules", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const { id, routeGlob, perMin, perHour, scope, enabled, note } = req.body ?? {};
   if (typeof routeGlob !== "string" || routeGlob.length < 2) return res.status(400).json({ error: "routeGlob 필수" });
@@ -1534,17 +1534,17 @@ router.post("/rate-rules", requireSuperAdminStepUp, async (req, res) => {
   await writeLog(me.id, "RATE_RULE_UPSERT", row.id, routeGlob, req.ip);
   res.json({ rule: row });
 });
-router.delete("/rate-rules/:id", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/rate-rules/:id", requireSuperAdminStepUp, async (req, res) => {
   await prisma.rateLimitRule.delete({ where: { id: req.params.id } });
   evictSecurityCache();
   await writeLog((req as any).user.id, "RATE_RULE_DELETE", req.params.id, undefined, req.ip);
   res.json({ ok: true });
 });
 
-router.get("/ip-blocks", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/ip-blocks", requireSuperAdminStepUp, async (_req, res) => {
   res.json({ blocks: await prisma.ipBlock.findMany({ orderBy: { createdAt: "desc" } }) });
 });
-router.post("/ip-blocks", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/ip-blocks", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const { id, cidr, country, reason, enabled, expiresAt } = req.body ?? {};
   if ((!cidr && !country) || (cidr && country)) {
@@ -1565,7 +1565,7 @@ router.post("/ip-blocks", requireSuperAdminStepUp, async (req, res) => {
   await writeLog(me.id, "IP_BLOCK_UPSERT", row.id, cidr || `country:${country}`, req.ip);
   res.json({ block: row });
 });
-router.delete("/ip-blocks/:id", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/ip-blocks/:id", requireSuperAdminStepUp, async (req, res) => {
   await prisma.ipBlock.delete({ where: { id: req.params.id } });
   evictSecurityCache();
   await writeLog((req as any).user.id, "IP_BLOCK_DELETE", req.params.id, undefined, req.ip);
@@ -1576,12 +1576,12 @@ router.delete("/ip-blocks/:id", requireSuperAdminStepUp, async (req, res) => {
  * 평문은 발급 시 1번만 노출. 검증은 sha256(input) === stored hash.
  * Bearer 토큰 미들웨어는 별도 (lib/apiTokenAuth.ts).
  */
-router.get("/api-tokens", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/api-tokens", requireSuperAdminStepUp, async (_req, res) => {
   const rows = await prisma.apiToken.findMany({ orderBy: { createdAt: "desc" } });
   res.json({ tokens: rows.map((t) => ({ ...t, hash: undefined })) });
 });
 
-router.post("/api-tokens", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/api-tokens", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const { name, scopes, expiresAt } = req.body ?? {};
   if (typeof name !== "string" || name.length < 1 || name.length > 80) {
@@ -1607,7 +1607,7 @@ router.post("/api-tokens", requireSuperAdminStepUp, async (req, res) => {
   res.json({ token: { ...row, hash: undefined }, plaintext: raw });
 });
 
-router.delete("/api-tokens/:id", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/api-tokens/:id", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   await prisma.apiToken.update({
     where: { id: req.params.id },
@@ -1619,7 +1619,7 @@ router.delete("/api-tokens/:id", requireSuperAdminStepUp, async (req, res) => {
 
 /* ===== Audit Trail Viewer ===== */
 
-router.get("/audit", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/audit", requireSuperAdminStepUp, async (req, res) => {
   const action = typeof req.query.action === "string" ? req.query.action : undefined;
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
@@ -1653,7 +1653,7 @@ router.get("/audit", requireSuperAdminStepUp, async (req, res) => {
 });
 
 /** 액션 종류 빠른 목록 — 필터 드롭다운 채우기. */
-router.get("/audit/actions", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/audit/actions", requireSuperAdminStepUp, async (_req, res) => {
   const rows = await prisma.$queryRawUnsafe<{ action: string; n: bigint }[]>(
     `SELECT "action", COUNT(*)::bigint AS n FROM "AuditLog" GROUP BY "action" ORDER BY n DESC LIMIT 100`
   );
@@ -1670,7 +1670,7 @@ function trashModel(t: TrashType) {
   return ({ meeting: prisma.meeting, document: prisma.document, journal: prisma.journal, notice: prisma.notice } as const)[t];
 }
 
-router.get("/trash", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/trash", requireSuperAdminStepUp, async (_req, res) => {
   const include = { deletedBy: false }; // we resolve names below
   void include;
   const [meetings, documents, journals, notices] = await Promise.all([
@@ -1707,7 +1707,7 @@ router.get("/trash", requireSuperAdminStepUp, async (_req, res) => {
   });
 });
 
-router.post("/trash/:type/:id/restore", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/trash/:type/:id/restore", requireSuperAdminStepUp, async (req, res) => {
   const t = req.params.type as TrashType;
   if (!TRASH_TYPES.includes(t)) return res.status(400).json({ error: "invalid type" });
   const me = (req as any).user;
@@ -1719,7 +1719,7 @@ router.post("/trash/:type/:id/restore", requireSuperAdminStepUp, async (req, res
   res.json({ ok: true });
 });
 
-router.delete("/trash/:type/:id", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/trash/:type/:id", requireSuperAdminStepUp, async (req, res) => {
   const t = req.params.type as TrashType;
   if (!TRASH_TYPES.includes(t)) return res.status(400).json({ error: "invalid type" });
   const me = (req as any).user;
@@ -1729,7 +1729,7 @@ router.delete("/trash/:type/:id", requireSuperAdminStepUp, async (req, res) => {
 });
 
 /** 30일 초과 휴지통 항목 일괄 영구 삭제. */
-router.post("/trash/purge-old", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/trash/purge-old", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const [m, d, j, n] = await Promise.all([
@@ -1744,7 +1744,7 @@ router.post("/trash/purge-old", requireSuperAdminStepUp, async (req, res) => {
 
 /* ===== Health-check Board ===== */
 
-router.get("/health", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/health", requireSuperAdminStepUp, async (_req, res) => {
   const checks: Record<string, { ok: boolean; latencyMs?: number; detail?: string; meta?: any }> = {};
 
   // DB ping
@@ -1819,7 +1819,7 @@ router.get("/health", requireSuperAdminStepUp, async (_req, res) => {
 
 /* ===== Error Dashboard (5xx grouping) ===== */
 
-router.get("/errors", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/errors", requireSuperAdminStepUp, async (req, res) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
   const sinceMs = req.query.since === "1h" ? 60 * 60 * 1000
     : req.query.since === "24h" ? 24 * 60 * 60 * 1000
@@ -1841,13 +1841,13 @@ router.get("/errors", requireSuperAdminStepUp, async (req, res) => {
   });
 });
 
-router.get("/errors/:hash", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/errors/:hash", requireSuperAdminStepUp, async (req, res) => {
   const g = getErrorGroup(req.params.hash);
   if (!g) return res.status(404).json({ error: "not found" });
   res.json({ group: g });
 });
 
-router.delete("/errors", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/errors", requireSuperAdminStepUp, async (req, res) => {
   clearErrorGroups();
   await writeLog((req as any).user?.id, "ERROR_DASHBOARD_CLEAR", undefined, undefined, req.ip);
   res.json({ ok: true });
@@ -1856,7 +1856,7 @@ router.delete("/errors", requireSuperAdminStepUp, async (req, res) => {
 /* ===== Session Manager ===== */
 
 /** 활성 세션 목록. ?userId 로 특정 유저만, 기본은 전체 (최근 활동 순). */
-router.get("/sessions", requireSuperAdminStepUp, async (req, res) => {
+ops.get("/sessions", requireSuperAdminStepUp, async (req, res) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
   const onlyActive = req.query.active !== "false";
   const limit = Math.min(500, parseInt(String(req.query.limit ?? "100"), 10) || 100);
@@ -1873,7 +1873,7 @@ router.get("/sessions", requireSuperAdminStepUp, async (req, res) => {
 });
 
 /** 특정 세션 강제 로그아웃. */
-router.delete("/sessions/:id", requireSuperAdminStepUp, async (req, res) => {
+ops.delete("/sessions/:id", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const s = await prisma.session.findUnique({ where: { id: req.params.id }, select: { id: true, userId: true, revokedAt: true } });
   if (!s) return res.status(404).json({ error: "not found" });
@@ -1885,7 +1885,7 @@ router.delete("/sessions/:id", requireSuperAdminStepUp, async (req, res) => {
 });
 
 /** 특정 유저의 모든 세션 강제 로그아웃. 비밀번호 변경 / 계정 탈취 의심 시 사용. */
-router.post("/sessions/revoke-user/:userId", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/sessions/revoke-user/:userId", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const r = await prisma.session.updateMany({
     where: { userId: req.params.userId, revokedAt: null },
@@ -1897,7 +1897,7 @@ router.post("/sessions/revoke-user/:userId", requireSuperAdminStepUp, async (req
 });
 
 /** 전사 강제 로그아웃 — 매우 위험. 시크릿 로테이트 / 데이터 유출 의심 시 사용. */
-router.post("/sessions/revoke-all", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/sessions/revoke-all", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   const r = await prisma.session.updateMany({
     where: { revokedAt: null },
@@ -1907,7 +1907,7 @@ router.post("/sessions/revoke-all", requireSuperAdminStepUp, async (req, res) =>
   res.json({ ok: true, count: r.count });
 });
 
-router.post("/impersonate/:id", requireSuperAdminStepUp, async (req, res) => {
+ops.post("/impersonate/:id", requireSuperAdminStepUp, async (req, res) => {
   const me = (req as any).user;
   // 임퍼소네이션 중에 또 다른 임퍼소네이션 시작은 금지 — 책임 추적이 흐려짐.
   if ((req as any).impersonatedById) {

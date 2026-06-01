@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, Navigate, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
-import Logo from "../components/Logo";
+import BrandLockup from "../components/BrandLockup";
 import SoftInput from "../components/SoftInput";
 
 /**
@@ -28,7 +28,7 @@ export default function ResetPasswordPage() {
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
         <header className="px-6 pt-8 pb-4 flex items-center">
-          <Logo size={20} />
+          <BrandLockup height={36} />
         </header>
         <main className="flex-1 flex items-center justify-center px-6 pb-12">
           <div className="w-full max-w-[400px] text-center">
@@ -76,7 +76,7 @@ export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
       <header className="px-6 pt-8 pb-4 flex items-center">
-        <Logo size={20} />
+        <BrandLockup height={36} />
       </header>
 
       <main className="flex-1 flex items-center justify-center px-6 pb-12">

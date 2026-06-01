@@ -1,8 +1,9 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { z } from "zod";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
 import { prisma } from "../lib/db.js";
+import { runUnscoped } from "../lib/tenant.js";
 import {
   requireAdmin, requireAuth, requireSuperAdminStepUp, verifySuperToken,
   writeLog, evictUserCache, evictSessionCache,
@@ -14,6 +15,23 @@ import { evictNavVisibilityCache } from "./nav.js";
 
 const router = Router();
 router.use(requireAuth, requireAdmin);
+
+/**
+ * 개발자(superAdmin) 운영 콘솔 전용 서브라우터.
+ *
+ * 회사 단위 admin 엔드포인트(위 `router` 에 직접 등록)는 평소대로 자기 회사로 스코프되지만,
+ * 운영 콘솔은 전 회사를 가로지르는 god-view 여야 한다(로그·감사·세션·휴지통·시스템 통계 등).
+ * 따라서 이 그룹의 핸들러만 runUnscoped 로 테넌트 스코프를 국소 해제한다.
+ *
+ * 보안: superAdmin 세션에 전역 bypass 를 주지 않는다. 전역으로 풀면 일반 서비스 화면
+ * (채팅·근태·문서 등)에서도 타 회사 데이터가 섞여 노출되기 때문. 해제는 오직 이 콘솔
+ * 라우트 구간에서만 일어난다. (PR #194 가 /api/platform 에 적용한 패턴과 동일.)
+ *
+ * 마운트는 파일 끝에서 router.use(ops). 회사 라우트가 먼저 매칭되므로 스코프 해제가
+ * 그쪽으로 새지 않는다(회사 admin 요청은 ops 에 들어오지 않는다).
+ */
+const ops = Router();
+ops.use((_req: Request, _res: Response, next: NextFunction) => runUnscoped(() => next()));
 
 /* ===== 초대키 ===== */
 router.get("/invites", async (_req, res) => {
@@ -1912,5 +1930,9 @@ router.post("/impersonate/:id", requireSuperAdminStepUp, async (req, res) => {
 });
 
 // DELETE 는 me.ts 로 이동 — 임퍼소네이션 중엔 admin 체크가 막혀서 종료 불가.
+
+// 운영 콘솔 서브라우터 마운트 — 반드시 회사 단위 admin 라우트 등록 뒤에 와야
+// 회사 요청이 먼저 매칭되고, 콘솔(god-view) 요청만 ops 로 흘러든다.
+router.use(ops);
 
 export default router;

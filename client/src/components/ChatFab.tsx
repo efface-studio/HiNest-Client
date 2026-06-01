@@ -45,7 +45,7 @@ type ActiveRoomInfo = {
 
 export default function ChatFab() {
   const loc = useLocation();
-  const { chatUnread, ready } = useNotifications();
+  const { chatUnread } = useNotifications();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   // 모바일(≤640px) 에서는 사내톡을 풀스크린 페이지처럼 띄움.
@@ -73,23 +73,6 @@ export default function ChatFab() {
       document.body.classList.remove("hinest-chat-fs");
     };
   }, [isMobile, open]);
-  // 새 채팅 알림이 들어올 때 파란 펄스.
-  // - 단순 새로고침/재오픈만으론 발동하지 않음 (localStorage 에 저장된 마지막으로 본 카운트와 비교).
-  // - 앱이 꺼진 사이 알림이 쌓였다면 켤 때 1회 발동.
-  const [pulsing, setPulsing] = useState(false);
-  useEffect(() => {
-    if (!ready) return; // 최초 서버 동기화 전엔 비교 무의미
-    const KEY = "hinest:lastSeenChatUnread";
-    const lastSeen = Number(localStorage.getItem(KEY) ?? "0");
-    if (chatUnread > lastSeen) {
-      setPulsing(true);
-      const t = setTimeout(() => setPulsing(false), 2800);
-      localStorage.setItem(KEY, String(chatUnread));
-      return () => clearTimeout(t);
-    }
-    // 내려갔거나 같을 땐 펄스 없이 최신 값으로만 동기화
-    localStorage.setItem(KEY, String(chatUnread));
-  }, [chatUnread, ready]);
   const [activeRoom, setActiveRoom] = useState<ActiveRoomInfo | null>(null);
   const [createReq, setCreateReq] = useState(0);
   // 외부에서 특정 방을 열어달라고 요청하면 여기에 담아 ChatMiniApp 으로 프롭 전달
@@ -134,8 +117,6 @@ export default function ChatFab() {
   useEffect(() => { if (!open) setActiveRoom(null); }, [open]);
 
   if (hidden) return null;
-
-  const toggle = () => setOpen((s) => { const n = !s; if (n) setMounted(true); return n; });
 
   return (
     <>
@@ -202,17 +183,16 @@ export default function ChatFab() {
             <RoomHeader
               info={{
                 ...activeRoom,
-                // 모바일 풀스크린에선 방 안에서도 패널 자체를 닫을 수 있어야 한다.
-                // 기존엔 onBack(=방 목록으로) 만 있어 두 번 눌러야 닫혔고,
-                // 그마저도 safe-area 겹침으로 뒤로가기 버튼이 안 보였음.
-                onClose: isMobile ? () => setOpen(false) : undefined,
+                // 패널 자체를 닫는 X. 런처를 상단바로 옮긴 뒤로는 모바일·데스크톱 모두
+                // 헤더의 X 로 닫는다(이전엔 데스크톱에서 우하단 FAB 가 닫기 역할을 했음).
+                onClose: () => setOpen(false),
               }}
             />
           ) : (
             <ListHeader
               chatUnread={chatUnread}
               onCreateGroup={() => setCreateReq((n) => n + 1)}
-              onClose={isMobile ? () => setOpen(false) : undefined}
+              onClose={() => setOpen(false)}
             />
           )}
 
@@ -230,67 +210,6 @@ export default function ChatFab() {
             </Suspense>
           </div>
         </div>
-      )}
-
-      {/* ===== FAB — 모바일 풀스크린 상태에선 헤더의 X로 닫으므로 숨김 ===== */}
-      {!(isMobile && open) && (
-      <button
-        type="button"
-        onClick={toggle}
-        title={open ? "사내톡 닫기" : "사내톡 열기"}
-        aria-label={chatUnread > 0 ? `사내톡 · 안 읽은 메시지 ${chatUnread}건` : "사내톡"}
-        aria-expanded={open}
-        className={`fixed z-40 flex items-center justify-center active:scale-[.94]${pulsing ? " siri-pulse" : ""}`}
-        style={{
-          // notch/홈인디케이터 대응 — iPad/iPhone 세이프 에어리어 안쪽으로 당김.
-          // 모바일 하단 네비게이션 바(--hinest-bottomnav-h) 위로 띄운다(데스크톱은 0이라 그대로).
-          right: "max(20px, env(safe-area-inset-right))",
-          bottom:
-            "calc(20px + env(safe-area-inset-bottom, 0px) + var(--hinest-bottomnav-h, 0px))",
-          width: 60, height: 60,
-          borderRadius: 999,
-          background: C.blue, color: "#fff",
-          border: 0, cursor: "pointer",
-          boxShadow:
-            "0 10px 24px rgba(49, 130, 246, .36), 0 2px 6px rgba(49, 130, 246, .20)",
-          transition:
-            "background .18s ease, transform .18s cubic-bezier(.22,.61,.36,1)",
-          transform: open ? "scale(.96)" : undefined,
-          fontFamily: FONT,
-        }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = C.blueHover)}
-        onMouseLeave={(e) => (e.currentTarget.style.background = C.blue)}
-      >
-        {open ? (
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M18 6 6 18M6 6l12 12" />
-          </svg>
-        ) : (
-          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
-          </svg>
-        )}
-
-        {chatUnread > 0 && !open && (
-          <span
-            style={{
-              position: "absolute",
-              top: -2, right: -2,
-              minWidth: 22, height: 22, padding: "0 6px",
-              borderRadius: 999,
-              background: C.red, color: "#fff",
-              fontSize: 11, fontWeight: 700,
-              display: "grid", placeItems: "center",
-              boxShadow: `0 0 0 2px ${C.bg}`,
-              fontFamily: FONT,
-              letterSpacing: "-0.01em",
-              fontVariantNumeric: "tabular-nums",
-            }}
-          >
-            {chatUnread > 99 ? "99+" : chatUnread}
-          </span>
-        )}
-      </button>
       )}
     </>
   );

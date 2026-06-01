@@ -65,7 +65,7 @@ authed.post("/", async (req, res) => {
       createdById: u.id,
       expiresAt: d.expiresAt ? new Date(d.expiresAt) : null,
       maxDownloads: d.maxDownloads ?? null,
-      passwordHash: d.password ? await bcrypt.hash(d.password, 10) : null,
+      passwordHash: d.password ? await bcrypt.hash(d.password, 12) : null,
     },
   });
   await writeLog(u.id, "SHARE_LINK_CREATE", link.id, doc.id);

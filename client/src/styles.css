@@ -549,6 +549,109 @@ table.pro.pro-grid-fixed tbody td > div > select {
 }
 
 /* ============================================================ */
+/*   모바일 카드형 테이블 — 옵트인 .pro-cards.                   */
+/*   ≤768px 에서 가로 스크롤 테이블 대신 행(tr)을 카드로,        */
+/*   셀(td)을 "라벨 : 값" 행으로 쌓아 앱처럼 보이게 한다.         */
+/*                                                              */
+/*   사용법: <table class="pro pro-cards"> + 각 <td data-label="컬럼"> */
+/*     · data-label  — 좌측에 표시할 라벨(없으면 라벨 생략)       */
+/*     · .cell-primary — 제목 셀: 전체폭 카드 헤더(라벨 없음)     */
+/*     · .cell-actions — 액션 셀: 전체폭 하단, 우측 정렬          */
+/*     · .cell-full    — 빈 상태 등 전체폭 가운데 정렬           */
+/*     · .cell-hide-m  — 모바일 카드에서 숨김(부차 정보)         */
+/* ============================================================ */
+@media (max-width: 768px) {
+  table.pro-cards { min-width: 0 !important; width: 100%; display: block; }
+  table.pro-cards thead { display: none; }
+  table.pro-cards tbody { display: block; }
+  table.pro-cards tbody tr {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 14px;
+    margin: 0 0 10px;
+    border: 1px solid var(--c-border);
+    border-radius: 14px;
+    background: var(--c-surface);
+  }
+  table.pro-cards tbody tr:last-child { margin-bottom: 0; }
+  table.pro-cards tbody tr:hover td { background: transparent; }
+  table.pro-cards tbody td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    min-width: 0;
+    padding: 5px 0 !important;
+    border: 0 !important;
+    font-size: 13px;
+  }
+  table.pro-cards tbody td::before {
+    content: attr(data-label);
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--c-text-3);
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+  }
+  /* 라벨 없는 셀은 ::before 를 비워 공간을 차지하지 않게 */
+  table.pro-cards tbody td:not([data-label])::before,
+  table.pro-cards tbody td[data-label=""]::before { content: ""; }
+  /* 값은 우측으로 밀고 길면 말줄임 */
+  table.pro-cards tbody td > * { min-width: 0; margin-left: auto; }
+
+  /* 제목/헤더 셀 — 카드 최상단으로, 전체폭·좌측 정렬·하단 구분선.
+     직접 텍스트(예: 가맹점명)는 헤더처럼 강조. 내부에 자체 글꼴 클래스를
+     가진 셀(문서 제목 블록 등)은 그 클래스가 우선하므로 영향 없음. */
+  table.pro-cards tbody td.cell-primary {
+    order: -2;
+    display: block;
+    padding-bottom: 10px !important;
+    margin-bottom: 4px;
+    border-bottom: 1px solid var(--c-border) !important;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--c-text);
+  }
+  table.pro-cards tbody td.cell-primary::before { content: none; }
+  table.pro-cards tbody td.cell-primary > * { margin-left: 0; }
+  /* 카드에선 제목 말줄임 폭 제한 해제 */
+  table.pro-cards tbody td.cell-primary .cell-title { max-width: 100% !important; }
+
+  /* 액션 셀 — 카드 최하단으로, 전체폭·우측 정렬·상단 구분선 */
+  table.pro-cards tbody td.cell-actions {
+    order: 100;
+    justify-content: flex-end;
+    padding-top: 10px !important;
+    margin-top: 4px;
+    border-top: 1px solid var(--c-border) !important;
+  }
+  table.pro-cards tbody td.cell-actions::before { content: none; }
+  table.pro-cards tbody td.cell-actions > * { margin-left: 0; }
+
+  /* 빈 상태 등 전체폭 가운데 정렬 셀 */
+  table.pro-cards tbody td.cell-full { display: block; text-align: center; }
+  table.pro-cards tbody td.cell-full::before { content: none; }
+  table.pro-cards tbody td.cell-full > * { margin-left: 0; }
+
+  /* 모바일 카드에서 숨길 부차 셀 */
+  table.pro-cards tbody td.cell-hide-m { display: none; }
+
+  /* 카드 리스트를 감싼 패널/카드는 중첩 박스로 보이지 않게 테두리 제거 */
+  .panel:has(> table.pro-cards),
+  .card:has(> table.pro-cards) {
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    overflow: visible;
+  }
+}
+
+/* 스크롤바 숨김 — 가로 스크롤 탭/칩 스트립을 앱처럼 깔끔하게 */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* ============================================================ */
 /*                         HEADINGS                              */
 /* ============================================================ */
 .h-display { color: var(--c-text); font-weight: 700; font-size: 20px; line-height: 28px; letter-spacing: -0.02em; }

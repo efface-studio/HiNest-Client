@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
-import BrandLockup from "./BrandLockup";
+import AdminLockup from "./AdminLockup";
 
 /**
  * 운영 콘솔 셸 — 총관리자(개발자)/플랫폼 운영자 전용. 회사 앱(AppLayout)과
@@ -86,14 +86,8 @@ export default function ConsoleLayout() {
             }}
           />
         )}
-        <div className="px-5 h-[52px] flex items-center gap-2 border-b border-white/10 flex-shrink-0">
-          <BrandLockup height={20} onDark />
-          <span
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wide"
-            style={{ background: "var(--c-brand)", color: "#fff" }}
-          >
-            운영 콘솔
-          </span>
+        <div className="px-5 h-[52px] flex items-center border-b border-white/10 flex-shrink-0">
+          <AdminLockup variant="compact" onDark />
         </div>
 
         {hasCompany && (
@@ -169,10 +163,7 @@ export default function ConsoleLayout() {
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="h-[48px] px-4 flex items-center gap-2">
-            <BrandLockup height={18} onDark />
-            <span className="text-[9.5px] font-bold px-1.5 py-0.5 rounded-md uppercase" style={{ background: "var(--c-brand)" }}>
-              운영 콘솔
-            </span>
+            <AdminLockup variant="compact" onDark />
             <div className="ml-auto flex items-center gap-1">
               {hasCompany && (
                 <button onClick={() => nav("/")} className="text-[12px] font-semibold text-white/70 hover:text-white px-2 py-1">

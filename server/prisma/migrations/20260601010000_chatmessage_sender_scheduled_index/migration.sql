@@ -1,0 +1,11 @@
+-- 예약 메시지 목록 조회 성능 인덱스
+--
+-- chat.ts 의 GET /chat/scheduled 는 prisma.chatMessage.findMany({
+--   where: { senderId, scheduledAt: { gt: now }, deletedAt: null },
+--   orderBy: { scheduledAt: "asc" }
+-- }) 를 실행한다. ChatMessage 의 기존 인덱스는 (roomId, scheduledAt) ·
+-- (roomId, createdAt) · (companyId) 뿐이라, roomId 가 없는 이 쿼리는 (companyId)
+-- 로 떨어져 "회사 전체 메시지"(고볼륨 테이블) 를 스캔한 뒤 senderId/scheduledAt
+-- 필터를 적용했다. senderId 선두 복합 인덱스로 probe + 범위 스캔으로 전환한다.
+-- (senderId 는 회사에 1:1 종속이므로 companyId prefix 불필요 — 기존 roomId 패턴과 동일.)
+CREATE INDEX "ChatMessage_senderId_scheduledAt_idx" ON "ChatMessage"("senderId", "scheduledAt");

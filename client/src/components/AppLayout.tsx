@@ -770,15 +770,15 @@ function NavSection({ label, items, dev }: { label: string; items: NavItem[]; de
 function BottomNav({ items }: { items: NavItem[] }) {
   // 전자결재 대기 건수 배지 — 사이드바와 동일한 폴링 hook 재사용.
   const approvalCounts = useApprovalCounts();
-  const itemCls =
-    "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none " +
-    "text-[10.5px] font-bold tracking-tight leading-none [&_svg]:w-[22px] [&_svg]:h-[22px]";
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-stretch bg-white border-t border-ink-150"
+      className="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-stretch"
       style={{
+        // 테마 변수로 칠해 다크 모드에서도 자연스럽게(이전엔 bg-white 고정이라 다크에서 깨졌음).
+        background: "var(--c-surface)",
+        borderTop: "1px solid var(--c-border)",
         paddingBottom: "env(safe-area-inset-bottom)",
-        boxShadow: "0 -6px 20px rgba(20,22,27,0.05)",
+        boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
       }}
       aria-label="주요 메뉴"
     >
@@ -786,48 +786,83 @@ function BottomNav({ items }: { items: NavItem[] }) {
         const Icon = n.icon;
         const badge = n.to === "/approvals" ? approvalCounts.pending : 0;
         return (
-          <NavLink
-            key={n.to}
-            to={n.to}
-            end={n.end}
-            className={itemCls}
-            style={({ isActive }) => ({
-              height: 56,
-              color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
-            })}
-            onClick={() => prefetchRoute(n.to)}
+          <BottomNavTab key={n.to} to={n.to} end={n.end} label={n.label} badge={badge}>
+            <Icon />
+          </BottomNavTab>
+        );
+      })}
+      {/* 전체 — 전용 메뉴 페이지로 이동(좌측 드로어 아님). NavLink 라 현재 위치면 활성색. */}
+      <BottomNavTab to="/menu" label="전체" ariaLabel="전체 메뉴">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+      </BottomNavTab>
+    </nav>
+  );
+}
+
+/**
+ * 하단 바의 탭 한 칸. 활성 시 아이콘 뒤로 brand-soft 알약(pill)이 떠서 "지금 이 탭" 을
+ * 또렷이 보여준다(토스 스타일). 색·아이콘은 currentColor 를 따르므로 NavLink 의 color 만
+ * 바꾸면 활성/비활성이 함께 전환되고, pill 배경만 isActive 로 토글한다.
+ */
+function BottomNavTab({
+  to,
+  end,
+  label,
+  badge = 0,
+  ariaLabel,
+  children,
+}: {
+  to: string;
+  end?: boolean;
+  label: string;
+  badge?: number;
+  ariaLabel?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <NavLink
+      to={to}
+      end={end}
+      aria-label={ariaLabel}
+      onClick={() => prefetchRoute(to)}
+      className={
+        "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none " +
+        "text-[10.5px] font-bold tracking-tight leading-none [&_svg]:w-[22px] [&_svg]:h-[22px]"
+      }
+      style={({ isActive }) => ({
+        height: 56,
+        color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
+      })}
+    >
+      {({ isActive }) => (
+        <>
+          <span
+            className="inline-flex items-center justify-center transition-colors duration-200"
+            style={{
+              width: 48,
+              height: 30,
+              borderRadius: 999,
+              background: isActive ? "var(--c-brand-soft)" : "transparent",
+            }}
           >
             <span className="relative inline-flex">
-              <Icon />
+              {children}
               {badge > 0 && (
                 <span
                   className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full text-white text-[9px] font-bold grid place-items-center tabular"
-                  style={{ background: "var(--c-danger)" }}
+                  style={{ background: "var(--c-danger)", boxShadow: "0 0 0 2px var(--c-surface)" }}
                 >
                   {badge > 99 ? "99+" : badge}
                 </span>
               )}
             </span>
-            <span>{n.label}</span>
-          </NavLink>
-        );
-      })}
-      {/* 전체 — 전용 메뉴 페이지로 이동(좌측 드로어 아님). NavLink 라 현재 위치면 활성색. */}
-      <NavLink
-        to="/menu"
-        className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none text-[10.5px] font-bold tracking-tight leading-none"
-        style={({ isActive }) => ({
-          height: 56,
-          color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
-        })}
-        aria-label="전체 메뉴"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 6h18M3 12h18M3 18h18" />
-        </svg>
-        <span>전체</span>
-      </NavLink>
-    </nav>
+          </span>
+          <span>{label}</span>
+        </>
+      )}
+    </NavLink>
   );
 }
 

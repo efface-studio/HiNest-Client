@@ -476,6 +476,16 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     };
   }, [isMacDesktop]);
 
+  // 앱 셸 오버스크롤 잠금 — iOS 에서 문서 전체가 고무줄처럼 튕겨 상·하단에 빈 공간이
+  // 드러나는 걸 막는다(상단을 당기면 위, 하단바를 올리면 아래). styles.css 의
+  // .hinest-shell-lock 이 body 를 position:fixed 로 고정한다. 공개 페이지(로그인/약관)는
+  // 문서 스크롤이 필요하므로 AppLayout 이 마운트된 동안에만 <html> 에 클래스를 토글한다.
+  useEffect(() => {
+    const el = document.documentElement;
+    el.classList.add("hinest-shell-lock");
+    return () => el.classList.remove("hinest-shell-lock");
+  }, []);
+
   // 창모드에서만 신호등 버튼 여백 필요, 전체화면에선 숨어있으므로 여백 제거
   const showTitlebarSpace = isMacDesktop && !isFullscreen;
 

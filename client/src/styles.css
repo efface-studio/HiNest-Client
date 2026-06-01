@@ -98,6 +98,32 @@ body {
     Inter, system-ui, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
   overscroll-behavior: none;
 }
+
+/*
+ * 앱 셸 오버스크롤 잠금 — iOS Safari/PWA 에서 문서 전체가 고무줄(rubber-band)처럼
+ * 튕기는 걸 막는다. body { overscroll-behavior: none } 만으론 부족한데, 특히 터치가
+ * 스크롤 불가능한 크롬(상단바/하단바) 위에서 시작되면 문서 자체가 위/아래로 늘어나며
+ * 빈 공간이 드러난다(상단을 당기면 위에 빈 공간, 하단바를 올리면 아래에 빈 공간).
+ * 그래서 body 를 position:fixed 로 물리적으로 고정해 문서가 아예 스크롤/바운스할 수
+ * 없게 만든다. 실제 스크롤은 내부의 <main class="overflow-y-auto"> 만 담당한다.
+ *
+ * 단, 이 잠금은 AppLayout(로그인 후 앱 셸)이 마운트된 동안에만 <html> 에 클래스를
+ * 토글해서 적용한다. 로그인/개인정보/약관 같은 공개 페이지는 문서 스크롤에 의존하므로
+ * 전역으로 걸면 안 된다.
+ */
+html.hinest-shell-lock {
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+html.hinest-shell-lock body {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
 * { -webkit-tap-highlight-color: transparent; }
 .font-mono, code, pre, .tabular {
   font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, Monaco, monospace;

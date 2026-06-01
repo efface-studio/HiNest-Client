@@ -9,6 +9,7 @@ export default function PreviewBanner({ safeAreaTop = true }: { safeAreaTop?: bo
   if (!isPreviewMode()) return null;
   return (
     <div
+      className="hinest-preview-banner"
       style={{
         position: "sticky",
         top: 0,

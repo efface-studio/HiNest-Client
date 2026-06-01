@@ -626,6 +626,34 @@ type EventForm = {
 
 type DirUser = { id: string; name: string; email: string; team?: string | null; avatarColor?: string; avatarUrl?: string | null; position?: string | null };
 
+/**
+ * iOS 키보드가 올라오면 visualViewport 만 키보드 높이만큼 줄어든다(레이아웃 뷰포트·100vh·100dvh 는 그대로).
+ * 그래서 화면 중앙 정렬 모달은 키보드가 뜨면 아래쪽(카테고리 칩·푸터의 저장 버튼)이 키보드와 iOS 입력
+ * 보조바에 가려진다. 오버레이를 visualViewport 영역(top/height)에 맞추고 패널을 그 안으로 캡(max-h-full)하면,
+ * 모달이 항상 키보드 위에 들어와 내부 스크롤만으로 모든 필드·푸터에 접근된다.
+ * visualViewport 미지원(구형) 환경에서는 전체 화면으로 폴백하므로 기존 동작과 동일.
+ */
+function useViewportInset(): { top: number; height: number | string } {
+  const read = (): { top: number; height: number | string } => {
+    const vv = typeof window !== "undefined" ? window.visualViewport : null;
+    return vv ? { top: vv.offsetTop, height: vv.height } : { top: 0, height: "100%" };
+  };
+  const [inset, setInset] = useState<{ top: number; height: number | string }>(read);
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!vv) return;
+    const apply = () => setInset({ top: vv.offsetTop, height: vv.height });
+    apply();
+    vv.addEventListener("resize", apply);
+    vv.addEventListener("scroll", apply);
+    return () => {
+      vv.removeEventListener("resize", apply);
+      vv.removeEventListener("scroll", apply);
+    };
+  }, []);
+  return inset;
+}
+
 function EventModal({
   onClose,
   form,
@@ -679,10 +707,17 @@ function EventModal({
     );
   }, [directory, deferredSearch]);
 
+  // 키보드가 떠도 모달(카테고리 칩·저장 버튼)이 가려지지 않도록 오버레이를 visualViewport 영역에 맞춘다.
+  const viewport = useViewportInset();
+
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div
+      className="fixed inset-x-0 bg-ink-900/40 grid place-items-center p-4 z-50"
+      style={{ top: viewport.top, height: viewport.height }}
+      onClick={onClose}
+    >
       <div
-        className="panel w-full max-w-[640px] shadow-pop overflow-hidden max-h-[90vh] flex flex-col"
+        className="panel w-full max-w-[640px] shadow-pop overflow-hidden max-h-full flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* 헤더 */}

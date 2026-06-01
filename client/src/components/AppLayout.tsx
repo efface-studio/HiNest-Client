@@ -433,16 +433,6 @@ const RESOURCE_NAV: NavItem[] = [
   { to: "/snippets", label: "스니펫", icon: SnippetIcon },
 ];
 
-// 모바일 하단 탭 바에 직접 노출할 핵심 메뉴(토스 스타일). 나머지 전체 메뉴는
-// 다섯 번째 "전체" 버튼이 좌측 드로어(=기존 사이드바)를 열어 보여준다.
-// 여기 항목은 전 직원 공통 라우트라 권한 게이팅이 필요 없다. 짧은 라벨로 고른다.
-const BOTTOM_NAV: NavItem[] = [
-  { to: "/", label: "개요", icon: HomeIcon, end: true },
-  { to: "/schedule", label: "일정", icon: CalendarIcon },
-  { to: "/approvals", label: "전자결재", icon: ApprovalIcon },
-  { to: "/meetings", label: "회의록", icon: MeetingIcon },
-];
-
 export default function AppLayout({ children }: { children?: React.ReactNode } = {}) {
   return (
     <NotificationProvider>
@@ -456,10 +446,13 @@ export default function AppLayout({ children }: { children?: React.ReactNode } =
 function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   const { user, logout, impersonator } = useAuth();
   const nav = useNavigate();
+  const loc = useLocation();
   const { disabled: disabledNav, dev: devNav } = useNavStatus();
   const filterByVisibility = (items: NavItem[]) => items.filter((i) => !disabledNav.has(i.to));
   const isMacDesktop = !!window.hinest?.isDesktop && window.hinest?.platform === "darwin";
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // 모바일 사이드바 드로어 — md 미만에서만 의미 있음 (md 이상은 항상 고정 배치)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // iOS 노치/상태바 영역(env(safe-area-inset-top)) 을 누가 흡수할지 결정.
   // 항상 "맨 위에 첫 번째로 보이는 요소" 만 흡수해서 더블 패딩 방지.
@@ -476,6 +469,17 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     };
   }, [isMacDesktop]);
 
+  // 라우트가 바뀌면 드로어는 자동으로 닫는다 — 모바일에서 탭하면 같은 창 위로
+  // 메뉴가 덮여 있어 바로 닫혀야 자연스럽다.
+  useEffect(() => { setMobileNavOpen(false); }, [loc.pathname]);
+  // 드로어 열렸을 때 body 스크롤 잠금 — 데스크톱에는 영향 없음.
+  useEffect(() => {
+    if (!mobileNavOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [mobileNavOpen]);
+
   // 창모드에서만 신호등 버튼 여백 필요, 전체화면에선 숨어있으므로 여백 제거
   const showTitlebarSpace = isMacDesktop && !isFullscreen;
 
@@ -491,8 +495,24 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
       <PreviewOnboarding />
       <ImpersonationBanner safeAreaTop={topSlot === "impersonation"} />
       <div className="flex flex-1 min-h-0">
-      {/* 사이드바 — 데스크톱(md+) 전용. 모바일은 하단 바 + /menu 페이지를 쓰므로 숨긴다. */}
-      <aside className="hidden md:flex w-[232px] bg-white border-r border-ink-150 flex-col flex-shrink-0">
+      {/* 모바일 드로어 백드롭 — md 미만에서 열렸을 때만 보임 */}
+      {mobileNavOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/40 md:hidden"
+          onClick={() => setMobileNavOpen(false)}
+          aria-hidden
+        />
+      )}
+      <aside
+        className={`
+          w-[232px] bg-white border-r border-ink-150 flex flex-col flex-shrink-0
+          md:static md:translate-x-0 md:h-auto
+          fixed top-0 left-0 z-40
+          h-[100dvh]
+          transition-transform duration-200 ease-out
+          ${mobileNavOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}
+        `}
+      >
         {/* 신호등 영역용 드래그 가능 상단바 — 사이드바 배경과 통일 */}
         {showTitlebarSpace && (
           <div
@@ -643,6 +663,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
         )}
         <TopBar
           draggable={showTitlebarSpace}
+          onOpenNav={() => setMobileNavOpen(true)}
           safeAreaTop={topSlot === "topbar"}
         />
         <main
@@ -656,16 +677,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             WebkitOverflowScrolling: "touch",
           }}
         >
-          <div
-            className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
-            style={{
-              // 모바일 하단 네비게이션 바(--hinest-bottomnav-h)·iOS 홈 인디케이터 영역만큼
-              // 본문 하단을 비워 마지막 콘텐츠가 바에 가리지 않게 한다. 데스크톱은 var=0 이라
-              // 기본 여백(24px)만 남는다.
-              paddingBottom:
-                "calc(var(--hinest-bottomnav-h, 0px) + env(safe-area-inset-bottom) + 24px)",
-            }}
-          >
+          <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 md:py-6">
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>
               {/* /preview 같은 비-라우터-childless 진입 시엔 children 으로 직접 받음. 그 외엔 Outlet. */}
               {children ?? <Outlet />}
@@ -673,7 +685,6 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           </div>
         </main>
       </div>
-      <BottomNav items={filterByVisibility(BOTTOM_NAV)} />
       <ChatFab />
       </div>
     </div>
@@ -757,190 +768,6 @@ function NavSection({ label, items, dev }: { label: string; items: NavItem[]; de
           );
         })}
       </div>
-    </div>
-  );
-}
-
-/**
- * 모바일 전용 하단 네비게이션 바 — md(768px) 미만에서만 보인다(데스크톱은 고정 사이드바).
- * 토스처럼 핵심 탭 몇 개 + "전체" 탭. "전체"는 좌측 드로어가 아니라 전용 페이지(/menu)로 이동한다.
- *  - z-20: ChatFab(z-40) 보다 아래. (모바일 사이드 드로어는 폐지됨 — /menu 페이지가 대체)
- *  - 아이콘은 currentColor 를 따르므로 부모 color 만 바꾸면 활성/비활성 색이 함께 바뀐다.
- */
-function BottomNav({ items }: { items: NavItem[] }) {
-  // 전자결재 대기 건수 배지 — 사이드바와 동일한 폴링 hook 재사용.
-  const approvalCounts = useApprovalCounts();
-  const itemCls =
-    "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none " +
-    "text-[10.5px] font-bold tracking-tight leading-none [&_svg]:w-[22px] [&_svg]:h-[22px]";
-  return (
-    <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-stretch bg-white border-t border-ink-150"
-      style={{
-        paddingBottom: "env(safe-area-inset-bottom)",
-        boxShadow: "0 -6px 20px rgba(20,22,27,0.05)",
-      }}
-      aria-label="주요 메뉴"
-    >
-      {items.map((n) => {
-        const Icon = n.icon;
-        const badge = n.to === "/approvals" ? approvalCounts.pending : 0;
-        return (
-          <NavLink
-            key={n.to}
-            to={n.to}
-            end={n.end}
-            className={itemCls}
-            style={({ isActive }) => ({
-              height: 56,
-              color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
-            })}
-            onClick={() => prefetchRoute(n.to)}
-          >
-            <span className="relative inline-flex">
-              <Icon />
-              {badge > 0 && (
-                <span
-                  className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full text-white text-[9px] font-bold grid place-items-center tabular"
-                  style={{ background: "var(--c-danger)" }}
-                >
-                  {badge > 99 ? "99+" : badge}
-                </span>
-              )}
-            </span>
-            <span>{n.label}</span>
-          </NavLink>
-        );
-      })}
-      {/* 전체 — 전용 메뉴 페이지로 이동(좌측 드로어 아님). NavLink 라 현재 위치면 활성색. */}
-      <NavLink
-        to="/menu"
-        className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none text-[10.5px] font-bold tracking-tight leading-none"
-        style={({ isActive }) => ({
-          height: 56,
-          color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
-        })}
-        aria-label="전체 메뉴"
-      >
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 6h18M3 12h18M3 18h18" />
-        </svg>
-        <span>전체</span>
-      </NavLink>
-    </nav>
-  );
-}
-
-/**
- * 모바일 "전체" 메뉴 페이지 — 하단 바의 "전체" 탭이 이 라우트(/menu)로 이동한다.
- * 과거엔 좌측 사이드 드로어로 열었지만 토스처럼 전용 페이지로 분리했다.
- * 데스크톱 사이드바와 동일한 NavSection/PinsSection/ProjectsSection 을 그대로 재사용해
- * 항목·배지·권한 노출 규칙이 사이드바와 어긋나지 않게 한다(단일 출처).
- * AppLayout 의 Outlet 안에서 렌더되므로 하단 바·ChatFab·각종 Provider 가 그대로 유지된다.
- */
-export function MobileMenuPage() {
-  const { user, logout } = useAuth();
-  const nav = useNavigate();
-  const { disabled: disabledNav, dev: devNav } = useNavStatus();
-  const filterByVisibility = (items: NavItem[]) => items.filter((i) => !disabledNav.has(i.to));
-  const work = filterByVisibility(WORK_NAV);
-  const comm = filterByVisibility(COMM_NAV);
-  const res = filterByVisibility(RESOURCE_NAV);
-
-  return (
-    <div className="max-w-lg mx-auto space-y-6">
-      {/* 프로필 카드 — 탭하면 내 프로필로 */}
-      <NavLink
-        to="/profile"
-        className="flex items-center gap-3 p-3.5 rounded-2xl bg-ink-50 border border-ink-150 hover:bg-ink-100 transition"
-      >
-        {user?.avatarUrl ? (
-          <img
-            src={user.avatarUrl}
-            alt={user.name ?? ""}
-            className="rounded-full object-cover flex-shrink-0"
-            style={{ width: 46, height: 46 }}
-            loading="lazy"
-            decoding="async"
-          />
-        ) : (
-          <div
-            className="rounded-full grid place-items-center text-white font-bold flex-shrink-0"
-            style={{ width: 46, height: 46, background: user?.avatarColor ?? "#3B5CF0" }}
-          >
-            {user?.name?.[0] ?? "?"}
-          </div>
-        )}
-        <div className="min-w-0 flex-1">
-          <div className="text-[15px] font-bold text-ink-900 truncate flex items-center gap-1.5">
-            <span className="truncate min-w-0">{user?.name}</span>
-            {isDevAccount(user) && <DevBadge iconOnly />}
-          </div>
-          <div className="text-[12.5px] text-ink-500 truncate">{user?.email}</div>
-        </div>
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-400 flex-shrink-0">
-          <path d="m9 18 6-6-6-6" />
-        </svg>
-      </NavLink>
-
-      {/* 메뉴 그룹 — 데스크톱 사이드바와 동일 컴포넌트 재사용 */}
-      {work.length > 0 && <NavSection label="워크스페이스" items={work} dev={devNav} />}
-      {comm.length > 0 && <NavSection label="커뮤니케이션" items={comm} dev={devNav} />}
-      {res.length > 0 && <NavSection label="자료·재무" items={res} dev={devNav} />}
-      <PinsSection />
-      <ProjectsSection />
-
-      {user?.role === "ADMIN" && (
-        <div>
-          <SectionLabel>관리</SectionLabel>
-          <NavLink to="/admin" className={({ isActive }) => navClass(isActive)}>
-            {({ isActive }) => (<><ShieldIcon active={isActive} /><span>관리자</span></>)}
-          </NavLink>
-        </div>
-      )}
-
-      {(user?.superAdmin || user?.platformAdmin) && (
-        <div>
-          <SectionLabel>운영</SectionLabel>
-          <NavLink
-            to={user?.platformAdmin ? "/platform" : "/super-admin"}
-            className={({ isActive }) => navClass(isActive)}
-          >
-            {({ isActive }) => (<><DevIcon active={isActive} /><span>운영 콘솔</span></>)}
-          </NavLink>
-        </div>
-      )}
-
-      {/* 앱 다운로드 — 웹 브라우저 접속 시에만(설치형 앱에선 숨김) */}
-      {!isInstalledApp() && (
-        <div>
-          <NavLink
-            to="/download"
-            className="flex items-center gap-2.5 h-[44px] px-3 rounded-full text-[13px] font-semibold text-ink-700 hover:bg-ink-100 hover:text-ink-900 transition"
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-              <polyline points="7 10 12 15 17 10" />
-              <line x1="12" y1="15" x2="12" y2="3" />
-            </svg>
-            <span>앱 다운로드</span>
-          </NavLink>
-        </div>
-      )}
-
-      {/* 로그아웃 */}
-      <button
-        type="button"
-        onClick={async () => { await logout(); nav("/login"); }}
-        className="w-full flex items-center justify-center gap-2 h-[46px] rounded-full border border-ink-150 text-[13px] font-bold text-ink-600 hover:bg-ink-100 hover:text-ink-900 transition"
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" />
-          <path d="m16 17 5-5-5-5" />
-          <path d="M21 12H9" />
-        </svg>
-        <span>로그아웃</span>
-      </button>
     </div>
   );
 }
@@ -1199,7 +1026,6 @@ const BREADCRUMB: Record<string, string> = {
   "/expense": "법인카드",
   "/admin": "관리자",
   "/profile": "내 프로필",
-  "/menu": "전체",
 };
 
 function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggable?: boolean; onOpenNav?: () => void; safeAreaTop?: boolean }) {

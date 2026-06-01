@@ -618,10 +618,14 @@ table.pro.pro-grid-fixed tbody td > div > select {
   /* 카드에선 제목 말줄임 폭 제한 해제 */
   table.pro-cards tbody td.cell-primary .cell-title { max-width: 100% !important; }
 
-  /* 액션 셀 — 카드 최하단으로, 전체폭·우측 정렬·상단 구분선 */
+  /* 액션 셀 — 카드 최하단으로, 전체폭·우측 정렬·상단 구분선.
+     버튼이 여러 개면 줄바꿈해 카드 폭을 넘기지 않게. */
   table.pro-cards tbody td.cell-actions {
     order: 100;
+    flex-wrap: wrap;
     justify-content: flex-end;
+    row-gap: 6px;
+    white-space: normal;
     padding-top: 10px !important;
     margin-top: 4px;
     border-top: 1px solid var(--c-border) !important;

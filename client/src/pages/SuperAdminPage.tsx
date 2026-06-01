@@ -3,7 +3,6 @@ import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-rou
 import { api } from "../api";
 import { safeUploadUrl } from "../lib/safeUrl";
 import { useTheme } from "../theme";
-import PageHeader from "../components/PageHeader";
 import SuperStepUpGate from "../components/SuperStepUpGate";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import SessionsPanel from "../components/superadmin/SessionsPanel";
@@ -204,7 +203,23 @@ function SuperConsoleInner() {
   );
 }
 
-/** 한 기능 그룹의 탭 바 + 콘텐츠. 탭은 URL ?tab= 로 동기화하되 그룹 내 탭으로만 한정한다. */
+/**
+ * 한 기능 그룹의 헤더 + 탭/내비 + 콘텐츠. 상태·URL 동기화 로직과 패널(renderPanel)은
+ * 그룹 공통이고, "크롬"(헤더·내비 시각 언어)만 그룹별로 갈아끼운다 — 한 화면에 너무 많은
+ * 기능이 몰려있던 콘솔을 그룹별로 분리한 뒤, 각 그룹이 한눈에 구분되도록 디자인을 달리했다.
+ *   · 로그·감사   → 라이브 로그 스트림 헤더 + 언더라인 탭 (인디고)
+ *   · 시스템·운영 → 운영 카드 헤더 + 세그먼트 알약 탭 (에메랄드)
+ *   · 보안·권한   → "제한 구역" 밴드 + 좌측 세로 레일 (앰버)
+ *   · 개발자 도구 → 다크 터미널 창 + 모노 탭 (바이올렛)
+ */
+type ChromeProps = {
+  tabs: Tab[];
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  chat?: ChatCtx;
+  meta: { title: string; description: string };
+};
+
 function GroupView({ group, chat }: { group: ConsoleGroup; chat?: ChatCtx }) {
   // 새로고침 유지 — URL 쿼리로 탭 동기화.
   const [sp, setSp] = useSearchParams();
@@ -234,16 +249,65 @@ function GroupView({ group, chat }: { group: ConsoleGroup; chat?: ChatCtx }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [raw, chatUnlocked, group]);
 
-  const meta = GROUP_META[group];
+  const props: ChromeProps = { tabs, tab, setTab, chat, meta: GROUP_META[group] };
 
+  switch (group) {
+    case "logs": return <LogsChrome {...props} />;
+    case "system": return <SystemChrome {...props} />;
+    case "security": return <SecurityChrome {...props} />;
+    case "devtools": return <DevtoolsChrome {...props} />;
+    default: return null;
+  }
+}
+
+/** 그룹 공통 — 탭 콘텐츠(패널)를 탭 단위 ErrorBoundary 로 감싸 렌더. 한 패널이 터져도
+ *  다른 탭은 멀쩡하도록 격리하고, 탭 전환 시 resetKey 로 자동 복구한다. */
+function PanelArea({ tab }: { tab: Tab }) {
+  return (
+    <ErrorBoundary
+      resetKey={tab}
+      fallback={(err, reset) => (
+        <DevErrorFallback
+          err={err}
+          reset={reset}
+          title="이 탭을 표시하는 중 오류가 발생했어요"
+          hint="다른 탭은 정상 동작해요. 아래 오류 내용을 확인하거나 다시 시도해 주세요."
+        />
+      )}
+    >
+      {renderPanel(tab)}
+    </ErrorBoundary>
+  );
+}
+
+/* ============ 로그·감사 — 라이브 로그 스트림 헤더 + 언더라인 탭 (스카이) ============ */
+// 그래픽 액센트(점·언더라인·글리프)는 라이트/다크 양쪽에서 그대로 읽히는 중간 톤 hex 를 쓰고,
+// 글자색·면(面) 색은 styles.css 의 다크 리매핑이 걸린 Tailwind 유틸(text-sky-600 등)로 처리한다.
+const LOGS_ACCENT = "#0EA5E9";
+function LogsChrome({ tabs, tab, setTab, chat, meta }: ChromeProps) {
   return (
     <div>
-      <PageHeader eyebrow={`관리 › 개발자 · ${meta.title}`} title={meta.title} description={meta.description} />
+      <div className="flex items-start justify-between gap-4 mb-5">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full opacity-60 animate-ping" style={{ background: LOGS_ACCENT }} />
+              <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: LOGS_ACCENT }} />
+            </span>
+            <span className="font-mono text-[11px] tracking-wide uppercase text-sky-600">
+              system / logs · audit
+            </span>
+          </div>
+          <h1 className="text-[22px] font-extrabold text-ink-900 leading-tight">{meta.title}</h1>
+          <p className="text-[12.5px] text-ink-500 mt-1">{meta.description}</p>
+        </div>
+        <LogsGlyph />
+      </div>
       <div className="flex items-center gap-1 mb-4 border-b border-ink-150 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: "thin" }}>
         {tabs.map((t) =>
           t === "chat" ? (
             <div key="chat" className="flex items-center">
-              <TabBtn active={tab === "chat"} onClick={() => setTab("chat")}>{TAB_LABEL.chat}</TabBtn>
+              <UnderlineTab active={tab === "chat"} accent={LOGS_ACCENT} onClick={() => setTab("chat")}>{TAB_LABEL.chat}</UnderlineTab>
               <button
                 type="button"
                 onClick={() => chat?.lock()}
@@ -259,24 +323,145 @@ function GroupView({ group, chat }: { group: ConsoleGroup; chat?: ChatCtx }) {
               </button>
             </div>
           ) : (
-            <TabBtn key={t} active={tab === t} onClick={() => setTab(t)}>{TAB_LABEL[t]}</TabBtn>
+            <UnderlineTab key={t} active={tab === t} accent={LOGS_ACCENT} onClick={() => setTab(t)}>{TAB_LABEL[t]}</UnderlineTab>
           )
         )}
       </div>
-      <ErrorBoundary
-        resetKey={tab}
-        fallback={(err, reset) => (
-          <DevErrorFallback
-            err={err}
-            reset={reset}
-            title="이 탭을 표시하는 중 오류가 발생했어요"
-            hint="다른 탭은 정상 동작해요. 아래 오류 내용을 확인하거나 다시 시도해 주세요."
-          />
-        )}
-      >
-        {renderPanel(tab)}
-      </ErrorBoundary>
+      <PanelArea tab={tab} />
     </div>
+  );
+}
+
+/* ============ 시스템·운영 — 운영 카드 헤더 + 세그먼트 알약 탭 (에메랄드) ============ */
+function SystemChrome({ tabs, tab, setTab, meta }: ChromeProps) {
+  return (
+    <div>
+      <div className="rounded-2xl p-5 mb-5 border bg-emerald-50 border-emerald-100">
+        <div className="flex items-center gap-3">
+          <div className="grid place-items-center rounded-xl flex-shrink-0 text-white" style={{ width: 42, height: 42, background: "#10B981" }}>
+            <SystemGlyph />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-[20px] font-extrabold text-ink-900 leading-tight">{meta.title}</h1>
+            <p className="text-[12.5px] text-ink-600 mt-0.5">{meta.description}</p>
+          </div>
+        </div>
+      </div>
+      <div className="inline-flex items-center gap-1 p-1 rounded-xl mb-4 bg-slate-100 max-w-full overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+        {tabs.map((t) => {
+          const active = tab === t;
+          return (
+            <button
+              key={t}
+              onClick={() => setTab(t)}
+              className={`px-3.5 h-[34px] rounded-lg text-[12.5px] font-semibold whitespace-nowrap transition flex-shrink-0 ${active ? "bg-white text-emerald-700 shadow-sm" : "text-ink-500 hover:text-ink-800"}`}
+            >
+              {TAB_LABEL[t]}
+            </button>
+          );
+        })}
+      </div>
+      <PanelArea tab={tab} />
+    </div>
+  );
+}
+
+/* ============ 보안·권한 — "제한 구역" 밴드 + 좌측 세로 레일 (앰버) ============ */
+function SecurityChrome({ tabs, tab, setTab, meta }: ChromeProps) {
+  return (
+    <div>
+      <div className="rounded-xl px-4 py-3 mb-5 flex items-center gap-3 border bg-amber-50 border-amber-200">
+        <div className="grid place-items-center rounded-lg flex-shrink-0 text-white" style={{ width: 38, height: 38, background: "#B45309" }}>
+          <ShieldGlyph />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-[19px] font-extrabold text-ink-900 leading-tight">{meta.title}</h1>
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded text-white" style={{ background: "#B45309" }}>제한 구역</span>
+          </div>
+          <p className="text-[12px] text-ink-600 mt-0.5">{meta.description}</p>
+        </div>
+      </div>
+      <div className="flex flex-col md:flex-row gap-5 items-stretch md:items-start">
+        <nav className="flex flex-row flex-wrap md:flex-col gap-1 md:w-[190px] md:flex-shrink-0">
+          {tabs.map((t) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`flex items-center gap-2.5 px-3 h-[40px] rounded-xl text-[13px] font-semibold text-left transition border ${active ? "bg-amber-50 border-amber-200 text-amber-800" : "border-transparent text-ink-500 hover:bg-slate-100 hover:text-ink-800"}`}
+              >
+                <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: active ? "#B45309" : "#CBD5E1" }} />
+                {TAB_LABEL[t]}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="min-w-0 flex-1">
+          <PanelArea tab={tab} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============ 개발자 도구 — 다크 터미널 창 + 모노 탭 (바이올렛) ============ */
+function DevtoolsChrome({ tabs, tab, setTab, meta }: ChromeProps) {
+  return (
+    <div>
+      <div className="rounded-t-xl px-4 py-2.5 flex items-center gap-3 flex-wrap" style={{ background: "#1E1B2E" }}>
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <span className="w-3 h-3 rounded-full" style={{ background: "#FF5F57" }} />
+          <span className="w-3 h-3 rounded-full" style={{ background: "#FEBC2E" }} />
+          <span className="w-3 h-3 rounded-full" style={{ background: "#28C840" }} />
+        </div>
+        <span className="font-mono text-[12px] text-white/60 truncate">developer-console — {meta.title}</span>
+        <div className="ml-auto flex items-center gap-1">
+          {tabs.map((t) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className="font-mono text-[12px] px-3 h-[28px] rounded-md transition"
+                style={active ? { background: "#A78BFA", color: "#1E1B2E", fontWeight: 700 } : { color: "rgba(255,255,255,0.55)" }}
+              >
+                {TAB_LABEL[t]}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <div className="rounded-b-xl border border-t-0 p-4 md:p-5" style={{ borderColor: "#2A2640" }}>
+        <p className="font-mono text-[11px] text-ink-400 mb-3 truncate">$ {meta.description}</p>
+        <PanelArea tab={tab} />
+      </div>
+    </div>
+  );
+}
+
+/* ---- 그룹 헤더용 글리프 (운영 콘솔 사이드바 아이콘과 통일) ---- */
+function LogsGlyph() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={LOGS_ACCENT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 hidden sm:block" style={{ opacity: 0.25 }}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+      <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" />
+    </svg>
+  );
+}
+function SystemGlyph() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+    </svg>
+  );
+}
+function ShieldGlyph() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><path d="m9 12 2 2 4-4" />
+    </svg>
   );
 }
 
@@ -386,12 +571,14 @@ function ChatAuditPwModal({ onClose, onSubmit }: { onClose: () => void; onSubmit
   );
 }
 
-function TabBtn({
+function UnderlineTab({
   active,
+  accent,
   onClick,
   children,
 }: {
   active: boolean;
+  accent: string;
   onClick: () => void;
   children: React.ReactNode;
 }) {
@@ -403,7 +590,7 @@ function TabBtn({
       }`}
     >
       {children}
-      {active && <span className="absolute -bottom-px left-2 right-2 h-[2px] bg-brand-500 rounded-full" />}
+      {active && <span className="absolute -bottom-px left-2 right-2 h-[2px] rounded-full" style={{ background: accent }} />}
     </button>
   );
 }

@@ -40,6 +40,7 @@ import {
   MemosPage,
   PayrollPage,
   PlatformPage,
+  NotificationsPage,
 } from "./routes";
 
 /**
@@ -123,6 +124,8 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           {/* 모바일 "전체" 메뉴 페이지 — 하단 바의 전체 탭이 여기로 온다(데스크톱은 사이드바). */}
           <Route path="menu" element={<MobileMenuPage />} />
+          {/* 전용 알림 페이지 — 모바일에서 벨을 누르면 드롭다운 대신 여기로 온다(데스크톱은 URL 직접 접근). */}
+          <Route path="notifications" element={<NotificationsPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="journal" element={<JournalPage />} />

@@ -23,7 +23,8 @@ export default function LoginPage() {
   const [errCode, setErrCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  if (user) return <Navigate to="/" replace />;
+  // 총관리자(superAdmin)는 운영 콘솔로, 그 외 사용자는 회사 앱 홈으로.
+  if (user) return <Navigate to={user.superAdmin ? "/super-admin" : "/"} replace />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -31,8 +32,8 @@ export default function LoginPage() {
     setErrCode(null);
     setLoading(true);
     try {
-      await login(email, password);
-      nav("/");
+      const u = await login(email, password);
+      nav(u.superAdmin ? "/super-admin" : "/");
     } catch (e: any) {
       setErr(e.message);
       // 서버가 ACCOUNT_LOCKED 같은 코드를 message JSON 에 포함하는 경우를 위해

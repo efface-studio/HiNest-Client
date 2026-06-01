@@ -28,7 +28,7 @@ type Ctx = {
   user: User | null;
   impersonator: Impersonator | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<User>;
   signup: (data: { inviteKey: string; email: string; name: string; password: string }) => Promise<void>;
   logout: () => Promise<void>;
   refresh: () => Promise<void>;
@@ -67,6 +67,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 섬광처럼 보이는 것을 방지. logout 에서와 동일하게 세션 캐시를 싹 비움.
     clearApiCache();
     setUser(res.user);
+    // 호출부(LoginPage)가 superAdmin 여부로 진입 경로를 정할 수 있도록 사용자 객체를 반환.
+    return res.user;
   }, []);
 
   const signup = useCallback(async (d: { inviteKey: string; email: string; name: string; password: string }) => {

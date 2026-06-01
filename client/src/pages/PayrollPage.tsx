@@ -254,7 +254,7 @@ export default function PayrollPage() {
       )}
 
       <div className="card p-0 overflow-hidden overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-        <table className="w-full text-sm min-w-[760px]">
+        <table className="pro-cards w-full text-sm min-w-[760px]">
           <thead className="bg-slate-50 text-slate-500 text-xs">
             <tr>
               {isAdmin && (
@@ -281,17 +281,17 @@ export default function PayrollPage() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-10 text-center text-slate-400">불러오는 중…</td></tr>
+              <tr><td colSpan={isAdmin ? 8 : 7} className="cell-full px-4 py-10 text-center text-slate-400">불러오는 중…</td></tr>
             )}
             {!loading && list.length === 0 && (
-              <tr><td colSpan={isAdmin ? 8 : 7} className="px-4 py-10 text-center text-slate-400">
+              <tr><td colSpan={isAdmin ? 8 : 7} className="cell-full px-4 py-10 text-center text-slate-400">
                 {isAdmin ? "명세서가 없습니다. “+ 새 명세서”로 작성하세요." : "아직 발급된 급여명세서가 없어요."}
               </td></tr>
             )}
             {!loading && list.map((p) => (
               <tr key={p.id} className={`border-t border-slate-100 hover:bg-slate-50/50 ${isAdmin && selected.has(p.id) ? "bg-brand-50/40" : ""}`}>
                 {isAdmin && (
-                  <td className="px-4 py-3">
+                  <td data-label="선택" className="px-4 py-3">
                     <input
                       type="checkbox"
                       className="accent-brand-600 w-4 h-4 align-middle"
@@ -302,20 +302,20 @@ export default function PayrollPage() {
                     />
                   </td>
                 )}
-                <td className="px-4 py-3">
+                <td className="cell-primary px-4 py-3">
                   <div className="font-medium text-ink-900">{p.employeeName}</div>
                   {p.department && <div className="text-[11.5px] text-ink-500">{p.department}</div>}
                 </td>
-                <td className="px-4 py-3 tabular">{p.year}.{String(p.month).padStart(2, "0")}</td>
-                <td className="px-4 py-3 text-right tabular">{won(p.totalEarnings)}</td>
-                <td className="px-4 py-3 text-right tabular text-rose-600">{won(p.totalDeductions)}</td>
-                <td className="px-4 py-3 text-right font-bold tabular">{won(p.netPay)}</td>
-                <td className="px-4 py-3 text-center">
+                <td data-label="귀속" className="px-4 py-3 tabular">{p.year}.{String(p.month).padStart(2, "0")}</td>
+                <td data-label="지급액" className="px-4 py-3 text-right tabular">{won(p.totalEarnings)}</td>
+                <td data-label="공제액" className="px-4 py-3 text-right tabular text-rose-600">{won(p.totalDeductions)}</td>
+                <td data-label="실수령액" className="px-4 py-3 text-right font-bold tabular">{won(p.netPay)}</td>
+                <td data-label="발송" className="px-4 py-3 text-center">
                   {p.sentAt
                     ? <span className="chip bg-brand-100 text-brand-700" title={new Date(p.sentAt).toLocaleString("ko-KR")}>발송됨</span>
                     : <span className="chip bg-slate-100 text-slate-500">미발송</span>}
                 </td>
-                <td className="px-4 py-3 text-right whitespace-nowrap">
+                <td className="cell-actions px-4 py-3 text-right whitespace-nowrap">
                   <button className="text-[12px] text-brand-600 hover:underline" onClick={() => setPreview(p)}>보기</button>
                   {isAdmin && (
                     <>

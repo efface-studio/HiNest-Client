@@ -1448,12 +1448,17 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
   return (
     <>
       <header
-        className="flex items-center justify-between px-3 md:px-6 border-b border-ink-150 bg-white flex-shrink-0"
+        className={
+          "flex items-center justify-between px-3 md:px-6 border-b border-ink-150 bg-white flex-shrink-0 " +
+          // 모바일 56px / 데스크톱 48px(기존 유지). 노치(safe-area-top)가 있으면 그만큼 더해
+          // 콘텐츠 영역 높이는 그대로 두고 상태바 밑으로 안 깔리게 한다.
+          (safeAreaTop
+            ? "min-h-[calc(56px+env(safe-area-inset-top))] md:min-h-[calc(48px+env(safe-area-inset-top))]"
+            : "min-h-[56px] md:min-h-[48px]")
+        }
         style={{
           // iOS 노치 흡수 — 헤더 자체가 첫 요소일 때만 (배너가 위에 있으면 배너가 처리).
           paddingTop: safeAreaTop ? "env(safe-area-inset-top)" : 0,
-          minHeight: 48,
-          height: safeAreaTop ? "calc(48px + env(safe-area-inset-top))" : 48,
           ...(draggable ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined),
         }}
       >
@@ -1475,8 +1480,8 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
               </svg>
             </button>
           )}
-          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--c-brand)" }} />
-          <span className="text-ink-900 font-bold truncate">{label || "HiNest"}</span>
+          <span className="w-2 h-2 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--c-brand)" }} />
+          <span className="text-[17px] md:text-[13px] text-ink-900 font-bold truncate">{label || "HiNest"}</span>
         </div>
 
         <div
@@ -1498,12 +1503,12 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
               이벤트로 ChatFab 패널을 토글한다(패널/리스너는 ChatFab 에 그대로 있음).
               데스크톱(md+)은 ChatFab 의 우하단 FAB 를 그대로 쓰므로 여기선 숨긴다. */}
           <button
-            className="btn-icon relative md:hidden"
+            className="btn-icon relative md:hidden !w-[40px] !h-[40px]"
             onClick={() => window.dispatchEvent(new CustomEvent("chat:toggle"))}
             title="사내톡"
             aria-label={chatUnread > 0 ? `사내톡 · 안 읽은 메시지 ${chatUnread}건` : "사내톡"}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
             {chatUnread > 0 && (

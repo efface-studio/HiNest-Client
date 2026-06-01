@@ -32,7 +32,7 @@ export default function NotificationBell() {
   return (
     <div ref={ref} className="relative">
       <button
-        className="btn-icon relative"
+        className="btn-icon relative !w-[40px] !h-[40px] md:!w-8 md:!h-8"
         onClick={() => {
           // 모바일(<768px)에선 드롭다운 대신 전용 알림 페이지로 이동한다(작은 화면에서
           // 360px 팝업이 답답하고, 본문 위를 덮는 대신 한 화면 흐름이 자연스러움).
@@ -48,7 +48,7 @@ export default function NotificationBell() {
         }}
         title="알림"
       >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-[22px] h-[22px] md:w-4 md:h-4">
           <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" />
           <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
         </svg>

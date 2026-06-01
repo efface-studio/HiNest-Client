@@ -245,7 +245,7 @@ export default function ExpensePage() {
       </div>
 
       <div className="card p-0 overflow-hidden overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-        <table className="w-full text-sm min-w-[720px]">
+        <table className="pro-cards w-full text-sm min-w-[720px]">
           <thead className="bg-slate-50 text-slate-500 text-xs">
             <tr>
               <th className="text-left px-4 py-3">사용일시</th>
@@ -262,14 +262,14 @@ export default function ExpensePage() {
           <tbody>
             {list.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-slate-400">
+                <td colSpan={9} className="cell-full px-4 py-10 text-center text-slate-400">
                   등록된 사용내역이 없습니다.
                 </td>
               </tr>
             )}
             {list.map((e) => (
               <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50/50">
-                <td className="px-4 py-3">
+                <td data-label="사용일시" className="px-4 py-3">
                   {new Date(e.usedAt).toLocaleString("ko-KR", {
                     month: "2-digit",
                     day: "2-digit",
@@ -277,14 +277,16 @@ export default function ExpensePage() {
                     minute: "2-digit",
                   })}
                 </td>
-                {scope === "all" && <td className="px-4 py-3">{e.user?.name}</td>}
-                <td className="px-4 py-3 font-medium">{e.merchant}</td>
-                <td className="px-4 py-3">
+                {scope === "all" && <td data-label="사용자" className="px-4 py-3">{e.user?.name}</td>}
+                <td className="cell-primary px-4 py-3 font-medium">{e.merchant}</td>
+                <td data-label="분류" className="px-4 py-3">
                   <span className="chip bg-slate-100 text-slate-700">{e.category}</span>
                 </td>
-                <td className="px-4 py-3 text-right font-semibold">{e.amount.toLocaleString()}원</td>
-                <td className="px-4 py-3 text-slate-500 max-w-[160px] truncate">{e.memo || "-"}</td>
-                <td className="px-4 py-3 text-center">
+                <td data-label="금액" className="px-4 py-3 text-right font-semibold">{e.amount.toLocaleString()}원</td>
+                <td data-label="메모" className="px-4 py-3 text-slate-500">
+                  <span className="block truncate max-w-[160px] md:max-w-[200px]">{e.memo || "-"}</span>
+                </td>
+                <td data-label="영수증" className="px-4 py-3 text-center">
                   {e.receiptUrl ? (
                     <button className="text-brand-600 text-xs underline" onClick={() => setPreview(e.receiptUrl!)}>
                       보기
@@ -293,10 +295,16 @@ export default function ExpensePage() {
                     <span className="text-slate-300 text-xs">-</span>
                   )}
                 </td>
-                <td className="px-4 py-3 text-center">
+                <td data-label="상태" className="px-4 py-3 text-center">
                   <StatusChip status={e.status} />
                 </td>
-                <td className="px-4 py-3 text-right">
+                <td
+                  className={`px-4 py-3 text-right ${
+                    (isReviewer && e.status === "PENDING" && scope === "all") || (e.userId === user?.id && e.status === "PENDING")
+                      ? "cell-actions"
+                      : "cell-hide-m"
+                  }`}
+                >
                   {isReviewer && e.status === "PENDING" && scope === "all" && (
                     <div className="inline-flex gap-1">
                       <button

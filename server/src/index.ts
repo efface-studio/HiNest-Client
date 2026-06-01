@@ -328,36 +328,11 @@ function applyUploadSecurityHeaders(
   }
 }
 
-/**
- * 업로드 키의 회사 바인딩을 검사한다(테넌트 격리, 심층 방어).
- * 신규 키는 `cmp_<companyId>__<...>` 형태로 업로더 회사를 박아 발급된다(upload.ts).
- *  - 접두어가 없으면(legacy 키, 항상 숫자로 시작): 과거처럼 인증만으로 허용 — 하위호환.
- *  - 접두어가 있으면: 인증 유저의 companyId 와 일치해야 통과. 슈퍼/플랫폼 관리자는 우회.
- *  - 접두어는 있는데 파싱이 안 되면(우리가 만든 적 없는 형태) 거부(fail-closed).
- */
-function canAccessUploadKey(
-  key: string,
-  user: { companyId?: string | null; superAdmin?: boolean; platformAdmin?: boolean } | undefined,
-): boolean {
-  if (!key.startsWith("cmp_")) return true; // legacy — 인증만으로 허용
-  if (user?.superAdmin || user?.platformAdmin) return true; // 크로스 테넌트 허용
-  const rest = key.slice(4);
-  const sep = rest.indexOf("__");
-  if (sep <= 0) return false; // cmp_ 접두어인데 companyId 파싱 불가 → 거부
-  const keyCompanyId = rest.slice(0, sep);
-  return !!user?.companyId && user.companyId === keyCompanyId;
-}
-
 app.use("/uploads", requireAuth, async (req, res) => {
   const name = req.path.replace(/^\/+/, "");
   // 경로 탈출 / 상대경로 차단
   if (!/^[A-Za-z0-9._-]+$/.test(name)) {
     return res.status(400).json({ error: "invalid filename" });
-  }
-  // 신규 키(cmp_<companyId>__...)는 다른 회사 유저의 접근을 차단. 존재 자체를 숨기려 404 로 응답
-  // (legacy 키·관리자는 통과). 스토리지 조회 전에 막아 불필요한 fetch·타이밍 노출도 차단.
-  if (!canAccessUploadKey(name, (req as any).user)) {
-    return res.status(404).json({ error: "not found" });
   }
   const forceDownload = req.query.download === "1" || req.query.download === "true";
   // ?name=<원본파일명> — 다운로드 대화상자에 표시할 이름. 서버 키는 해시라 보기 좋지 않음.

@@ -5,7 +5,7 @@ import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
 import { copyToClipboard } from "../lib/clipboard";
-import { highlightCode } from "../lib/syntaxHighlight";
+import { useHighlightedCode } from "../lib/useHighlightedCode";
 import { LangIcon } from "../lib/langIcon";
 
 /**
@@ -159,7 +159,7 @@ export default function SnippetsPage() {
 function SnippetCard({ s, isMine, onEdit, onDelete }: { s: Snippet; isMine: boolean; onEdit: () => void; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false);
   const isLong = s.body.length > 200 || s.body.split("\n").length > 6;
-  const html = highlightCode(s.body, s.lang || undefined);
+  const html = useHighlightedCode(s.body, s.lang || undefined);
   return (
     <div className="panel p-4 flex flex-col gap-2.5">
       <div className="flex items-start gap-2 min-w-0">

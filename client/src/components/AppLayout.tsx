@@ -659,11 +659,10 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           <div
             className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
             style={{
-              // 모바일 하단 네비게이션 바(--hinest-bottomnav-h)·iOS 홈 인디케이터 영역만큼
-              // 본문 하단을 비워 마지막 콘텐츠가 바에 가리지 않게 한다. 데스크톱은 var=0 이라
-              // 기본 여백(24px)만 남는다.
-              paddingBottom:
-                "calc(var(--hinest-bottomnav-h, 0px) + env(safe-area-inset-bottom) + 24px)",
+              // 하단 네비게이션 바가 이제 루트 플렉스의 in-flow 형제라 스크롤 영역이 바
+              // 위에서 끝난다(바가 본문을 덮지 않음). 바가 자체 높이+세이프에어리어를
+              // 차지하므로 본문은 마지막 콘텐츠 숨 쉴 여백만 주면 된다. 모바일·데스크톱 공통 24px.
+              paddingBottom: "24px",
             }}
           >
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>
@@ -673,9 +672,14 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           </div>
         </main>
       </div>
-      <BottomNav items={filterByVisibility(BOTTOM_NAV)} />
       <ChatFab />
       </div>
+      {/* 하단 네비게이션 바 — 루트 100dvh 플렉스의 마지막 in-flow 형제.
+          이전엔 position:fixed 였는데 iOS 에서 탭으로 페이지를 이동하다 보면 바가
+          본문 위로 떠오르며 바 아래 빈 공간이 생기는 버그가 있었다(고정 좌표가
+          동적 뷰포트와 어긋남). in-flow 형제로 두면 바가 항상 뷰포트 바닥에 물려
+          있어 떠오르지 않는다. md+ 에선 md:hidden 으로 display:none → 공간 0. */}
+      <BottomNav items={filterByVisibility(BOTTOM_NAV)} />
     </div>
   );
 }
@@ -772,7 +776,7 @@ function BottomNav({ items }: { items: NavItem[] }) {
   const approvalCounts = useApprovalCounts();
   return (
     <nav
-      className="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-stretch"
+      className="md:hidden flex-shrink-0 flex items-stretch"
       style={{
         // 테마 변수로 칠해 다크 모드에서도 자연스럽게(이전엔 bg-white 고정이라 다크에서 깨졌음).
         background: "var(--c-surface)",

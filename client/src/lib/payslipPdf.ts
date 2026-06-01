@@ -25,7 +25,9 @@ const RENDER_WIDTH = 760;
  * 내용이 한 페이지를 넘으면 자동으로 페이지를 나눈다.
  */
 export async function payslipToPdfBase64(p: Payslip): Promise<string> {
-  const [{ default: jsPDF }, { default: html2canvas }] = await Promise.all([
+  // jspdf v4 부터 default export 가 생성자가 아니라 네임스페이스 객체로 바뀜(파괴적 변경).
+  // named export `jsPDF` 는 v2·v4 모두에서 생성자라 이쪽을 쓴다.
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
     import("jspdf"),
     import("html2canvas"),
   ]);

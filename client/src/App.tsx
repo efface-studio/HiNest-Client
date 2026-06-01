@@ -15,7 +15,7 @@ import PublicSharePage from "./pages/PublicSharePage";
 import PreviewEntry from "./pages/PreviewEntry";
 import PrivacyPolicyPage from "./pages/PrivacyPolicyPage";
 import TermsPage from "./pages/TermsPage";
-import AppLayout from "./components/AppLayout";
+import AppLayout, { MobileMenuPage } from "./components/AppLayout";
 import ConsoleLayout from "./components/ConsoleLayout";
 import DashboardPage from "./pages/DashboardPage";
 import {
@@ -121,6 +121,8 @@ export default function App() {
           }
         >
           <Route index element={<DashboardPage />} />
+          {/* 모바일 "전체" 메뉴 페이지 — 하단 바의 전체 탭이 여기로 온다(데스크톱은 사이드바). */}
+          <Route path="menu" element={<MobileMenuPage />} />
           <Route path="schedule" element={<SchedulePage />} />
           <Route path="attendance" element={<AttendancePage />} />
           <Route path="journal" element={<JournalPage />} />

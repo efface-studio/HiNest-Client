@@ -168,8 +168,10 @@ export default function ChatFab() {
                 }
               : {
                   // 데스크톱: 기존 우하단 플로팅 팝업. flex column 으로 통일.
+                  // 641~767px(=태블릿 좁은 폭)에선 하단 네비 바가 보이므로 그만큼 더 띄운다.
                   right: "max(12px, env(safe-area-inset-right))",
-                  bottom: "calc(96px + env(safe-area-inset-bottom))",
+                  bottom:
+                    "calc(96px + env(safe-area-inset-bottom) + var(--hinest-bottomnav-h, 0px))",
                   width: "min(380px, calc(100vw - 24px))",
                   height: 580,
                   maxHeight: "calc(100vh - 140px - env(safe-area-inset-bottom))",
@@ -235,8 +237,10 @@ export default function ChatFab() {
         className={`fixed z-40 flex items-center justify-center active:scale-[.94]${pulsing ? " siri-pulse" : ""}`}
         style={{
           // notch/홈인디케이터 대응 — iPad/iPhone 세이프 에어리어 안쪽으로 당김.
+          // 모바일 하단 네비게이션 바(--hinest-bottomnav-h) 위로 띄운다(데스크톱은 0이라 그대로).
           right: "max(20px, env(safe-area-inset-right))",
-          bottom: "calc(20px + env(safe-area-inset-bottom, 0px))",
+          bottom:
+            "calc(20px + env(safe-area-inset-bottom, 0px) + var(--hinest-bottomnav-h, 0px))",
           width: 60, height: 60,
           borderRadius: 999,
           background: C.blue, color: "#fff",

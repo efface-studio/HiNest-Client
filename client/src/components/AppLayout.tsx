@@ -433,6 +433,16 @@ const RESOURCE_NAV: NavItem[] = [
   { to: "/snippets", label: "스니펫", icon: SnippetIcon },
 ];
 
+// 모바일 하단 탭 바에 직접 노출할 핵심 메뉴(토스 스타일). 나머지 전체 메뉴는
+// 다섯 번째 "전체" 버튼이 좌측 드로어(=기존 사이드바)를 열어 보여준다.
+// 여기 항목은 전 직원 공통 라우트라 권한 게이팅이 필요 없다. 짧은 라벨로 고른다.
+const BOTTOM_NAV: NavItem[] = [
+  { to: "/", label: "개요", icon: HomeIcon, end: true },
+  { to: "/schedule", label: "일정", icon: CalendarIcon },
+  { to: "/approvals", label: "전자결재", icon: ApprovalIcon },
+  { to: "/meetings", label: "회의록", icon: MeetingIcon },
+];
+
 export default function AppLayout({ children }: { children?: React.ReactNode } = {}) {
   return (
     <NotificationProvider>
@@ -677,7 +687,16 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             WebkitOverflowScrolling: "touch",
           }}
         >
-          <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 md:py-6">
+          <div
+            className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
+            style={{
+              // 모바일 하단 네비게이션 바(--hinest-bottomnav-h)·iOS 홈 인디케이터 영역만큼
+              // 본문 하단을 비워 마지막 콘텐츠가 바에 가리지 않게 한다. 데스크톱은 var=0 이라
+              // 기본 여백(24px)만 남는다.
+              paddingBottom:
+                "calc(var(--hinest-bottomnav-h, 0px) + env(safe-area-inset-bottom) + 24px)",
+            }}
+          >
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>
               {/* /preview 같은 비-라우터-childless 진입 시엔 children 으로 직접 받음. 그 외엔 Outlet. */}
               {children ?? <Outlet />}
@@ -685,6 +704,11 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           </div>
         </main>
       </div>
+      <BottomNav
+        items={filterByVisibility(BOTTOM_NAV)}
+        onOpenAll={() => setMobileNavOpen(true)}
+        allActive={mobileNavOpen}
+      />
       <ChatFab />
       </div>
     </div>
@@ -769,6 +793,83 @@ function NavSection({ label, items, dev }: { label: string; items: NavItem[]; de
         })}
       </div>
     </div>
+  );
+}
+
+/**
+ * 모바일 전용 하단 네비게이션 바 — md(768px) 미만에서만 보인다(데스크톱은 고정 사이드바).
+ * 토스처럼 핵심 탭 몇 개 + "전체" 버튼. "전체"는 좌측 드로어(기존 사이드바 전체 메뉴)를 연다.
+ *  - z-20: 드로어 백드롭(z-30)·드로어(z-40)·ChatFab(z-40)보다 아래라 드로어가 열리면 가려진다.
+ *  - 아이콘은 currentColor 를 따르므로 부모 color 만 바꾸면 활성/비활성 색이 함께 바뀐다.
+ */
+function BottomNav({
+  items,
+  onOpenAll,
+  allActive,
+}: {
+  items: NavItem[];
+  onOpenAll: () => void;
+  allActive: boolean;
+}) {
+  // 전자결재 대기 건수 배지 — 사이드바와 동일한 폴링 hook 재사용.
+  const approvalCounts = useApprovalCounts();
+  const itemCls =
+    "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none " +
+    "text-[10.5px] font-bold tracking-tight leading-none [&_svg]:w-[22px] [&_svg]:h-[22px]";
+  return (
+    <nav
+      className="md:hidden fixed bottom-0 inset-x-0 z-20 flex items-stretch bg-white border-t border-ink-150"
+      style={{
+        paddingBottom: "env(safe-area-inset-bottom)",
+        boxShadow: "0 -6px 20px rgba(20,22,27,0.05)",
+      }}
+      aria-label="주요 메뉴"
+    >
+      {items.map((n) => {
+        const Icon = n.icon;
+        const badge = n.to === "/approvals" ? approvalCounts.pending : 0;
+        return (
+          <NavLink
+            key={n.to}
+            to={n.to}
+            end={n.end}
+            className={itemCls}
+            style={({ isActive }) => ({
+              height: 56,
+              color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
+            })}
+            onClick={() => prefetchRoute(n.to)}
+          >
+            <span className="relative inline-flex">
+              <Icon />
+              {badge > 0 && (
+                <span
+                  className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full text-white text-[9px] font-bold grid place-items-center tabular"
+                  style={{ background: "var(--c-danger)" }}
+                >
+                  {badge > 99 ? "99+" : badge}
+                </span>
+              )}
+            </span>
+            <span>{n.label}</span>
+          </NavLink>
+        );
+      })}
+      {/* 전체 — 좌측 드로어로 전체 메뉴 열기. 라우트가 아니므로 button. */}
+      <button
+        type="button"
+        onClick={onOpenAll}
+        className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none text-[10.5px] font-bold tracking-tight leading-none"
+        style={{ height: 56, color: allActive ? "var(--c-brand)" : "var(--c-text-3)" }}
+        aria-label="전체 메뉴 열기"
+        aria-expanded={allActive}
+      >
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 6h18M3 12h18M3 18h18" />
+        </svg>
+        <span>전체</span>
+      </button>
+    </nav>
   );
 }
 

@@ -61,11 +61,17 @@ export default function ChatFab() {
     return () => mq.removeEventListener?.("change", update);
   }, []);
   // 모바일 풀스크린 상태에서 배경 스크롤 잠금.
+  // 동시에 body 에 마커 클래스를 달아, 미리보기 배너(sticky z-9999)가 풀스크린 채팅
+  // 헤더(z-40) 위로 그려져 닫기·새 채팅 버튼을 가리는 문제를 CSS 로 가린다(styles.css).
   useEffect(() => {
     if (!isMobile || !open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { document.body.style.overflow = prev; };
+    document.body.classList.add("hinest-chat-fs");
+    return () => {
+      document.body.style.overflow = prev;
+      document.body.classList.remove("hinest-chat-fs");
+    };
   }, [isMobile, open]);
   // 새 채팅 알림이 들어올 때 파란 펄스.
   // - 단순 새로고침/재오픈만으론 발동하지 않음 (localStorage 에 저장된 마지막으로 본 카운트와 비교).

@@ -1022,3 +1022,14 @@ html.dark .nav-active svg { stroke: var(--c-brand-soft-fg); }
     grid-template-columns: 16px minmax(0, 2.2fr) 88px 1fr 150px 110px 56px;
   }
 }
+
+/* ============================================================ */
+/*   미리보기 배너 × 모바일 풀스크린 채팅 겹침 방지              */
+/*   미리보기 배너는 sticky z-9999 라, 풀스크린 채팅(fixed z-40) */
+/*   헤더 위로 그려져 닫기·새 채팅 버튼을 가린다. 풀스크린 채팅이 */
+/*   열린 동안(body.hinest-chat-fs)만 배너를 숨겨 충돌을 없앤다.  */
+/*   (배너는 미리보기 모드에서만 렌더되므로 운영에는 영향 없음)   */
+/* ============================================================ */
+body.hinest-chat-fs .hinest-preview-banner {
+  visibility: hidden;
+}

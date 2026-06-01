@@ -8,7 +8,7 @@ import { parseCodeSegments } from "../../lib/codeDetect";
 import { copyToClipboard } from "../../lib/clipboard";
 import { downloadFromUrl } from "../../lib/download";
 import { useModalDismiss } from "../../lib/useModalDismiss";
-import { highlightCode } from "../../lib/syntaxHighlight";
+import { HljsCode } from "../../lib/useHighlightedCode";
 import { LangIcon } from "../../lib/langIcon";
 import { splitBlocks, renderInlineMarkdown } from "../../lib/markdown";
 import { LinkPreview, extractFirstUrl } from "./LinkPreview";
@@ -1294,13 +1294,7 @@ function CodeBlockBubble({ code, lang, mine }: { code: string; lang?: string; mi
           maxWidth: "100%",
         }}
       >
-        <code
-          className="hljs"
-          // highlight.js 가 토큰별 span 으로 감싼 HTML 을 그대로 주입.
-          // hljs.highlight 출력은 안전(이스케이프 처리됨) — 자체 sanitization 추가 불필요.
-          dangerouslySetInnerHTML={{ __html: highlightCode(code, lang) }}
-          style={{ fontFamily: "inherit" }}
-        />
+        <HljsCode code={code} lang={lang} style={{ fontFamily: "inherit" }} />
       </pre>
       {showExpand && (
         <button
@@ -1480,11 +1474,7 @@ function CodeViewerModal({ code, lang, onClose }: { code: string; lang?: string;
                 background: "var(--c-surface)",
               }}
             >
-              <code
-                className="hljs"
-                dangerouslySetInnerHTML={{ __html: highlightCode(code, lang) }}
-                style={{ fontFamily: "inherit" }}
-              />
+              <HljsCode code={code} lang={lang} style={{ fontFamily: "inherit" }} />
             </pre>
           </div>
         </div>

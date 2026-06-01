@@ -34,6 +34,14 @@ export default function NotificationBell() {
       <button
         className="btn-icon relative"
         onClick={() => {
+          // 모바일(<768px)에선 드롭다운 대신 전용 알림 페이지로 이동한다(작은 화면에서
+          // 360px 팝업이 답답하고, 본문 위를 덮는 대신 한 화면 흐름이 자연스러움).
+          // 브레이크포인트는 styles.css 의 하단 바/사이드바 전환(767.98px)과 일치시킨다.
+          // 데스크톱(md+)은 기존 드롭다운을 그대로 토글한다.
+          if (window.matchMedia("(max-width: 767.98px)").matches) {
+            nav("/notifications");
+            return;
+          }
           const willOpen = !open;
           setOpen(willOpen);
           if (willOpen) reload();

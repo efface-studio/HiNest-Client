@@ -741,6 +741,10 @@ model ChatMessage {
   // after-cursor 증분 폴링 — createdAt 역정렬·범위 조회가 핵심 경로
   @@index([roomId, createdAt])
   @@index([companyId])
+  // GET /chat/scheduled — where senderId + scheduledAt>now 조회. roomId 가 없어
+  // 기존 (roomId,*) 인덱스를 못 타고 (companyId) 로 떨어져 회사 전체 메시지를
+  // 스캔했다. senderId 는 회사에 종속되므로 companyId prefix 불필요.
+  @@index([senderId, scheduledAt])
 }
 
 model MessageReaction {

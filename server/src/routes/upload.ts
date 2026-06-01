@@ -97,7 +97,17 @@ async function storeAndRespond(req: any, res: any) {
   const originalName = fixName(f.originalname);
   const ext = safeExt(originalName);
   const id = crypto.randomBytes(12).toString("hex");
-  const key = `${Date.now()}-${id}${ext}`;
+  const base = `${Date.now()}-${id}${ext}`;
+  // 신규 키에 업로더의 companyId 를 `cmp_<companyId>__` 접두어로 박는다 — 다운로드 시
+  // 다른 회사 유저의 접근을 차단(테넌트 격리)하기 위함. 검사는 /uploads 핸들러
+  // (index.ts canAccessUploadKey)에서 한다.
+  // cuid companyId 는 [a-z0-9]+ 라 파일명 규칙(/^[A-Za-z0-9._-]+$/)·SAFE_UPLOAD_URL 을 그대로 통과.
+  // companyId 가 없거나(플랫폼 운영자) 형식이 어긋나면 접두어 없이 발급 → legacy(인증만) 동작.
+  const cid = (req as any).user?.companyId;
+  const key =
+    typeof cid === "string" && /^[A-Za-z0-9]+$/.test(cid)
+      ? `cmp_${cid}__${base}`
+      : base;
   const mime = String(f.mimetype || "application/octet-stream");
 
   try {

@@ -572,6 +572,8 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   // 모바일 당겨서 새로고침 — main 스크롤러에 ref 를 물려 제스처를 감지한다.
   const { ref: mainRef, pull: ptrPull, refreshing: ptrRefreshing } = usePullToRefresh();
   const ptrOffset = ptrRefreshing ? PTR_RESTING : ptrPull;
+  // 0~1 진행도 — 당기는 동안엔 임계값 대비 비율, 새로고침 중엔 1(꽉 찬 링).
+  const ptrProgress = ptrRefreshing ? 1 : Math.min(ptrPull / PTR_THRESHOLD, 1);
 
   // 창모드에서만 신호등 버튼 여백 필요, 전체화면에선 숨어있으므로 여백 제거
   const showTitlebarSpace = isMacDesktop && !isFullscreen;
@@ -773,43 +775,42 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
               justifyContent: "center",
               pointerEvents: "none",
               zIndex: 5,
-              transform: `translateY(${ptrOffset / 2 - 16}px)`,
-              opacity: ptrRefreshing ? 1 : Math.min(ptrPull / PTR_THRESHOLD, 1),
+              transform: `translateY(${ptrOffset / 2 - 17}px)`,
+              opacity: ptrProgress,
               transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1), opacity .2s ease",
             }}
           >
             <div
               style={{
-                width: 32,
-                height: 32,
+                width: 34,
+                height: 34,
                 borderRadius: 999,
-                background: "#fff",
-                boxShadow: "0 2px 8px rgba(25,31,40,.14), 0 0 0 1px rgba(25,31,40,.04)",
+                background: "var(--c-surface)",
+                boxShadow: "0 4px 14px rgba(20,22,27,.16), 0 0 0 1px rgba(20,22,27,.05)",
                 display: "grid",
                 placeItems: "center",
-                color: "var(--c-brand)",
+                // 당길수록 살짝 커지는 촉각 피드백 — 임계값에서 제 크기.
+                transform: `scale(${0.82 + 0.18 * ptrProgress})`,
+                transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1)",
               }}
             >
-              {/* Apple 디자인 시스템(SF Symbols)의 arrow.clockwise 와 같은 결의 원형 화살표.
-                  채워진 글리프 + 상단 삼각 화살촉 형태(스트로크형 refresh-cw 와 다름). */}
-              <svg
-                width="17"
-                height="17"
-                viewBox="0 0 16 16"
-                fill="currentColor"
+              {/* iOS 풍 원형 프로그레스 링 — conic-gradient + radial 마스크로 그린다.
+                  · 당기는 중(결정형): 진행도만큼 브랜드색이 채워지고 나머지는 트랙색.
+                  · 새로고침 중(비결정형): 꼬리가 투명→브랜드로 옅어지는 링이 회전. */}
+              <div
+                aria-hidden
                 className={ptrRefreshing ? "animate-spin" : undefined}
-                style={
-                  ptrRefreshing
-                    ? undefined
-                    : {
-                        transform: `rotate(${Math.min(ptrPull / PTR_THRESHOLD, 1) * 270}deg)`,
-                        transition: ptrPull > 0 ? "none" : "transform .2s ease",
-                      }
-                }
-              >
-                <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z" />
-                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
-              </svg>
+                style={{
+                  width: 20,
+                  height: 20,
+                  borderRadius: 999,
+                  background: ptrRefreshing
+                    ? "conic-gradient(transparent, var(--c-brand))"
+                    : `conic-gradient(var(--c-brand) ${ptrProgress * 360}deg, var(--c-border) 0deg)`,
+                  WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
+                  mask: "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
+                }}
+              />
             </div>
           </div>
           <div

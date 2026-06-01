@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
@@ -34,6 +34,15 @@ function prefetchRoute(to: string) {
     const fn = ROUTE_PREFETCH[to];
     if (fn) void fn();
   } catch {}
+}
+
+/**
+ * 페이지 청크 로딩 중 잠깐 보이는 본문 자리. 셸(상단바·하단바)은 그대로 유지되고
+ * 본문 영역 높이만 확보해 레이아웃 점프를 막는다. prefetch 덕에 대부분 즉시 교체돼
+ * 사실상 거의 안 보인다.
+ */
+function PageFallback() {
+  return <div className="min-h-[60vh]" aria-hidden />;
 }
 
 type NavItem = { to: string; label: string; icon: (p: { active?: boolean }) => JSX.Element; end?: boolean };
@@ -539,6 +548,7 @@ function usePullToRefresh() {
 function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   const { user, logout, impersonator } = useAuth();
   const nav = useNavigate();
+  const { pathname } = useLocation();
   const { disabled: disabledNav, dev: devNav } = useNavStatus();
   const filterByVisibility = (items: NavItem[]) => items.filter((i) => !disabledNav.has(i.to));
   const isMacDesktop = !!window.hinest?.isDesktop && window.hinest?.platform === "darwin";
@@ -827,7 +837,15 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           >
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>
               {/* /preview 같은 비-라우터-childless 진입 시엔 children 으로 직접 받음. 그 외엔 Outlet. */}
-              {children ?? <Outlet />}
+              {/* 페이지가 lazy 라, 셸까지 감싸던 상위 Suspense 가 fallback 을 띄우면 상단바·하단바가
+                  통째로 사라졌다 다시 나타났다. Suspense 를 본문(Outlet) 안쪽으로 내려 페이지 청크가
+                  로드되는 동안에도 셸은 유지하고 본문만 잠깐 비운다. key=pathname 으로 라우트가 바뀔
+                  때마다 가벼운 페이드를 다시 재생해 전환을 부드럽게 한다. */}
+              <Suspense fallback={<PageFallback />}>
+                <div key={pathname} className="route-fade">
+                  {children ?? <Outlet />}
+                </div>
+              </Suspense>
             </RouteVisibilityGate>
           </div>
         </main>
@@ -990,6 +1008,7 @@ function BottomNavTab({
       to={to}
       end={end}
       aria-label={ariaLabel}
+      onPointerDown={() => prefetchRoute(to)}
       onClick={() => prefetchRoute(to)}
       className={
         "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none " +
@@ -1429,12 +1448,17 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
   return (
     <>
       <header
-        className="flex items-center justify-between px-3 md:px-6 border-b border-ink-150 bg-white flex-shrink-0"
+        className={
+          "flex items-center justify-between px-3 md:px-6 border-b border-ink-150 bg-white flex-shrink-0 " +
+          // 모바일 56px / 데스크톱 48px(기존 유지). 노치(safe-area-top)가 있으면 그만큼 더해
+          // 콘텐츠 영역 높이는 그대로 두고 상태바 밑으로 안 깔리게 한다.
+          (safeAreaTop
+            ? "min-h-[calc(56px+env(safe-area-inset-top))] md:min-h-[calc(48px+env(safe-area-inset-top))]"
+            : "min-h-[56px] md:min-h-[48px]")
+        }
         style={{
           // iOS 노치 흡수 — 헤더 자체가 첫 요소일 때만 (배너가 위에 있으면 배너가 처리).
           paddingTop: safeAreaTop ? "env(safe-area-inset-top)" : 0,
-          minHeight: 48,
-          height: safeAreaTop ? "calc(48px + env(safe-area-inset-top))" : 48,
           ...(draggable ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined),
         }}
       >
@@ -1456,8 +1480,8 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
               </svg>
             </button>
           )}
-          <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--c-brand)" }} />
-          <span className="text-ink-900 font-bold truncate">{label || "HiNest"}</span>
+          <span className="w-2 h-2 md:w-1.5 md:h-1.5 rounded-full flex-shrink-0" style={{ background: "var(--c-brand)" }} />
+          <span className="text-[17px] md:text-[13px] text-ink-900 font-bold truncate">{label || "HiNest"}</span>
         </div>
 
         <div
@@ -1479,12 +1503,12 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
               이벤트로 ChatFab 패널을 토글한다(패널/리스너는 ChatFab 에 그대로 있음).
               데스크톱(md+)은 ChatFab 의 우하단 FAB 를 그대로 쓰므로 여기선 숨긴다. */}
           <button
-            className="btn-icon relative md:hidden"
+            className="btn-icon relative md:hidden !w-[40px] !h-[40px]"
             onClick={() => window.dispatchEvent(new CustomEvent("chat:toggle"))}
             title="사내톡"
             aria-label={chatUnread > 0 ? `사내톡 · 안 읽은 메시지 ${chatUnread}건` : "사내톡"}
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
             </svg>
             {chatUnread > 0 && (

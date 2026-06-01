@@ -785,15 +785,13 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                 color: "var(--c-brand)",
               }}
             >
+              {/* Apple 디자인 시스템(SF Symbols)의 arrow.clockwise 와 같은 결의 원형 화살표.
+                  채워진 글리프 + 상단 삼각 화살촉 형태(스트로크형 refresh-cw 와 다름). */}
               <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.4"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+                width="17"
+                height="17"
+                viewBox="0 0 16 16"
+                fill="currentColor"
                 className={ptrRefreshing ? "animate-spin" : undefined}
                 style={
                   ptrRefreshing
@@ -804,8 +802,8 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                       }
                 }
               >
-                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
-                <path d="M21 3v6h-6" />
+                <path fillRule="evenodd" d="M8 3a5 5 0 1 0 4.546 2.914.5.5 0 0 1 .908-.417A6 6 0 1 1 8 2z" />
+                <path d="M8 4.466V.534a.25.25 0 0 1 .41-.192l2.36 1.966c.12.1.12.284 0 .384L8.41 4.658A.25.25 0 0 1 8 4.466z" />
               </svg>
             </div>
           </div>

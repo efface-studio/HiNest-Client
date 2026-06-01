@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import Logo from "./Logo";
+import BrandLockup from "./BrandLockup";
 
 /**
  * 약관·개인정보처리방침 등 공개 법적 문서용 단독 레이아웃.
@@ -19,7 +19,7 @@ export default function LegalLayout({
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
       <header className="px-6 pt-8 pb-4 flex items-center justify-between max-w-[760px] mx-auto w-full">
         <Link to="/login" aria-label="로그인으로">
-          <Logo size={20} />
+          <BrandLockup height={36} />
         </Link>
         <Link to="/login" className="text-[12.5px] font-semibold text-ink-500 hover:text-ink-900 transition">
           ← 로그인으로

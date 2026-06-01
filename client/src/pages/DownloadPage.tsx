@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import Logo from "../components/Logo";
+import BrandLockup from "../components/BrandLockup";
 
 /**
  * 다운로드 페이지 (/download).
@@ -290,7 +290,7 @@ export default function DownloadPage() {
       >
         <div className="max-w-[980px] mx-auto px-5 py-3 flex items-center justify-between">
           <Link to="/" className="flex items-center">
-            <Logo size={20} />
+            <BrandLockup height={32} />
           </Link>
           <Link
             to="/login"

@@ -42,7 +42,7 @@ import {
 } from "./chat/MessageBubble";
 import { parseCodeSegments } from "../lib/codeDetect";
 import { copyToClipboard } from "../lib/clipboard";
-import { useHighlightedCode } from "../lib/useHighlightedCode";
+import { highlightCode } from "../lib/syntaxHighlight";
 import { LangIcon } from "../lib/langIcon";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 
@@ -1846,7 +1846,7 @@ function PinnedBar({
 
 function SharedCodeRow({ code, lang, createdAt, senderName }: { code: string; lang?: string; createdAt: string; senderName: string }) {
   // 미리보기는 첫 4줄만. 길이 제한은 자체 maxHeight 로.
-  const html = useHighlightedCode(code, lang);
+  const html = highlightCode(code, lang);
   const lineCount = (code.match(/\n/g)?.length ?? 0) + 1;
   return (
     <div

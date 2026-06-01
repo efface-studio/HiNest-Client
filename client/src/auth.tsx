@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { api, clearApiCache } from "./api";
 
 export type User = {
@@ -58,7 +58,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
-  const login = useCallback(async (email: string, password: string) => {
+  const login = async (email: string, password: string) => {
     const res = await api<{ user: User }>("/api/auth/login", {
       method: "POST",
       json: { email, password },
@@ -67,18 +67,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 섬광처럼 보이는 것을 방지. logout 에서와 동일하게 세션 캐시를 싹 비움.
     clearApiCache();
     setUser(res.user);
-  }, []);
+  };
 
-  const signup = useCallback(async (d: { inviteKey: string; email: string; name: string; password: string }) => {
+  const signup = async (d: { inviteKey: string; email: string; name: string; password: string }) => {
     const res = await api<{ user: User }>("/api/auth/signup", {
       method: "POST",
       json: d,
     });
     clearApiCache();
     setUser(res.user);
-  }, []);
+  };
 
-  const logout = useCallback(async () => {
+  const logout = async () => {
     // 미리보기 모드는 서버 호출 없이 플래그만 끄고 빠져나옴.
     if (typeof window !== "undefined" && (window as any).__HINEST_PREVIEW__) {
       const m = await import("./lib/previewMock");
@@ -93,16 +93,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     // 다른 사용자가 로그인했을 때 이전 사용자의 프로젝트/캘린더가 깜빡 보이는 사고 방지.
     clearApiCache();
-  }, []);
+  };
 
-  // useAuth() 는 AppLayout·대부분의 페이지가 구독한다. value 를 매 렌더 새 객체로 만들면
-  // AuthProvider 가 리렌더될 때마다 전 구독자가 무효화되므로 useMemo 로 고정한다.
-  const value = useMemo(
-    () => ({ user, impersonator, loading, login, signup, logout, refresh }),
-    [user, impersonator, loading, login, signup, logout, refresh],
+  return (
+    <AuthCtx.Provider value={{ user, impersonator, loading, login, signup, logout, refresh }}>
+      {children}
+    </AuthCtx.Provider>
   );
-
-  return <AuthCtx.Provider value={value}>{children}</AuthCtx.Provider>;
 }
 
 export const useAuth = () => useContext(AuthCtx);

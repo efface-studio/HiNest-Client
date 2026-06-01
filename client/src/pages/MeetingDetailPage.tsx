@@ -244,12 +244,19 @@ export default function MeetingDetailPage() {
           h1, h2, h3 { page-break-after: avoid; }
           table, pre, blockquote { page-break-inside: avoid; }
         }
+        /* 모바일 헤더 액션바 콤팩트화 — 폰 화면에서 버튼 6개+타임스탬프가 빽빽하게 줄바꿈되는 걸 완화.
+           .btn-ghost(높이 36px)는 언레이어드라 Tailwind 유틸로 못 줄이므로 스코프 선택자(0,2,0)로 덮어쓴다.
+           아이콘 핀 버튼(btn-icon)이 32px이므로 텍스트 버튼도 32px로 맞춰 한 줄 높이를 통일한다. */
+        @media (max-width: 640px) {
+          .mtg-actions { gap: 6px; }
+          .mtg-actions .btn-ghost { height: 32px; padding: 0 10px; font-size: 12px; }
+        }
       `}</style>
       <div className="flex items-center justify-between gap-2 mb-3 flex-wrap no-print">
         <Link to="/meetings" className="text-[13px] text-slate-500 hover:text-brand-600 flex-shrink-0">
           ← 회의록 목록
         </Link>
-        <div className="flex items-center gap-2 flex-wrap justify-end">
+        <div className="mtg-actions flex items-center gap-2 flex-wrap justify-end">
           <button
             type="button"
             className="btn-ghost inline-flex items-center gap-1"
@@ -278,7 +285,7 @@ export default function MeetingDetailPage() {
           {canEdit && edit && (
             <>
               <span className="text-[11.5px] text-slate-400">
-                {saving ? "저장 중…" : lastSaved ? `저장됨 ${new Date(lastSaved).toLocaleTimeString("ko-KR")}` : ""}
+                {saving ? "저장 중…" : lastSaved ? `저장됨 ${new Date(lastSaved).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}` : ""}
               </span>
               <button className="btn-ghost" onClick={() => { setEdit(false); setSearchParams({}); }}>
                 미리보기

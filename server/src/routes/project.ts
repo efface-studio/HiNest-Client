@@ -23,6 +23,9 @@ router.get("/", async (req, res) => {
     include: {
       _count: { select: { members: true } },
     },
+    // 형제 엔드포인트(document/approval)와 동일하게 상한 — ADMIN 의 all=1 전체 조회가
+    // 대규모 조직에서 무한정 커지는 것을 방지(사이드바 "팀" 목록은 그 이상 필요 없음).
+    take: 500,
   });
   res.json({ projects: list });
 });

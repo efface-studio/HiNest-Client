@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
@@ -453,6 +453,89 @@ export default function AppLayout({ children }: { children?: React.ReactNode } =
   );
 }
 
+// ── 모바일 당겨서 새로고침(pull-to-refresh) ───────────────────────────────
+const PTR_THRESHOLD = 64; // 이 거리(px) 이상 당기고 놓으면 새로고침 발동
+const PTR_MAX = 96; // 시각적 최대 당김 거리(고무줄 감쇠 상한)
+const PTR_RESTING = 48; // 새로고침 진행 중 콘텐츠가 머무는 위치
+
+/**
+ * main 스크롤러가 최상단(scrollTop<=0)일 때 아래로 당기면 인디케이터가 따라오고,
+ * 임계값을 넘겨 놓으면 window.location.reload() 로 새로고침한다.
+ *
+ * 터치 기기(pointer:coarse)에서만 동작 — 데스크톱 마우스/트랙패드는 제외한다.
+ * iOS 셸 잠금(.hinest-shell-lock)으로 문서 바운스가 막혀 main 이 유일한 스크롤러라,
+ * 여기서 touchmove preventDefault 로 네이티브 오버스크롤을 가로채 커스텀 제스처로 쓴다.
+ */
+function usePullToRefresh() {
+  const ref = useRef<HTMLElement>(null);
+  const [pull, setPull] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    // 터치 기기에서만 — 데스크톱에선 PTR 비활성(실수로 전체 새로고침되는 걸 방지).
+    if (typeof window !== "undefined" && !window.matchMedia("(pointer: coarse)").matches) return;
+
+    let startY = 0;
+    let active = false; // 상단에서 아래로 당기는 제스처가 시작됐는가
+    let dist = 0;
+
+    const onStart = (e: TouchEvent) => {
+      if (refreshing) return;
+      if (e.touches.length !== 1) return;
+      if (el.scrollTop > 0) return; // 최상단에서만 시작
+      startY = e.touches[0].clientY;
+      active = true;
+      dist = 0;
+    };
+    const onMove = (e: TouchEvent) => {
+      if (!active) return;
+      if (el.scrollTop > 0) {
+        active = false;
+        setPull(0);
+        return;
+      }
+      const dy = e.touches[0].clientY - startY;
+      if (dy <= 0) {
+        // 위로(스크롤 다운) 동작은 네이티브에 맡긴다
+        dist = 0;
+        setPull(0);
+        return;
+      }
+      dist = Math.min(PTR_MAX, dy * 0.5); // 고무줄 감쇠
+      setPull(dist);
+      if (e.cancelable) e.preventDefault(); // 네이티브 바운스/스크롤 억제
+    };
+    const onEnd = () => {
+      if (!active) return;
+      active = false;
+      if (dist >= PTR_THRESHOLD) {
+        setRefreshing(true);
+        setPull(0);
+        // 스피너가 잠깐 보이도록 살짝 지연 후 새로고침
+        window.setTimeout(() => window.location.reload(), 280);
+      } else {
+        setPull(0);
+      }
+      dist = 0;
+    };
+
+    el.addEventListener("touchstart", onStart, { passive: true });
+    el.addEventListener("touchmove", onMove, { passive: false });
+    el.addEventListener("touchend", onEnd, { passive: true });
+    el.addEventListener("touchcancel", onEnd, { passive: true });
+    return () => {
+      el.removeEventListener("touchstart", onStart);
+      el.removeEventListener("touchmove", onMove);
+      el.removeEventListener("touchend", onEnd);
+      el.removeEventListener("touchcancel", onEnd);
+    };
+  }, [refreshing]);
+
+  return { ref, pull, refreshing };
+}
+
 function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   const { user, logout, impersonator } = useAuth();
   const nav = useNavigate();
@@ -485,6 +568,10 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     el.classList.add("hinest-shell-lock");
     return () => el.classList.remove("hinest-shell-lock");
   }, []);
+
+  // 모바일 당겨서 새로고침 — main 스크롤러에 ref 를 물려 제스처를 감지한다.
+  const { ref: mainRef, pull: ptrPull, refreshing: ptrRefreshing } = usePullToRefresh();
+  const ptrOffset = ptrRefreshing ? PTR_RESTING : ptrPull;
 
   // 창모드에서만 신호등 버튼 여백 필요, 전체화면에선 숨어있으므로 여백 제거
   const showTitlebarSpace = isMacDesktop && !isFullscreen;
@@ -656,6 +743,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           safeAreaTop={topSlot === "topbar"}
         />
         <main
+          ref={mainRef}
           className="flex-1 overflow-y-auto"
           style={{
             // iOS 러버밴드 오버스크롤 방지 — 사용자가 페이지 상단에서 더 끌어내리면
@@ -664,8 +752,63 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             overscrollBehaviorY: "contain",
             // iOS Safari momentum scrolling 안정화.
             WebkitOverflowScrolling: "touch",
+            // 당겨서 새로고침 인디케이터의 절대 배치 기준.
+            position: "relative",
           }}
         >
+          {/* 당겨서 새로고침 인디케이터 — 당김 거리에 따라 따라 내려오고, 새로고침 중엔 회전. */}
+          <div
+            aria-hidden
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              display: "flex",
+              justifyContent: "center",
+              pointerEvents: "none",
+              zIndex: 5,
+              transform: `translateY(${ptrOffset / 2 - 16}px)`,
+              opacity: ptrRefreshing ? 1 : Math.min(ptrPull / PTR_THRESHOLD, 1),
+              transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1), opacity .2s ease",
+            }}
+          >
+            <div
+              style={{
+                width: 32,
+                height: 32,
+                borderRadius: 999,
+                background: "#fff",
+                boxShadow: "0 2px 8px rgba(25,31,40,.14), 0 0 0 1px rgba(25,31,40,.04)",
+                display: "grid",
+                placeItems: "center",
+                color: "var(--c-brand)",
+              }}
+            >
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.4"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className={ptrRefreshing ? "animate-spin" : undefined}
+                style={
+                  ptrRefreshing
+                    ? undefined
+                    : {
+                        transform: `rotate(${Math.min(ptrPull / PTR_THRESHOLD, 1) * 270}deg)`,
+                        transition: ptrPull > 0 ? "none" : "transform .2s ease",
+                      }
+                }
+              >
+                <path d="M21 12a9 9 0 1 1-2.64-6.36" />
+                <path d="M21 3v6h-6" />
+              </svg>
+            </div>
+          </div>
           <div
             className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
             style={{
@@ -673,6 +816,9 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
               // 위에서 끝난다(바가 본문을 덮지 않음). 바가 자체 높이+세이프에어리어를
               // 차지하므로 본문은 마지막 콘텐츠 숨 쉴 여백만 주면 된다. 모바일·데스크톱 공통 24px.
               paddingBottom: "24px",
+              // 당겨서 새로고침 — 콘텐츠가 손가락을 따라 내려오는 촉각 피드백.
+              transform: ptrOffset > 0 ? `translateY(${ptrOffset}px)` : undefined,
+              transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1)",
             }}
           >
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>

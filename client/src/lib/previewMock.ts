@@ -1045,6 +1045,29 @@ function featureFlags() { return { flags: {} }; }
 function teams() { return { teams: DEMO_TEAMS }; }
 function navConfig() { return { items: [] }; }
 
+// 플랫폼 운영 콘솔(회사 가입 관리) 데모 데이터 — 상태별로 골고루 둬 재디자인을 미리 볼 수 있게.
+function demoCompanies(): any[] {
+  const now = Date.now();
+  const ago = (days: number) => new Date(now - days * 86400000).toISOString();
+  return [
+    { id: "co_efface",  name: "efface",    status: "PENDING",   contactName: "서지완", contactEmail: "xixn2@efface.dev",   contactPhone: "010-6286-0063", bizRegNo: "123-45-67890", createdAt: ago(0),   _count: { users: 0 } },
+    { id: "co_acme",    name: "Acme Corp", status: "PENDING",   contactName: "이지은", contactEmail: "ops@acme.io",        contactPhone: "010-1111-2222", bizRegNo: "777-11-00099", createdAt: ago(1),   _count: { users: 0 } },
+    { id: "co_hinest",  name: "HiNest",    status: "ACTIVE",    contactName: "김데모", contactEmail: "admin@hinest.app",   contactPhone: "02-1234-5678",  bizRegNo: "220-88-12345", createdAt: ago(120), approvedAt: ago(118), _count: { users: 24 } },
+    { id: "co_globex",  name: "Globex",    status: "SUSPENDED", contactName: "박준형", contactEmail: "it@globex.co.kr",                                   bizRegNo: "501-22-33445", createdAt: ago(60),  approvedAt: ago(55),  _count: { users: 8 } },
+    { id: "co_initech", name: "Initech",   status: "REJECTED",  contactName: "최민수", contactEmail: "biz@initech.com",   rejectedReason: "사업자 정보 확인 불가",                  createdAt: ago(30),  _count: { users: 0 } },
+  ];
+}
+function platformCompanies(p?: string) {
+  const m = (p ?? "").match(/[?&]status=([A-Z]+)/);
+  const all = demoCompanies();
+  return { companies: m ? all.filter((c) => c.status === m[1]) : all };
+}
+function platformSummary() {
+  const summary: Record<string, number> = { PENDING: 0, ACTIVE: 0, SUSPENDED: 0, REJECTED: 0 };
+  for (const c of demoCompanies()) summary[c.status]++;
+  return { summary };
+}
+
 /** 경로별 매처 — 위에서 아래로 검사하므로 **세부 경로 → 일반 경로** 순서. */
 const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = [
   /* === 본인 / 인증 === */
@@ -1053,6 +1076,10 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
   { test: (p) => p.startsWith("/api/version"),         data: () => ({ version: "preview" }) },
   // 미리보기에서 개발자 페이지 열람 허용 — step-up 게이트를 통과시킨다 (active=true).
   { test: (p) => p === "/api/auth/super-session",      data: () => ({ active: true, expiresAt: Date.now() + 60 * 60 * 1000 }) },
+
+  /* === 플랫폼 운영 (회사 가입 관리) — 세부(summary) 먼저 === */
+  { test: (p) => p.startsWith("/api/platform/companies/summary"), data: platformSummary },
+  { test: (p) => p.startsWith("/api/platform/companies"),         data: platformCompanies },
 
   /* === 사용자 / 디렉토리 === */
   { test: (p) => p.startsWith("/api/users/teams"),     data: teams },

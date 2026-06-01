@@ -125,6 +125,27 @@ html.hinest-shell-lock body {
   overscroll-behavior: none;
 }
 * { -webkit-tap-highlight-color: transparent; }
+
+/* 네이티브 앱 느낌 — 크롬(내비·상단바·버튼·탭·칩)은 길게 눌러도 텍스트가 잡히거나
+   iOS 콜아웃(복사·이미지 저장 메뉴)이 뜨지 않게 한다. 본문·표 값·입력·에디터는
+   복사할 수 있어야 하므로 손대지 않고, 혹시 아래 셀렉터에 걸려도 그 다음 규칙에서 복구. */
+nav, header, .btn, button, .tab, .tabs, .chip, .badge,
+[role="button"], [role="tab"], [role="tablist"] {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+/* 탭 지연·더블탭 확대 없이 버튼·링크가 즉시 반응하도록(네이티브 탭 감각) */
+.btn, button, a, [role="button"], [role="tab"], .tab {
+  touch-action: manipulation;
+}
+/* 입력·편집 영역은 항상 선택/복사 가능 — 위 규칙(button 등)에 걸린 것도 되돌린다 */
+input, textarea, select, [contenteditable], [contenteditable] * {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
 .font-mono, code, pre, .tabular {
   font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, Monaco, monospace;
   font-feature-settings: "tnum" 1;

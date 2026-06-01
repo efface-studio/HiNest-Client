@@ -251,7 +251,7 @@ export default function AttendancePage() {
             />
           ) : (
             <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-              <table className="w-full text-[13px] min-w-[480px]">
+              <table className="pro-cards w-full text-[13px] min-w-[480px]">
                 <thead className="bg-ink-25 text-ink-500 text-[11px] uppercase tracking-[0.06em]">
                   <tr>
                     <th className="text-left px-5 py-2.5 font-bold">일자</th>
@@ -272,20 +272,20 @@ export default function AttendancePage() {
                         className="border-t border-ink-100"
                         style={{ background: isToday ? "var(--c-brand-soft)" : undefined }}
                       >
-                        <td className="px-5 py-3">
+                        <td className="cell-primary px-5 py-3">
                           <div className="font-bold text-ink-900">{r.date.slice(5)}</div>
                           <div className="text-[10.5px] mt-0.5" style={{ color: isWeekend ? "var(--c-danger)" : "var(--c-text-3)" }}>
                             {dowLabel(dow)}
                             {isToday && <span className="ml-1 chip chip-brand !text-[9.5px] !py-0">오늘</span>}
                           </div>
                         </td>
-                        <td className="px-5 py-3 font-mono text-ink-800">
+                        <td data-label="출근" className="px-5 py-3 font-mono text-ink-800">
                           {r.checkIn ? formatHM(r.checkIn) : <span className="text-ink-400">—</span>}
                         </td>
-                        <td className="px-5 py-3 font-mono text-ink-800">
+                        <td data-label="퇴근" className="px-5 py-3 font-mono text-ink-800">
                           {r.checkOut ? formatHM(r.checkOut) : <span className="text-ink-400">—</span>}
                         </td>
-                        <td className="px-5 py-3 text-right">
+                        <td data-label="근무시간" className="px-5 py-3 text-right">
                           {r.checkIn && r.checkOut ? (
                             <span className="font-bold text-ink-900">{durationLabel(r.checkIn, r.checkOut)}</span>
                           ) : (
@@ -347,7 +347,7 @@ export default function AttendancePage() {
             />
           ) : (
             <div className="overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
-              <table className="w-full text-[13px] min-w-[720px]">
+              <table className="pro-cards w-full text-[13px] min-w-[720px]">
                 <thead className="bg-ink-25 text-ink-500 text-[11px] uppercase tracking-[0.06em]">
                   <tr>
                     <th className="text-left px-5 py-2.5 font-bold">이름</th>
@@ -361,24 +361,24 @@ export default function AttendancePage() {
                 <tbody>
                   {[...pendingForReviewer, ...handledForReviewer].map((l) => (
                     <tr key={l.id} className="border-t border-ink-100">
-                      <td className="px-5 py-3 font-bold text-ink-900">{l.user?.name}</td>
-                      <td className="px-5 py-3">
+                      <td className="cell-primary px-5 py-3 font-bold text-ink-900">{l.user?.name}</td>
+                      <td data-label="종류" className="px-5 py-3">
                         <span className="inline-flex items-center gap-1.5">
                           <LeaveTypeDot type={l.type} />
                           <span className="text-ink-800">{typeLabel(l.type)}</span>
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-ink-700">
+                      <td data-label="기간" className="px-5 py-3 text-ink-700">
                         {formatRange(l.startDate, l.endDate)}
                         <span className="ml-1 text-[11px] text-ink-500">({dayDiff(l.startDate, l.endDate)}일)</span>
                       </td>
-                      <td className="px-5 py-3 text-ink-600 max-w-[240px] truncate" title={l.reason ?? ""}>
-                        {l.reason || <span className="text-ink-400">—</span>}
+                      <td data-label="사유" className="px-5 py-3 text-ink-600" title={l.reason ?? ""}>
+                        <span className="block truncate max-w-[240px]">{l.reason || <span className="text-ink-400">—</span>}</span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td data-label="상태" className="px-5 py-3">
                         <StatusChip status={l.status} />
                       </td>
-                      <td className="px-5 py-3 text-right">
+                      <td className={`${l.status === "PENDING" ? "cell-actions" : "cell-hide-m"} px-5 py-3 text-right`}>
                         {l.status === "PENDING" && (
                           <div className="inline-flex gap-1.5">
                             <button

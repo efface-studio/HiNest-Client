@@ -925,9 +925,10 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         </div>
       )}
 
-      {/* 임베드 모드용 미니 툴바 — 헤더가 없는 대신 우측 업로드 버튼을 여기 넣는다 */}
+      {/* 임베드 모드용 미니 툴바 — 헤더가 없는 대신 우측 업로드 버튼을 여기 넣는다.
+          모바일에선 버튼이 화면폭을 넘기므로 flex-wrap 으로 줄바꿈해 잘림 방지. */}
       {embedded && (
-        <div className="flex items-center justify-end gap-2 mb-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 mb-3">
           <button className="btn-ghost btn-xs" onClick={openFolderModal}>+ 새 폴더</button>
           <button
             className="btn-ghost btn-xs"
@@ -943,7 +944,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
 
       {/* 공개 범위 탭 — 프로젝트 문서함에선 의미 없으므로 숨김. */}
       {!inProject && (
-        <div className="flex items-center gap-1 mb-3 border-b border-ink-150">
+        <div className="flex items-center gap-1 mb-3 border-b border-ink-150 overflow-x-auto no-scrollbar">
           {SCOPE_TABS.map((t) => {
             // 드래그로 스코프 이동 가능한 탭.
             //  - 폴더: ALL/TEAM/PRIVATE 로만. CUSTOM 은 대상 유저를 정해야 해서 폴더 드롭은 미지원.
@@ -1005,7 +1006,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                     }
                   }
                 }}
-                className={`px-3 h-9 text-[13px] font-bold border-b-2 transition ${
+                className={`inline-flex items-center justify-center flex-shrink-0 whitespace-nowrap px-3 h-9 text-[13px] font-bold border-b-2 transition ${
                   dragOverKey === tabKey ? "bg-brand-50 " : ""
                 }${
                   scopeTab === t.key
@@ -1257,7 +1258,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         </div>
       ) : (
         <div className="panel p-0 overflow-hidden overflow-x-auto">
-          <table className="pro min-w-[760px]">
+          <table className="pro pro-cards min-w-[760px]">
             <thead>
               <tr>
                 <th>제목</th>
@@ -1288,7 +1289,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                     opacity: draggingDocId === d.id ? 0.5 : 1,
                   }}
                 >
-                  <td>
+                  <td className="cell-primary">
                     <div
                       className={`flex items-start gap-2.5 ${d.content != null ? "cursor-pointer" : ""}`}
                       onClick={d.content != null ? () => setMemoTarget(d) : undefined}
@@ -1311,7 +1312,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <div
-                            className={`text-[13px] font-bold text-ink-900 truncate max-w-[160px] sm:max-w-[280px] lg:max-w-[400px] ${d.content != null ? "hover:text-brand-700" : ""}`}
+                            className={`cell-title text-[13px] font-bold text-ink-900 truncate max-w-[160px] sm:max-w-[280px] lg:max-w-[400px] ${d.content != null ? "hover:text-brand-700" : ""}`}
                             title={d.title}
                           >
                             {d.title}
@@ -1334,14 +1335,14 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                       </div>
                     </div>
                   </td>
-                  <td>
-                    <div className="flex flex-wrap gap-1">
+                  <td data-label="태그" className={(d.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean).length ? "" : "cell-hide-m"}>
+                    <div className="flex flex-wrap gap-1 justify-end">
                       {(d.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
                         <span key={t} className="chip-gray">#{t}</span>
                       ))}
                     </div>
                   </td>
-                  <td>
+                  <td data-label="파일">
                     {(() => {
                       // 과거 데이터에 javascript:/외부 URL 이 남아있을 수 있어 렌더 직전에 한 번 더 검증.
                       const safe = safeUploadUrl(d.fileUrl);
@@ -1360,7 +1361,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                       );
                     })()}
                   </td>
-                  <td>
+                  <td data-label="작성자">
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded grid place-items-center text-white text-[10px] font-bold overflow-hidden" style={{ background: d.author.avatarUrl ? "transparent" : (d.author.avatarColor ?? "#6B7280") }}>
                         {d.author.avatarUrl ? (
@@ -1372,8 +1373,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                       <div className="text-[12px]">{d.author.name}</div>
                     </div>
                   </td>
-                  <td className="tabular text-[11px] text-ink-500">{new Date(d.updatedAt).toLocaleDateString("ko-KR")}</td>
-                  <td style={{ textAlign: "right" }}>
+                  <td data-label="수정" className="tabular text-[11px] text-ink-500">{new Date(d.updatedAt).toLocaleDateString("ko-KR")}</td>
+                  <td className="cell-actions" style={{ textAlign: "right" }}>
                     <div className="flex items-center justify-end gap-1">
                       {/* 메모 타입 */}
                       {d.content != null ? (

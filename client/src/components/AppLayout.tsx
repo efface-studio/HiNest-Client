@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
@@ -34,6 +34,15 @@ function prefetchRoute(to: string) {
     const fn = ROUTE_PREFETCH[to];
     if (fn) void fn();
   } catch {}
+}
+
+/**
+ * 페이지 청크 로딩 중 잠깐 보이는 본문 자리. 셸(상단바·하단바)은 그대로 유지되고
+ * 본문 영역 높이만 확보해 레이아웃 점프를 막는다. prefetch 덕에 대부분 즉시 교체돼
+ * 사실상 거의 안 보인다.
+ */
+function PageFallback() {
+  return <div className="min-h-[60vh]" aria-hidden />;
 }
 
 type NavItem = { to: string; label: string; icon: (p: { active?: boolean }) => JSX.Element; end?: boolean };
@@ -539,6 +548,7 @@ function usePullToRefresh() {
 function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   const { user, logout, impersonator } = useAuth();
   const nav = useNavigate();
+  const { pathname } = useLocation();
   const { disabled: disabledNav, dev: devNav } = useNavStatus();
   const filterByVisibility = (items: NavItem[]) => items.filter((i) => !disabledNav.has(i.to));
   const isMacDesktop = !!window.hinest?.isDesktop && window.hinest?.platform === "darwin";
@@ -827,7 +837,15 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           >
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>
               {/* /preview 같은 비-라우터-childless 진입 시엔 children 으로 직접 받음. 그 외엔 Outlet. */}
-              {children ?? <Outlet />}
+              {/* 페이지가 lazy 라, 셸까지 감싸던 상위 Suspense 가 fallback 을 띄우면 상단바·하단바가
+                  통째로 사라졌다 다시 나타났다. Suspense 를 본문(Outlet) 안쪽으로 내려 페이지 청크가
+                  로드되는 동안에도 셸은 유지하고 본문만 잠깐 비운다. key=pathname 으로 라우트가 바뀔
+                  때마다 가벼운 페이드를 다시 재생해 전환을 부드럽게 한다. */}
+              <Suspense fallback={<PageFallback />}>
+                <div key={pathname} className="route-fade">
+                  {children ?? <Outlet />}
+                </div>
+              </Suspense>
             </RouteVisibilityGate>
           </div>
         </main>
@@ -990,6 +1008,7 @@ function BottomNavTab({
       to={to}
       end={end}
       aria-label={ariaLabel}
+      onPointerDown={() => prefetchRoute(to)}
       onClick={() => prefetchRoute(to)}
       className={
         "relative flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none " +

@@ -132,6 +132,18 @@ html.hinest-shell-lock body {
   overflow: hidden;
   overscroll-behavior: none;
 }
+
+/* 라우트 전환 페이드 — 셸(상단바·하단바)은 유지된 채 본문만 부드럽게 나타난다.
+   key=pathname 으로 라우트가 바뀔 때마다 재생. 모션 최소화 설정이면 끈다. */
+@keyframes route-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.route-fade { animation: route-fade-in 0.18s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .route-fade { animation: none; }
+}
+
 * { -webkit-tap-highlight-color: transparent; }
 
 /* 네이티브 앱 느낌 — 크롬(내비·상단바·버튼·탭·칩)은 길게 눌러도 텍스트가 잡히거나

@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="116 118 746 226" width="746" height="226">
+<defs>
+  <linearGradient id="tile" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#5B8DFF"></stop>
+    <stop offset="55%" stop-color="#3B5CF0"></stop>
+    <stop offset="100%" stop-color="#1E4FD4"></stop>
+  </linearGradient>
+  <filter id="tshadow" x="-30%" y="-30%" width="160%" height="160%">
+    <feDropShadow dx="0" dy="9" stdDeviation="14" flood-color="#1E37B8" flood-opacity="0.55"></feDropShadow>
+  </filter>
+</defs>
+
+<rect x="130" y="136" width="188" height="188" rx="44" fill="url(#tile)" filter="url(#tshadow)"></rect>
+<rect x="130" y="136" width="188" height="188" rx="44" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"></rect>
+
+<g transform="translate(224,227.62626262626262) scale(0.9494949494949495)">
+
+<polygon points="-58,-18 -38,-33 -38,52 -58,62" fill="#FFFFFF" opacity="0.55"></polygon>
+<polygon points="-38,-33 -12,-33 -12,52 -38,52" fill="#FFFFFF" opacity="0.82"></polygon>
+<polygon points="-58,-18 -38,-33 -12,-33 -32,-18" fill="#FFFFFF"></polygon>
+<polygon points="-38,-33 -25,-47 0,-47 -12,-33" fill="#FFFFFF" opacity="0.92"></polygon>
+<polygon points="-32,-18 -12,-33 0,-47 -20,-33" fill="#FFFFFF" opacity="0.55"></polygon>
+<polygon points="-12,10 12,5 12,24 -12,29" fill="#FFFFFF"></polygon>
+<polygon points="-12,10 12,5 12,24 -12,29" fill="#FFFFFF" opacity="0.4"></polygon>
+<polygon points="38,-33 58,-18 58,62 38,52" fill="#FFFFFF" opacity="0.55"></polygon>
+<polygon points="12,-33 38,-33 38,52 12,52" fill="#FFFFFF" opacity="0.82"></polygon>
+<polygon points="38,-33 58,-18 32,-18 12,-33" fill="#FFFFFF"></polygon>
+<polygon points="12,-33 38,-33 25,-47 0,-47" fill="#FFFFFF" opacity="0.92"></polygon>
+<polygon points="38,-33 58,-18 45,-33 25,-47" fill="#FFFFFF" opacity="0.55"></polygon>
+
+<rect x="-32" y="-13" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+<rect x="-32" y="15" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+<rect x="21" y="-13" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+<rect x="21" y="15" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+</g>
+
+<text x="362" y="244.44" class="wm" font-family="&#39;Pretendard&#39;,&#39;Inter&#39;,sans-serif" font-weight="800" letter-spacing="-0.045em" font-size="104" fill="#FFFFFF">HiNest</text>
+
+<g>
+  <rect x="693.76" y="181" width="150" height="52" rx="26" fill="rgba(110,137,255,.18)" stroke="rgba(165,184,255,.45)" stroke-width="1.5"></rect>
+  <text x="768.76" y="216" class="badge" font-family="&#39;Pretendard&#39;,&#39;Inter&#39;,sans-serif" font-weight="700" font-size="26" fill="#A5B8FF" text-anchor="middle">ADMIN</text>
+</g>
+
+<text x="366" y="290.44" class="mono" font-family="&#39;JetBrains Mono&#39;,monospace" font-weight="500" font-size="30" letter-spacing="0.1em" fill="rgba(255,255,255,.6)">관리자 콘솔 · Admin Console</text>
+</svg>

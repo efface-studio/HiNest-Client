@@ -22,7 +22,7 @@ export default function AdminLockup({
   const { resolved } = useTheme();
   const isDark = onDark ?? resolved === "dark";
   const src = isDark ? "/admin-logo/dark.svg" : "/admin-logo/light.svg";
-  const height = variant === "full" ? 104 : 40;
+  const height = variant === "full" ? 104 : 44;
 
   return (
     <img

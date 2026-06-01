@@ -13,7 +13,7 @@ import { useTheme } from "../theme";
  * 주의: <img> 로 SVG 를 렌더하면 페이지 웹폰트(Pretendard)가 적용되지 않아 워드마크는
  * 시스템 산세리프로 폴백된다. (AdminLockup 과 동일한 절충 — SVG 안에 폰트 폴백을 박아둠)
  */
-export default function BrandLockup({ height = 40, onDark }: { height?: number; onDark?: boolean }) {
+export default function BrandLockup({ height = 34, onDark }: { height?: number; onDark?: boolean }) {
   const { resolved } = useTheme();
   // onDark: 항상 어두운 표면에 얹힐 때 테마와 무관하게 다크 변형 강제.
   const isDark = onDark ?? resolved === "dark";

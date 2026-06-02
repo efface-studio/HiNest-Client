@@ -11,8 +11,9 @@
     "dev": "npm run build && cross-env HINEST_DEV=1 electron .",
     "start": "npm run build && electron .",
     "pack": "npm run build && electron-builder --dir",
+    "preflight:mas": "bash scripts/preflight-mas.sh",
     "dist:mas-dev": "npm run build && electron-builder --mac mas-dev",
-    "dist:mas": "npm run build && electron-builder --mac mas"
+    "dist:mas": "npm run preflight:mas && npm run build && electron-builder --mac mas"
   },
   "devDependencies": {
     "@types/node": "^22.8.4",

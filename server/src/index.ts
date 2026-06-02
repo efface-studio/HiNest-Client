@@ -350,7 +350,17 @@ function canAccessUploadKey(
   return !!user?.companyId && user.companyId === keyCompanyId;
 }
 
-app.use("/uploads", requireAuth, async (req, res) => {
+// <img> 태그는 Authorization 헤더를 못 싣고, 네이티브 앱(Capacitor)은 쿠키도 cross-site ITP 에
+// 막혀 /uploads 이미지를 인증할 방법이 없다. 그래서 ?token=<jwt> 쿼리로 세션 토큰을 받아(헤더/쿠키가
+// 없을 때만 보강) requireAuth 가 인식하게 한다. 접근 로그는 token 쿼리값을 마스킹한다(SENSITIVE_QS_KEYS).
+function uploadsQueryToken(req: express.Request, _res: express.Response, next: express.NextFunction) {
+  if (!req.headers.authorization && typeof req.query.token === "string" && req.query.token) {
+    req.headers.authorization = `Bearer ${req.query.token}`;
+  }
+  next();
+}
+
+app.use("/uploads", uploadsQueryToken, requireAuth, async (req, res) => {
   const name = req.path.replace(/^\/+/, "");
   // 경로 탈출 / 상대경로 차단
   if (!/^[A-Za-z0-9._-]+$/.test(name)) {

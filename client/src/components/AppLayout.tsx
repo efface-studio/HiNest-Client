@@ -1117,9 +1117,9 @@ function BottomNavTab({
         "text-[10.5px] font-bold tracking-tight leading-none [&_svg]:w-[22px] [&_svg]:h-[22px]"
       }
       style={({ isActive }) => ({
-        // 탭 한 칸 높이 — 56→50 도 높다는 피드백에 따라 Apple HIG 최소치 44px 로 더 낮춤.
-        // 터치 타깃은 셀 전체(flex-1 × 44px)라 HIG 최소 44pt 를 정확히 만족한다.
-        height: 44,
+        // 탭 한 칸 높이. 56→50→44(HIG 최소)로 낮췄다가 "조금 더 높게" 피드백에 +5 = 49px.
+        // 터치 타깃은 셀 전체(flex-1 × 49px)라 HIG 최소 44pt 를 여유 있게 만족한다.
+        height: 49,
         color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
       })}
     >

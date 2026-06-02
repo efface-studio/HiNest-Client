@@ -1,11 +1,13 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { isInstalledApp } from "../lib/platform";
 
 /**
  * 대시보드 상단에 1회 노출되는 "앱으로 쓰세요" 배너.
  *
  * 표시 조건:
- *  - 데스크톱 Electron 앱이 아님 (`window.hinest.isDesktop` false)
+ *  - 이미 설치형 앱 안이 아님 — 데스크톱(Electron) "또는" Capacitor 네이티브(iOS/Android).
+ *    네이티브 앱 안에서 "앱 다운로드" 를 권하는 건 말이 안 되므로 isInstalledApp() 로 숨긴다.
  *  - PWA standalone 으로 실행 중이 아님 (홈 화면에서 띄운 것 아님)
  *  - 이전에 사용자가 닫지 않았음 (localStorage 키로 관리)
  *
@@ -35,7 +37,7 @@ function detectPlatformLabel(): string {
 }
 
 export default function InstallAppBanner() {
-  const isDesktopApp = !!window.hinest?.isDesktop;
+  const installedApp = isInstalledApp();
   const standalone = useMemo(() => isStandalone(), []);
   const [dismissed, setDismissed] = useState(() => {
     try {
@@ -45,7 +47,7 @@ export default function InstallAppBanner() {
     }
   });
 
-  if (isDesktopApp || standalone || dismissed) return null;
+  if (installedApp || standalone || dismissed) return null;
 
   const label = detectPlatformLabel();
 

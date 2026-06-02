@@ -4,6 +4,8 @@
  * capacitor://localhost 에서 로드돼 상대경로가 서버에 닿지 않으므로, 빌드시
  * VITE_API_BASE 로 절대 오리진(예: https://nest.hi-vits.com)을 주입한다.
  */
+import { getAuthToken } from "./lib/authToken";
+
 export const API_BASE: string =
   ((import.meta as any).env?.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") ?? "";
 
@@ -14,11 +16,35 @@ export function apiUrl(path: string): string {
   return path.startsWith("/") ? API_BASE + path : path;
 }
 
+/**
+ * 네이티브 앱이면 저장된 세션 토큰을 Authorization 헤더로 반환, 아니면 빈 객체.
+ * iOS WebView 의 cross-site 쿠키가 ITP 에 막히는 문제를 우회 — 쿠키 대신 Bearer 로 인증.
+ * 웹/데스크톱은 토큰이 없으므로 빈 객체 → 기존 쿠키 인증 그대로.
+ */
+export function authHeaders(): Record<string, string> {
+  const t = getAuthToken();
+  return t ? { Authorization: `Bearer ${t}` } : {};
+}
+
+/**
+ * 인증이 필요한 raw fetch — 파일 업로드/다운로드처럼 api() 의 JSON 처리를 거치지 않는 호출용.
+ * apiUrl 변환 + credentials + 네이티브 토큰 헤더를 한 곳에서 보장하고 Response 를 그대로 반환한다.
+ * (네이티브에서 쿠키가 안 붙어 업로드가 401 나던 문제를 막는다.)
+ */
+export function apiFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  return fetch(apiUrl(path), {
+    ...init,
+    credentials: "include",
+    headers: { ...authHeaders(), ...(init.headers as Record<string, string> | undefined) },
+  });
+}
+
 export async function api<T = any>(
   path: string,
   init: RequestInit & { json?: any } = {}
 ): Promise<T> {
   const headers: Record<string, string> = {
+    ...authHeaders(),
     ...(init.headers as any),
   };
   let body = init.body;

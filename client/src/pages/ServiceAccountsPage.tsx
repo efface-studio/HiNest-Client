@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, apiUrl } from "../api";
+import { api, apiFetch } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
@@ -934,7 +934,7 @@ function AccountModal({
     try {
       const fd = new FormData();
       fd.append("file", file);
-      const res = await fetch(apiUrl("/api/upload"), { method: "POST", body: fd, credentials: "include" });
+      const res = await apiFetch("/api/upload", { method: "POST", body: fd });
       if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "업로드 실패");
       const json = await res.json();
       setForm({ ...form, iconUrl: json.url });

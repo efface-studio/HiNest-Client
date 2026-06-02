@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { api, apiUrl } from "../api";
+import { api, apiFetch } from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "./ConfirmHost";
 import { safeAttachmentUrl } from "../lib/safeUrl";
@@ -87,7 +87,7 @@ export default function MeetingAttachments({
         // 1) /api/upload 로 파일 자체 전송 — 응답에 url/name/type/size/kind
         const fd = new FormData();
         fd.append("file", file);
-        const upRes = await fetch(apiUrl("/api/upload"), { method: "POST", body: fd, credentials: "include" });
+        const upRes = await apiFetch("/api/upload", { method: "POST", body: fd });
         if (!upRes.ok) {
           const txt = await upRes.text();
           throw new Error(`업로드 실패 (${upRes.status}): ${txt.slice(0, 120)}`);

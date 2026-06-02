@@ -14,7 +14,7 @@ import { prisma } from "./db.js";
  *                    env 에 PEM 을 통째로 넣을 땐 줄바꿈이 "\n" 으로 이스케이프되어 들어오므로 복원한다.
  *   APNS_KEY_ID      필수 — .p8 키의 Key ID (10자, 예: "ABC123DEFG")
  *   APNS_TEAM_ID     필수 — Apple Developer Team ID (10자)
- *   APNS_BUNDLE_ID   선택 — 앱 번들 ID. 기본 "com.hinest.app" (apns-topic 로 사용)
+ *   APNS_BUNDLE_ID   선택 — 앱 번들 ID. 기본 "com.hivits.hinest" (apns-topic 로 사용)
  *   APNS_PRODUCTION  선택 — "1"/"true" 면 운영 게이트웨이, 아니면 샌드박스.
  *
  * 미설정 시: apnsEnabled() 가 false 를 반환하고 sendApnsToUser() 는 조용히 no-op.
@@ -27,8 +27,16 @@ import { prisma } from "./db.js";
 const KEY_RAW = process.env.APNS_KEY;
 const KEY_ID = process.env.APNS_KEY_ID;
 const TEAM_ID = process.env.APNS_TEAM_ID;
-const BUNDLE_ID = process.env.APNS_BUNDLE_ID || "com.hinest.app";
-const PRODUCTION = /^(1|true|yes)$/i.test(process.env.APNS_PRODUCTION || "");
+const BUNDLE_ID = process.env.APNS_BUNDLE_ID || "com.hivits.hinest";
+// APNs 게이트웨이 선택. TestFlight·App Store 로 배포된 앱은 production APNs 를 쓰므로,
+// 운영 배포(NODE_ENV=production)에선 production 게이트웨이를 기본값으로 한다.
+// APNS_PRODUCTION 을 명시하면 그 값이 우선 — 운영에서 sandbox 로 강제하거나(0/false),
+// 로컬에서 운영 키로 테스트할 때(1/true) 오버라이드용.
+const APNS_PROD_RAW = process.env.APNS_PRODUCTION;
+const PRODUCTION =
+  APNS_PROD_RAW != null && APNS_PROD_RAW !== ""
+    ? /^(1|true|yes)$/i.test(APNS_PROD_RAW)
+    : process.env.NODE_ENV === "production";
 const HOST = PRODUCTION ? "https://api.push.apple.com" : "https://api.sandbox.push.apple.com";
 
 export function apnsEnabled(): boolean {

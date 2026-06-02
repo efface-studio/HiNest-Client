@@ -47,8 +47,15 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
-      {/* 상단 — 로고만 살짝 */}
-      <header className="px-6 pt-8 pb-4 flex items-center">
+      {/* 상단 — 로고만 살짝.
+          iOS 단독형(standalone) PWA 는 status-bar 가 black-translucent 라 콘텐츠가
+          노치/상태바 아래까지 풀스크린으로 깔린다. pt-8(고정 28px) 만으론 로고가 상단
+          safe-area 를 침범하므로, env(safe-area-inset-top) 를 더해 노치 아래로 내린다.
+          데스크톱·브라우저는 inset=0 이라 기존 28px 그대로 유지된다. */}
+      <header
+        className="px-6 pb-4 flex items-center"
+        style={{ paddingTop: "calc(env(safe-area-inset-top) + 2rem)" }}
+      >
         <BrandLockup height={36} />
       </header>
 

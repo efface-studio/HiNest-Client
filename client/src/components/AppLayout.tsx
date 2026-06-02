@@ -466,6 +466,8 @@ export default function AppLayout({ children }: { children?: React.ReactNode } =
 const PTR_THRESHOLD = 64; // 이 거리(px) 이상 당기고 놓으면 새로고침 발동
 const PTR_MAX = 96; // 시각적 최대 당김 거리(고무줄 감쇠 상한)
 const PTR_RESTING = 48; // 새로고침 진행 중 콘텐츠가 머무는 위치
+const PTR_ARC_R = 9; // 스피너 호 반지름 (SVG viewBox 24×24, 중심 12,12)
+const PTR_CIRC = 2 * Math.PI * PTR_ARC_R; // 호 둘레 — strokeDasharray/Offset 진행도 계산
 
 /**
  * main 스크롤러가 최상단(scrollTop<=0)일 때 아래로 당기면 인디케이터가 따라오고,
@@ -482,7 +484,8 @@ function usePullToRefresh() {
   const ref = useRef<HTMLElement>(null);            // main 스크롤러 (리스너·scrollTop)
   const indicatorRef = useRef<HTMLDivElement>(null); // 따라 내려오는 배지 래퍼
   const badgeRef = useRef<HTMLDivElement>(null);     // 원형 배지(살짝 커지는 피드백)
-  const ringRef = useRef<HTMLDivElement>(null);      // conic 프로그레스 링
+  const ringRef = useRef<SVGSVGElement>(null);       // SVG 스피너(새로고침 중 회전 대상)
+  const arcRef = useRef<SVGCircleElement>(null);     // 진행 호(strokeDashoffset 로 진행도 표시)
   const contentRef = useRef<HTMLDivElement>(null);   // 손가락 따라 내려오는 본문
   const [refreshing, setRefreshing] = useState(false);
 
@@ -502,9 +505,11 @@ function usePullToRefresh() {
       badge.style.transform = `scale(${0.82 + 0.18 * progress})`;
       badge.style.transition = animate ? PTR_EASE_T : "none";
     }
-    const ring = ringRef.current;
-    if (ring) {
-      ring.style.background = `conic-gradient(var(--c-brand) ${progress * 360}deg, var(--c-border) 0deg)`;
+    const arc = arcRef.current;
+    if (arc) {
+      // 진행도만큼 호를 채운다 — progress 0=빈 원, 1=가득. 놓을 땐(animate) 짧게 트랜지션.
+      arc.style.strokeDashoffset = String(PTR_CIRC * (1 - progress));
+      arc.style.transition = animate ? "stroke-dashoffset .2s ease" : "none";
     }
     const content = contentRef.current;
     if (content) {
@@ -517,7 +522,7 @@ function usePullToRefresh() {
   // (이 상태는 곧 window.location.reload() 로 페이지가 갈아끼워지므로 종단 상태다.)
   useEffect(() => {
     const ind = indicatorRef.current, badge = badgeRef.current;
-    const ring = ringRef.current, content = contentRef.current;
+    const ring = ringRef.current, arc = arcRef.current, content = contentRef.current;
     if (refreshing) {
       const off = PTR_RESTING;
       if (ind) {
@@ -529,16 +534,27 @@ function usePullToRefresh() {
         badge.style.transform = "scale(1)";
         badge.style.transition = PTR_EASE_T;
       }
-      if (ring) {
-        ring.style.background = "conic-gradient(transparent, var(--c-brand))";
-        ring.classList.add("animate-spin");
+      // 비결정형 스피너 — 호를 ~30% 길이로 고정하고 SVG 를 회전(animate-spin)시킨다.
+      if (arc) {
+        arc.style.transition = "stroke-dashoffset .2s ease";
+        arc.style.strokeDasharray = `${PTR_CIRC * 0.3} ${PTR_CIRC}`;
+        arc.style.strokeDashoffset = "0";
       }
+      if (ring) ring.classList.add("animate-spin");
+      // reload 직전 본문을 살짝 내리며 흐리게 — 갑작스러운 새로고침 대신 전환감을 준다.
+      // (새 페이지는 마운트 시 .route-fade 로 다시 페이드인되므로 자연스럽게 이어진다.)
       if (content) {
         content.style.transform = `translateY(${off}px)`;
-        content.style.transition = PTR_EASE_T;
+        content.style.transition = "transform .3s cubic-bezier(.22,.61,.36,1), opacity .3s ease";
+        content.style.opacity = "0.35";
       }
     } else {
       ring?.classList.remove("animate-spin");
+      if (arc) {
+        arc.style.strokeDasharray = String(PTR_CIRC);
+        arc.style.strokeDashoffset = String(PTR_CIRC);
+      }
+      if (content) content.style.opacity = "";
     }
   }, [refreshing]);
 
@@ -583,8 +599,8 @@ function usePullToRefresh() {
       active = false;
       if (dist >= PTR_THRESHOLD) {
         setRefreshing(true); // 새로고침 비주얼은 위 effect 가 적용
-        // 스피너가 잠깐 보이도록 살짝 지연 후 새로고침
-        window.setTimeout(() => window.location.reload(), 280);
+        // 스피너 회전 + 본문 페이드아웃이 보이도록 살짝 지연 후 새로고침.
+        window.setTimeout(() => window.location.reload(), 360);
       } else {
         applyPull(0, 0, true);
       }
@@ -603,7 +619,7 @@ function usePullToRefresh() {
     };
   }, [refreshing, applyPull]);
 
-  return { ref, indicatorRef, badgeRef, ringRef, contentRef };
+  return { ref, indicatorRef, badgeRef, ringRef, arcRef, contentRef };
 }
 
 function AppLayoutInner({ children }: { children?: React.ReactNode }) {
@@ -648,6 +664,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     indicatorRef: ptrIndicatorRef,
     badgeRef: ptrBadgeRef,
     ringRef: ptrRingRef,
+    arcRef: ptrArcRef,
     contentRef: ptrContentRef,
   } = usePullToRefresh();
 
@@ -871,22 +888,33 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                 transform: "scale(0.82)",
               }}
             >
-              {/* iOS 풍 원형 프로그레스 링 — conic-gradient + radial 마스크로 그린다.
-                  · 당기는 중(결정형): 진행도만큼 브랜드색이 채워지고 나머지는 트랙색.
-                  · 새로고침 중(비결정형): 꼬리가 투명→브랜드로 옅어지는 링이 회전. */}
-              <div
+              {/* iOS 풍 원형 스피너 — 둥근 캡 SVG 호. (이전 conic-gradient 링보다 매끄럽다)
+                  · 당기는 중(결정형): 진행도만큼 호가 채워진다(strokeDashoffset).
+                  · 새로고침 중(비결정형): 짧은 호가 회전(animate-spin). 둘 다 ref 로 직접 갱신. */}
+              <svg
                 aria-hidden
                 ref={ptrRingRef}
-                style={{
-                  width: 20,
-                  height: 20,
-                  borderRadius: 999,
-                  // 초기값(progress 0) — 당김 진행/새로고침 회전은 usePullToRefresh 가 ref 로 갱신.
-                  background: "conic-gradient(var(--c-brand) 0deg, var(--c-border) 0deg)",
-                  WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
-                  mask: "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
-                }}
-              />
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                style={{ display: "block", transformOrigin: "center" }}
+              >
+                {/* 트랙(옅은 테두리색 원) */}
+                <circle cx="12" cy="12" r={PTR_ARC_R} stroke="var(--c-border)" strokeWidth="2.4" />
+                {/* 진행 호 — 12시 방향에서 시작(rotate -90), 길이는 strokeDashoffset 로 제어. */}
+                <circle
+                  ref={ptrArcRef}
+                  cx="12"
+                  cy="12"
+                  r={PTR_ARC_R}
+                  stroke="var(--c-brand)"
+                  strokeWidth="2.4"
+                  strokeLinecap="round"
+                  transform="rotate(-90 12 12)"
+                  style={{ strokeDasharray: PTR_CIRC, strokeDashoffset: PTR_CIRC }}
+                />
+              </svg>
             </div>
           </div>
           <div
@@ -1031,9 +1059,9 @@ function BottomNav({ items }: { items: NavItem[] }) {
         borderTop: "1px solid var(--c-border)",
         // 홈 인디케이터 회피용 하단 여백 — 단, 전체 safe-area(노치 기기 ~34px)를 그대로
         // 비워두면 네비가 surface 색으로 칠해진 뒤(하단 seam 수정) 그 빈 영역까지 바의
-        // 일부로 보여 바가 과하게 높아 보인다. 인디케이터 클리어런스는 유지하되(>=~26px)
-        // 8px 만 덜어 빈 공간을 줄인다. safe-area 가 없는 기기(env=0)는 0 으로 떨어진다.
-        paddingBottom: "max(env(safe-area-inset-bottom) - 8px, 0px)",
+        // 일부로 보여 바가 과하게 높아 보인다. "아직도 높다" 는 피드백에 10px 덜어 빈
+        // 공간을 더 줄인다(인디케이터 클리어런스 ~24px 유지). safe-area 없으면(env=0) 0.
+        paddingBottom: "max(env(safe-area-inset-bottom) - 10px, 0px)",
         boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
       }}
       aria-label="주요 메뉴"
@@ -1089,9 +1117,9 @@ function BottomNavTab({
         "text-[10.5px] font-bold tracking-tight leading-none [&_svg]:w-[22px] [&_svg]:h-[22px]"
       }
       style={({ isActive }) => ({
-        // 탭 한 칸 높이 — iOS 기본 탭바(49pt)에 맞춰 50px. (이전 56px 은 살짝 높았다.)
-        // 터치 타깃은 셀 전체(flex-1 × 50px)라 Apple HIG 최소 44pt 이상 유지.
-        height: 50,
+        // 탭 한 칸 높이 — 56→50 도 높다는 피드백에 따라 Apple HIG 최소치 44px 로 더 낮춤.
+        // 터치 타깃은 셀 전체(flex-1 × 44px)라 HIG 최소 44pt 를 정확히 만족한다.
+        height: 44,
         color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
       })}
     >
@@ -1100,8 +1128,8 @@ function BottomNavTab({
           <span
             className="inline-flex items-center justify-center transition-colors duration-200"
             style={{
-              width: 48,
-              height: 30,
+              width: 44,
+              height: 28,
               borderRadius: 999,
               background: isActive ? "var(--c-brand-soft)" : "transparent",
             }}

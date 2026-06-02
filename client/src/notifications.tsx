@@ -223,8 +223,18 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     } catch {}
   }, [unread, chatUnread]);
 
+  // 컨텍스트 value 를 memo 화 — 이 Provider 는 90초 폴링·SSE 푸시·낙관적 읽음처리마다
+  // 리렌더되는 가장 뜨거운 프로바이더다. 매 렌더마다 새 객체 리터럴을 넘기면 소비자
+  // (AppLayout·ChatFab·NotificationBell) 가 값이 안 바뀌어도 전부 리렌더된다.
+  // reload/markRead/markRoomRead 는 useCallback 으로 고정이고 bellItems/unread/chatUnread
+  // 는 items 파생이라, 실제로 items·ready 가 바뀔 때만 새 객체가 만들어진다.
+  const value = useMemo<Ctx>(
+    () => ({ items, bellItems, unread, chatUnread, ready, reload, markRead, markRoomRead }),
+    [items, bellItems, unread, chatUnread, ready, reload, markRead, markRoomRead]
+  );
+
   return (
-    <NotificationCtx.Provider value={{ items, bellItems, unread, chatUnread, ready, reload, markRead, markRoomRead }}>
+    <NotificationCtx.Provider value={value}>
       {children}
     </NotificationCtx.Provider>
   );

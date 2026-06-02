@@ -90,6 +90,7 @@ model User {
   approvalReviews         ApprovalStep[]         @relation("ApprovalReviewer")
   passkeys                Passkey[]
   desktopBios             DesktopBiometric[]
+  pushTokens              PushToken[]
   reactions               MessageReaction[]
   projects                ProjectMember[]
   projectsCreated         Project[]              @relation("ProjectCreator")
@@ -352,6 +353,21 @@ model DesktopBiometric {
   lastUsedAt DateTime?
 
   @@unique([userId, deviceId])
+  @@index([userId])
+}
+
+/// iOS/Android 원격 푸시(APNs/FCM) 기기 토큰. 로그인 후 네이티브에서 발급받아 등록.
+/// 한 기기(token)는 한 유저에게 귀속 — 재로그인 시 token 의 userId 가 갱신되도록 token 을 unique 로 둔다.
+model PushToken {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token      String    @unique // APNs device token (hex). 기기당 고유.
+  platform   String    @default("ios") // ios | android (확장 대비)
+  deviceId   String? // 선택: 클라이언트가 보내는 기기 식별자
+  createdAt  DateTime  @default(now())
+  lastUsedAt DateTime?
+
   @@index([userId])
 }
 

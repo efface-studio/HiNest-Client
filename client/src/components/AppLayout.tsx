@@ -2,7 +2,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import BrandLockup from "./BrandLockup";
 import NotificationBell from "./NotificationBell";
 import SearchModal from "./SearchModal";
@@ -784,7 +784,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             <NavLink to="/profile" className="flex items-center gap-2.5 flex-1 min-w-0" title="프로필">
               {user?.avatarUrl ? (
                 <img
-                  src={user.avatarUrl}
+                  src={imgSrc(user.avatarUrl)}
                   alt={user.name ?? ""}
                   className="avatar avatar-sm object-cover" loading="lazy" decoding="async"/>
               ) : (
@@ -1178,7 +1178,7 @@ export function MobileMenuPage() {
       >
         {user?.avatarUrl ? (
           <img
-            src={user.avatarUrl}
+            src={imgSrc(user.avatarUrl)}
             alt={user.name ?? ""}
             className="rounded-full object-cover flex-shrink-0"
             style={{ width: 46, height: 46 }}

@@ -1,6 +1,7 @@
 import { useEffect, useState, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { useNotifications } from "../notifications";
+import { imgSrc } from "../api";
 // highlight.js(~92KB) 등 무거운 의존성을 끌고오므로 초기 번들에서 분리한다.
 // 채팅 패널은 사용자가 처음 열 때(mounted=true) 비로소 마운트되므로 lazy 로딩이 안전.
 const ChatMiniApp = lazy(() => import("./ChatMiniApp"));
@@ -472,7 +473,7 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
           }}
         >
           {info.imageUrl ? (
-            <img src={info.imageUrl} alt={info.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
+            <img src={imgSrc(info.imageUrl)} alt={info.title} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
           ) : (
             <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 15, fontWeight: 700, letterSpacing: "-0.02em" }}>
               {info.title?.[0] ?? "?"}

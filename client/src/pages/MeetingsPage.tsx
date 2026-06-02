@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { api, apiSWR, invalidateCache } from "../api";
+import { api, apiSWR, invalidateCache , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { alertAsync } from "../components/ConfirmHost";
@@ -335,7 +335,7 @@ function AuthorChip({ author }: { author: MeetingRow["author"] }) {
         style={{ background: author.avatarUrl ? "transparent" : author.avatarColor }}
       >
         {author.avatarUrl ? (
-          <img src={author.avatarUrl} alt={author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+          <img src={imgSrc(author.avatarUrl)} alt={author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
         ) : (
           (author.name[0] ?? "?")
         )}

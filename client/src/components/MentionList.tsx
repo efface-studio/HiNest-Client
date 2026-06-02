@@ -1,4 +1,5 @@
 import { forwardRef, useEffect, useImperativeHandle, useState } from "react";
+import { imgSrc } from "../api";
 
 export type MentionUser = {
   id: string;
@@ -76,7 +77,7 @@ const MentionList = forwardRef<{ onKeyDown: (e: { event: KeyboardEvent }) => boo
               className="mention-avatar"
               style={{ background: u.avatarUrl ? "transparent" : u.avatarColor ?? "#94A3B8" }}
             >
-              {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} loading="lazy" decoding="async"/> : u.name[0]}
+              {u.avatarUrl ? <img src={imgSrc(u.avatarUrl)} alt={u.name} loading="lazy" decoding="async"/> : u.name[0]}
             </span>
             <span className="mention-name">{u.name}</span>
             {(u.team || u.position) && (

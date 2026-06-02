@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import type { MemoDoc } from "../components/DocMemoModal";
@@ -121,7 +121,7 @@ function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
           style={{ background: memo.author?.avatarUrl ? "transparent" : (memo.author?.avatarColor ?? "#6B7280") }}
         >
           {memo.author?.avatarUrl ? (
-            <img src={memo.author.avatarUrl} alt={memo.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+            <img src={imgSrc(memo.author.avatarUrl)} alt={memo.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
           ) : (
             memo.author?.name?.[0] ?? "?"
           )}

@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { api, apiSWR } from "../api";
+import { api, apiSWR , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { resolvePresence, type PresenceStatus, type WorkStatus } from "../lib/presence";
@@ -249,7 +249,7 @@ function MyProfileHero({
       <div className="relative flex flex-wrap items-center gap-x-5 gap-y-3 p-5">
         <div className="w-16 h-16 rounded-full flex-shrink-0 shadow-pop overflow-hidden relative" style={{ background: me.avatarUrl ? "transparent" : (me.avatarColor ?? "#3D54C4") }}>
           {me.avatarUrl ? (
-            <img src={me.avatarUrl} alt={me.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
+            <img src={imgSrc(me.avatarUrl)} alt={me.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
           ) : (
             <div className="absolute inset-0 grid place-items-center text-white text-[22px] font-extrabold" style={{ letterSpacing: "-0.03em" }}>
               {me.name[0]}
@@ -313,7 +313,7 @@ function GridCard({
           <div className="relative w-12 h-12 flex-shrink-0">
             <div className="absolute inset-0 rounded-full overflow-hidden" style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3D54C4") }}>
               {u.avatarUrl ? (
-                <img src={u.avatarUrl} alt={u.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
+                <img src={imgSrc(u.avatarUrl)} alt={u.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
               ) : (
                 <div className="absolute inset-0 grid place-items-center text-white text-[16px] font-extrabold" style={{ letterSpacing: "-0.02em" }}>
                   {u.name[0]}
@@ -393,7 +393,7 @@ function ListRow({ u, onDM, divider, dmBusy }: { u: DirectoryUser; onDM: () => v
       <div className="relative w-10 h-10 flex-shrink-0">
         <div className="absolute inset-0 rounded-full overflow-hidden" style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3D54C4") }}>
           {u.avatarUrl ? (
-            <img src={u.avatarUrl} alt={u.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
+            <img src={imgSrc(u.avatarUrl)} alt={u.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
           ) : (
             <div className="absolute inset-0 grid place-items-center text-white text-[13px] font-extrabold" style={{ letterSpacing: "-0.02em" }}>
               {u.name[0]}

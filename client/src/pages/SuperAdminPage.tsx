@@ -1,6 +1,6 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import { safeUploadUrl } from "../lib/safeUrl";
 import { useTheme } from "../theme";
 import SuperStepUpGate from "../components/SuperStepUpGate";
@@ -839,7 +839,7 @@ function ChatAuditPanel() {
                         <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0 overflow-hidden"
                           style={{ background: m.sender.avatarUrl ? "transparent" : m.sender.avatarColor }}>
                           {m.sender.avatarUrl ? (
-                            <img src={m.sender.avatarUrl} alt={m.sender.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                            <img src={imgSrc(m.sender.avatarUrl)} alt={m.sender.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                           ) : (
                             m.sender.name[0]
                           )}

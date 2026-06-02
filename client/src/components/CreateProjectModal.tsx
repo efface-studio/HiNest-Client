@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 
 type UserLite = {
   id: string;
@@ -183,7 +183,7 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
                       style={{ background: u.avatarUrl ? "transparent" : u.avatarColor }}
                     >
                       {u.avatarUrl ? (
-                        <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                        <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                       ) : (
                         u.name[0]
                       )}

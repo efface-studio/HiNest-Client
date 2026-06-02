@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api, apiFetch } from "../api";
+import { api, apiFetch , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
@@ -1365,7 +1365,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                     <div className="flex items-center gap-2">
                       <div className="w-6 h-6 rounded grid place-items-center text-white text-[10px] font-bold overflow-hidden" style={{ background: d.author.avatarUrl ? "transparent" : (d.author.avatarColor ?? "#6B7280") }}>
                         {d.author.avatarUrl ? (
-                          <img src={d.author.avatarUrl} alt={d.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                          <img src={imgSrc(d.author.avatarUrl)} alt={d.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                         ) : (
                           d.author.name[0]
                         )}
@@ -1504,7 +1504,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                             />
                             <div className="w-6 h-6 rounded grid place-items-center text-white text-[10px] font-bold overflow-hidden" style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#6B7280") }}>
                               {u.avatarUrl ? (
-                                <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                                <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                               ) : (
                                 u.name[0]
                               )}
@@ -1656,7 +1656,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                             />
                             <div className="w-6 h-6 rounded grid place-items-center text-white text-[10px] font-bold overflow-hidden" style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#6B7280") }}>
                               {u.avatarUrl ? (
-                                <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                                <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                               ) : (
                                 u.name[0]
                               )}

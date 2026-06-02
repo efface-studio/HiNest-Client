@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, apiSWR } from "../api";
+import { api, apiSWR , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { alertAsync } from "../components/ConfirmHost";
@@ -144,7 +144,7 @@ export default function UserProfilePage() {
                 }}
               >
                 {u.avatarUrl ? (
-                  <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                  <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                 ) : (
                   initial
                 )}

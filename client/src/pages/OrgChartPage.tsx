@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { alertAsync } from "../components/ConfirmHost";
@@ -508,7 +508,7 @@ function UserAvatar({ u, size }: { u: DirUser; size: number }) {
       style={{ width: size, height: size, background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3D54C4") }}
     >
       {u.avatarUrl ? (
-        <img src={u.avatarUrl} alt={u.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
+        <img src={imgSrc(u.avatarUrl)} alt={u.name} className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async"/>
       ) : (
         <div
           className="absolute inset-0 grid place-items-center text-white font-extrabold"

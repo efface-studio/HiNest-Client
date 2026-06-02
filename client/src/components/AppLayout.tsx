@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
@@ -475,10 +475,72 @@ const PTR_RESTING = 48; // 새로고침 진행 중 콘텐츠가 머무는 위치
  * iOS 셸 잠금(.hinest-shell-lock)으로 문서 바운스가 막혀 main 이 유일한 스크롤러라,
  * 여기서 touchmove preventDefault 로 네이티브 오버스크롤을 가로채 커스텀 제스처로 쓴다.
  */
+const PTR_EASE_WRAP = "transform .25s cubic-bezier(.22,.61,.36,1), opacity .2s ease";
+const PTR_EASE_T = "transform .25s cubic-bezier(.22,.61,.36,1)";
+
 function usePullToRefresh() {
-  const ref = useRef<HTMLElement>(null);
-  const [pull, setPull] = useState(0);
+  const ref = useRef<HTMLElement>(null);            // main 스크롤러 (리스너·scrollTop)
+  const indicatorRef = useRef<HTMLDivElement>(null); // 따라 내려오는 배지 래퍼
+  const badgeRef = useRef<HTMLDivElement>(null);     // 원형 배지(살짝 커지는 피드백)
+  const ringRef = useRef<HTMLDivElement>(null);      // conic 프로그레스 링
+  const contentRef = useRef<HTMLDivElement>(null);   // 손가락 따라 내려오는 본문
   const [refreshing, setRefreshing] = useState(false);
+
+  // 당김 시각 상태를 React 렌더 없이 DOM 에 직접 쓴다.
+  // 기존엔 touchmove 마다 setPull→AppLayoutInner(거대 컴포넌트) 전체 리렌더가 발생해
+  // 제스처 중 프레임이 끊겼다. offset(0~PTR_MAX)·progress(0~1) 를 받아 4개 요소 스타일만
+  // 갱신한다. animate=false(드래그 추종) / true(놓았을 때 0으로 복귀 애니메이션).
+  const applyPull = useCallback((offset: number, progress: number, animate: boolean) => {
+    const ind = indicatorRef.current;
+    if (ind) {
+      ind.style.transform = `translateY(${offset / 2 - 17}px)`;
+      ind.style.opacity = String(progress);
+      ind.style.transition = animate ? PTR_EASE_WRAP : "none";
+    }
+    const badge = badgeRef.current;
+    if (badge) {
+      badge.style.transform = `scale(${0.82 + 0.18 * progress})`;
+      badge.style.transition = animate ? PTR_EASE_T : "none";
+    }
+    const ring = ringRef.current;
+    if (ring) {
+      ring.style.background = `conic-gradient(var(--c-brand) ${progress * 360}deg, var(--c-border) 0deg)`;
+    }
+    const content = contentRef.current;
+    if (content) {
+      content.style.transform = offset > 0 ? `translateY(${offset}px)` : "";
+      content.style.transition = animate ? PTR_EASE_T : "none";
+    }
+  }, []);
+
+  // 새로고침 진입 시: 본문을 머무는 위치(PTR_RESTING)로 고정하고 링을 비결정형 회전으로.
+  // (이 상태는 곧 window.location.reload() 로 페이지가 갈아끼워지므로 종단 상태다.)
+  useEffect(() => {
+    const ind = indicatorRef.current, badge = badgeRef.current;
+    const ring = ringRef.current, content = contentRef.current;
+    if (refreshing) {
+      const off = PTR_RESTING;
+      if (ind) {
+        ind.style.transform = `translateY(${off / 2 - 17}px)`;
+        ind.style.opacity = "1";
+        ind.style.transition = PTR_EASE_WRAP;
+      }
+      if (badge) {
+        badge.style.transform = "scale(1)";
+        badge.style.transition = PTR_EASE_T;
+      }
+      if (ring) {
+        ring.style.background = "conic-gradient(transparent, var(--c-brand))";
+        ring.classList.add("animate-spin");
+      }
+      if (content) {
+        content.style.transform = `translateY(${off}px)`;
+        content.style.transition = PTR_EASE_T;
+      }
+    } else {
+      ring?.classList.remove("animate-spin");
+    }
+  }, [refreshing]);
 
   useEffect(() => {
     const el = ref.current;
@@ -502,30 +564,29 @@ function usePullToRefresh() {
       if (!active) return;
       if (el.scrollTop > 0) {
         active = false;
-        setPull(0);
+        applyPull(0, 0, true);
         return;
       }
       const dy = e.touches[0].clientY - startY;
       if (dy <= 0) {
         // 위로(스크롤 다운) 동작은 네이티브에 맡긴다
         dist = 0;
-        setPull(0);
+        applyPull(0, 0, true);
         return;
       }
       dist = Math.min(PTR_MAX, dy * 0.5); // 고무줄 감쇠
-      setPull(dist);
+      applyPull(dist, Math.min(dist / PTR_THRESHOLD, 1), false);
       if (e.cancelable) e.preventDefault(); // 네이티브 바운스/스크롤 억제
     };
     const onEnd = () => {
       if (!active) return;
       active = false;
       if (dist >= PTR_THRESHOLD) {
-        setRefreshing(true);
-        setPull(0);
+        setRefreshing(true); // 새로고침 비주얼은 위 effect 가 적용
         // 스피너가 잠깐 보이도록 살짝 지연 후 새로고침
         window.setTimeout(() => window.location.reload(), 280);
       } else {
-        setPull(0);
+        applyPull(0, 0, true);
       }
       dist = 0;
     };
@@ -540,9 +601,9 @@ function usePullToRefresh() {
       el.removeEventListener("touchend", onEnd);
       el.removeEventListener("touchcancel", onEnd);
     };
-  }, [refreshing]);
+  }, [refreshing, applyPull]);
 
-  return { ref, pull, refreshing };
+  return { ref, indicatorRef, badgeRef, ringRef, contentRef };
 }
 
 function AppLayoutInner({ children }: { children?: React.ReactNode }) {
@@ -580,10 +641,15 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   }, []);
 
   // 모바일 당겨서 새로고침 — main 스크롤러에 ref 를 물려 제스처를 감지한다.
-  const { ref: mainRef, pull: ptrPull, refreshing: ptrRefreshing } = usePullToRefresh();
-  const ptrOffset = ptrRefreshing ? PTR_RESTING : ptrPull;
-  // 0~1 진행도 — 당기는 동안엔 임계값 대비 비율, 새로고침 중엔 1(꽉 찬 링).
-  const ptrProgress = ptrRefreshing ? 1 : Math.min(ptrPull / PTR_THRESHOLD, 1);
+  // 당김 비주얼(인디케이터·링·본문 오프셋)은 훅이 ref 로 직접 DOM 에 쓰므로
+  // 제스처 중에는 이 컴포넌트가 리렌더되지 않는다.
+  const {
+    ref: mainRef,
+    indicatorRef: ptrIndicatorRef,
+    badgeRef: ptrBadgeRef,
+    ringRef: ptrRingRef,
+    contentRef: ptrContentRef,
+  } = usePullToRefresh();
 
   // 창모드에서만 신호등 버튼 여백 필요, 전체화면에선 숨어있으므로 여백 제거
   const showTitlebarSpace = isMacDesktop && !isFullscreen;
@@ -776,6 +842,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           {/* 당겨서 새로고침 인디케이터 — 당김 거리에 따라 따라 내려오고, 새로고침 중엔 회전. */}
           <div
             aria-hidden
+            ref={ptrIndicatorRef}
             style={{
               position: "absolute",
               top: 0,
@@ -785,12 +852,13 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
               justifyContent: "center",
               pointerEvents: "none",
               zIndex: 5,
-              transform: `translateY(${ptrOffset / 2 - 17}px)`,
-              opacity: ptrProgress,
-              transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1), opacity .2s ease",
+              // 초기 idle 값 — 당김 비주얼은 usePullToRefresh 가 ref 로 직접 갱신한다.
+              transform: "translateY(-17px)",
+              opacity: 0,
             }}
           >
             <div
+              ref={ptrBadgeRef}
               style={{
                 width: 34,
                 height: 34,
@@ -799,9 +867,8 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                 boxShadow: "0 4px 14px rgba(20,22,27,.16), 0 0 0 1px rgba(20,22,27,.05)",
                 display: "grid",
                 placeItems: "center",
-                // 당길수록 살짝 커지는 촉각 피드백 — 임계값에서 제 크기.
-                transform: `scale(${0.82 + 0.18 * ptrProgress})`,
-                transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1)",
+                // 당길수록 살짝 커지는 촉각 피드백 — 초기값, 이후 ref 로 갱신.
+                transform: "scale(0.82)",
               }}
             >
               {/* iOS 풍 원형 프로그레스 링 — conic-gradient + radial 마스크로 그린다.
@@ -809,14 +876,13 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                   · 새로고침 중(비결정형): 꼬리가 투명→브랜드로 옅어지는 링이 회전. */}
               <div
                 aria-hidden
-                className={ptrRefreshing ? "animate-spin" : undefined}
+                ref={ptrRingRef}
                 style={{
                   width: 20,
                   height: 20,
                   borderRadius: 999,
-                  background: ptrRefreshing
-                    ? "conic-gradient(transparent, var(--c-brand))"
-                    : `conic-gradient(var(--c-brand) ${ptrProgress * 360}deg, var(--c-border) 0deg)`,
+                  // 초기값(progress 0) — 당김 진행/새로고침 회전은 usePullToRefresh 가 ref 로 갱신.
+                  background: "conic-gradient(var(--c-brand) 0deg, var(--c-border) 0deg)",
                   WebkitMask: "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
                   mask: "radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))",
                 }}
@@ -824,6 +890,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             </div>
           </div>
           <div
+            ref={ptrContentRef}
             className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
             style={{
               // 본문 하단 여백 — 토큰(--hinest-main-pb)으로 분기(styles.css).
@@ -834,8 +901,8 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
               //    max(24px, env(safe-area-inset-bottom)) 로 인디케이터 위에서 끝낸다.
               paddingBottom: "var(--hinest-main-pb)",
               // 당겨서 새로고침 — 콘텐츠가 손가락을 따라 내려오는 촉각 피드백.
-              transform: ptrOffset > 0 ? `translateY(${ptrOffset}px)` : undefined,
-              transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1)",
+              //   transform/transition 은 usePullToRefresh 가 ref 로 직접 갱신한다
+              //   (touchmove 마다 setState→전체 리렌더하던 것을 제거).
             }}
           >
             <RouteVisibilityGate disabled={disabledNav} dev={devNav}>

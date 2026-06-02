@@ -1,0 +1,76 @@
+{
+  "name": "hinest-macos",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HiNest for macOS — Mac App Store (sandboxed) Electron build",
+  "main": "dist/main.js",
+  "author": "HiVits",
+  "scripts": {
+    "clean": "rimraf dist release",
+    "build": "tsc -p tsconfig.json",
+    "dev": "npm run build && cross-env HINEST_DEV=1 electron .",
+    "start": "npm run build && electron .",
+    "pack": "npm run build && electron-builder --dir",
+    "dist:mas-dev": "npm run build && electron-builder --mac mas-dev",
+    "dist:mas": "npm run build && electron-builder --mac mas"
+  },
+  "devDependencies": {
+    "@types/node": "^22.8.4",
+    "cross-env": "^7.0.3",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "rimraf": "^6.1.3",
+    "typescript": "^5.6.3"
+  },
+  "build": {
+    "appId": "com.hivits.hinest",
+    "productName": "HiNest",
+    "asar": true,
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "protocols": [
+      {
+        "name": "HiNest",
+        "schemes": [
+          "hinest"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.business",
+      "icon": "assets/icon.icns",
+      "target": [
+        {
+          "target": "mas",
+          "arch": [
+            "universal"
+          ]
+        }
+      ],
+      "hardenedRuntime": false,
+      "extendInfo": {
+        "NSCameraUsageDescription": "영상 통화에 카메라를 사용합니다.",
+        "NSMicrophoneUsageDescription": "영상·음성 통화에 마이크를 사용합니다.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "mas": {
+      "category": "public.app-category.business",
+      "entitlements": "build/entitlements.mas.plist",
+      "entitlementsInherit": "build/entitlements.mas.inherit.plist",
+      "entitlementsLoginHelper": "build/entitlements.mas.loginhelper.plist",
+      "provisioningProfile": "build/embedded.provisionprofile",
+      "hardenedRuntime": false
+    },
+    "masDev": {
+      "type": "development",
+      "provisioningProfile": "build/development.provisionprofile"
+    }
+  }
+}

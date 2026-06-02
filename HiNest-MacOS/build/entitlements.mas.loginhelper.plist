@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Login Helper 번들용 최소 샌드박스 -->
+    <key>com.apple.security.app-sandbox</key>
+    <true/>
+</dict>
+</plist>

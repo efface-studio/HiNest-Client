@@ -42,12 +42,25 @@
      데스크톱(md+)은 0 — 고정 사이드바를 쓰므로 하단 바가 없다. 모바일에서만 아래
      미디어쿼리로 켜진다. 이 값으로 ① 본문 하단 패딩 ② ChatFab 띄움 높이를 함께 맞춘다. */
   --hinest-bottomnav-h: 0px;
+
+  /* 본문(메인 스크롤 영역) 하단 패딩.
+     · md+ 기본값: 하단 바가 없어 콘텐츠가 직접 iOS 홈 인디케이터(safe-area-inset-bottom)를
+       비워야 한다. 태블릿 단독형 PWA 에서 페이지를 끝까지 스크롤하면 마지막 콘텐츠가
+       하단 세이프라인(노치/홈바)에 가려지던 문제 → max(24px, safe-area)로 항상 인디케이터
+       위에서 끝나고 그 아래(safe-area)는 콘텐츠가 뒤로 지나가게 한다.
+     · 모바일(<md)은 in-flow 하단 바가 safe-area 를 흡수하므로 본문엔 숨 쉴 여백(24px)만 —
+       아래 미디어쿼리에서 덮어쓴다(바 패딩과 이중 여백 방지). */
+  --hinest-main-pb: max(24px, env(safe-area-inset-bottom));
 }
 
 /* Tailwind md 브레이크포인트(768px) 미만 = 사이드바가 드로어로 접히는 구간.
    이때만 하단 탭 바가 뜨므로 높이를 부여한다. */
 @media (max-width: 767.98px) {
-  :root { --hinest-bottomnav-h: 56px; }
+  :root {
+    --hinest-bottomnav-h: 56px;
+    /* 모바일: 하단 바가 safe-area 를 책임지므로 본문은 24px 만(이중 여백 방지). */
+    --hinest-main-pb: 24px;
+  }
 }
 
 html.dark {

@@ -826,10 +826,13 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           <div
             className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
             style={{
-              // 하단 네비게이션 바가 이제 루트 플렉스의 in-flow 형제라 스크롤 영역이 바
-              // 위에서 끝난다(바가 본문을 덮지 않음). 바가 자체 높이+세이프에어리어를
-              // 차지하므로 본문은 마지막 콘텐츠 숨 쉴 여백만 주면 된다. 모바일·데스크톱 공통 24px.
-              paddingBottom: "24px",
+              // 본문 하단 여백 — 토큰(--hinest-main-pb)으로 분기(styles.css).
+              //  · 모바일(<md): in-flow 하단 바가 자체 높이+세이프에어리어를 차지하므로
+              //    스크롤 영역이 바 위에서 끝난다 → 본문은 숨 쉴 여백 24px 만(이중 여백 방지).
+              //  · md+(태블릿 등): 하단 바가 없어 콘텐츠가 화면 바닥까지 닿는다 → 끝까지
+              //    스크롤해도 마지막 콘텐츠가 홈 인디케이터(하단 세이프라인)에 가려지지 않게
+              //    max(24px, env(safe-area-inset-bottom)) 로 인디케이터 위에서 끝낸다.
+              paddingBottom: "var(--hinest-main-pb)",
               // 당겨서 새로고침 — 콘텐츠가 손가락을 따라 내려오는 촉각 피드백.
               transform: ptrOffset > 0 ? `translateY(${ptrOffset}px)` : undefined,
               transition: ptrPull > 0 ? "none" : "transform .25s cubic-bezier(.22,.61,.36,1)",

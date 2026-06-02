@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, clearApiCache } from "./api";
+import { setAuthToken, clearAuthToken } from "./lib/authToken";
 import { requestNotifPermissionOnLogin } from "./lib/notifPermission";
 import { setupIosPush, unregisterIosPush } from "./lib/pushNotifications";
 
@@ -48,9 +49,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const res = await api<{ user: User; impersonator: Impersonator | null }>("/api/me");
       setUser(res.user);
       setImpersonator(res.impersonator ?? null);
-    } catch {
+    } catch (e: any) {
       setUser(null);
       setImpersonator(null);
+      // 네이티브: 저장된 토큰이 만료/무효(401)면 제거 — 다음 로그인 때 새로 받는다.
+      // (일시 네트워크 오류 등 비-401 은 토큰을 지우지 않아 재시도 시 세션 유지.)
+      if (e?.status === 401) clearAuthToken();
     } finally {
       setLoading(false);
     }
@@ -68,10 +72,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   const login = useCallback(async (email: string, password: string) => {
-    const res = await api<{ user: User }>("/api/auth/login", {
+    const res = await api<{ user: User; token?: string }>("/api/auth/login", {
       method: "POST",
       json: { email, password },
     });
+    // 네이티브 앱이면 응답에 세션 토큰이 함께 온다 — 저장해두고 이후 요청에 Bearer 헤더로 보낸다.
+    // setUser 로 인한 리렌더/이펙트(setupIosPush 등)가 돌기 전에 동기적으로 저장. (웹/데스크톱 no-op)
+    setAuthToken(res.token);
     // 토큰 만료 후 logout 을 거치지 않고 다른 계정으로 재로그인할 때 이전 사용자 캐시가
     // 섬광처럼 보이는 것을 방지. logout 에서와 동일하게 세션 캐시를 싹 비움.
     clearApiCache();
@@ -83,10 +90,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signup = useCallback(async (d: { inviteKey: string; email: string; name: string; password: string }) => {
-    const res = await api<{ user: User }>("/api/auth/signup", {
+    const res = await api<{ user: User; token?: string }>("/api/auth/signup", {
       method: "POST",
       json: d,
     });
+    setAuthToken(res.token);
     clearApiCache();
     setUser(res.user);
     // 가입(=최초 로그인) 직후에도 동일하게 알림 권한 요청.
@@ -98,6 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window !== "undefined" && (window as any).__HINEST_PREVIEW__) {
       const m = await import("./lib/previewMock");
       m.disablePreview();
+      clearAuthToken();
       setUser(null);
       setImpersonator(null);
       clearApiCache();
@@ -107,6 +116,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // iOS 푸시 토큰 해제 — 세션이 살아있을 때(로그아웃 API 호출 전) 보내야 401 이 안 난다. iOS 외엔 no-op.
     await unregisterIosPush();
     await api("/api/auth/logout", { method: "POST" });
+    // 로그아웃 API 호출(세션 revoke) 이 끝난 뒤에 토큰 제거 — 먼저 지우면 그 요청이 401 난다.
+    clearAuthToken();
     setUser(null);
     // 다른 사용자가 로그인했을 때 이전 사용자의 프로젝트/캘린더가 깜빡 보이는 사고 방지.
     clearApiCache();

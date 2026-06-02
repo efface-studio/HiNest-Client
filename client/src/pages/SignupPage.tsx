@@ -36,7 +36,8 @@ export default function SignupPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
-      <header className="px-6 pt-8 pb-4 flex items-center">
+      {/* iOS 노치 회피 — 고정 pt-8 대신 env(safe-area-inset-top) 가산 (LoginPage 와 동일). */}
+      <header className="px-6 pb-4 flex items-center" style={{ paddingTop: "calc(env(safe-area-inset-top) + 2rem)" }}>
         <BrandLockup height={36} />
       </header>
 

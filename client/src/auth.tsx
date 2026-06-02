@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, clearApiCache } from "./api";
 import { requestNotifPermissionOnLogin } from "./lib/notifPermission";
+import { setupIosPush, unregisterIosPush } from "./lib/pushNotifications";
 
 export type User = {
   id: string;
@@ -59,6 +60,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
+  // iOS 원격 푸시(APNs) 등록 — 로그인·회원가입뿐 아니라 세션 복원(앱 재실행) 시에도
+  // 토큰을 재등록하고 탭→이동 리스너를 다시 건다. setupIosPush 는 멱등이며 iOS 외엔 no-op.
+  // user.id 가 바뀔 때만(=로그인/계정전환) 1회 실행 — 매 리렌더마다 register() 가 불리지 않게.
+  useEffect(() => {
+    if (user?.id) void setupIosPush();
+  }, [user?.id]);
+
   const login = useCallback(async (email: string, password: string) => {
     const res = await api<{ user: User }>("/api/auth/login", {
       method: "POST",
@@ -96,6 +104,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.location.href = "/login";
       return;
     }
+    // iOS 푸시 토큰 해제 — 세션이 살아있을 때(로그아웃 API 호출 전) 보내야 401 이 안 난다. iOS 외엔 no-op.
+    await unregisterIosPush();
     await api("/api/auth/logout", { method: "POST" });
     setUser(null);
     // 다른 사용자가 로그인했을 때 이전 사용자의 프로젝트/캘린더가 깜빡 보이는 사고 방지.

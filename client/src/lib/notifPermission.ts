@@ -20,7 +20,7 @@
  * 한 번 물어보면(허용/거부 무관) 다시 묻지 않도록 localStorage 플래그로 가드한다.
  * (요청이 예외로 실패하면 플래그를 세우지 않아 다음 로그인에서 재시도)
  */
-import { isCapacitorNative, isDesktopApp } from "./platform";
+import { isCapacitorNative, isDesktopApp, nativePlatform } from "./platform";
 
 const ASKED_KEY = "hinest.notif.askedOnLogin";
 
@@ -55,7 +55,12 @@ export async function requestNotifPermissionOnLogin(): Promise<void> {
 
   try {
     if (isCapacitorNative()) {
-      // iOS/Android — 네이티브 로컬 알림 권한 (동적 import 로 웹/데스크톱 번들엔 미포함)
+      if (nativePlatform() === "ios") {
+        // iOS 는 원격 푸시(APNs) 경로가 권한 요청+토큰 등록을 모두 담당한다.
+        // (auth.tsx 의 user effect → setupIosPush). 여기선 중복 요청하지 않음.
+        return;
+      }
+      // Android — 네이티브 로컬 알림 권한 (원격 FCM 은 추후). 동적 import 로 웹/데스크톱 번들엔 미포함.
       const { LocalNotifications } = await import("@capacitor/local-notifications");
       await LocalNotifications.requestPermissions();
       markAsked();

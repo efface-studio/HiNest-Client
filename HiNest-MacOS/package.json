@@ -13,7 +13,7 @@
     "pack": "npm run build && electron-builder --dir",
     "preflight:mas": "bash scripts/preflight-mas.sh",
     "dist:mas-dev": "npm run build && electron-builder --mac mas-dev",
-    "dist:mas": "npm run preflight:mas && npm run build && electron-builder --mac mas"
+    "dist:mas": "npm run preflight:mas && npm run build && electron-builder --mac mas --universal"
   },
   "devDependencies": {
     "@types/node": "^22.8.4",

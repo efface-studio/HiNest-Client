@@ -115,6 +115,17 @@ html.hinest-shell-lock {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  /*
+   * 하단바 "떠 보임" 방지(2차 방어선) — 셸이 떠 있는 동안 캔버스/문서 배경을 네비바와
+   * 같은 surface 색으로 칠한다. inset:0 으로 body 를 화면 네 변에 고정해도, 일부 iOS
+   * 단독형(standalone) PWA 빌드는 하단에서 1~Npx 의 seam(이음새)을 남긴다. 그 틈으로
+   * 그동안 캔버스 배경(--c-bg: 라이트 #F5F6F8 / 다크 #0E1014)이 비쳤는데, 네비 surface
+   * 색(라이트 #FFFFFF / 다크 #171A20)과 달라 "하단바 밑에 빈 공간(떠 있음)" 으로 보였다.
+   * 배경을 surface 로 맞추면 seam 이 남아도 네비와 같은 색이라 시각적으로 사라진다.
+   * 셸 위(상단·콘텐츠)는 자식 요소가 모두 덮으므로 이 배경은 오직 seam 에서만 드러난다.
+   * (공개 페이지는 .hinest-shell-lock 이 안 붙으므로 기존 --c-bg 그대로.)
+   */
+  background: var(--c-surface);
 }
 html.hinest-shell-lock body {
   position: fixed;
@@ -131,6 +142,8 @@ html.hinest-shell-lock body {
   inset: 0;
   overflow: hidden;
   overscroll-behavior: none;
+  /* body 가 seam 의 직접 원인일 때를 위해 같은 surface 색으로 한 번 더 맞춘다. */
+  background: var(--c-surface);
 }
 
 /* 라우트 전환 페이드 — 셸(상단바·하단바)은 유지된 채 본문만 부드럽게 나타난다.

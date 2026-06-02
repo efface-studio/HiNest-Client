@@ -21,7 +21,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
  * appId 는 본인의 Apple Developer / Google Play 번들 ID 로 반드시 교체할 것.
  */
 const config: CapacitorConfig = {
-  appId: "dev.efface.hinest.ios",
+  appId: "com.hivits.hinest",
   appName: "HiNest",
   webDir: "dist",
   // 안드로이드 기본 스킴을 https 로 — Secure 쿠키/Service Worker 가 정상 동작하도록.

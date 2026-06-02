@@ -1338,7 +1338,7 @@ function AttachmentThumb({
       <div className={box} style={{ width: 112, height: 112 }}>
         <a href={safeHref} target="_blank" rel="noreferrer" title={att.name}>
           <img
-            src={safeHref}
+            src={imgSrc(safeHref)}
             alt={att.name}
             className="w-full h-full object-cover"
             loading="lazy"
@@ -1360,7 +1360,7 @@ function AttachmentThumb({
     return (
       <div className={box} style={{ width: 180, height: 112 }}>
         <video
-          src={safeHref}
+          src={imgSrc(safeHref)}
           className="w-full h-full object-cover"
           controls
           preload="metadata"

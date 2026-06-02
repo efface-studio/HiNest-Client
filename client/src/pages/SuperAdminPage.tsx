@@ -888,8 +888,8 @@ function AuditAttachment({ msg }: { msg: Message }) {
   // /uploads/ 경로만 허용 — 비정상 스킴(javascript:/data:)이 src/href 로 들어가는 것을 방어.
   const fileUrl = safeUploadUrl(msg.fileUrl);
   if (!fileUrl) return null;
-  if (msg.kind === "IMAGE") return <img src={fileUrl} alt={msg.fileName ?? ""} loading="lazy" decoding="async" className="max-h-56 rounded mb-1" />;
-  if (msg.kind === "VIDEO") return <video src={fileUrl} controls className="max-h-56 rounded mb-1" />;
+  if (msg.kind === "IMAGE") return <img src={imgSrc(fileUrl)} alt={msg.fileName ?? ""} loading="lazy" decoding="async" className="max-h-56 rounded mb-1" />;
+  if (msg.kind === "VIDEO") return <video src={imgSrc(fileUrl)} controls className="max-h-56 rounded mb-1" />;
   return (
     <a href={fileUrl} target="_blank" rel="noreferrer"
       className="flex items-center gap-2 p-2 rounded-md mb-1 bg-ink-50 border border-ink-200 no-underline">

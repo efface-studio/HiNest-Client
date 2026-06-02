@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api, apiFetch } from "../api";
+import { api, apiFetch, imgSrc } from "../api";
 import { useAuth } from "../auth";
 import { useNotifications } from "../notifications";
 import { resolvePresence } from "../lib/presence";
@@ -1566,7 +1566,7 @@ function SharedMediaTabs({ messages }: { messages: Message[] }) {
                   title={m.fileName ?? ""}
                 >
                   <img
-                    src={url}
+                    src={imgSrc(url)}
                     alt={m.fileName ?? ""}
                     loading="lazy"
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
@@ -1594,7 +1594,7 @@ function SharedMediaTabs({ messages }: { messages: Message[] }) {
                   title={m.fileName ?? ""}
                 >
                   <video
-                    src={url}
+                    src={imgSrc(url)}
                     preload="metadata"
                     style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
                   />

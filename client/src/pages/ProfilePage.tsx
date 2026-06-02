@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, invalidateCache, clearApiCache, apiFetch } from "../api";
+import { api, invalidateCache, clearApiCache, apiFetch , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { useTheme, type ThemeMode } from "../theme";
@@ -168,7 +168,7 @@ export default function ProfilePage() {
             <div className="flex items-center gap-3">
               {avatarUrl ? (
                 <img
-                  src={avatarUrl}
+                  src={imgSrc(avatarUrl)}
                   alt={name}
                   className="w-16 h-16 rounded-full object-cover border border-ink-150" loading="lazy" decoding="async"/>
               ) : (
@@ -216,7 +216,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-3">
                   {avatarUrl ? (
                     <img
-                      src={avatarUrl}
+                      src={imgSrc(avatarUrl)}
                       alt="프로필"
                       className="w-14 h-14 rounded-full object-cover border border-ink-150" loading="lazy" decoding="async"/>
                   ) : (

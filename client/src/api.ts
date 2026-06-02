@@ -39,6 +39,26 @@ export function apiFetch(path: string, init: RequestInit = {}): Promise<Response
   });
 }
 
+/**
+ * <img>/<video> 처럼 헤더를 못 싣는 태그의 src 변환 — 주로 /uploads 이미지(아바타·첨부).
+ *
+ * 두 가지를 해결한다:
+ *  1) 상대경로(/uploads/..)를 절대 URL 로 — 네이티브 WebView(origin https://localhost)에선
+ *     상대경로가 자기 origin 으로 새서 안 닿으므로 apiUrl 로 API 오리진을 붙인다.
+ *  2) 네이티브면 ?token=<jwt> 를 덧붙인다 — /uploads 는 requireAuth 인데 <img> 는 헤더를
+ *     못 싣고 네이티브 쿠키는 ITP 에 막히므로, 쿼리 토큰으로 인증한다(서버가 허용·로그 마스킹).
+ *
+ * 절대 URL(http/https)·data:·blob: 은 그대로 통과. 웹/데스크톱은 토큰이 없어 기존과 동일.
+ */
+export function imgSrc(url?: string | null): string | undefined {
+  if (!url) return undefined;
+  if (/^(https?:|data:|blob:)/i.test(url)) return url;
+  const abs = apiUrl(url);
+  const t = getAuthToken(); // 네이티브에서만 값이 있음
+  if (!t) return abs;
+  return abs + (abs.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(t);
+}
+
 export async function api<T = any>(
   path: string,
   init: RequestInit & { json?: any } = {}

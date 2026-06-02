@@ -8,7 +8,7 @@
  */
 import { createPortal } from "react-dom";
 import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync } from "./ConfirmHost";
 
@@ -322,7 +322,7 @@ export default function DocMemoModal({
                   style={{ background: doc.author?.avatarUrl ? "transparent" : (doc.author?.avatarColor ?? "#6B7280") }}
                 >
                   {doc.author?.avatarUrl
-                    ? <img src={doc.author.avatarUrl} alt={doc.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
+                    ? <img src={imgSrc(doc.author.avatarUrl)} alt={doc.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                     : (doc.author?.name?.[0] ?? "?")
                   }
                 </div>
@@ -428,7 +428,7 @@ export default function DocMemoModal({
                             >
                               <div className="w-5 h-5 rounded grid place-items-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden"
                                 style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#6B7280") }}>
-                                {u.avatarUrl ? <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async" /> : u.name[0]}
+                                {u.avatarUrl ? <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async" /> : u.name[0]}
                               </div>
                               <span className="text-[12px] text-ink-800 font-semibold">
                                 {u.name}

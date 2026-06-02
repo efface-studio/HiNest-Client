@@ -1,5 +1,5 @@
 import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { getHoliday } from "../lib/holidays";
@@ -898,7 +898,7 @@ function EventModal({
                             style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3B5CF0") }}
                           >
                             {u.avatarUrl ? (
-                              <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                              <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                             ) : (
                               u.name[0]
                             )}
@@ -955,7 +955,7 @@ function EventModal({
                             style={{ background: u.avatarUrl ? "transparent" : (u.avatarColor ?? "#3B5CF0") }}
                           >
                             {u.avatarUrl ? (
-                              <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                              <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                             ) : (
                               u.name[0]
                             )}

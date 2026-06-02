@@ -3,6 +3,7 @@
  * ChatMiniApp 분할 과정에서 중복 유틸을 모아둠.
  */
 import type { Room } from "./types";
+import { imgSrc } from "../../api";
 
 /**
  * 채팅 팔레트 — 모두 CSS 변수 매핑으로 라이트/다크 자동 전환.
@@ -213,7 +214,7 @@ export function Avatar({
       >
         {imageUrl ? (
           <img
-            src={imageUrl}
+            src={imgSrc(imageUrl)}
             alt={name}
             style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} loading="lazy" decoding="async"/>
         ) : (

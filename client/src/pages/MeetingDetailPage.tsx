@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, apiSWR } from "../api";
+import { api, apiSWR , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import PinButton from "../components/PinButton";
@@ -316,7 +316,7 @@ export default function MeetingDetailPage() {
         <span className="inline-flex items-center gap-1.5">
           <span className="avatar avatar-xs overflow-hidden" style={{ background: meeting.author.avatarUrl ? "transparent" : meeting.author.avatarColor }}>
             {meeting.author.avatarUrl ? (
-              <img src={meeting.author.avatarUrl} alt={meeting.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+              <img src={imgSrc(meeting.author.avatarUrl)} alt={meeting.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
             ) : (
               meeting.author.name[0]
             )}
@@ -490,7 +490,7 @@ function ViewerPicker({
                 style={{ background: u.avatarUrl ? "transparent" : u.avatarColor }}
               >
                 {u.avatarUrl ? (
-                  <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                  <img src={imgSrc(u.avatarUrl)} alt={u.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                 ) : (
                   u.name[0]
                 )}

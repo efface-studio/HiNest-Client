@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { api, apiFetch } from "../api";
+import { api, apiFetch , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
@@ -762,7 +762,7 @@ function AccountCard({
                     style={{ background: a.ownerUser.avatarUrl ? "transparent" : a.ownerUser.avatarColor }}
                   >
                     {a.ownerUser.avatarUrl ? (
-                      <img src={a.ownerUser.avatarUrl} alt={a.ownerUser.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                      <img src={imgSrc(a.ownerUser.avatarUrl)} alt={a.ownerUser.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                     ) : (
                       a.ownerUser.name[0]
                     )}

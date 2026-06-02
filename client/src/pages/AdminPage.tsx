@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import PageHeader from "../components/PageHeader";
 import { downloadCSV, downloadXLSX, openPrintable, parseSheet, type TableColumn } from "../lib/exportTable";
 import DatePicker from "../components/DatePicker";
@@ -1573,7 +1573,7 @@ function UserAvatar({ name, color, imageUrl }: { name: string; color: string; im
     <div className="w-9 h-9 rounded-full grid place-items-center text-white text-[13px] font-extrabold flex-shrink-0 overflow-hidden"
       style={{ background: imageUrl ? "transparent" : color, letterSpacing: "-0.02em" }}>
       {imageUrl ? (
-        <img src={imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+        <img src={imgSrc(imageUrl)} alt={name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
       ) : (
         name?.[0] ?? "?"
       )}

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { apiSWR } from "../api";
+import { apiSWR , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import ProjectCalendar from "../components/ProjectCalendar";
@@ -192,7 +192,7 @@ export default function ProjectPage() {
                   title={m.user.name}
                 >
                   {m.user.avatarUrl ? (
-                    <img src={m.user.avatarUrl} alt={m.user.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                    <img src={imgSrc(m.user.avatarUrl)} alt={m.user.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                   ) : (
                     m.user.name[0]
                   )}

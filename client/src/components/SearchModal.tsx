@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { api } from "../api";
+import { api , imgSrc} from "../api";
 import { alertAsync } from "./ConfirmHost";
 
 type Results = {
@@ -347,7 +347,7 @@ function Avatar({ name, color, imageUrl }: { name: string; color: string; imageU
   return (
     <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold overflow-hidden" style={{ background: imageUrl ? "transparent" : color, letterSpacing: "-0.02em" }}>
       {imageUrl ? (
-        <img src={imageUrl} alt={name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+        <img src={imgSrc(imageUrl)} alt={name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
       ) : (
         name?.[0] ?? "?"
       )}

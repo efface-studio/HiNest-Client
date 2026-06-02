@@ -93,9 +93,25 @@ export const NATIVE_ORIGINS = (process.env.CAPACITOR_ORIGINS ?? "capacitor://loc
   .map((s) => s.trim())
   .filter(Boolean);
 
-function isNativeOrigin(req?: Request): boolean {
+export function isNativeOrigin(req?: Request): boolean {
   const o = req?.headers?.origin;
   return !!o && NATIVE_ORIGINS.includes(o);
+}
+
+/**
+ * Authorization: Bearer <jwt> 헤더에서 세션 토큰 추출.
+ *
+ * 네이티브 앱(Capacitor WebView)은 origin 이 https://localhost 라, 다른 도메인인 API 서버가
+ * 발급한 세션 쿠키가 cross-site(third-party)로 취급돼 iOS WKWebView 의 추적 방지(ITP)에
+ * 막힌다 — 로그인 직후엔 메모리로 동작하지만 새로고침하면 쿠키 없이 /api/me 가 호출돼 401 →
+ * 로그아웃. 그래서 네이티브는 쿠키 대신 Bearer 헤더로 같은 JWT 를 보낸다. 웹/데스크톱은
+ * 헤더가 없으므로 기존 httpOnly 쿠키 경로를 그대로 탄다(동작 변화 없음).
+ */
+function bearerToken(req: Request): string | undefined {
+  const h = req.headers?.authorization;
+  if (!h) return undefined;
+  const m = /^Bearer\s+(.+)$/i.exec(h);
+  return m ? m[1].trim() : undefined;
 }
 
 // 네이티브 origin 이면 cross-site 쿠키(None;Secure), 아니면 기존 Lax 베이스.
@@ -150,7 +166,8 @@ export function clearAuthCookie(res: Response, req?: Request) {
 }
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
-  const token = req.cookies?.[COOKIE];
+  // 네이티브 앱은 Bearer 헤더, 웹/데스크톱은 httpOnly 쿠키. 헤더 우선, 없으면 쿠키 폴백.
+  const token = bearerToken(req) ?? req.cookies?.[COOKIE];
   if (!token) return res.status(401).json({ error: "unauthorized" });
   try {
     const payload = jwt.verify(token, SECRET) as any;

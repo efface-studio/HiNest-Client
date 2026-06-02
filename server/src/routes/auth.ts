@@ -20,6 +20,7 @@ import {
   requireSuperAdminStepUp,
   createSession,
   evictSessionCache,
+  isNativeOrigin,
 } from "../lib/auth.js";
 
 const router = Router();
@@ -157,6 +158,10 @@ router.post("/login", async (req, res) => {
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
     },
+    // 네이티브 앱(Capacitor)은 cross-site 쿠키가 ITP 에 막혀 새로고침 시 세션이 끊긴다.
+    // 네이티브 origin 일 때만 세션 JWT 를 본문으로 함께 내려, 클라가 저장해 Authorization
+    // 헤더로 보낸다. 웹/데스크톱은 토큰을 본문에 노출하지 않음(httpOnly 쿠키만 사용).
+    ...(isNativeOrigin(req) ? { token } : {}),
   });
 });
 
@@ -284,6 +289,8 @@ router.post("/signup", async (req, res) => {
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
     },
+    // 로그인과 동일 — 네이티브 origin 에만 세션 토큰을 본문으로 함께 내린다.
+    ...(isNativeOrigin(req) ? { token } : {}),
   });
 });
 

@@ -39,7 +39,7 @@ export default function PayrollPage() {
     if (!isAdmin) return; // /employees 는 ADMIN 전용 — 직원은 호출하지 않음(403 방지).
     let alive = true;
     api<{ employees: EmployeeOption[] }>("/api/payslip/employees")
-      .then((r) => alive && setEmployees(r.employees))
+      .then((r) => alive && setEmployees(Array.isArray(r?.employees) ? r.employees : []))
       .catch(() => {});
     return () => { alive = false; };
   }, [isAdmin]);
@@ -53,7 +53,7 @@ export default function PayrollPage() {
     if (month) q.set("month", String(month));
     if (employeeId) q.set("employeeId", employeeId);
     api<{ payslips: Payslip[] }>(`/api/payslip?${q.toString()}`)
-      .then((r) => { if (alive) { setList(r.payslips); setLoading(false); } })
+      .then((r) => { if (alive) { setList(Array.isArray(r?.payslips) ? r.payslips : []); setLoading(false); } })
       .catch(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, [year, month, employeeId]);
@@ -64,7 +64,7 @@ export default function PayrollPage() {
     if (month) q.set("month", String(month));
     if (employeeId) q.set("employeeId", employeeId);
     api<{ payslips: Payslip[] }>(`/api/payslip?${q.toString()}`)
-      .then((r) => setList(r.payslips))
+      .then((r) => setList(Array.isArray(r?.payslips) ? r.payslips : []))
       .catch(() => {});
   }
 

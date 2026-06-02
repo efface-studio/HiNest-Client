@@ -288,7 +288,14 @@ export default function DocMemoModal({
 
         {/* ===== 본문 ===== */}
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="max-w-[740px] mx-auto px-6 md:px-10 pt-10 pb-16">
+          {/* 풀스크린 패널이 화면 바닥(bottom-0)까지 닿으므로, 끝까지 스크롤했을 때 마지막
+              콘텐츠가 iOS 홈 인디케이터(하단 세이프라인)에 가려지지 않게 safe-area 만큼 더
+              비운다. 기존 pb-16(4rem)을 하한으로 유지해 안전영역이 없는 기기(데스크톱 등)
+              에서도 동일한 여백을 보장. */}
+          <div
+            className="max-w-[740px] mx-auto px-6 md:px-10 pt-10"
+            style={{ paddingBottom: "max(4rem, calc(2rem + env(safe-area-inset-bottom)))" }}
+          >
 
             {/* ── 대제목 ── */}
             {editMode ? (

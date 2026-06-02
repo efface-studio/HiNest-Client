@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { api, clearApiCache } from "./api";
+import { requestNotifPermissionOnLogin } from "./lib/notifPermission";
 
 export type User = {
   id: string;
@@ -67,6 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 섬광처럼 보이는 것을 방지. logout 에서와 동일하게 세션 캐시를 싹 비움.
     clearApiCache();
     setUser(res.user);
+    // 로그인 직후 알림 권한 요청(iOS/macOS 등 설치형 앱). 라우팅을 막지 않도록 fire-and-forget.
+    void requestNotifPermissionOnLogin();
     // 호출부(LoginPage)가 superAdmin 여부로 진입 경로를 정할 수 있도록 사용자 객체를 반환.
     return res.user;
   }, []);
@@ -78,6 +81,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     clearApiCache();
     setUser(res.user);
+    // 가입(=최초 로그인) 직후에도 동일하게 알림 권한 요청.
+    void requestNotifPermissionOnLogin();
   }, []);
 
   const logout = useCallback(async () => {

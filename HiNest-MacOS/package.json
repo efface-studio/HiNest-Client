@@ -1,6 +1,6 @@
 {
   "name": "hinest-macos",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "description": "HiNest for macOS — Mac App Store (sandboxed) Electron build",
   "main": "dist/main.js",

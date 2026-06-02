@@ -1,5 +1,6 @@
 import { prisma } from "./db.js";
 import { publish } from "./sse.js";
+import { sendApnsToUser } from "./apns.js";
 
 export type NotifyType =
   | "NOTICE"
@@ -52,7 +53,11 @@ export async function notify(input: NotifyInput) {
     const d = map.get(input.userId);
     if (d && !d.allowed) return;
     const created = await prisma.notification.create({ data: input });
-    if (!d || d.allowPush) publish(input.userId, "notification", created);
+    if (!d || d.allowPush) {
+      publish(input.userId, "notification", created);
+      // 원격 푸시(iOS APNs) — fire-and-forget. 미설정/토큰없음이면 내부 no-op.
+      void sendApnsToUser(input.userId, { title: input.title, body: input.body, linkUrl: input.linkUrl });
+    }
   } catch (e) {
     console.error("notify failed", e);
   }
@@ -103,6 +108,8 @@ export async function notifyMany(inputs: NotifyInput[]) {
     for (const [uid, n] of picked) {
       if (pushFlag.get(`${uid}:${n.type as NotifyType}`) !== false) {
         publish(uid, "notification", n);
+        // 원격 푸시(iOS APNs) — fire-and-forget. 미설정/토큰없음이면 내부 no-op.
+        void sendApnsToUser(uid, { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined });
       }
     }
   } catch (e) {

@@ -13,6 +13,35 @@ isPreviewMode();
 
 // iOS Safari 는 user-scalable=no 를 무시하므로 제스처/더블탭 확대를 JS 로 차단.
 if (typeof window !== "undefined") {
+  // ─────────────────────────────────────────────────────────────
+  // 동적 청크 로드 실패 자동 복구 — iOS 단독형 PWA 옛 번들 고착 대응.
+  // ─────────────────────────────────────────────────────────────
+  // 새 배포가 나오면 해시된 청크 파일명이 바뀐다. 앱을 켜둔 채(특히 iOS
+  // standalone PWA)로 옛 index/엔트리를 들고 있는 인스턴스가 "아직 한 번도
+  // 안 들어간 라우트"로 이동하면, 옛 해시의 청크를 import() 하다 404 로
+  // 실패하고 React.lazy 가 reject → ErrorBoundary("페이지 표시 중 문제")가 뜬다.
+  // (대표적으로 자주 안 들어가는 급여명세서 같은 페이지에서 먼저 드러남.)
+  //
+  // 대응: Vite 의 vite:preloadError(동적 import 프리로드 실패) 를 잡아 1회만
+  // 새로고침한다. SW 가 navigation 요청을 no-store 로 처리해 항상 최신
+  // index.html(=최신 청크 해시)을 받으므로 reload 한 번으로 복구된다.
+  // 무한 새로고침 방지: 10초 창 안에서는 재시도하지 않고 에러를 그대로
+  // 흘려보내(기본 동작) ErrorBoundary 가 뜨게 한다 — 진짜로 청크가 사라진
+  // 경우(네트워크 장애 등)에 reload 루프로 빠지지 않도록.
+  // 로컬(dev)에서는 HMR 과 충돌하지 않도록 등록하지 않는다.
+  if (!/localhost|127\.0\.0\.1/.test(window.location.hostname)) {
+    window.addEventListener("vite:preloadError", () => {
+      const KEY = "hinest:chunk-reload-ts";
+      let last = 0;
+      try { last = Number(sessionStorage.getItem(KEY) || 0); } catch {}
+      if (Date.now() - last > 10_000) {
+        try { sessionStorage.setItem(KEY, String(Date.now())); } catch {}
+        window.location.reload();
+      }
+      // 10초 내 재발이면 reload 생략 → 기본 동작으로 ErrorBoundary 표시.
+    });
+  }
+
   // 핀치 줌 (iOS)
   document.addEventListener("gesturestart", (e) => e.preventDefault());
   document.addEventListener("gesturechange", (e) => e.preventDefault());

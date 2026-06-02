@@ -28,7 +28,15 @@ const KEY_RAW = process.env.APNS_KEY;
 const KEY_ID = process.env.APNS_KEY_ID;
 const TEAM_ID = process.env.APNS_TEAM_ID;
 const BUNDLE_ID = process.env.APNS_BUNDLE_ID || "com.hivits.hinest";
-const PRODUCTION = /^(1|true|yes)$/i.test(process.env.APNS_PRODUCTION || "");
+// APNs 게이트웨이 선택. TestFlight·App Store 로 배포된 앱은 production APNs 를 쓰므로,
+// 운영 배포(NODE_ENV=production)에선 production 게이트웨이를 기본값으로 한다.
+// APNS_PRODUCTION 을 명시하면 그 값이 우선 — 운영에서 sandbox 로 강제하거나(0/false),
+// 로컬에서 운영 키로 테스트할 때(1/true) 오버라이드용.
+const APNS_PROD_RAW = process.env.APNS_PRODUCTION;
+const PRODUCTION =
+  APNS_PROD_RAW != null && APNS_PROD_RAW !== ""
+    ? /^(1|true|yes)$/i.test(APNS_PROD_RAW)
+    : process.env.NODE_ENV === "production";
 const HOST = PRODUCTION ? "https://api.push.apple.com" : "https://api.sandbox.push.apple.com";
 
 export function apnsEnabled(): boolean {

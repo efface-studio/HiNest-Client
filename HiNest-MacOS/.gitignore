@@ -1,0 +1,10 @@
+node_modules
+dist
+release
+*.log
+
+# 서명/제출 비밀 자료 — 절대 커밋 금지 (Apple 개발자 계정별 고유)
+*.provisionprofile
+*.p12
+*.cer
+*.mobileprovision

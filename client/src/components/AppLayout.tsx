@@ -959,7 +959,11 @@ function BottomNav({ items }: { items: NavItem[] }) {
         // 테마 변수로 칠해 다크 모드에서도 자연스럽게(이전엔 bg-white 고정이라 다크에서 깨졌음).
         background: "var(--c-surface)",
         borderTop: "1px solid var(--c-border)",
-        paddingBottom: "env(safe-area-inset-bottom)",
+        // 홈 인디케이터 회피용 하단 여백 — 단, 전체 safe-area(노치 기기 ~34px)를 그대로
+        // 비워두면 네비가 surface 색으로 칠해진 뒤(하단 seam 수정) 그 빈 영역까지 바의
+        // 일부로 보여 바가 과하게 높아 보인다. 인디케이터 클리어런스는 유지하되(>=~26px)
+        // 8px 만 덜어 빈 공간을 줄인다. safe-area 가 없는 기기(env=0)는 0 으로 떨어진다.
+        paddingBottom: "max(env(safe-area-inset-bottom) - 8px, 0px)",
         boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
       }}
       aria-label="주요 메뉴"
@@ -1015,7 +1019,9 @@ function BottomNavTab({
         "text-[10.5px] font-bold tracking-tight leading-none [&_svg]:w-[22px] [&_svg]:h-[22px]"
       }
       style={({ isActive }) => ({
-        height: 56,
+        // 탭 한 칸 높이 — iOS 기본 탭바(49pt)에 맞춰 50px. (이전 56px 은 살짝 높았다.)
+        // 터치 타깃은 셀 전체(flex-1 × 50px)라 Apple HIG 최소 44pt 이상 유지.
+        height: 50,
         color: isActive ? "var(--c-brand)" : "var(--c-text-3)",
       })}
     >

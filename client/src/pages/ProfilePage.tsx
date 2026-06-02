@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, invalidateCache, clearApiCache, apiUrl } from "../api";
+import { api, invalidateCache, clearApiCache, apiFetch } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { useTheme, type ThemeMode } from "../theme";
@@ -110,7 +110,7 @@ export default function ProfilePage() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const r = await fetch(apiUrl("/api/upload"), { method: "POST", body: form, credentials: "include" });
+      const r = await apiFetch("/api/upload", { method: "POST", body: form });
       if (!r.ok) {
         const msg = await r.json().catch(() => ({}));
         throw new Error((msg as any)?.error ?? "업로드 실패");

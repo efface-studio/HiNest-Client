@@ -14,7 +14,7 @@ import { prisma } from "./db.js";
  *                    env 에 PEM 을 통째로 넣을 땐 줄바꿈이 "\n" 으로 이스케이프되어 들어오므로 복원한다.
  *   APNS_KEY_ID      필수 — .p8 키의 Key ID (10자, 예: "ABC123DEFG")
  *   APNS_TEAM_ID     필수 — Apple Developer Team ID (10자)
- *   APNS_BUNDLE_ID   선택 — 앱 번들 ID. 기본 "com.hinest.app" (apns-topic 로 사용)
+ *   APNS_BUNDLE_ID   선택 — 앱 번들 ID. 기본 "efface.hinest.ios" (apns-topic 로 사용)
  *   APNS_PRODUCTION  선택 — "1"/"true" 면 운영 게이트웨이, 아니면 샌드박스.
  *
  * 미설정 시: apnsEnabled() 가 false 를 반환하고 sendApnsToUser() 는 조용히 no-op.
@@ -27,7 +27,7 @@ import { prisma } from "./db.js";
 const KEY_RAW = process.env.APNS_KEY;
 const KEY_ID = process.env.APNS_KEY_ID;
 const TEAM_ID = process.env.APNS_TEAM_ID;
-const BUNDLE_ID = process.env.APNS_BUNDLE_ID || "com.hinest.app";
+const BUNDLE_ID = process.env.APNS_BUNDLE_ID || "efface.hinest.ios";
 const PRODUCTION = /^(1|true|yes)$/i.test(process.env.APNS_PRODUCTION || "");
 const HOST = PRODUCTION ? "https://api.push.apple.com" : "https://api.sandbox.push.apple.com";
 

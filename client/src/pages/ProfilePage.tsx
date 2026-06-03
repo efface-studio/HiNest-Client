@@ -945,6 +945,8 @@ function PresencePanel() {
       setSavedAt(Date.now());
       // /api/me 로 사용자 새로고침 → 다른 패널/페이지에도 반영
       await refresh?.();
+      // 디렉터리/조직도/채팅이 보는 /api/users 캐시도 무효화 — presence 가 거기 임베드됨.
+      invalidateCache("/api/users");
     } catch (e: any) {
       setErrMsg(e?.message ?? "저장 실패");
     } finally {

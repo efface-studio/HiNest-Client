@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { api , imgSrc} from "../api";
+import { api, imgSrc, invalidateCache } from "../api";
 import PageHeader from "../components/PageHeader";
 import { downloadCSV, downloadXLSX, openPrintable, parseSheet, type TableColumn } from "../lib/exportTable";
 import DatePicker from "../components/DatePicker";
@@ -1873,12 +1873,14 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
     if (!n) return;
     try {
       await api("/api/admin/positions", { method: "POST", json: { name: n } });
+      invalidateCache("/api/admin/positions"); // 조직도(OrgChart)가 보는 캐시 무효화
       setName("");
       reload();
     } catch (e: any) { alertAsync({ title: "생성 실패", description: e.message }); }
   }
   async function rename(p: Position, newName: string) {
     await api(`/api/admin/positions/${p.id}`, { method: "PATCH", json: { name: newName } });
+    invalidateCache("/api/admin/positions");
     reload();
   }
   async function remove(p: Position) {
@@ -1891,6 +1893,7 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
     if (!ok) return;
     try {
       await api(`/api/admin/positions/${p.id}`, { method: "DELETE" });
+      invalidateCache("/api/admin/positions");
       reload();
     } catch (e: any) { alertAsync({ title: "삭제 실패", description: e.message }); }
   }
@@ -1898,6 +1901,7 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
   async function persistOrder(next: Position[]) {
     try {
       await api("/api/admin/positions/reorder", { method: "POST", json: { ids: next.map((p) => p.id) } });
+      invalidateCache("/api/admin/positions");
     } catch (e: any) {
       alertAsync({ title: "정렬 저장 실패", description: e.message });
       reload(); // 서버 상태로 복구

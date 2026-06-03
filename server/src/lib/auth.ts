@@ -165,6 +165,20 @@ export function clearAuthCookie(res: Response, req?: Request) {
   res.clearCookie(COOKIE, cookieBase(req));
 }
 
+/**
+ * ?token= 쿼리를 Authorization: Bearer 로 승격(헤더·쿠키가 없을 때만).
+ * <img>·EventSource 처럼 커스텀 헤더를 못 싣는 클라이언트가 인증하도록 — 네이티브 SSE 스트림용.
+ * (EventSource 는 헤더를 못 싣고 네이티브 쿠키는 cross-site ITP 로 막히므로 쿼리 토큰이 유일한 경로.)
+ * requireAuth 앞에 두고, GET 스트림처럼 안전한 라우트에만 적용한다. (/api/notification/stream 은
+ * 접근 로그에서도 제외되어 토큰 노출 없음.)
+ */
+export function queryTokenAuth(req: Request, _res: Response, next: NextFunction) {
+  if (!req.headers.authorization && typeof req.query.token === "string" && req.query.token) {
+    req.headers.authorization = `Bearer ${req.query.token}`;
+  }
+  next();
+}
+
 export async function requireAuth(req: Request, res: Response, next: NextFunction) {
   // 네이티브 앱은 Bearer 헤더, 웹/데스크톱은 httpOnly 쿠키. 헤더 우선, 없으면 쿠키 폴백.
   const token = bearerToken(req) ?? req.cookies?.[COOKIE];

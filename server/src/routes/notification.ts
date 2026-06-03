@@ -1,13 +1,15 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
-import { requireAuth } from "../lib/auth.js";
+import { requireAuth, queryTokenAuth } from "../lib/auth.js";
 import { addClient, removeClient } from "../lib/sse.js";
 
 const router = Router();
 
-/* ===== Server-Sent Events 스트림 (인증 쿠키 사용) ===== */
-router.get("/stream", requireAuth, async (req, res) => {
+/* ===== Server-Sent Events 스트림 =====
+ * 웹/데스크톱: httpOnly 쿠키로 인증. 네이티브 앱: EventSource 가 헤더를 못 싣고 쿠키는
+ * cross-site ITP 로 막히므로 ?token=<jwt> 쿼리로 인증(queryTokenAuth 가 Bearer 로 승격). */
+router.get("/stream", queryTokenAuth, requireAuth, async (req, res) => {
   const u = (req as any).user;
 
   res.setHeader("Content-Type", "text/event-stream");

@@ -443,6 +443,23 @@ router.post("/", async (req, res) => {
   });
   await writeLog(u.id, "MEETING_CREATE", meeting.id, d.title);
 
+  // 지정 열람자(SPECIFIC)로 공유된 사람에게 회의록 공유 알림 — 작성자 본인은 제외.
+  if (d.visibility === "SPECIFIC" && d.viewerIds?.length) {
+    const sharedWith = Array.from(new Set(d.viewerIds.filter((id) => id !== u.id)));
+    if (sharedWith.length) {
+      await notifyMany(
+        sharedWith.map((userId) => ({
+          userId,
+          type: "SYSTEM" as const,
+          title: `${u.name}님이 회의록을 공유했어요`,
+          body: d.title,
+          linkUrl: `/meetings?id=${meeting.id}`,
+          actorName: u.name,
+        })),
+      );
+    }
+  }
+
   // 멘션 알림 — 열람 권한 있는 사람에게만. 본인 제외.
   const mentionIds = Array.from(extractMentionIds(d.content)).filter((id) => id !== u.id);
   if (mentionIds.length) {
@@ -514,6 +531,18 @@ router.patch("/:id", async (req, res) => {
     d.viewerIds !== undefined &&
     ((d.visibility ?? existing.visibility) === "SPECIFIC");
 
+  // 교체 전 기존 열람자 스냅샷 — 트랜잭션 후 새로 추가된 사람에게만 공유 알림을 보내기 위함.
+  const prevViewerIds = replaceViewers
+    ? new Set(
+        (
+          await prisma.meetingViewer.findMany({
+            where: { meetingId: existing.id },
+            select: { userId: true },
+          })
+        ).map((v) => v.userId),
+      )
+    : new Set<string>();
+
   const updated = await prisma.$transaction(async (tx) => {
     if (replaceViewers) {
       await tx.meetingViewer.deleteMany({ where: { meetingId: existing.id } });
@@ -546,6 +575,25 @@ router.patch("/:id", async (req, res) => {
     timeout: 8_000,
   });
   await writeLog(u.id, "MEETING_UPDATE", updated.id);
+
+  // 열람자가 교체된 경우, 새로 추가된 사람에게만 회의록 공유 알림 — 작성자/본인 제외.
+  if (replaceViewers && d.viewerIds) {
+    const newlyShared = Array.from(
+      new Set(d.viewerIds.filter((id) => id !== existing.authorId && id !== u.id)),
+    ).filter((id) => !prevViewerIds.has(id));
+    if (newlyShared.length) {
+      await notifyMany(
+        newlyShared.map((userId) => ({
+          userId,
+          type: "SYSTEM" as const,
+          title: `${u.name}님이 회의록을 공유했어요`,
+          body: updated.title,
+          linkUrl: `/meetings?id=${updated.id}`,
+          actorName: u.name,
+        })),
+      );
+    }
+  }
 
   // 본문이 바뀌었고 새로 추가된 멘션이 있다면 그 사람들에게만 알림. 이미 언급됐던 사람은 스킵.
   if (d.content !== undefined) {

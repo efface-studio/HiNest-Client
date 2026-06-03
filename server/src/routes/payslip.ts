@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db.js";
 import { requireAuth, requireAdmin, writeLog } from "../lib/auth.js";
 import { sendEmailWithAttachment } from "../lib/email.js";
+import { notify } from "../lib/notify.js";
 
 /* ===== 급여(임금)명세서 =====
  * - 작성·수정·삭제·목록(전체)·발송: ADMIN 전용.
@@ -457,6 +458,16 @@ router.post("/:id/send", requireAdmin, async (req, res) => {
     select: PAYSLIP_SELECT,
   });
   await writeLog(u.id, "PAYSLIP_SEND", p.id, `${p.year}-${p.month} ${p.employeeName}`);
+  // 직원 본인에게 급여명세서 도착 알림 — 발송한 관리자가 본인일 가능성은 낮지만 자기알림 방지.
+  if (p.employeeId !== u.id) {
+    await notify({
+      userId: p.employeeId,
+      type: "SYSTEM",
+      title: `${p.year}년 ${p.month}월 급여명세서가 도착했어요`,
+      linkUrl: "/payroll",
+      actorName: u.name,
+    });
+  }
   res.json({ payslip: updated });
 });
 

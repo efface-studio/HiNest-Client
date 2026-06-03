@@ -13,6 +13,9 @@
  *  - https 또는 localhost 에서만 동작 (HiNest dev: localhost:1000 ✅)
  */
 
+import { isCapacitorNative } from "./platform";
+import { showNativeNotifications } from "./nativeNotify";
+
 export type DesktopNotifPermission = "default" | "granted" | "denied" | "unsupported";
 
 const LS_SEEN = "hinest.notif.seen"; // 이미 알려준 notification id 목록 (localStorage)
@@ -152,6 +155,15 @@ export function showDesktopNotification(opts: {
 export function deliverPendingNotifications(
   items: { id: string; title: string; body?: string; linkUrl?: string }[]
 ) {
+  // 네이티브(Capacitor): WKWebView 는 Web Notification 미지원 → local-notifications 로 배너 표시(데스크톱 동등).
+  if (isCapacitorNative()) {
+    const fresh = items.filter((it) => !alreadySeen(it.id));
+    if (fresh.length) {
+      void showNativeNotifications(fresh);
+      markSeen(fresh.map((f) => f.id));
+    }
+    return;
+  }
   if (!supported() || Notification.permission !== "granted" || !isDesktopEnabled()) return;
   for (const it of items) {
     if (alreadySeen(it.id)) continue;

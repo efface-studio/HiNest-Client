@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, apiUrl } from "./api";
 import { getAuthToken } from "./lib/authToken";
 import { deliverPendingNotifications, markSeen } from "./lib/desktopNotify";
+import { initNativeNotificationTaps } from "./lib/nativeNotify";
 import { shouldDeliverNotif } from "./lib/notifPrefs";
 
 export type NotifType = "NOTICE" | "DM" | "APPROVAL_REQUEST" | "APPROVAL_REVIEW" | "MENTION" | "SYSTEM";
@@ -126,6 +127,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setReady(true);
       return;
     }
+    void initNativeNotificationTaps(); // 네이티브 로컬 알림 탭 → 인앱 라우팅
     reload();
 
     let retry: number | null = null;

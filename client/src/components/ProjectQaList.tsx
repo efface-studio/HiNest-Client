@@ -957,7 +957,7 @@ function QaRow({
           {item.status !== "DONE" ? (
             <button
               type="button"
-              className="btn-icon text-ink-400 hover:text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="btn-icon touch-reveal text-ink-400 hover:text-emerald-600 opacity-0 group-hover:opacity-100 transition-opacity"
               title="완료로 표시"
               aria-label="완료로 표시"
               onClick={() => onPatch({ status: "DONE" })}
@@ -969,7 +969,7 @@ function QaRow({
           ) : (
             <button
               type="button"
-              className="btn-icon text-ink-400 hover:text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity"
+              className="btn-icon touch-reveal text-ink-400 hover:text-amber-600 opacity-0 group-hover:opacity-100 transition-opacity"
               title="다시 열기 (BUG 로 되돌림)"
               aria-label="다시 열기"
               onClick={() => onPatch({ status: "BUG" })}
@@ -982,7 +982,7 @@ function QaRow({
           )}
           <button
             type="button"
-            className="btn-icon text-ink-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
+            className="btn-icon touch-reveal text-ink-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-opacity"
             title="삭제"
             aria-label="삭제"
             onClick={onDelete}
@@ -1410,7 +1410,7 @@ function RemoveDot({ onRemove }: { onRemove: () => void }) {
       onClick={onRemove}
       // 모바일에서도 누르기 편하도록 터치 타겟을 28px 로 확대,
       // 터치 디바이스에선 항상 보이게 (hover 로는 안 떠서 누를 수가 없음).
-      className="absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white text-[13px] leading-none flex items-center justify-center md:opacity-0 md:group-hover/thumb:opacity-100 transition-opacity shadow"
+      className="touch-reveal absolute top-1 right-1 w-7 h-7 rounded-full bg-black/60 text-white text-[13px] leading-none flex items-center justify-center md:opacity-0 md:group-hover/thumb:opacity-100 transition-opacity shadow"
       aria-label="첨부 제거"
       title="제거"
     >

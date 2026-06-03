@@ -274,7 +274,7 @@ function MemberRow({
         <div className="text-[11px] text-ink-500 truncate">{u.position ?? "—"}</div>
       </div>
       {u.id !== meId && (
-        <div className="flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100">
+        <div className="touch-reveal flex items-center gap-1 md:opacity-0 md:group-hover:opacity-100">
           <button
             onClick={() => onSchedule(u)}
             className="btn-icon"
@@ -472,7 +472,7 @@ function PersonNode({
         </div>
       </div>
       {!isMe && (
-        <div className="flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 flex-shrink-0">
+        <div className="touch-reveal flex items-center gap-0.5 md:opacity-0 md:group-hover:opacity-100 flex-shrink-0">
           <button
             onClick={() => onSchedule(u)}
             className="btn-icon !w-6 !h-6"

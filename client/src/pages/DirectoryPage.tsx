@@ -418,7 +418,7 @@ function ListRow({ u, onDM, divider, dmBusy }: { u: DirectoryUser; onDM: () => v
       <div className="hidden md:block flex-1 min-w-0">
         {u.team && <span className="chip-blue">{u.team}</span>}
       </div>
-      <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
+      <div className="touch-reveal flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition">
         <a href={`mailto:${u.email}`} className="btn-icon" title="이메일">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="5" width="18" height="14" rx="2" />

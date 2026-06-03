@@ -302,7 +302,7 @@ export default function MeetingAttachments({
                     type="button"
                     onClick={() => remove(att)}
                     disabled={busy}
-                    className="btn-icon opacity-0 group-hover:opacity-100 transition flex-shrink-0"
+                    className="btn-icon touch-reveal opacity-0 group-hover:opacity-100 transition flex-shrink-0"
                     title="삭제"
                     aria-label={`${att.name} 삭제`}
                   >

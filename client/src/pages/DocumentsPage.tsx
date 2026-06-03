@@ -1214,7 +1214,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                   <div className="text-[11px] text-ink-500 tabular">{new Date(f.createdAt).toLocaleDateString("ko-KR")}</div>
                 </div>
                 {/* 호버 액션은 absolute 오버레이 — 평소엔 레이아웃을 먹지 않아 이름·날짜 영역이 잘리지 않음. */}
-                <div className="absolute top-2 right-2 hidden group-hover:flex items-center gap-0.5 bg-[color:var(--c-surface)]/95 backdrop-blur-sm rounded-lg px-1 py-0.5 shadow-sm border border-ink-100">
+                <div className="touch-reveal-flex absolute top-2 right-2 hidden group-hover:flex items-center gap-0.5 bg-[color:var(--c-surface)]/95 backdrop-blur-sm rounded-lg px-1 py-0.5 shadow-sm border border-ink-100">
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); downloadFolder(f); }} title="폴더 전체 다운로드 (ZIP)">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
                   </button>

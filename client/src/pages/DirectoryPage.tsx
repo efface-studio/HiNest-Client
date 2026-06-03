@@ -323,8 +323,8 @@ function GridCard({
             <PresenceDot u={u} size={12} ring={2} />
           </div>
           <Link to={`/users/${u.id}`} className="min-w-0 flex-1 hover:opacity-80 transition">
-            <div className="text-[15px] font-extrabold text-ink-900 tracking-tight truncate inline-flex items-center gap-1.5">
-              {u.name}
+            <div className="text-[15px] font-extrabold text-ink-900 tracking-tight flex items-center gap-1.5 min-w-0">
+              <span className="truncate">{u.name}</span>
               {isDevAccount(u) && <DevBadge />}
             </div>
             <div className="text-[12px] text-ink-600 truncate mt-0.5">
@@ -403,9 +403,9 @@ function ListRow({ u, onDM, divider, dmBusy }: { u: DirectoryUser; onDM: () => v
         <PresenceDot u={u} size={12} ring={2} />
       </div>
       <Link to={`/users/${u.id}`} className="min-w-0 flex-1 md:w-[28%] md:flex-initial hover:opacity-80 transition">
-        <div className="flex items-center gap-1.5">
-          <div className="text-[14px] font-extrabold text-ink-900 truncate tracking-tight inline-flex items-center gap-1.5">
-            {u.name}
+        <div className="flex items-center gap-1.5 min-w-0">
+          <div className="text-[14px] font-extrabold text-ink-900 tracking-tight flex items-center gap-1.5 min-w-0">
+            <span className="truncate">{u.name}</span>
             {isDevAccount(u) && <DevBadge />}
           </div>
           <PresenceBadge u={u} />

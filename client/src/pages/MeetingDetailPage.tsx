@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { api, apiSWR , imgSrc} from "../api";
+import { api, apiSWR, imgSrc, invalidateCache } from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import PinButton from "../components/PinButton";
@@ -177,6 +177,7 @@ export default function MeetingDetailPage() {
       };
       if (visibility === "SPECIFIC") payload.viewerIds = viewerIds;
       await api(`/api/meeting/${meeting.id}`, { method: "PATCH", json: payload });
+      invalidateCache("/api/meeting");
       setLastSaved(Date.now());
       setErr(null);
     } catch (e: any) {
@@ -205,6 +206,7 @@ export default function MeetingDetailPage() {
     setDeleting(true);
     try {
       await api(`/api/meeting/${meeting.id}`, { method: "DELETE" });
+      invalidateCache("/api/meeting");
       nav("/meetings");
     } catch (e: any) {
       alertAsync({ title: "삭제 실패", description: e?.message ?? "삭제 실패" });

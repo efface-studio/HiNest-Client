@@ -183,6 +183,9 @@ function InfoTab({
         },
       });
       onUpdated?.({ ...project, ...r.project, members: project.members });
+      // 사이드바 프로젝트 목록(AppLayout)도 갱신 — 이름/색/보관 변경이 즉시 반영되도록.
+      invalidateCache("/api/project");
+      window.dispatchEvent(new CustomEvent("projects:reload"));
       setSaved(true);
     } catch (e: any) {
       setErr(e?.message ?? "저장에 실패했습니다.");
@@ -205,6 +208,8 @@ function InfoTab({
     setErr(null);
     try {
       await api(`/api/project/${project.id}`, { method: "DELETE" });
+      invalidateCache("/api/project");
+      window.dispatchEvent(new CustomEvent("projects:reload"));
       onDeleted();
     } catch (e: any) {
       setErr(e?.message ?? "삭제에 실패했습니다.");

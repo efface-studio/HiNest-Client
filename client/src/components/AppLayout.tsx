@@ -1352,6 +1352,14 @@ function ProjectsSection() {
     };
   }, [isAdmin, reloadKey]);
 
+  // 다른 화면(프로젝트 설정 모달의 이름/색/보관/삭제 등)에서 프로젝트가 바뀌면
+  // 사이드바 목록도 다시 불러온다(projects:reload 커스텀 이벤트).
+  useEffect(() => {
+    const onReload = () => setReloadKey((k) => k + 1);
+    window.addEventListener("projects:reload", onReload);
+    return () => window.removeEventListener("projects:reload", onReload);
+  }, []);
+
   const active = projects.filter((p) => p.status === "ACTIVE");
 
   return (

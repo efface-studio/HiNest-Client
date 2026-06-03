@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, invalidateCache, clearApiCache, apiFetch , imgSrc} from "../api";
+import { isCapacitorNative } from "../lib/platform";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { useTheme, type ThemeMode } from "../theme";
@@ -296,7 +297,7 @@ export default function ProfilePage() {
 
           <PresencePanel />
           <ThemePanel />
-          <DesktopNotifyPanel />
+          {isCapacitorNative() ? <NativePushPanel /> : <DesktopNotifyPanel />}
           <ShortcutsPanel />
           <SessionInfoPanel />
           {user.isDeveloper && <DevOptionsPanel />}
@@ -482,6 +483,62 @@ function DangerZonePanel() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * 모바일(네이티브) 전용 푸시 알림 패널 — "데스크톱 알림(Web Notification)" 은 WKWebView 미지원이라
+ * 모바일에선 의미가 없다. 대신 iOS 푸시 상태 안내 + 이 기기로 실제 테스트 푸시를 쏘는 버튼을 둔다.
+ */
+function NativePushPanel() {
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+
+  async function test() {
+    setBusy(true);
+    setResult(null);
+    try {
+      const d = await api<{
+        enabled: boolean;
+        tokens: number;
+        results: { status: number; reason?: string }[];
+      }>("/api/push/diag");
+      let msg: string;
+      if (!d.enabled) {
+        msg = "❌ 서버에 APNs 키가 설정되지 않았어요 (관리자: APNS_KEY/KEY_ID/TEAM_ID 환경변수 확인).";
+      } else if (!d.tokens) {
+        msg = "⚠️ 이 기기의 푸시 토큰이 등록되지 않았어요. 아래 안내대로 알림 권한을 켠 뒤 앱을 다시 실행해 주세요.";
+      } else if (d.results.some((r) => r.status === 200)) {
+        msg = "✅ 발송 성공! 잠시 후 이 기기에 테스트 알림이 도착합니다.";
+      } else {
+        msg = "❌ 발송 실패: " + d.results.map((r) => `${r.status} ${r.reason ?? ""}`).join(", ");
+      }
+      setResult(msg);
+    } catch (e: any) {
+      setResult("진단 실패: " + (e?.message ?? "오류"));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="panel p-6">
+      <div className="h-sub">푸시 알림</div>
+      <div className="t-caption mt-0.5">
+        앱이 백그라운드이거나 꺼져 있을 때도 새 메시지·결재·공지 등을 iOS 푸시로 받아요.
+      </div>
+      <button type="button" className="btn-primary mt-4" onClick={test} disabled={busy}>
+        {busy ? "테스트 중…" : "테스트 알림 보내기"}
+      </button>
+      {result && (
+        <div className="mt-3 p-3 rounded-lg bg-ink-50 border border-ink-150 text-[12px] text-ink-700 leading-relaxed">
+          {result}
+        </div>
+      )}
+      <div className="t-caption mt-3 text-ink-500">
+        알림이 안 오면 — iOS 설정 → HiNest → 알림에서 "알림 허용"이 켜져 있는지 확인하세요.
+      </div>
     </div>
   );
 }

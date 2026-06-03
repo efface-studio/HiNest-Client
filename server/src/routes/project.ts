@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
+import { notify, notifyMany } from "../lib/notify.js";
 import { generateWebhookToken } from "./webhook.js";
 import { allSameCompanyUsers } from "../lib/tenantValidate.js";
 
@@ -84,6 +85,20 @@ router.post("/", async (req, res) => {
     include: { _count: { select: { members: true } } },
   });
   await writeLog(u.id, "PROJECT_CREATE", project.id, d.name);
+  // 초기 멤버에게 프로젝트 초대 알림 — 생성자 본인은 제외.
+  const invited = Array.from(memberSet).filter((uid) => uid !== u.id);
+  if (invited.length) {
+    await notifyMany(
+      invited.map((uid) => ({
+        userId: uid,
+        type: "SYSTEM" as const,
+        title: `${u.name}님이 프로젝트에 초대했어요`,
+        body: d.name,
+        linkUrl: `/projects/${project.id}`,
+        actorName: u.name,
+      })),
+    );
+  }
   res.json({ project });
 });
 
@@ -526,6 +541,17 @@ router.post("/:id/qa", async (req, res) => {
     include: { attachments: { orderBy: { createdAt: "asc" } } },
   });
   await writeLog(u.id, "PROJECT_QA_CREATE", item.id, d.title);
+  // 담당자가 지정됐고 본인이 아니면 배정 알림.
+  if (assigneeId && assigneeId !== u.id) {
+    await notify({
+      userId: assigneeId,
+      type: "SYSTEM",
+      title: `${u.name}님이 QA 항목을 배정했어요`,
+      body: d.title,
+      linkUrl: `/projects/${req.params.id}`,
+      actorName: u.name,
+    });
+  }
   res.json({ item });
 });
 
@@ -556,11 +582,19 @@ router.patch("/:id/qa/:itemId", async (req, res) => {
     return res.status(404).json({ error: "not found" });
 
   let assigneePatch: { assigneeId: string | null } | {} = {};
+  // 새로 배정된(이전과 다른) 담당자에게만 알림을 보내기 위해 변경 여부를 추적.
+  let newlyAssignedId: string | null = null;
   if ("assigneeId" in d) {
     try {
       const resolved = await resolveAssigneeIdOrThrow(req.params.id, d.assigneeId);
       // undefined 는 미지정(노-op), null 은 해지.
-      if (resolved !== undefined) assigneePatch = { assigneeId: resolved };
+      if (resolved !== undefined) {
+        assigneePatch = { assigneeId: resolved };
+        // 실제로 담당자가 바뀌었고, 새 담당자가 본인이 아닐 때만 알림 대상으로 표시.
+        if (resolved && resolved !== existing.assigneeId && resolved !== u.id) {
+          newlyAssignedId = resolved;
+        }
+      }
     } catch {
       return res.status(400).json({ error: "담당자는 이 프로젝트 멤버여야 합니다" });
     }
@@ -594,6 +628,17 @@ router.patch("/:id/qa/:itemId", async (req, res) => {
     },
     include: { attachments: { orderBy: { createdAt: "asc" } } },
   });
+  // 담당자가 새로 바뀐 경우에만 배정 알림.
+  if (newlyAssignedId) {
+    await notify({
+      userId: newlyAssignedId,
+      type: "SYSTEM",
+      title: `${u.name}님이 QA 항목을 배정했어요`,
+      body: item.title,
+      linkUrl: `/projects/${req.params.id}`,
+      actorName: u.name,
+    });
+  }
   res.json({ item });
 });
 
@@ -671,11 +716,31 @@ router.post("/:id/member", async (req, res) => {
   }
   if (!(await allSameCompanyUsers([body.data.userId])))
     return res.status(400).json({ error: "추가하려는 멤버를 찾을 수 없어요." });
+  // 신규 합류 여부 판정 — 기존 멤버의 역할 변경엔 알림을 보내지 않기 위해 upsert 전에 확인.
+  const already = await prisma.projectMember.findUnique({
+    where: { projectId_userId: { projectId: req.params.id, userId: body.data.userId } },
+    select: { userId: true },
+  });
   const created = await prisma.projectMember.upsert({
     where: { projectId_userId: { projectId: req.params.id, userId: body.data.userId } },
     update: { role: targetRole },
     create: { projectId: req.params.id, userId: body.data.userId, role: targetRole },
   });
+  // 새로 합류한 멤버에게만 초대 알림 — 본인이 자기를 추가하는 경우 제외.
+  if (!already && body.data.userId !== u.id) {
+    const project = await prisma.project.findUnique({
+      where: { id: req.params.id },
+      select: { name: true },
+    });
+    await notify({
+      userId: body.data.userId,
+      type: "SYSTEM",
+      title: `${u.name}님이 프로젝트에 초대했어요`,
+      body: project?.name,
+      linkUrl: `/projects/${req.params.id}`,
+      actorName: u.name,
+    });
+  }
   res.json({ member: created });
 });
 

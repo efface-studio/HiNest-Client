@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
+import { notify } from "../lib/notify.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -109,6 +110,17 @@ router.patch("/:id", async (req, res) => {
       data: { status: body.status, reviewer: u.id },
     });
     await writeLog(u.id, "EXPENSE_REVIEW", exist.id, body.status);
+    // 경비 소유자에게 심사 결과 알림 — 승인/반려일 때만, 본인 심사 자기알림 방지(가드 중복이나 안전).
+    if ((body.status === "APPROVED" || body.status === "REJECTED") && exist.userId !== u.id) {
+      await notify({
+        userId: exist.userId,
+        type: "APPROVAL_REVIEW",
+        title: body.status === "APPROVED" ? "법인카드 사용내역이 승인됐어요" : "법인카드 사용내역이 반려됐어요",
+        body: `${exist.merchant} ${exist.amount.toLocaleString("ko-KR")}원`,
+        linkUrl: "/expense",
+        actorName: u.name,
+      });
+    }
     return res.json({ expense: updated });
   }
 

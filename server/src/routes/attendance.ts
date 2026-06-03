@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
+import { notify } from "../lib/notify.js";
 import { todayStr } from "../lib/dates.js";
 
 const router = Router();
@@ -162,6 +163,16 @@ router.patch("/leave/:id", async (req, res) => {
     data: { status, reviewer: u.id },
   });
   await writeLog(u.id, "LEAVE_REVIEW", leave.id, status);
+  // 신청자에게 결재 결과 알림 — 승인/반려일 때만(보류 전환은 알리지 않음), 본인 심사 자기알림 방지.
+  if ((status === "APPROVED" || status === "REJECTED") && existing.userId !== u.id) {
+    await notify({
+      userId: existing.userId,
+      type: "APPROVAL_REVIEW",
+      title: status === "APPROVED" ? "휴가 신청이 승인됐어요" : "휴가 신청이 반려됐어요",
+      linkUrl: "/attendance",
+      actorName: u.name,
+    });
+  }
   res.json({ leave });
 });
 

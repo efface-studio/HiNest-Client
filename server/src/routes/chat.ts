@@ -183,6 +183,20 @@ router.post("/rooms", async (req, res) => {
   });
   await writeLog(u.id, "ROOM_CREATE", room.id, `${d.type}:${d.name}`);
   broadcastToRoom(room.id, "chat:room", { kind: "create", roomId: room.id });
+  // 초대된 멤버에게 대화방 초대 알림 — 생성자 본인은 제외.
+  const invited = memberIds.filter((id) => id !== u.id);
+  if (invited.length) {
+    await notifyMany(
+      invited.map((userId) => ({
+        userId,
+        type: "SYSTEM" as const,
+        title: `${u.name}님이 대화방에 초대했어요`,
+        body: d.name,
+        linkUrl: `/chat?room=${room.id}`,
+        actorName: u.name,
+      })),
+    );
+  }
   res.json({ room });
 });
 

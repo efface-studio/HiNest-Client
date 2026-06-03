@@ -37,7 +37,13 @@ const PRODUCTION =
   APNS_PROD_RAW != null && APNS_PROD_RAW !== ""
     ? /^(1|true|yes)$/i.test(APNS_PROD_RAW)
     : process.env.NODE_ENV === "production";
-const HOST = PRODUCTION ? "https://api.push.apple.com" : "https://api.sandbox.push.apple.com";
+const PROD_HOST = "https://api.push.apple.com";
+const SANDBOX_HOST = "https://api.sandbox.push.apple.com";
+// 기본 게이트웨이(설정 기준)와 폴백 게이트웨이. 환경 불일치 응답이면 반대쪽으로 1회 재시도해
+// 개발(sandbox) 빌드와 TestFlight/앱스토어(production) 빌드를 모두 처리한다.
+const PRIMARY_HOST = PRODUCTION ? PROD_HOST : SANDBOX_HOST;
+const ALT_HOST = PRODUCTION ? SANDBOX_HOST : PROD_HOST;
+const HOST = PRIMARY_HOST; // 표시·진단용 기본 게이트웨이
 
 export function apnsEnabled(): boolean {
   return Boolean(KEY_RAW && KEY_ID && TEAM_ID);
@@ -72,19 +78,20 @@ function authToken(): string {
 }
 
 /** http2 세션 재사용 — 끊기거나 닫혔으면 새로 연결. */
-let _session: http2.ClientHttp2Session | null = null;
-function getSession(): http2.ClientHttp2Session {
-  if (_session && !_session.closed && !_session.destroyed) return _session;
-  const s = http2.connect(HOST);
+const _sessions = new Map<string, http2.ClientHttp2Session>();
+function getSession(host: string): http2.ClientHttp2Session {
+  const cur = _sessions.get(host);
+  if (cur && !cur.closed && !cur.destroyed) return cur;
+  const s = http2.connect(host);
   // 에러 시 세션 핸들 비워 다음 호출에서 재연결되게 함. (리스너 미등록 시 throw 로 프로세스가 죽을 수 있음)
   s.on("error", (e) => {
     console.error("apns http2 session error", (e as Error)?.message || e);
-    if (_session === s) _session = null;
+    if (_sessions.get(host) === s) _sessions.delete(host);
   });
   s.on("close", () => {
-    if (_session === s) _session = null;
+    if (_sessions.get(host) === s) _sessions.delete(host);
   });
-  _session = s;
+  _sessions.set(host, s);
   return s;
 }
 
@@ -109,7 +116,7 @@ interface SendResult {
 }
 
 /** 단일 기기 토큰에 발송. http2 스트림 1건 = 요청 1건. */
-function sendOne(deviceToken: string, payload: ApnsPayload): Promise<SendResult> {
+function sendOne(deviceToken: string, payload: ApnsPayload, host: string): Promise<SendResult> {
   return new Promise((resolve) => {
     const aps: Record<string, unknown> = {
       alert: { title: payload.title, ...(payload.body ? { body: payload.body } : {}) },
@@ -122,7 +129,7 @@ function sendOne(deviceToken: string, payload: ApnsPayload): Promise<SendResult>
 
     let session: http2.ClientHttp2Session;
     try {
-      session = getSession();
+      session = getSession(host);
     } catch (e) {
       resolve({ token: deviceToken, status: 0, reason: (e as Error)?.message || "session error" });
       return;
@@ -175,6 +182,18 @@ function sendOne(deviceToken: string, payload: ApnsPayload): Promise<SendResult>
   });
 }
 
+/**
+ * 기본 게이트웨이로 보내고, 환경 불일치(BadDeviceToken/BadEnvironmentKeyInToken)면 반대 게이트웨이로
+ * 1회 재시도한다. 개발(sandbox) 토큰·운영(production) 토큰을 코드 변경 없이 모두 처리.
+ */
+async function sendWithFallback(deviceToken: string, payload: ApnsPayload): Promise<SendResult> {
+  const r = await sendOne(deviceToken, payload, PRIMARY_HOST);
+  if (r.reason === "BadDeviceToken" || r.reason === "BadEnvironmentKeyInToken") {
+    return sendOne(deviceToken, payload, ALT_HOST);
+  }
+  return r;
+}
+
 /** 토큰이 영구 무효임을 뜻하는 응답 — 즉시 정리(prune)한다. */
 function isDeadToken(r: SendResult): boolean {
   if (r.status === 410) return true; // Unregistered (마지막 비활성 시각 헤더 동반)
@@ -196,7 +215,7 @@ export async function sendApnsToUser(userId: string, payload: ApnsPayload): Prom
     });
     if (!tokens.length) return;
 
-    const results = await Promise.all(tokens.map((t) => sendOne(t.token, payload)));
+    const results = await Promise.all(tokens.map((t) => sendWithFallback(t.token, payload)));
 
     const dead = results.filter(isDeadToken).map((r) => r.token);
     const ok = results.filter((r) => r.status === 200).map((r) => r.token);
@@ -252,7 +271,7 @@ export async function apnsDiag(userId: string): Promise<{
     };
   }
   const results = await Promise.all(
-    tokens.map((t) => sendOne(t.token, { title: "테스트 알림", body: "푸시 진단 테스트입니다.", linkUrl: "/" })),
+    tokens.map((t) => sendWithFallback(t.token, { title: "테스트 알림", body: "푸시 진단 테스트입니다.", linkUrl: "/" })),
   );
   return {
     ...base,

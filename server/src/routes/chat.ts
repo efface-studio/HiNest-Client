@@ -552,13 +552,21 @@ router.post("/rooms/:id/messages", async (req, res) => {
           actorName: u.name,
         }))
       );
-    } else if (mentions.length) {
+    } else {
+      // GROUP/TEAM: 보낸 사람 제외 모든 멤버에게 알림. 멘션된 사람은 MENTION(강조), 나머지는 일반 채팅.
+      // (예전엔 멘션만 알림 → 단체방 메시지·사진이 알림 없이 묻혔음. 작업용 단체방 표준 동작으로 변경.
+      //  시끄러운 방 대비 '방별 음소거'는 후속 권장 — RoomMember 에 muted 필드 추가 필요.)
+      const members = await prisma.roomMember.findMany({
+        where: { roomId: req.params.id, userId: { not: u.id } },
+        select: { userId: true },
+      });
+      const mentionSet = new Set(mentions);
       await notifyMany(
-        mentions.map((uid) => ({
-          userId: uid,
-          type: "MENTION" as const,
-          title: `@${u.name} · ${roomName}`,
-          body: preview.slice(0, 140),
+        members.map((m) => ({
+          userId: m.userId,
+          type: (mentionSet.has(m.userId) ? "MENTION" : "DM") as "MENTION" | "DM",
+          title: mentionSet.has(m.userId) ? `@${u.name} · ${roomName}` : roomName,
+          body: `${u.name}: ${preview}`.slice(0, 140),
           linkUrl: `/chat?room=${msg.roomId}`,
           actorName: u.name,
         }))

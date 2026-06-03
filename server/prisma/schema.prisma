@@ -722,6 +722,9 @@ model RoomMember {
   roomId     String
   userId     String
   lastReadAt DateTime?
+  // 방별 알림 음소거 — true 면 서버가 이 방 채팅 알림의 APNs(폰 푸시) 를 보내지 않음.
+  // (알림 레코드·SSE·미읽음 뱃지는 유지 — 조용히 쌓이기만 함.) 기기 간 동기화를 위해 서버에 저장.
+  muted      Boolean   @default(false)
   room       ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

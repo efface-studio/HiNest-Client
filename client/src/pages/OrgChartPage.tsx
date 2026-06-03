@@ -51,13 +51,10 @@ export default function OrgChartPage() {
   }, []);
 
   async function load() {
-    const [u, p] = await Promise.all([
-      api<{ users: DirUser[] }>("/api/users"),
-      api<{ teams: string[] }>("/api/users/teams").catch(() => ({ teams: [] })),
-    ]);
+    // 팀 목록은 users 배열에서 파생하므로 별도 /api/users/teams 호출은 불필요(과거 미사용 요청 제거).
+    const u = await api<{ users: DirUser[] }>("/api/users");
     if (!aliveRef.current) return;
     setUsers(u.users);
-    void p;
   }
 
   async function loadPositions() {

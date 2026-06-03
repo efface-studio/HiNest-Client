@@ -103,7 +103,9 @@ export default function ChatMiniApp({
     let cancelled = false;
     const fetchPresence = async () => {
       try {
-        const res = await api<{ users: Array<{ id: string; presenceStatus?: string | null; workStatus?: string | null; presenceMessage?: string | null }> }>("/api/users");
+        // 경량 전용 엔드포인트 — 풀 유저행(이메일/아바타/HR 필드 등) 대신 presence 4필드만.
+        // 30초 폴링(채팅 패널 열림 시)의 응답 크기를 ~8x 줄인다. (서버 users.ts /presence)
+        const res = await api<{ users: Array<{ id: string; presenceStatus?: string | null; workStatus?: string | null; presenceMessage?: string | null }> }>("/api/users/presence");
         if (cancelled) return;
         const m: Record<string, { presenceStatus: string | null; workStatus: string | null; presenceMessage: string | null }> = {};
         for (const u of res.users) {

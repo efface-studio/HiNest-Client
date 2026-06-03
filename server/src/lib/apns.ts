@@ -223,3 +223,40 @@ export async function sendApnsToUser(userId: string, payload: ApnsPayload): Prom
     console.error("sendApnsToUser failed", (e as Error)?.message || e);
   }
 }
+
+/**
+ * 진단용 — 호출 유저의 iOS 토큰으로 테스트 푸시를 실제 발송하고 APNs 응답을 그대로 반환한다.
+ * 푸시 미수신 원인을 정확히 식별: 키 미설정 / 토큰 0개 / status 400 BadDeviceToken(환경 불일치) /
+ * status 403(인증·키 오류) / status 200(정상 — 기기에 테스트 푸시 도착).
+ */
+export async function apnsDiag(userId: string): Promise<{
+  enabled: boolean;
+  production: boolean;
+  host: string;
+  bundleId: string;
+  tokens: number;
+  results: { token: string; status: number; reason?: string }[];
+  note?: string;
+}> {
+  const base = { enabled: apnsEnabled(), production: PRODUCTION, host: HOST, bundleId: BUNDLE_ID };
+  if (!base.enabled) {
+    return { ...base, tokens: 0, results: [], note: "APNs 미설정 — APNS_KEY/APNS_KEY_ID/APNS_TEAM_ID 환경변수 확인" };
+  }
+  const tokens = await prisma.pushToken.findMany({ where: { userId, platform: "ios" }, select: { token: true } });
+  if (!tokens.length) {
+    return {
+      ...base,
+      tokens: 0,
+      results: [],
+      note: "등록된 iOS 토큰 없음 — 앱이 토큰 등록을 못 함(빌드에 AppDelegate 수정 미포함 / 알림 권한 거부 / 새 빌드 재로그인 필요)",
+    };
+  }
+  const results = await Promise.all(
+    tokens.map((t) => sendOne(t.token, { title: "테스트 알림", body: "푸시 진단 테스트입니다.", linkUrl: "/" })),
+  );
+  return {
+    ...base,
+    tokens: tokens.length,
+    results: results.map((r) => ({ token: r.token.slice(0, 10) + "…", status: r.status, reason: r.reason })),
+  };
+}

@@ -4,6 +4,7 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import { safeExternalUrl } from "../lib/safeUrl";
+import { openExternal } from "../lib/openExternal";
 
 /**
  * 서비스 계정 레지스트리 — 회사에서 쓰는 AWS/Vercel/GitHub/테스트 계정을 한 곳에 모으는 페이지.
@@ -745,7 +746,13 @@ function AccountCard({
                 {/* href 는 http(s) 만 허용 — javascript:/data: 스킴 저장형 XSS 차단.
                     안전하지 않으면 링크 대신 평문으로만 노출(텍스트는 React 가 escape). */}
                 {safeExternalUrl(a.url) ? (
-                  <a href={safeExternalUrl(a.url)!} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:underline truncate">
+                  <a
+                    href={safeExternalUrl(a.url)!}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={(e) => { e.preventDefault(); openExternal(safeExternalUrl(a.url)); }}
+                    className="text-brand-600 hover:underline truncate"
+                  >
                     {a.url}
                   </a>
                 ) : (

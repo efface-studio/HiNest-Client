@@ -5,6 +5,8 @@ import { useAuth } from "../auth";
 import { useNotifications } from "../notifications";
 import { resolvePresence } from "../lib/presence";
 import { downloadFromUrl } from "../lib/download";
+import { isCapacitorNative } from "../lib/platform";
+import { Browser } from "@capacitor/browser";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import { SnippetSlashMenu, type SnippetSlashHandle } from "./chat/SnippetSlashMenu";
 import {
@@ -1562,6 +1564,7 @@ function SharedMediaTabs({ messages }: { messages: Message[] }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => { if (isCapacitorNative()) { e.preventDefault(); const u = imgSrc(url); if (u) void Browser.open({ url: u }); } }}
                   style={{ aspectRatio: "1 / 1", overflow: "hidden", borderRadius: 8, background: C.gray100 }}
                   title={m.fileName ?? ""}
                 >
@@ -1590,6 +1593,7 @@ function SharedMediaTabs({ messages }: { messages: Message[] }) {
                   href={url}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => { if (isCapacitorNative()) { e.preventDefault(); const u = imgSrc(url); if (u) void Browser.open({ url: u }); } }}
                   style={{ position: "relative", aspectRatio: "16 / 10", overflow: "hidden", borderRadius: 8, background: "#000" }}
                   title={m.fileName ?? ""}
                 >

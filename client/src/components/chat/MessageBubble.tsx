@@ -7,6 +7,7 @@ import { alertAsync } from "../ConfirmHost";
 import { parseCodeSegments } from "../../lib/codeDetect";
 import { copyToClipboard } from "../../lib/clipboard";
 import { downloadFromUrl } from "../../lib/download";
+import { openExternal } from "../../lib/openExternal";
 import { useModalDismiss } from "../../lib/useModalDismiss";
 import { HljsCode } from "../../lib/useHighlightedCode";
 import { LangIcon } from "../../lib/langIcon";
@@ -1067,12 +1068,8 @@ function renderWithLinks(content: string, mine: boolean): React.ReactNode[] {
         }}
         onClick={(e) => {
           e.stopPropagation();
-          // Electron 데스크톱 앱 안에서는 OS 기본 브라우저로 강제 열기
-          const bridge = window.hinest;
-          if (bridge?.openExternal) {
-            e.preventDefault();
-            bridge.openExternal(href).catch(() => {});
-          }
+          e.preventDefault();
+          openExternal(href);
         }}
       >
         {clean}

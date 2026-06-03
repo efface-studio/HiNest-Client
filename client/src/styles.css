@@ -337,6 +337,21 @@ textarea.input {
   .input { font-size: 16px; }
   .filter-input { font-size: 16px; }
 }
+/* 위 max-width:640px 은 세로 아이폰만 커버 → 아이패드·가로 아이폰(>640px) 은 여전히
+   14px/12.5px 라 포커스 시 화면이 줌-점프한다. 호버 불가(=터치) 기기 전반에서 16px 로
+   올려 자동 줌을 막는다. 마우스 데스크톱/Electron(pointer:fine) 은 기존 콤팩트 크기 유지. */
+@media (pointer: coarse) {
+  .input, textarea.input, .filter-input, select.filter-input, .ghost-select { font-size: 16px; }
+}
+
+/* 터치(호버 불가) 기기에서는 hover 로만 드러나는 액션 버튼을 항상 보이게 한다.
+   any-hover:none = 호버 가능한 입력장치가 전혀 없는 기기(아이폰·마우스 없는 아이패드).
+   기존엔 opacity-0 group-hover:opacity-100 / hidden group-hover:flex 로 숨겨져 터치에서
+   삭제·공유 등 버튼이 아예 닿지 않았다. 마우스 데스크톱/Electron(any-hover:hover) 은 무영향. */
+@media (any-hover: none) {
+  .touch-reveal { opacity: 1 !important; }
+  .touch-reveal-flex { display: flex !important; }
+}
 /* iOS Safari 는 네이티브 date/time/datetime-local 입력에 내장 min-width 를
    강제해서 w-full 지정에도 컨테이너 밖으로 튀어나올 수 있음. 강제로 shrink 허용 */
 input.input[type="date"],

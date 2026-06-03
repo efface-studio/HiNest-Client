@@ -46,4 +46,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
     }
 
+    // APNs 원격 푸시 등록 콜백 — @capacitor/push-notifications 가 이 NotificationCenter 이벤트를
+    // 구독해 디바이스 토큰을 JS 의 'registration' 리스너로 전달한다. 이 두 메서드가 없으면
+    // PushNotifications.register() 가 토큰을 못 받아 서버 등록(/api/push/register)이 일어나지 않고
+    // 푸시가 영영 오지 않는다. (Capacitor 기본 템플릿에 누락돼 있던 것)
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        NotificationCenter.default.post(name: .capacitorDidRegisterForRemoteNotifications, object: deviceToken)
+    }
+
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        NotificationCenter.default.post(name: .capacitorDidFailToRegisterForRemoteNotifications, object: error)
+    }
+
 }

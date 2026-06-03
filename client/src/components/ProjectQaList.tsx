@@ -3,6 +3,8 @@ import { api, apiSWR, apiFetch , imgSrc} from "../api";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import DatePicker from "./DatePicker";
 import { safeAttachmentUrl } from "../lib/safeUrl";
+import { isCapacitorNative } from "../lib/platform";
+import { Browser } from "@capacitor/browser";
 
 type Status = "BUG" | "IN_PROGRESS" | "NEEDS_FIX" | "NEEDS_TEST" | "DONE" | "ON_HOLD";
 type Priority = "LOW" | "NORMAL" | "HIGH";
@@ -1336,9 +1338,15 @@ function AttachmentThumb({
     }
     return (
       <div className={box} style={{ width: 112, height: 112 }}>
-        <a href={safeHref} target="_blank" rel="noreferrer" title={att.name}>
+        <a
+          href={safeHref}
+          target="_blank"
+          rel="noreferrer"
+          title={att.name}
+          onClick={(e) => { if (isCapacitorNative()) { e.preventDefault(); const u = imgSrc(safeHref); if (u) void Browser.open({ url: u }); } }}
+        >
           <img
-            src={safeHref}
+            src={imgSrc(safeHref)}
             alt={att.name}
             className="w-full h-full object-cover"
             loading="lazy"
@@ -1360,7 +1368,7 @@ function AttachmentThumb({
     return (
       <div className={box} style={{ width: 180, height: 112 }}>
         <video
-          src={safeHref}
+          src={imgSrc(safeHref)}
           className="w-full h-full object-cover"
           controls
           preload="metadata"
@@ -1380,6 +1388,7 @@ function AttachmentThumb({
           href={safeHref}
           target="_blank"
           rel="noreferrer"
+          onClick={(e) => { if (isCapacitorNative()) { e.preventDefault(); const u = imgSrc(safeHref); if (u) void Browser.open({ url: u }); } }}
           className="truncate text-ink-700 hover:underline"
           title={att.name}
         >

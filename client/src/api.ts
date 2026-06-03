@@ -79,14 +79,42 @@ export async function api<T = any>(
   if (typeof window !== "undefined" && (window as any).__HINEST_PREVIEW__ === true) {
     try { preview = sessionStorage.getItem("hinest:preview") === "1"; } catch {}
   }
-  const res = preview
-    ? await (await import("./lib/previewMock")).previewMockFetch(path, { ...init, json: init.json })
-    : await fetch(apiUrl(path), {
-        ...init,
-        headers,
-        body,
-        credentials: "include",
-      });
+  // 네트워크 지연·끊김 시 UI 가 무한 대기하지 않도록 타임아웃(기본 30초)을 건다.
+  // 호출부가 자체 signal 을 주면 그대로 존중하고 타임아웃은 적용하지 않는다.
+  // 느린 작업(예: 대용량 CSV 임포트)은 init.timeoutMs 로 늘리거나 0 으로 끌 수 있다.
+  const timeoutMs = (init as any).timeoutMs ?? 30_000;
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+  let signal = init.signal ?? undefined;
+  if (!signal && typeof AbortController !== "undefined" && timeoutMs > 0) {
+    const ac = new AbortController();
+    signal = ac.signal;
+    timeoutId = setTimeout(() => ac.abort(), timeoutMs);
+  }
+  let res: Response;
+  try {
+    res = preview
+      ? await (await import("./lib/previewMock")).previewMockFetch(path, { ...init, json: init.json })
+      : await fetch(apiUrl(path), {
+          ...init,
+          headers,
+          body,
+          credentials: "include",
+          signal,
+        });
+  } catch (e: any) {
+    // 타임아웃(abort)·오프라인·DNS 실패 등 fetch 단계 오류를 사용자 친화 메시지로 변환.
+    // (그대로 두면 "Failed to fetch" 가 노출되고 무한 로딩처럼 보인다.)
+    const aborted = e?.name === "AbortError";
+    const nerr = new Error(
+      aborted
+        ? "요청 시간이 초과됐어요. 네트워크 상태를 확인하고 다시 시도해주세요."
+        : "네트워크에 연결할 수 없어요. 연결을 확인해주세요.",
+    ) as Error & { status?: number; code?: string };
+    nerr.code = aborted ? "TIMEOUT" : "NETWORK";
+    throw nerr;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
   if (!res.ok) {
     let msg = "요청 실패";
     let code: string | undefined;

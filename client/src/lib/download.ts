@@ -1,3 +1,7 @@
+import { Browser } from "@capacitor/browser";
+import { isCapacitorNative } from "./platform";
+import { imgSrc } from "../api";
+
 /**
  * 크로스 브라우저 파일 다운로드 트리거.
  *
@@ -24,6 +28,14 @@
  *   이 경우 브라우저가 서버의 Content-Disposition 파일명으로 폴백한다.
  */
 export function downloadFromUrl(href: string, filename = ""): void {
+  // 네이티브 앱(Capacitor WKWebView)은 <a download> 로 파일을 저장하지 못한다.
+  // 인증된 절대 URL 을 인앱 브라우저(SFSafariViewController)로 열어 iOS 가 미리보기 +
+  // 공유/저장 시트를 제공하게 한다. imgSrc 가 /uploads 상대경로를 절대화하고 ?token= 을 붙인다.
+  if (isCapacitorNative()) {
+    const url = imgSrc(href) ?? href;
+    void Browser.open({ url }).catch(() => {});
+    return;
+  }
   const a = document.createElement("a");
   a.href = href;
   a.download = filename;

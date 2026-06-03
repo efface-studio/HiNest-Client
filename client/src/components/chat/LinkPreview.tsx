@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../../api";
 import { safeExternalUrl } from "../../lib/safeUrl";
+import { openExternal } from "../../lib/openExternal";
 
 /**
  * 메시지 본문 안 첫 URL 의 OG/Twitter Card 메타를 가져와 카드로 표시.
@@ -89,11 +90,8 @@ export function LinkPreview({ url, mine }: { url: string; mine: boolean }) {
       rel="noopener noreferrer"
       onClick={(e) => {
         e.stopPropagation();
-        const bridge = (window as any).hinest;
-        if (bridge?.openExternal) {
-          e.preventDefault();
-          bridge.openExternal(safeUrl).catch(() => {});
-        }
+        e.preventDefault();
+        openExternal(safeUrl);
       }}
       style={{
         display: "flex",

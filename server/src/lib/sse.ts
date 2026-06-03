@@ -1,4 +1,5 @@
 import type { Response } from "express";
+import { publishCrossInstance } from "./ssePubsub.js";
 
 /**
  * Server-Sent Events 허브.
@@ -29,7 +30,8 @@ export function removeClient(client: Client) {
   if (set.size === 0) clients.delete(client.userId);
 }
 
-export function publish(userId: string, event: string, data: unknown) {
+/** 이 인스턴스에 연결된 클라이언트에게만 SSE 전달(로컬). cross-instance LISTEN 수신 시에도 이걸 호출. */
+export function deliverLocal(userId: string, event: string, data: unknown) {
   const set = clients.get(userId);
   if (!set) return;
   const payload = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
@@ -40,6 +42,15 @@ export function publish(userId: string, event: string, data: unknown) {
       // ignore broken pipe
     }
   }
+}
+
+/**
+ * 로컬 클라이언트 + 타 Fargate 인스턴스(Postgres LISTEN/NOTIFY) 모두에 전달.
+ * 로컬은 즉시, 타 인스턴스는 pg_notify 로. (멀티 인스턴스에서 알림 실시간 누락 → 폴링 지연 해결)
+ */
+export function publish(userId: string, event: string, data: unknown) {
+  deliverLocal(userId, event, data);
+  publishCrossInstance(userId, event, data);
 }
 
 export function publishMany(userIds: string[], event: string, data: unknown) {

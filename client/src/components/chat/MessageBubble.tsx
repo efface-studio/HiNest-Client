@@ -2,11 +2,12 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { C, FONT, formatBytes } from "./theme";
 import type { Attachment, Message, Reaction } from "./types";
-import { api } from "../../api";
+import { api, imgSrc } from "../../api";
 import { alertAsync } from "../ConfirmHost";
 import { parseCodeSegments } from "../../lib/codeDetect";
 import { copyToClipboard } from "../../lib/clipboard";
 import { downloadFromUrl } from "../../lib/download";
+import { openExternal } from "../../lib/openExternal";
 import { useModalDismiss } from "../../lib/useModalDismiss";
 import { HljsCode } from "../../lib/useHighlightedCode";
 import { LangIcon } from "../../lib/langIcon";
@@ -270,7 +271,7 @@ function ChatVideoPlayer({ src, fileName }: { src: string; fileName: string | nu
     <div ref={wrapRef} style={{ position: "relative", display: "inline-block" }}>
       <video
         ref={videoRef}
-        src={src}
+        src={imgSrc(src)}
         controls
         // 기본 메뉴 항목 전부 숨김 → 3점 메뉴 자체가 사라짐.
         controlsList="nodownload noplaybackrate nofullscreen noremoteplayback"
@@ -497,7 +498,7 @@ function ImageThumb({ src, alt }: { src: string; alt: string }) {
         }}
       >
         <img
-          src={src}
+          src={imgSrc(src)}
           alt={alt}
           loading="lazy"
           decoding="async"
@@ -564,7 +565,7 @@ function ImageLightbox({
     >
       <style>{`@keyframes hinest-fade { from { opacity: 0 } to { opacity: 1 } }`}</style>
       <img
-        src={src}
+        src={imgSrc(src)}
         alt={alt}
         onMouseDown={(e) => e.stopPropagation()}
         style={{
@@ -1067,12 +1068,8 @@ function renderWithLinks(content: string, mine: boolean): React.ReactNode[] {
         }}
         onClick={(e) => {
           e.stopPropagation();
-          // Electron 데스크톱 앱 안에서는 OS 기본 브라우저로 강제 열기
-          const bridge = window.hinest;
-          if (bridge?.openExternal) {
-            e.preventDefault();
-            bridge.openExternal(href).catch(() => {});
-          }
+          e.preventDefault();
+          openExternal(href);
         }}
       >
         {clean}
@@ -1505,7 +1502,7 @@ export function AttachmentPreview({
   if (att.kind === "IMAGE") {
     body = (
       <img
-        src={att.url}
+        src={imgSrc(att.url)}
         alt={att.name}
         loading="lazy"
         decoding="async"

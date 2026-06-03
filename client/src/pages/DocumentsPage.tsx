@@ -9,6 +9,8 @@ import RevisionHistoryModal from "../components/RevisionHistoryModal";
 import type { MemoDoc } from "../components/DocMemoModal";
 import { safeUploadUrl } from "../lib/safeUrl";
 import { downloadFromUrl, downloadBlob } from "../lib/download";
+import { isCapacitorNative } from "../lib/platform";
+import { Browser } from "@capacitor/browser";
 
 // DocMemoModal 은 TipTap(무거운 번들)을 포함 → 실제 열릴 때만 로드.
 const DocMemoModal = lazy(() => import("../components/DocMemoModal"));
@@ -1354,6 +1356,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                       );
                       return (
                         <a href={safe} target="_blank" rel="noreferrer" title={d.fileName ?? undefined}
+                          onClick={(e) => { if (isCapacitorNative()) { e.preventDefault(); const u = imgSrc(safe); if (u) void Browser.open({ url: u }); } }}
                           className="inline-flex items-center gap-1 max-w-[180px] sm:max-w-[260px] align-middle text-[12px] font-bold text-brand-600 hover:underline tabular">
                           <span className="truncate">{d.fileName}</span>
                           <span className="text-ink-400 flex-shrink-0">({humanSize(d.fileSize ?? 0)})</span>

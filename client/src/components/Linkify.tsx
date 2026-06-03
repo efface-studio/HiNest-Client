@@ -1,4 +1,5 @@
 import React from "react";
+import { openExternal } from "../lib/openExternal";
 
 /**
  * 텍스트 안의 URL을 자동으로 <a>로 변환.
@@ -45,7 +46,7 @@ export default function Linkify({
         target="_blank"
         rel="noopener noreferrer"
         className={linkClassName ?? "underline underline-offset-2 hover:opacity-80 break-all"}
-        onClick={(e) => e.stopPropagation()}
+        onClick={(e) => { e.stopPropagation(); e.preventDefault(); openExternal(href); }}
       >
         {label}
       </a>

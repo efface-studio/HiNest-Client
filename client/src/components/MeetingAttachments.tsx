@@ -1,8 +1,11 @@
 import { useRef, useState } from "react";
-import { api, apiFetch } from "../api";
+import { api, apiFetch, imgSrc } from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "./ConfirmHost";
 import { safeAttachmentUrl } from "../lib/safeUrl";
+import { isCapacitorNative } from "../lib/platform";
+import { openExternal } from "../lib/openExternal";
+import { Browser } from "@capacitor/browser";
 
 /**
  * 회의록 본문 아래에 떠있는 첨부 섹션 — 파일(이미지/영상/문서) + 외부 링크 모두 한 곳에서 관리.
@@ -262,6 +265,13 @@ export default function MeetingAttachments({
                       target="_blank"
                       rel="noopener noreferrer"
                       {...(isLink ? {} : { download: att.name })}
+                      onClick={(e) => {
+                        if (!isCapacitorNative()) return;
+                        e.preventDefault();
+                        if (isLink) { openExternal(safeHref); return; }
+                        const u = imgSrc(safeHref);
+                        if (u) void Browser.open({ url: u });
+                      }}
                       className="text-[13px] font-semibold text-ink-900 hover:text-brand-600 truncate block"
                       title={isLink ? safeHref : att.name}
                     >

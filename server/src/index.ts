@@ -5,6 +5,8 @@ import helmet from "helmet";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
 import { requireAuth, NATIVE_ORIGINS } from "./lib/auth.js";
+import { initSsePubsub } from "./lib/ssePubsub.js";
+import { deliverLocal } from "./lib/sse.js";
 import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import usersRouter from "./routes/users.js";
@@ -533,6 +535,8 @@ async function backfillNoticeLinks() {
 
 const server = app.listen(PORT, () => {
   console.log(`[HiNest API] http://localhost:${PORT}`);
+  // 멀티 인스턴스 SSE 팬아웃(Postgres LISTEN/NOTIFY) 시작 — 태스크 간 알림 실시간 전달.
+  initSsePubsub(deliverLocal);
   backfillNoticeLinks();
   backfillUserIdentity();
   // 자동 퇴근 스케줄러 — 매 분 tick, 설정된 시각의 사용자를 자동 퇴근 처리.

@@ -345,7 +345,7 @@ export default function ProjectCalendar({
                 style={{ background: meUrl ? "transparent" : (me?.avatarColor ?? "#64748B") }}
               >
                 {meUrl ? (
-                  <img src={meUrl} alt={me?.name ?? "내 프로필"} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
+                  <img src={imgSrc(meUrl)} alt={me?.name ?? "내 프로필"} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
                 ) : (
                   (me?.name ?? user.name ?? "나")[0]
                 )}

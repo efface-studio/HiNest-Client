@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, apiUrl } from "./api";
+import { getAuthToken } from "./lib/authToken";
 import { deliverPendingNotifications, markSeen } from "./lib/desktopNotify";
 import { shouldDeliverNotif } from "./lib/notifPrefs";
 
@@ -137,7 +138,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     };
     function connect() {
       try {
-        const es = new EventSource(apiUrl("/api/notification/stream"), { withCredentials: true });
+        // 네이티브 앱은 EventSource 가 헤더를 못 싣고 쿠키도 cross-site ITP 로 막혀 SSE 가 안 붙는다.
+        // 세션 토큰을 ?token= 쿼리로 보내 인증한다(서버 queryTokenAuth 가 Bearer 로 승격). 웹/데스크톱은
+        // 토큰이 없어 쿼리 없이 기존 쿠키 인증 그대로.
+        const streamToken = getAuthToken();
+        const streamUrl =
+          apiUrl("/api/notification/stream") + (streamToken ? `?token=${encodeURIComponent(streamToken)}` : "");
+        const es = new EventSource(streamUrl, { withCredentials: true });
         esRef.current = es;
         es.addEventListener("notification", (ev: MessageEvent) => {
           try {

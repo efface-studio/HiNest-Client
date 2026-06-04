@@ -448,6 +448,23 @@ router.post("/rooms/:id/read", async (req, res) => {
 });
 
 /**
+ * 방별 알림 음소거 토글. 본인의 RoomMember.muted 를 갱신.
+ * muted=true 면 서버가 이 방 채팅 알림의 APNs(폰 푸시) 를 보내지 않는다.
+ * (알림 레코드·SSE·미읽음 뱃지는 유지 — 조용히 쌓이기만. 기기 간 동기화를 위해 서버 저장.)
+ */
+router.patch("/rooms/:id/mute", async (req, res) => {
+  const u = (req as any).user;
+  const muted = !!req.body?.muted;
+  const member = await prisma.roomMember.findUnique({
+    where: { roomId_userId: { roomId: req.params.id, userId: u.id } },
+    select: { id: true },
+  });
+  if (!member) return res.status(404).json({ error: "not a member" });
+  await prisma.roomMember.update({ where: { id: member.id }, data: { muted } });
+  res.json({ ok: true, muted });
+});
+
+/**
  * 메시지 전송 (즉시 또는 예약).
  * 본문, 첨부, scheduledAt 지원.
  */
@@ -555,7 +572,7 @@ router.post("/rooms/:id/messages", async (req, res) => {
     } else {
       // GROUP/TEAM: 보낸 사람 제외 모든 멤버에게 알림. 멘션된 사람은 MENTION(강조), 나머지는 일반 채팅.
       // (예전엔 멘션만 알림 → 단체방 메시지·사진이 알림 없이 묻혔음. 작업용 단체방 표준 동작으로 변경.
-      //  시끄러운 방 대비 '방별 음소거'는 후속 권장 — RoomMember 에 muted 필드 추가 필요.)
+      //  시끄러운 방은 RoomMember.muted 로 음소거 가능 — notify() 가 음소거 멤버의 APNs 를 생략한다.)
       const members = await prisma.roomMember.findMany({
         where: { roomId: req.params.id, userId: { not: u.id } },
         select: { userId: true },

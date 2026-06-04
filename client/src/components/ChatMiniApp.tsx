@@ -145,6 +145,33 @@ export default function ChatMiniApp({
       saveAllRoomSettings(next);
       return next;
     });
+    // 음소거는 서버에도 영속화 — 기기 간 동기화 + 서버가 음소거 방의 APNs(폰 푸시) 를 생략하도록.
+    // (별명은 로컬 전용이므로 muted 가 명시될 때만 호출.) 낙관적 — 실패해도 다음 동기화에서 보정.
+    if (patch.muted !== undefined) {
+      void api(`/api/chat/rooms/${roomId}/mute`, { method: "PATCH", json: { muted: patch.muted } }).catch(() => {});
+    }
+  };
+
+  // 서버의 RoomMember.muted → 로컬 roomSettings.muted 동기화.
+  // notifPrefs.shouldDeliverNotif 가 localStorage 를 직접 읽으므로 localStorage 도 함께 갱신.
+  const hydrateMutedFromServer = (list: Room[]) => {
+    const meId = user?.id;
+    if (!meId) return;
+    setRoomSettings((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const r of list) {
+        const mine = r.members.find((m) => m.user.id === meId);
+        if (!mine) continue;
+        const serverMuted = !!mine.muted;
+        if (serverMuted !== !!next[r.id]?.muted) {
+          next[r.id] = { ...next[r.id], muted: serverMuted };
+          changed = true;
+        }
+      }
+      if (changed) saveAllRoomSettings(next);
+      return changed ? next : prev;
+    });
   };
 
   const roomUnread = useMemo(() => {
@@ -165,6 +192,7 @@ export default function ChatMiniApp({
     try {
       const res = await api<{ rooms: Room[] }>("/api/chat/rooms");
       setRooms(res.rooms);
+      hydrateMutedFromServer(res.rooms);
     } catch {}
   };
   // 메시지 로더.

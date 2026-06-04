@@ -47,6 +47,34 @@ async function resolveDelivery(userIds: string[], type: NotifyType): Promise<Map
   return out;
 }
 
+/** linkUrl 에서 ?room=<id> 추출. 채팅(DM/MENTION) 알림만 이 패턴을 가짐. */
+function roomIdFromLink(linkUrl?: string | null): string | null {
+  if (!linkUrl) return null;
+  const m = /[?&]room=([^&]+)/.exec(linkUrl);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+/**
+ * (userId, roomId) 쌍 중 "이 방을 음소거한" 조합을 `${userId}:${roomId}` Set 으로 반환.
+ * 음소거된 방의 채팅 알림은 APNs(폰 푸시) 만 건너뛴다 — 알림 레코드·SSE 는 그대로라
+ * 미읽음 뱃지·실시간 채팅목록 갱신은 유지된다. 채팅 외 알림(roomId 없음) 은 항상 빈 결과.
+ */
+async function mutedApnsSet(targets: { userId: string; linkUrl?: string | null }[]): Promise<Set<string>> {
+  const pairs = targets
+    .map((t) => ({ userId: t.userId, roomId: roomIdFromLink(t.linkUrl) }))
+    .filter((p): p is { userId: string; roomId: string } => !!p.roomId);
+  if (!pairs.length) return new Set();
+  const muted = await prisma.roomMember.findMany({
+    where: {
+      muted: true,
+      roomId: { in: Array.from(new Set(pairs.map((p) => p.roomId))) },
+      userId: { in: Array.from(new Set(pairs.map((p) => p.userId))) },
+    },
+    select: { roomId: true, userId: true },
+  });
+  return new Set(muted.map((m) => `${m.userId}:${m.roomId}`));
+}
+
 export async function notify(input: NotifyInput) {
   try {
     const map = await resolveDelivery([input.userId], input.type);
@@ -55,8 +83,18 @@ export async function notify(input: NotifyInput) {
     const created = await prisma.notification.create({ data: input });
     if (!d || d.allowPush) {
       publish(input.userId, "notification", created);
+      // 방 음소거 시 APNs(폰 푸시) 만 생략 — 레코드/SSE 는 위에서 이미 보냄.
+      let muted = false;
+      const rid = roomIdFromLink(input.linkUrl);
+      if (rid) {
+        const mem = await prisma.roomMember.findUnique({
+          where: { roomId_userId: { roomId: rid, userId: input.userId } },
+          select: { muted: true },
+        });
+        muted = !!mem?.muted;
+      }
       // 원격 푸시(iOS APNs) — fire-and-forget. 미설정/토큰없음이면 내부 no-op.
-      void sendApnsToUser(input.userId, { title: input.title, body: input.body, linkUrl: input.linkUrl });
+      if (!muted) void sendApnsToUser(input.userId, { title: input.title, body: input.body, linkUrl: input.linkUrl });
     }
   } catch (e) {
     console.error("notify failed", e);
@@ -105,11 +143,18 @@ export async function notifyMany(inputs: NotifyInput[]) {
     for (const n of fresh) {
       if (!picked.has(n.userId)) picked.set(n.userId, n);
     }
+    // 음소거된 방의 채팅 알림은 APNs(폰 푸시) 만 생략 — 한 번에 조회.
+    const mutedSet = await mutedApnsSet(
+      Array.from(picked.values()).map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
+    );
     for (const [uid, n] of picked) {
       if (pushFlag.get(`${uid}:${n.type as NotifyType}`) !== false) {
         publish(uid, "notification", n);
+        const rid = roomIdFromLink(n.linkUrl);
         // 원격 푸시(iOS APNs) — fire-and-forget. 미설정/토큰없음이면 내부 no-op.
-        void sendApnsToUser(uid, { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined });
+        if (!(rid && mutedSet.has(`${uid}:${rid}`))) {
+          void sendApnsToUser(uid, { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined });
+        }
       }
     }
   } catch (e) {

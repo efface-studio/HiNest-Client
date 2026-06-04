@@ -1,4 +1,5 @@
 import { registerPlugin } from "@capacitor/core";
+import { isCapacitorNative } from "./platform";
 
 /**
  * 네이티브 Liquid Glass 하단 탭 바 브리지 (iOS 26 UIGlassEffect).
@@ -39,3 +40,33 @@ export interface LiquidGlassTabBarPlugin {
 }
 
 export const LiquidGlassTabBar = registerPlugin<LiquidGlassTabBarPlugin>("LiquidGlassTabBar");
+
+/* ===========================================================================
+ * 네이티브 탭 바 가시성 관리.
+ * 탭 바는 웹뷰 위에 떠 있는 네이티브 오버레이라, 풀스크린 웹 화면(채팅·알림·모달)에선
+ * 가려야 한다. 여러 곳에서 "이유(reason)" 별로 숨김을 요청할 수 있고, 하나라도 숨김이면 숨긴다.
+ * iOS 네이티브에서만 동작(그 외엔 no-op).
+ * ======================================================================== */
+const hideReasons = new Set<string>();
+let lastVisible: boolean | null = null;
+
+function applyVisibility() {
+  if (!isCapacitorNative()) return;
+  const visible = hideReasons.size === 0;
+  if (visible === lastVisible) return;
+  lastVisible = visible;
+  LiquidGlassTabBar.setVisible({ visible }).catch(() => {});
+}
+
+/** 사유별 숨김 토글. (예: "chat", "modal", "route") */
+export function setNativeTabBarHidden(reason: string, hidden: boolean) {
+  if (hidden) hideReasons.add(reason);
+  else hideReasons.delete(reason);
+  applyVisibility();
+}
+
+/** 바를 (재)생성한 직후 현재 사유 집합 기준으로 가시성 재적용. */
+export function syncNativeTabBarVisibility() {
+  lastVisible = null;
+  applyVisibility();
+}

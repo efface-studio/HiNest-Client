@@ -19,7 +19,7 @@ import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
 import { isPreviewMode } from "../lib/previewMock";
 import { isInstalledApp, nativePlatform } from "../lib/platform";
-import { LiquidGlassTabBar } from "../lib/liquidGlassTabBar";
+import { LiquidGlassTabBar, setNativeTabBarHidden, syncNativeTabBarVisibility } from "../lib/liquidGlassTabBar";
 import { confirmLogout } from "../lib/confirmLogout";
 
 /**
@@ -693,6 +693,8 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
         });
         removeListener = () => { try { void handle?.remove?.(); } catch {} };
         LiquidGlassTabBar.setSelected({ key: matchNativeTabKey(window.location.pathname) }).catch(() => {});
+        // 바 생성 직후 현재 숨김 사유(채팅·모달·라우트) 기준으로 가시성 재적용.
+        syncNativeTabBarVisibility();
       } catch {
         // iOS<26 / 미지원 → 웹 CSS 글래스 바 폴백(아무 것도 하지 않음).
       }
@@ -706,11 +708,34 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 경로 변화 → 네이티브 탭 하이라이트 동기화.
+  // 경로 변화 → 네이티브 탭 하이라이트 동기화 + 포커스 화면(알림 등)에선 바 숨김.
   useEffect(() => {
     if (nativePlatform() !== "ios") return;
     LiquidGlassTabBar.setSelected({ key: matchNativeTabKey(pathname) }).catch(() => {});
+    // 하단 바를 숨길 라우트(전체 화면 포커스 뷰).
+    const hideOnRoutes = ["/notifications"];
+    setNativeTabBarHidden("route", hideOnRoutes.some((r) => pathname === r || pathname.startsWith(r + "/")));
   }, [pathname]);
+
+  // 모달이 열려 있는 동안 네이티브 바 숨김. 모달 오버레이는 .modal-safe 로 표시돼 있으므로
+  // DOM 에 그게 존재하는지 관찰한다. (채팅 풀스크린은 ChatFab 이 별도로 'chat' 사유로 숨김.)
+  useEffect(() => {
+    if (nativePlatform() !== "ios") return;
+    let raf = 0;
+    const check = () => {
+      raf = 0;
+      setNativeTabBarHidden("modal", !!document.querySelector(".modal-safe"));
+    };
+    const schedule = () => { if (!raf) raf = requestAnimationFrame(check); };
+    const obs = new MutationObserver(schedule);
+    obs.observe(document.body, { childList: true, subtree: true });
+    check();
+    return () => {
+      obs.disconnect();
+      if (raf) cancelAnimationFrame(raf);
+      setNativeTabBarHidden("modal", false);
+    };
+  }, []);
 
   // 모바일 당겨서 새로고침 — main 스크롤러에 ref 를 물려 제스처를 감지한다.
   // 당김 비주얼(인디케이터·링·본문 오프셋)은 훅이 ref 로 직접 DOM 에 쓰므로

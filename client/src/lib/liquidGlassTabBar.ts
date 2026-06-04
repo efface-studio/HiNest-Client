@@ -24,6 +24,14 @@ export interface LiquidGlassTabBarPlugin {
   setSelected(options: { key: string }): Promise<void>;
   setBadge(options: { key: string; count: number }): Promise<void>;
   setVisible(options: { visible: boolean }): Promise<void>;
+  /** 애플 기본 확인 시트(action sheet). 로그아웃 등 재확인용. */
+  confirm(options: {
+    title?: string;
+    message?: string;
+    confirmText?: string;
+    cancelText?: string;
+    destructive?: boolean;
+  }): Promise<{ confirmed: boolean }>;
   addListener(
     eventName: "tabSelected",
     listenerFunc: (data: { key: string }) => void,

@@ -77,6 +77,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setSelected", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setVisible", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "confirm", returnType: CAPPluginReturnPromise),
     ]
 
     private var glassView: UIView?
@@ -198,6 +199,35 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         DispatchQueue.main.async {
             self.glassView?.isHidden = !visible
             call.resolve()
+        }
+    }
+
+    /// 애플 기본 확인 시트(UIAlertController .actionSheet) — 로그아웃 등 재확인용.
+    /// resolve({confirmed}). VC 없으면 confirmed:false.
+    @objc func confirm(_ call: CAPPluginCall) {
+        let title = call.getString("title")
+        let message = call.getString("message")
+        let confirmText = call.getString("confirmText") ?? "확인"
+        let cancelText = call.getString("cancelText") ?? "취소"
+        let destructive = call.getBool("destructive") ?? false
+        DispatchQueue.main.async {
+            guard let vc = self.bridge?.viewController else {
+                call.resolve(["confirmed": false]); return
+            }
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .actionSheet)
+            alert.addAction(UIAlertAction(title: confirmText, style: destructive ? .destructive : .default) { _ in
+                call.resolve(["confirmed": true])
+            })
+            alert.addAction(UIAlertAction(title: cancelText, style: .cancel) { _ in
+                call.resolve(["confirmed": false])
+            })
+            // 아이패드는 액션시트에 앵커가 필요(없으면 크래시) — 화면 하단 중앙에 앵커.
+            if let pop = alert.popoverPresentationController {
+                pop.sourceView = vc.view
+                pop.sourceRect = CGRect(x: vc.view.bounds.midX, y: vc.view.bounds.maxY - 40, width: 0, height: 0)
+                pop.permittedArrowDirections = []
+            }
+            vc.present(alert, animated: true)
         }
     }
 

@@ -20,6 +20,7 @@ import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
 import { isPreviewMode } from "../lib/previewMock";
 import { isInstalledApp, nativePlatform } from "../lib/platform";
 import { LiquidGlassTabBar } from "../lib/liquidGlassTabBar";
+import { confirmLogout } from "../lib/confirmLogout";
 
 /**
  * 사이드바 hover/focus prefetch — 사용자가 클릭하기 전에 해당 페이지 청크를
@@ -864,6 +865,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             {isDevAccount(user) && <DevQuickToggle />}
             <button
               onClick={async () => {
+                if (!(await confirmLogout())) return;
                 await logout();
                 nav("/login");
               }}
@@ -1331,7 +1333,7 @@ export function MobileMenuPage() {
       {/* 로그아웃 */}
       <button
         type="button"
-        onClick={async () => { await logout(); nav("/login"); }}
+        onClick={async () => { if (!(await confirmLogout())) return; await logout(); nav("/login"); }}
         className="w-full flex items-center justify-center gap-2 h-[46px] rounded-full border border-ink-150 text-[13px] font-bold text-ink-600 hover:bg-ink-100 hover:text-ink-900 transition"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -60,7 +60,7 @@ export default function LoginPage() {
       </header>
 
       {/* 본문 — 중앙 정렬, 한 단 */}
-      <main className="flex-1 flex items-center justify-center px-6 pb-12">
+      <main className="flex-1 flex items-center justify-center px-6 pb-32">
         <div className="w-full max-w-[360px]">
           {/* 인사말 */}
           <div className="mb-9">

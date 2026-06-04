@@ -1605,6 +1605,7 @@ const BREADCRUMB: Record<string, string> = {
   "/accounts": "계정 관리",
   "/snippets": "스니펫",
   "/approvals": "전자결재",
+  "/meetings": "회의록",
   "/expense": "법인카드",
   "/admin": "관리자",
   "/profile": "내 프로필",

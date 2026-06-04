@@ -77,6 +77,10 @@ html.hinest-ios {
 }
 html.hinest-ios .app-sidebar { display: none !important; }
 html.hinest-ios .app-bottomnav { display: flex !important; }
+/* 네이티브 Liquid Glass 탭 바가 활성화되면(JS 가 configure 성공 시 .hinest-native-tabbar 추가)
+   웹 하단 바를 숨긴다 — 네이티브 바가 대체. configure 실패/iOS<26 이면 클래스가 안 붙어 웹 바 폴백.
+   (이 규칙이 위 hinest-ios .app-bottomnav 보다 뒤라 둘 다 있을 때 display:none 이 이긴다.) */
+html.hinest-native-tabbar .app-bottomnav { display: none !important; }
 
 html.dark {
   color-scheme: dark;

@@ -19,6 +19,7 @@ import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
 import { isPreviewMode } from "../lib/previewMock";
 import { isInstalledApp, nativePlatform } from "../lib/platform";
+import { LiquidGlassTabBar } from "../lib/liquidGlassTabBar";
 
 /**
  * 사이드바 hover/focus prefetch — 사용자가 클릭하기 전에 해당 페이지 청크를
@@ -452,6 +453,22 @@ const BOTTOM_NAV: NavItem[] = [
   { to: "/meetings", label: "회의록", icon: MeetingIcon },
 ];
 
+/** 네이티브 Liquid Glass 탭 바 구성(iOS). 웹 BOTTOM_NAV + "전체" 와 동일 순서, SF Symbol 매핑. */
+const NATIVE_GLASS_TABS = [
+  { key: "/", title: "개요", sf: "house.fill" },
+  { key: "/schedule", title: "일정", sf: "calendar" },
+  { key: "/approvals", title: "전자결재", sf: "checkmark.seal.fill" },
+  { key: "/meetings", title: "회의록", sf: "doc.text.fill" },
+  { key: "/menu", title: "전체", sf: "line.3.horizontal" },
+];
+/** 현재 경로에 해당하는 네이티브 탭 key. 일치 없으면 빈 문자열(하이라이트 없음). */
+function matchNativeTabKey(pathname: string): string {
+  for (const k of ["/schedule", "/approvals", "/meetings", "/menu"]) {
+    if (pathname === k || pathname.startsWith(k + "/")) return k;
+  }
+  return pathname === "/" ? "/" : "";
+}
+
 export default function AppLayout({ children }: { children?: React.ReactNode } = {}) {
   return (
     <NotificationProvider>
@@ -658,6 +675,41 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     el.classList.toggle("hinest-ios", nativePlatform() === "ios");
     return () => el.classList.remove("hinest-shell-lock");
   }, []);
+
+  // 네이티브 Liquid Glass 탭 바(iOS 26 UIGlassEffect) — 성공하면 웹 하단 바를 숨기고
+  // 실제 애플 글래스 바가 대체한다. 미지원(iOS<26)/실패면 아무 일도 없고 웹 CSS 글래스 바가 폴백.
+  useEffect(() => {
+    if (nativePlatform() !== "ios") return;
+    let cancelled = false;
+    let removeListener: (() => void) | undefined;
+    (async () => {
+      try {
+        const res = await LiquidGlassTabBar.configure({ tabs: NATIVE_GLASS_TABS });
+        if (cancelled || !res?.active) return;
+        document.documentElement.classList.add("hinest-native-tabbar");
+        const handle = await LiquidGlassTabBar.addListener("tabSelected", (d) => {
+          if (d?.key) nav(d.key);
+        });
+        removeListener = () => { try { void handle?.remove?.(); } catch {} };
+        LiquidGlassTabBar.setSelected({ key: matchNativeTabKey(window.location.pathname) }).catch(() => {});
+      } catch {
+        // iOS<26 / 미지원 → 웹 CSS 글래스 바 폴백(아무 것도 하지 않음).
+      }
+    })();
+    return () => {
+      cancelled = true;
+      removeListener?.();
+      document.documentElement.classList.remove("hinest-native-tabbar");
+      LiquidGlassTabBar.setVisible({ visible: false }).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 경로 변화 → 네이티브 탭 하이라이트 동기화.
+  useEffect(() => {
+    if (nativePlatform() !== "ios") return;
+    LiquidGlassTabBar.setSelected({ key: matchNativeTabKey(pathname) }).catch(() => {});
+  }, [pathname]);
 
   // 모바일 당겨서 새로고침 — main 스크롤러에 ref 를 물려 제스처를 감지한다.
   // 당김 비주얼(인디케이터·링·본문 오프셋)은 훅이 ref 로 직접 DOM 에 쓰므로

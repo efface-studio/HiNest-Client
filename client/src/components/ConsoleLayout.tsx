@@ -189,18 +189,19 @@ export default function ConsoleLayout() {
           />
         )}
         <header
-          className="md:hidden bg-ink-900 text-white flex-shrink-0"
+          className="md:hidden bg-white dark:bg-ink-900 text-ink-900 dark:text-white border-b border-ink-150 dark:border-ink-800 flex-shrink-0"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="h-[48px] px-4 flex items-center gap-2">
-            <AdminLockup variant="compact" onDark />
+            {/* onDark 를 넘기지 않으면 AdminLockup 이 앱 테마(resolved)를 따라간다. */}
+            <AdminLockup variant="compact" />
             <div className="ml-auto flex items-center gap-1">
               {hasCompany && (
-                <button onClick={() => nav("/")} className="text-[12px] font-semibold text-white/70 hover:text-white px-2 py-1">
+                <button onClick={() => nav("/")} className="text-[12px] font-semibold text-ink-500 hover:text-ink-900 dark:text-white/70 dark:hover:text-white px-2 py-1">
                   서비스
                 </button>
               )}
-              <button onClick={doLogout} className="text-white/60 hover:text-white px-2 py-1" aria-label="로그아웃">
+              <button onClick={doLogout} className="text-ink-400 hover:text-ink-700 dark:text-white/60 dark:hover:text-white px-2 py-1" aria-label="로그아웃">
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" />
                 </svg>

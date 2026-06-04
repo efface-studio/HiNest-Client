@@ -62,10 +62,14 @@ export default function SchedulePage() {
   const [dayOpen, setDayOpen] = useState<Date | null>(null);
   const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [view, setView] = useState<"month" | "week">("month");
 
   async function load(aliveRef?: { current: boolean }) {
-    const from = startOfMonth(cursor).toISOString();
-    const to = endOfMonth(cursor).toISOString();
+    // 주간 보기가 달 경계를 넘는 경우(이전/다음 달 일부 날짜)까지 커버하도록 앞뒤 1주 여유.
+    const fromD = startOfMonth(cursor); fromD.setDate(fromD.getDate() - 7);
+    const toD = endOfMonth(cursor); toD.setDate(toD.getDate() + 7);
+    const from = fromD.toISOString();
+    const to = toD.toISOString();
     const res = await api<{ events: Event[] }>(
       `/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
     );
@@ -122,7 +126,20 @@ export default function SchedulePage() {
       const en = new Date(e.endAt);
       return d >= new Date(s.getFullYear(), s.getMonth(), s.getDate()) &&
         d <= new Date(en.getFullYear(), en.getMonth(), en.getDate());
-    });
+    }).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()); // 시작 시각 순 정렬
+  }
+
+  // 주간 보기 — cursor 가 속한 주(일~토) 7일.
+  const weekDays = useMemo(() => {
+    const s = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate());
+    s.setDate(s.getDate() - s.getDay());
+    return Array.from({ length: 7 }, (_, i) => new Date(s.getFullYear(), s.getMonth(), s.getDate() + i));
+  }, [cursor]);
+
+  // 헤더 ←/→ — 월 보기는 ±1달, 주 보기는 ±7일.
+  function navCursor(dir: 1 | -1) {
+    if (view === "month") setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1));
+    else setCursor(new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + dir * 7));
   }
 
   async function create(e: React.FormEvent) {
@@ -206,15 +223,24 @@ export default function SchedulePage() {
         description="전사/팀/개인 일정을 월별로 관리합니다."
         right={
           <div className="flex items-center gap-2 flex-wrap">
-            <button className="btn-ghost" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() - 1, 1))}>
-              ←
-            </button>
-            <div className="font-bold text-ink-900 w-28 sm:w-32 text-center">
-              {cursor.getFullYear()}년 {cursor.getMonth() + 1}월
+            {/* 월 / 주 보기 토글 */}
+            <div className="inline-flex rounded-lg bg-ink-100 p-0.5">
+              <button
+                className={`px-3 h-8 rounded-md text-[13px] font-bold transition ${view === "month" ? "bg-white shadow-sm text-ink-900" : "text-ink-500"}`}
+                onClick={() => setView("month")}
+              >월</button>
+              <button
+                className={`px-3 h-8 rounded-md text-[13px] font-bold transition ${view === "week" ? "bg-white shadow-sm text-ink-900" : "text-ink-500"}`}
+                onClick={() => setView("week")}
+              >주</button>
             </div>
-            <button className="btn-ghost" onClick={() => setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1))}>
-              →
-            </button>
+            <button className="btn-ghost" onClick={() => navCursor(-1)}>←</button>
+            <div className="font-bold text-ink-900 w-32 sm:w-40 text-center text-[14px] tabular">
+              {view === "month"
+                ? `${cursor.getFullYear()}년 ${cursor.getMonth() + 1}월`
+                : `${weekDays[0].getMonth() + 1}.${weekDays[0].getDate()} – ${weekDays[6].getMonth() + 1}.${weekDays[6].getDate()}`}
+            </div>
+            <button className="btn-ghost" onClick={() => navCursor(1)}>→</button>
             <button className="btn-primary sm:ml-3" onClick={() => setOpen(true)}>
               + 일정 추가
             </button>
@@ -222,6 +248,7 @@ export default function SchedulePage() {
         }
       />
 
+      {view === "month" ? (
       <div className="card cal-fullbleed p-0 overflow-hidden">
         <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
           {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
@@ -317,6 +344,9 @@ export default function SchedulePage() {
           })}
         </div>
       </div>
+      ) : (
+        <WeekAgenda days={weekDays} eventsOn={eventsOn} onOpenDay={(d) => setDayOpen(d)} />
+      )}
 
       {open && (
         <EventModal
@@ -346,6 +376,57 @@ export default function SchedulePage() {
 /* ============================================================ */
 /*                       Event Chip                             */
 /* ============================================================ */
+/** 주간 보기 — 그 주(일~토) 7일을 세로 아젠다로. 각 날짜의 일정을 시작 시각 순으로 쌓아 보여준다. */
+function WeekAgenda({ days, eventsOn, onOpenDay }: { days: Date[]; eventsOn: (d: Date) => Event[]; onOpenDay: (d: Date) => void }) {
+  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+  return (
+    <div className="card cal-fullbleed p-0 overflow-hidden divide-y divide-ink-100">
+      {days.map((d, i) => {
+        const evs = eventsOn(d);
+        const isToday = new Date().toDateString() === d.toDateString();
+        const dow = d.getDay();
+        const numColor = dow === 0 ? "text-rose-500" : dow === 6 ? "text-accent-500" : "text-ink-800";
+        const dowColor = dow === 0 ? "text-rose-500" : dow === 6 ? "text-accent-500" : "text-ink-500";
+        return (
+          <div key={i} className="px-4 py-3.5">
+            <div className="flex items-center gap-2 mb-2">
+              <span className={`inline-flex items-center justify-center min-w-[26px] h-[26px] px-1.5 rounded-full text-[13px] font-extrabold tabular ${isToday ? "bg-brand-500 text-white" : numColor}`}>
+                {d.getDate()}
+              </span>
+              <span className={`text-[12.5px] font-bold ${dowColor}`}>{DOW[dow]}요일</span>
+              {evs.length > 0 && <span className="text-[11px] font-bold text-ink-400 ml-auto tabular">{evs.length}건</span>}
+            </div>
+            {evs.length === 0 ? (
+              <div className="text-[12px] text-ink-400 pl-[34px]">일정 없어요</div>
+            ) : (
+              <div className="space-y-1.5 pl-[34px]">
+                {evs.map((e) => (
+                  <button
+                    key={e.id}
+                    type="button"
+                    onClick={() => onOpenDay(d)}
+                    className="w-full flex items-center gap-2.5 text-left rounded-lg hover:bg-ink-25 -mx-1 px-1 py-1 transition"
+                  >
+                    <span className="w-1 h-9 rounded-full flex-shrink-0" style={{ background: e.color }} />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-[13.5px] font-bold text-ink-900 truncate">{e.title}</div>
+                      <div className="text-[11px] text-ink-500 tabular mt-0.5">
+                        {new Date(e.startAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                        {" – "}
+                        {new Date(e.endAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function EventChip({ e, onOpenDay }: { e: Event; onOpenDay: () => void }) {
   const cat = e.category ? CATEGORIES.find((c) => c.key === e.category) : undefined;
   const start = new Date(e.startAt);

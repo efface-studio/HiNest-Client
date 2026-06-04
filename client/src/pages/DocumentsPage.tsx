@@ -1249,14 +1249,14 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         </div>
       )}
       {docs.length === 0 ? (
-        <div className="panel py-14 text-center">
+        <div className="panel py-14 px-6 text-center">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-ink-100 grid place-items-center mb-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E959E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
             </svg>
           </div>
           <div className="text-[13px] font-bold text-ink-800">문서가 없어요</div>
-          <div className="text-[12px] text-ink-500 mt-1">우측 상단 "문서 업로드" 버튼을 누르거나 파일을 이 영역으로 끌어다 놓아보세요.</div>
+          <div className="text-[12px] text-ink-500 mt-1 max-w-[300px] mx-auto leading-relaxed">우측 상단 "문서 업로드" 버튼을 누르거나 파일을 이 영역으로 끌어다 놓아보세요.</div>
         </div>
       ) : (
         <div className="panel p-0 overflow-hidden overflow-x-auto">

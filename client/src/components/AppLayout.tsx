@@ -18,7 +18,7 @@ import { ROUTE_PREFETCH, loadProject } from "../routes";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
 import { isPreviewMode } from "../lib/previewMock";
-import { isInstalledApp } from "../lib/platform";
+import { isInstalledApp, nativePlatform } from "../lib/platform";
 
 /**
  * 사이드바 hover/focus prefetch — 사용자가 클릭하기 전에 해당 페이지 청크를
@@ -653,6 +653,9 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   useEffect(() => {
     const el = document.documentElement;
     el.classList.add("hinest-shell-lock");
+    // iOS 네이티브(아이폰·아이패드)에서만 글래스 하단 네비 스타일 + 본문 하단 클리어런스 적용.
+    // (웹/안드로이드/Electron 데스크톱은 클래스가 안 붙어 기존 디자인 그대로.)
+    el.classList.toggle("hinest-ios", nativePlatform() === "ios");
     return () => el.classList.remove("hinest-shell-lock");
   }, []);
 
@@ -1050,20 +1053,41 @@ function NavSection({ label, items, dev }: { label: string; items: NavItem[]; de
 function BottomNav({ items }: { items: NavItem[] }) {
   // 전자결재 대기 건수 배지 — 사이드바와 동일한 폴링 hook 재사용.
   const approvalCounts = useApprovalCounts();
+  // iOS 네이티브(아이폰)에서는 화면 하단에 떠 있는 애플 리퀴드 글래스 스타일 바(반투명+blur).
+  // 그 외(웹·안드로이드·Electron 데스크톱)는 기존 in-flow 솔리드 바 그대로 — 무회귀.
+  // (본문이 바 뒤로 지나가도록 클리어런스는 styles.css 의 html.hinest-ios --hinest-main-pb 가 담당.)
+  const ios = nativePlatform() === "ios";
   return (
     <nav
-      className="md:hidden flex-shrink-0 flex items-stretch"
-      style={{
-        // 테마 변수로 칠해 다크 모드에서도 자연스럽게(이전엔 bg-white 고정이라 다크에서 깨졌음).
-        background: "var(--c-surface)",
-        borderTop: "1px solid var(--c-border)",
-        // 홈 인디케이터 회피용 하단 여백 — 단, 전체 safe-area(노치 기기 ~34px)를 그대로
-        // 비워두면 네비가 surface 색으로 칠해진 뒤(하단 seam 수정) 그 빈 영역까지 바의
-        // 일부로 보여 바가 과하게 높아 보인다. "아직도 높다" 는 피드백에 10px 덜어 빈
-        // 공간을 더 줄인다(인디케이터 클리어런스 ~24px 유지). safe-area 없으면(env=0) 0.
-        paddingBottom: "max(env(safe-area-inset-bottom) - 10px, 0px)",
-        boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
-      }}
+      className={"md:hidden flex items-stretch" + (ios ? "" : " flex-shrink-0")}
+      style={
+        ios
+          ? {
+              // 화면 하단에 12px 여백을 두고 떠 있는 알약형 글래스 바.
+              position: "fixed",
+              left: 12,
+              right: 12,
+              bottom: "max(10px, env(safe-area-inset-bottom))",
+              zIndex: 30,
+              borderRadius: 26,
+              // 반투명 + blur — 뒤로 스크롤되는 본문이 비쳐 보이는 글래스 질감.
+              background: "var(--c-glass)",
+              backdropFilter: "blur(22px) saturate(180%)",
+              WebkitBackdropFilter: "blur(22px) saturate(180%)",
+              border: "1px solid var(--c-glass-border)",
+              boxShadow: "0 10px 30px rgba(16,18,27,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
+              padding: "6px 4px",
+              overflow: "hidden",
+            }
+          : {
+              // 테마 변수로 칠해 다크 모드에서도 자연스럽게(이전엔 bg-white 고정이라 다크에서 깨졌음).
+              background: "var(--c-surface)",
+              borderTop: "1px solid var(--c-border)",
+              // 홈 인디케이터 회피용 하단 여백. safe-area 없으면(env=0) 0.
+              paddingBottom: "max(env(safe-area-inset-bottom) - 10px, 0px)",
+              boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
+            }
+      }
       aria-label="주요 메뉴"
     >
       {items.map((n) => {

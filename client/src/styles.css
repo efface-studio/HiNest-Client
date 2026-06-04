@@ -64,13 +64,19 @@
     /* 모바일: 하단 바가 safe-area 를 책임지므로 본문은 24px 만(이중 여백 방지). */
     --hinest-main-pb: 24px;
   }
-  /* iOS 네이티브(아이폰): 하단 네비가 플로팅 글래스(position:fixed → out-of-flow)라
-     본문 끝이 바 아래로 가리지 않도록 [바 높이 ~60px + 하단 오프셋 + 여유] 만큼 패딩.
-     html.hinest-ios 는 AppLayout 이 iOS 네이티브일 때만 토글 → 웹/안드/데스크톱 무영향. */
-  html.hinest-ios {
-    --hinest-main-pb: calc(60px + max(10px, env(safe-area-inset-bottom)) + 14px);
-  }
 }
+
+/* iOS 네이티브(아이폰·아이패드): 폭과 무관하게 모바일 레이아웃(플로팅 글래스 하단 네비)을 쓴다.
+   아이패드(≥768px)도 사이드바 대신 하단 글래스 바를 쓰도록 사이드바를 숨기고 하단 바를
+   강제 노출한다. html.hinest-ios 는 iOS 네이티브에서만 붙으므로 웹·안드·데스크톱은 무영향. */
+html.hinest-ios {
+  /* 플로팅 글래스 바(out-of-flow) 클리어런스 — 전 폭 공통. */
+  --hinest-main-pb: calc(60px + max(10px, env(safe-area-inset-bottom)) + 14px);
+  /* ChatFab(우하단)을 글래스 바 위로 띄우는 높이(아이패드에서 FAB 노출 시). */
+  --hinest-bottomnav-h: 78px;
+}
+html.hinest-ios .app-sidebar { display: none !important; }
+html.hinest-ios .app-bottomnav { display: flex !important; }
 
 html.dark {
   color-scheme: dark;

@@ -92,7 +92,7 @@ export default function TokensPanel() {
       )}
 
       <div className="overflow-auto" style={{ maxHeight: "55vh" }}>
-        <table className="w-full text-[12px]">
+        <table className="w-full text-[12px] pro-cards">
           <thead>
             <tr className="text-ink-500 text-left border-b border-ink-150">
               <th className="py-2 pr-2">이름</th>
@@ -107,15 +107,15 @@ export default function TokensPanel() {
           <tbody>
             {rows.map((t) => (
               <tr key={t.id} className="border-b border-ink-100" style={{ opacity: t.revokedAt ? 0.5 : 1 }}>
-                <td className="py-2 pr-2 font-bold text-ink-900">{t.name}</td>
-                <td className="py-2 pr-2 font-mono text-[11px] text-ink-700">{t.prefix}…</td>
-                <td className="py-2 pr-2 font-mono text-[10.5px] text-ink-700 truncate max-w-[200px]" title={t.scopes ?? ""}>{t.scopes || "—"}</td>
-                <td className="py-2 pr-2 text-ink-700">{t.lastUsedAt ? new Date(t.lastUsedAt).toLocaleString("ko-KR") : "사용 안 됨"}</td>
-                <td className="py-2 pr-2 text-ink-700">{t.expiresAt ? new Date(t.expiresAt).toLocaleDateString("ko-KR") : "—"}</td>
-                <td className="py-2 pr-2 text-[11px] font-bold">
+                <td className="py-2 pr-2 font-bold text-ink-900 cell-primary">{t.name}</td>
+                <td className="py-2 pr-2 font-mono text-[11px] text-ink-700" data-label="prefix">{t.prefix}…</td>
+                <td className="py-2 pr-2 font-mono text-[10.5px] text-ink-700 sm:truncate sm:max-w-[200px]" data-label="스코프" title={t.scopes ?? ""}>{t.scopes || "—"}</td>
+                <td className="py-2 pr-2 text-ink-700" data-label="최근 사용">{t.lastUsedAt ? new Date(t.lastUsedAt).toLocaleString("ko-KR") : "사용 안 됨"}</td>
+                <td className="py-2 pr-2 text-ink-700" data-label="만료">{t.expiresAt ? new Date(t.expiresAt).toLocaleDateString("ko-KR") : "—"}</td>
+                <td className="py-2 pr-2 text-[11px] font-bold" data-label="상태">
                   {t.revokedAt ? <span style={{ color: "var(--c-danger)" }}>회수됨</span> : <span style={{ color: "var(--c-success)" }}>활성</span>}
                 </td>
-                <td className="py-2 pr-2 text-right">
+                <td className="py-2 pr-2 text-right cell-actions">
                   {!t.revokedAt && (
                     <button className="btn-ghost btn-xs" style={{ color: "var(--c-danger)" }} onClick={() => revoke(t)}>회수</button>
                   )}
@@ -123,7 +123,7 @@ export default function TokensPanel() {
               </tr>
             ))}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={7} className="py-12 text-center text-ink-500">발급된 토큰이 없어요</td></tr>
+              <tr><td colSpan={7} className="py-12 text-center text-ink-500 cell-full">발급된 토큰이 없어요</td></tr>
             )}
           </tbody>
         </table>

@@ -442,8 +442,8 @@ function UsersTab({
           <BulkUnlockButton users={users} onUnlocked={reload} />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          {/* 기본/상세 뷰 토글 */}
-          <div className="tabs">
+          {/* 기본/상세 뷰 토글 — 상세(HR 전 컬럼)는 데스크톱 전용이라 모바일에선 숨김 */}
+          <div className="tabs hidden sm:flex">
             {(["basic", "detail"] as const).map((v) => (
               <button
                 key={v}
@@ -456,7 +456,7 @@ function UsersTab({
             ))}
           </div>
           {/* 엑셀 일괄 업로드 — 내부 검토중이라 일단 비노출. 다시 열 땐 이 블록 주석 해제.
-          <span className="mx-1 h-4 w-px bg-ink-200" />
+          <span className="mx-1 h-4 w-px bg-ink-200 hidden sm:block" />
           <label
             className="btn-ghost !h-[32px] !px-3 text-[12px] cursor-pointer"
             title="엑셀(.xlsx) 파일로 HR 정보 일괄 업데이트 (email/사번/HR번호 기준 매칭)"
@@ -470,7 +470,7 @@ function UsersTab({
             />
           </label>
           */}
-          <span className="mx-1 h-4 w-px bg-ink-200" />
+          <span className="mx-1 h-4 w-px bg-ink-200 hidden sm:block" />
           {/* 현재 필터/검색 결과 기준으로 내보내기 — 권한/상태는 앱 UI 전용이므로 제외. */}
           <button
             type="button"
@@ -509,7 +509,7 @@ function UsersTab({
             <PdfLogo />
             PDF
           </button>
-          <span className="mx-1 h-4 w-px bg-ink-200" />
+          <span className="mx-1 h-4 w-px bg-ink-200 hidden sm:block" />
           <input className="input text-[12px] h-[32px] w-full sm:w-[200px]" placeholder="이름·이메일·팀 검색" value={q} onChange={(e) => setQ(e.target.value)} />
           <select className="input text-[12px] h-[32px] w-full sm:w-[120px]" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
             <option value="">모든 권한</option>
@@ -532,7 +532,7 @@ function UsersTab({
       )}
       {view === "basic" && (
       <div className="overflow-x-auto">
-      <table className="pro" style={{ minWidth: 720 }}>
+      <table className="pro pro-cards" style={{ minWidth: 720 }}>
         <thead>
           <tr>
             <th style={{ width: "30%" }}>구성원</th>
@@ -553,7 +553,7 @@ function UsersTab({
             const teamInList = !u.team || teams.some((t) => t.name === u.team);
             return (
               <tr key={u.id}>
-                <td>
+                <td className="cell-primary">
                   <div className="flex items-center gap-3">
                     <UserAvatar name={u.name} color={u.avatarColor ?? "#3D54C4"} imageUrl={u.avatarUrl ?? null} />
                     <div className="min-w-0">
@@ -562,7 +562,7 @@ function UsersTab({
                     </div>
                   </div>
                 </td>
-                <td>
+                <td data-label="직급">
                   <select
                     className={`ghost-select ${!u.position ? "placeholder" : ""}`}
                     value={u.position ?? ""}
@@ -577,7 +577,7 @@ function UsersTab({
                     )}
                   </select>
                 </td>
-                <td>
+                <td data-label="팀">
                   <select
                     className={`ghost-select ${!u.team ? "placeholder" : ""}`}
                     value={u.team ?? ""}
@@ -592,7 +592,7 @@ function UsersTab({
                     )}
                   </select>
                 </td>
-                <td>
+                <td data-label="권한">
                   <select
                     className={`ghost-select role-select ${roleClass}`}
                     value={u.role}
@@ -603,7 +603,7 @@ function UsersTab({
                     <option value="ADMIN">ADMIN</option>
                   </select>
                 </td>
-                <td>
+                <td data-label="상태">
                   {u.resignedAt ? (
                     <span className="chip-gray" title={`퇴사일 ${new Date(u.resignedAt).toLocaleDateString("ko-KR")}`}>
                       <span className="badge-dot" style={{ background: "#F97316" }} />
@@ -627,7 +627,7 @@ function UsersTab({
                     </button>
                   )}
                 </td>
-                <td style={{ textAlign: "right" }}>
+                <td className="cell-actions" style={{ textAlign: "right" }}>
                   <button className="btn-icon" title="상세 정보 편집" onClick={() => setEditTarget(u)}>
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M12 20h9" />
@@ -668,7 +668,7 @@ function UsersTab({
           })}
           {filtered.length === 0 && (
             <tr>
-              <td colSpan={6}>
+              <td colSpan={6} className="cell-full">
                 <EmptyState title="구성원이 없습니다" description="초대키를 발급해 팀원을 추가해보세요." />
               </td>
             </tr>
@@ -1697,7 +1697,7 @@ function InvitesTab({
           <div className="title">초대키 목록 <span className="text-ink-400 font-medium tabular ml-1">{invites.length}</span></div>
         </div>
         <div className="overflow-x-auto">
-        <table className="pro" style={{ minWidth: 640 }}>
+        <table className="pro pro-cards" style={{ minWidth: 640 }}>
           <thead>
             <tr>
               <th>키</th>
@@ -1712,25 +1712,25 @@ function InvitesTab({
               const expired = !k.used && k.expiresAt && new Date(k.expiresAt) < new Date();
               return (
                 <tr key={k.id}>
-                  <td>
+                  <td className="cell-primary">
                     <div className="flex items-center gap-2">
                       <button onClick={() => copy(k.key)} className="font-mono text-[12px] font-bold text-ink-900 hover:text-brand-600" title="클릭하여 복사">
                         {k.key}
                       </button>
                     </div>
                   </td>
-                  <td>
+                  <td data-label="대상">
                     <div className="text-[13px] font-bold text-ink-900">{k.name ?? "—"}</div>
                     <div className="text-[11px] text-ink-500 truncate tabular">{k.email ?? "이메일 제한 없음"}</div>
                   </td>
-                  <td>
+                  <td data-label="권한·팀·직급">
                     <div className="flex flex-wrap gap-1 items-center">
                       <span className="chip-gray">{k.role}</span>
                       {k.team && <span className="chip-blue">{k.team}</span>}
                       {k.position && <span className="chip-brand">{k.position}</span>}
                     </div>
                   </td>
-                  <td>
+                  <td data-label="상태">
                     {k.used ? (
                       <div>
                         <span className="chip-gray">사용완료</span>
@@ -1744,7 +1744,7 @@ function InvitesTab({
                       </span>
                     )}
                   </td>
-                  <td style={{ textAlign: "right" }}>
+                  <td className="cell-actions" style={{ textAlign: "right" }}>
                     <button className="btn-icon" title="삭제" onClick={() => remove(k.id)}>
                       <TrashIcon />
                     </button>
@@ -1754,7 +1754,7 @@ function InvitesTab({
             })}
             {invites.length === 0 && (
               <tr>
-                <td colSpan={5}>
+                <td colSpan={5} className="cell-full">
                   <EmptyState title="발급된 초대키가 없어요" description="좌측에서 새 초대키를 발급해보세요." />
                 </td>
               </tr>
@@ -2005,7 +2005,7 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
                     if (v && v !== p.name) rename(p, v);
                   }}
                 />
-                <div className="text-[11px] text-ink-500 tabular w-[88px] text-right">
+                <div className="text-[11px] text-ink-500 tabular w-[88px] text-right hidden sm:block">
                   {new Date(p.createdAt).toLocaleDateString("ko-KR")}
                 </div>
                 <button className="btn-icon" title="삭제" onClick={() => remove(p)}>

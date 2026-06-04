@@ -999,7 +999,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                     width="2"
                     height="6"
                     rx="1"
-                    fill="var(--c-text-3)"
+                    fill="var(--c-brand)"
                     opacity={0.18 + (0.82 * i) / 11}
                     transform={`rotate(${i * 30} 12 12)`}
                   />

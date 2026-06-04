@@ -70,7 +70,7 @@ export default function ProjectSettingsModal({
 
   return (
     <div
-      className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-50"
+      className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50"
       onClick={onClose}
     >
       <div

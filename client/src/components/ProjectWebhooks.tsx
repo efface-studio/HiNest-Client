@@ -270,7 +270,7 @@ export default function ProjectWebhooks({ projectId }: { projectId: string }) {
       {/* 생성 모달 */}
       {openCreate && (
         <div
-          className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-50"
+          className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50"
           onClick={() => setOpenCreate(false)}
         >
           <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>

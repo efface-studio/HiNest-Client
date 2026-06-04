@@ -340,7 +340,7 @@ export default function ExpensePage() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-50" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpen(false)}>
           <div className="card w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">법인카드 사용내역 등록</h3>
             <form onSubmit={submit} className="space-y-3">
@@ -443,7 +443,7 @@ export default function ExpensePage() {
       )}
 
       {preview && (
-        <div className="fixed inset-0 bg-slate-900/70 grid place-items-center p-4 z-50" onClick={() => setPreview(null)}>
+        <div className="fixed inset-0 bg-slate-900/70 grid place-items-center modal-safe z-50" onClick={() => setPreview(null)}>
           <img src={preview} alt="receipt" decoding="async" className="max-h-[90vh] max-w-[90vw] rounded-xl" loading="lazy"/>
         </div>
       )}

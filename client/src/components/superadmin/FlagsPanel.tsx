@@ -96,7 +96,7 @@ export default function FlagsPanel() {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={() => setEditing(null)}>
+        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setEditing(null)}>
           <form
             className="panel w-full max-w-[480px] p-5"
             onClick={(e) => e.stopPropagation()}

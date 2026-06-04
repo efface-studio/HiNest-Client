@@ -114,7 +114,7 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
       // 에 고정되어 모바일에서 모달이 사이드바 폭 안으로 찌그러지는 버그가 있었음.
   return createPortal(
     <div
-      className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-[100]"
+      className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-[100]"
       onClick={onClose}
     >
       <div

@@ -419,7 +419,7 @@ function DangerZonePanel() {
 
       {open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center modal-safe"
           style={{ background: "rgba(0,0,0,0.45)" }}
           onClick={close}
         >

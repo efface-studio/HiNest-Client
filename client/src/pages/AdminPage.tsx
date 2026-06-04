@@ -751,7 +751,7 @@ function ResignModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 modal-safe" onClick={onClose}>
       <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-lg font-bold">{isResigned ? "퇴사 정보 수정" : "퇴사 처리"}</h3>
@@ -901,7 +901,7 @@ function UserDetailEditModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div
         className="card w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -1480,7 +1480,7 @@ function AttendanceEditModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 modal-safe" onClick={onClose}>
       <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
           <h3 className="text-lg font-bold">출근 기록 수정</h3>

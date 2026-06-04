@@ -353,7 +353,7 @@ export default function NoticePage() {
       </div>
 
       {open && (
-        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe" onClick={() => setOpen(false)}>
           <div className="card w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">공지 작성</h3>
             <form onSubmit={submit} className="space-y-3">

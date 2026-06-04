@@ -387,7 +387,7 @@ export default function ProjectCalendar({
 
       {/* 생성 모달 */}
       {openCreate && (
-        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-50" onClick={() => setOpenCreate(false)}>
+        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpenCreate(false)}>
           <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">새 일정</h3>
             <form onSubmit={submitCreate} className="space-y-3">
@@ -467,7 +467,7 @@ export default function ProjectCalendar({
 
       {/* 상세 모달 */}
       {selected && (
-        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-50" onClick={() => setSelected(null)}>
+        <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setSelected(null)}>
           <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-3 h-3 rounded-full" style={{ background: selected.color }} />

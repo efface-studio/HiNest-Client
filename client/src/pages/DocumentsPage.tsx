@@ -1427,7 +1427,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       {/* /폴더+문서 공용 드롭존 */}
 
       {creating === "folder" && (
-        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={() => setCreating(null)}>
+        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setCreating(null)}>
           <div className="panel w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="section-head">
               <div className="title">새 폴더</div>
@@ -1537,7 +1537,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       )}
 
       {creating === "doc" && (
-        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={() => setCreating(null)}>
+        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setCreating(null)}>
           <div className="panel w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <div className="section-head">
               <div className="title">문서 업로드</div>

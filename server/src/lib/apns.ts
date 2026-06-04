@@ -244,6 +244,51 @@ export async function sendApnsToUser(userId: string, payload: ApnsPayload): Prom
 }
 
 /**
+ * 여러 유저에게 각자의 페이로드로 일괄 발송 (브로드캐스트/그룹 알림 경로용).
+ * sendApnsToUser 를 유저마다 부르면 pushToken 조회가 N회 발생한다 → 여기선 토큰 조회를
+ * 1회로 묶는다(N→1). 토큰별 발송/폴백/죽은토큰 정리 로직은 sendApnsToUser 와 동일(sendWithFallback 재사용).
+ */
+export async function sendApnsToUsers(items: { userId: string; payload: ApnsPayload }[]): Promise<void> {
+  if (!apnsEnabled() || !items.length) return;
+  try {
+    const userIds = Array.from(new Set(items.map((i) => i.userId)));
+    const rows = await prisma.pushToken.findMany({
+      where: { userId: { in: userIds }, platform: "ios" },
+      select: { token: true, userId: true },
+    });
+    if (!rows.length) return;
+    const byUser = new Map<string, string[]>();
+    for (const r of rows) {
+      const arr = byUser.get(r.userId);
+      if (arr) arr.push(r.token);
+      else byUser.set(r.userId, [r.token]);
+    }
+
+    // 유저별 페이로드로 각 토큰 발송 — 모든 (토큰,페이로드) 쌍을 병렬 처리.
+    const sends: Promise<SendResult>[] = [];
+    for (const it of items) {
+      const toks = byUser.get(it.userId);
+      if (!toks) continue;
+      for (const t of toks) sends.push(sendWithFallback(t, it.payload));
+    }
+    const results = await Promise.all(sends);
+
+    const dead = results.filter(isDeadToken).map((r) => r.token);
+    const ok = results.filter((r) => r.status === 200).map((r) => r.token);
+    if (dead.length) await prisma.pushToken.deleteMany({ where: { token: { in: dead } } });
+    if (ok.length) {
+      await prisma.pushToken.updateMany({ where: { token: { in: ok } }, data: { lastUsedAt: new Date() } });
+    }
+    const other = results.filter((r) => r.status !== 200 && !isDeadToken(r));
+    if (other.length) {
+      console.error("apns batch send partial failure", other.map((r) => ({ status: r.status, reason: r.reason })));
+    }
+  } catch (e) {
+    console.error("sendApnsToUsers failed", (e as Error)?.message || e);
+  }
+}
+
+/**
  * 진단용 — 호출 유저의 iOS 토큰으로 테스트 푸시를 실제 발송하고 APNs 응답을 그대로 반환한다.
  * 푸시 미수신 원인을 정확히 식별: 키 미설정 / 토큰 0개 / status 400 BadDeviceToken(환경 불일치) /
  * status 403(인증·키 오류) / status 200(정상 — 기기에 테스트 푸시 도착).

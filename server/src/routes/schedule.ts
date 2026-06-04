@@ -58,7 +58,8 @@ const ADMIN_ONLY_CATEGORIES = new Set(["COMPANY_HOLIDAY", "COMPANY_LEAVE"]);
  */
 router.get("/", async (req, res) => {
   const u = (req as any).user;
-  const meUser = await prisma.user.findUnique({ where: { id: u.id } });
+  // requireAuth 가 붙여둔 풀 유저행(30s 캐시) 재사용 — 매 목록 요청마다 하던 중복 self 조회 제거.
+  const meUser = (req as any).userRecord;
   // Invalid Date 를 그대로 Prisma 에 넣으면 500 — 파싱 실패 시 필터 자체를 생략.
   const parseOrNull = (s: unknown) => {
     if (!s) return undefined;
@@ -157,7 +158,7 @@ router.post("/", async (req, res) => {
     if (!membership) return res.status(403).json({ error: "프로젝트 멤버만 일정을 등록할 수 있어요" });
   }
 
-  const me = await prisma.user.findUnique({ where: { id: u.id } });
+  const me = (req as any).userRecord; // requireAuth 캐시 유저행 재사용 (중복 self 조회 제거)
 
   const targets = (d.targetUserIds ?? []).filter((id) => id && id !== u.id);
   if (targets.length && !(await allSameCompanyUsers(targets)))

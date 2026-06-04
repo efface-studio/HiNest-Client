@@ -37,8 +37,12 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      launchShowDuration: 600,
-      backgroundColor: "#3B5CF0",
+      // 네이티브 스플래시는 솔리드 배경(앱 bg색) 이미지로 콜드 로드만 덮는다. 번들이 로드되면
+      // main.tsx 가 즉시 hide() 하고 index.html 의 커스텀 인트로(배지 → 'HiNest' 슬라이드인)가
+      // 이어진다. launchAutoHide 안전망으로 1.5초 후 자동으로도 내려간다.
+      launchShowDuration: 1500,
+      launchAutoHide: true,
+      backgroundColor: "#F5F6F8",
       showSpinner: false,
     },
   },

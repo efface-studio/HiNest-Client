@@ -199,7 +199,7 @@ export default function SchedulePage() {
   const canMakeCompany = user?.role === "ADMIN" || user?.role === "MANAGER";
 
   return (
-    <div>
+    <div className="sched-page">
       <PageHeader
         title="일정관리"
         description="전사/팀/개인 일정을 월별로 관리합니다."
@@ -712,7 +712,7 @@ function EventModal({
 
   return (
     <div
-      className="fixed inset-x-0 bg-ink-900/40 grid place-items-center p-4 z-50"
+      className="fixed inset-x-0 bg-ink-900/40 grid place-items-center modal-safe z-50"
       style={{ top: viewport.top, height: viewport.height }}
       onClick={onClose}
     >

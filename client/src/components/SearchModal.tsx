@@ -141,7 +141,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
   const OUT = "cubic-bezier(.4, 0, .2, 1)";
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-start justify-center px-4"
+      className="fixed inset-0 z-[60] flex items-start justify-center px-4 modal-safe"
       style={{
         paddingTop: "18vh",
         background: visible

@@ -11,6 +11,17 @@ import "./styles.css";
 // 미리보기 모드 부트스트랩 — 새로고침 후 fetch/EventSource 가 실제 서버로 새지 않게 가장 먼저 패치.
 isPreviewMode();
 
+// 네이티브 앱 스플래시 — 번들이 로드되면 네이티브 스플래시(솔리드 배경)를 내리고,
+// index.html 의 커스텀 인트로 애니메이션(배지 → 'HiNest' 슬라이드인, 2초)을 시작한다.
+// 네이티브 스플래시를 내린 직후 시작해야 전체 애니메이션이 보인다. 웹/standalone 은
+// index.html 스크립트가 스스로 처리하므로 여기선 네이티브만 다룬다.
+if (typeof window !== "undefined" && (window as any).Capacitor?.isNativePlatform?.()) {
+  import("@capacitor/splash-screen")
+    .then(({ SplashScreen }) => SplashScreen.hide())
+    .catch(() => {})
+    .finally(() => { (window as any).__hinestSplashGo?.(); });
+}
+
 // iOS Safari 는 user-scalable=no 를 무시하므로 제스처/더블탭 확대를 JS 로 차단.
 if (typeof window !== "undefined") {
   // ─────────────────────────────────────────────────────────────

@@ -30,8 +30,110 @@
     <meta name="twitter:title" content="HiNest — 사내 협업 플랫폼" />
     <meta name="twitter:description" content="공지·일정·회의록·결재·근태·문서를 한 곳에. /preview 에서 로그인 없이 둘러보세요." />
     <meta name="twitter:image" content="https://nest.hi-vits.com/icons/apple-touch-icon.png?v=2" />
+
+    <!-- ───────── 앱 스플래시(설치형 앱 전용) ─────────
+         처음엔 배지(로고)만 떠 있다가 'HiNest' 글자가 옆에서 스르륵 펼쳐지는 2초 인트로.
+         네이티브 스플래시(솔리드 배경)를 내린 직후 main.tsx 가 애니메이션을 시작한다.
+         일반 웹 브라우저에서는 아래 스크립트가 즉시 제거해 보이지 않는다. -->
+    <style id="hinest-splash-style">
+      #hinest-splash {
+        position: fixed; inset: 0; z-index: 2147483647;
+        display: flex; align-items: center; justify-content: center;
+        background: #F5F6F8; color: #0C1020;
+        -webkit-user-select: none; user-select: none;
+        transition: opacity .45s ease;
+      }
+      #hinest-splash.hs-dark { background: #0E1014; color: #FFFFFF; }
+      #hinest-splash.hs-hide { opacity: 0; pointer-events: none; }
+      #hinest-splash .hs-logo {
+        display: flex; align-items: center; gap: 9px;
+        transform: translateX(56px); /* 배지만 보일 땐 배지를 화면 중앙에 둔다 */
+        will-change: transform;
+      }
+      #hinest-splash .hs-badge { width: 78px; height: 78px; flex: none; opacity: 0; }
+      #hinest-splash .hs-word { height: 30px; width: auto; flex: none; opacity: 0; clip-path: inset(0 100% 0 0); }
+      #hinest-splash.hs-go .hs-badge { animation: hs-badge-in .56s cubic-bezier(.2,.85,.25,1) both; }
+      #hinest-splash.hs-go .hs-word { animation: hs-word-in .60s cubic-bezier(.2,.85,.25,1) .52s both; }
+      #hinest-splash.hs-go .hs-logo { animation: hs-recenter .60s cubic-bezier(.2,.85,.25,1) .52s both; }
+      @keyframes hs-badge-in { 0% { opacity: 0; transform: scale(.64); } 60% { opacity: 1; } 100% { opacity: 1; transform: scale(1); } }
+      @keyframes hs-word-in { 0% { opacity: 0; clip-path: inset(0 100% 0 0); transform: translateX(-8px); } 100% { opacity: 1; clip-path: inset(0 0 0 0); transform: translateX(0); } }
+      @keyframes hs-recenter { to { transform: translateX(0); } }
+      @media (prefers-reduced-motion: reduce) {
+        #hinest-splash.hs-go .hs-badge,
+        #hinest-splash.hs-go .hs-word,
+        #hinest-splash.hs-go .hs-logo { animation-duration: .01ms !important; animation-delay: 0s !important; }
+      }
+    </style>
   </head>
   <body>
+    <div id="hinest-splash" aria-hidden="true">
+      <div class="hs-logo">
+        <!-- 배지(라운드 타일 + HiNest 아이콘) — 제공된 로고에서 발췌 -->
+        <svg class="hs-badge" viewBox="112 118 224 224" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="hsTile" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#5B8DFF"></stop><stop offset="55%" stop-color="#3B5CF0"></stop><stop offset="100%" stop-color="#1E4FD4"></stop>
+            </linearGradient>
+            <filter id="hsShadow" x="-30%" y="-30%" width="160%" height="160%">
+              <feDropShadow dx="0" dy="9" stdDeviation="14" flood-color="#1E37B8" flood-opacity="0.45"></feDropShadow>
+            </filter>
+          </defs>
+          <rect x="130" y="136" width="188" height="188" rx="44" fill="url(#hsTile)" filter="url(#hsShadow)"></rect>
+          <rect x="130" y="136" width="188" height="188" rx="44" fill="none" stroke="#FFFFFF" stroke-opacity="0.18" stroke-width="1.5"></rect>
+          <g transform="translate(224,227.62626262626262) scale(0.9494949494949495)">
+            <polygon points="-58,-18 -38,-33 -38,52 -58,62" fill="#FFFFFF" opacity="0.55"></polygon>
+            <polygon points="-38,-33 -12,-33 -12,52 -38,52" fill="#FFFFFF" opacity="0.82"></polygon>
+            <polygon points="-58,-18 -38,-33 -12,-33 -32,-18" fill="#FFFFFF"></polygon>
+            <polygon points="-38,-33 -25,-47 0,-47 -12,-33" fill="#FFFFFF" opacity="0.92"></polygon>
+            <polygon points="-32,-18 -12,-33 0,-47 -20,-33" fill="#FFFFFF" opacity="0.55"></polygon>
+            <polygon points="-12,10 12,5 12,24 -12,29" fill="#FFFFFF"></polygon>
+            <polygon points="-12,10 12,5 12,24 -12,29" fill="#FFFFFF" opacity="0.4"></polygon>
+            <polygon points="38,-33 58,-18 58,62 38,52" fill="#FFFFFF" opacity="0.55"></polygon>
+            <polygon points="12,-33 38,-33 38,52 12,52" fill="#FFFFFF" opacity="0.82"></polygon>
+            <polygon points="38,-33 58,-18 32,-18 12,-33" fill="#FFFFFF"></polygon>
+            <polygon points="12,-33 38,-33 25,-47 0,-47" fill="#FFFFFF" opacity="0.92"></polygon>
+            <polygon points="38,-33 58,-18 45,-33 25,-47" fill="#FFFFFF" opacity="0.55"></polygon>
+            <rect x="-32" y="-13" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+            <rect x="-32" y="15" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+            <rect x="21" y="-13" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+            <rect x="21" y="15" width="11" height="11" fill="#3B5CF0" rx="1.5"></rect>
+          </g>
+        </svg>
+        <!-- 'HiNest' 워드마크 — currentColor 로 테마(라이트/다크) 색을 따라간다 -->
+        <svg class="hs-word" viewBox="362 150 322 94" xmlns="http://www.w3.org/2000/svg">
+          <path d="M367.69 236L385.29 236L385.29 205.67L415.41 205.67L415.41 236L433.01 236L433.01 161.05L415.41 161.05L415.41 191.28L385.29 191.28L385.29 161.05L367.69 161.05ZM439.52 236L457.02 236L457.02 179.79L439.52 179.79ZM448.32 173.06C453.29 173.06 457.43 169.34 457.43 164.68C457.43 160.02 453.29 156.29 448.32 156.29C443.36 156.29 439.32 160.02 439.32 164.68C439.32 169.34 443.36 173.06 448.32 173.06ZM527.09 161.05L509.49 161.05L509.49 205.05L508.87 205.05L478.75 161.05L463.53 161.05L463.53 236L481.13 236L481.13 192.01L481.65 192.01L512.08 236L527.09 236ZM559.79 237.04C574.39 237.04 584.02 230.00 586.09 219.02L569.83 219.02C568.39 222.34 564.87 224.41 560.10 224.41C553.07 224.41 548.61 219.75 548.61 212.50L548.61 212.19L586.29 212.19L586.29 207.74C586.29 189.11 574.91 179.07 559.17 179.07C542.30 179.07 531.43 190.76 531.43 208.15C531.43 226.06 542.20 237.04 559.79 237.04ZM548.61 201.94C548.87 196.09 553.38 191.70 559.59 191.70C565.59 191.70 569.94 195.94 570.04 201.94ZM622.93 197.18L639.18 197.18C638.46 186.00 629.24 179.07 614.13 179.07C598.91 179.07 589.39 185.69 589.49 196.87C589.39 205.46 594.98 211.05 606.06 213.12L615.68 214.88C620.55 215.92 622.72 217.47 622.83 219.96C622.72 223.06 619.51 224.92 614.75 224.92C609.58 224.92 606.06 222.75 605.44 218.71L588.05 218.71C589.18 229.89 598.60 237.04 614.65 237.04C629.87 237.04 640.42 229.58 640.53 218.09C640.42 209.91 635.04 205.05 623.86 202.88L613.20 200.80C608.33 199.87 606.68 198.11 606.78 195.94C606.68 193.04 610.09 191.07 614.44 191.07C619.10 191.07 622.41 193.46 622.93 197.18ZM675.71 179.79L665.47 179.79L665.47 166.33L648.08 166.33L648.08 179.79L640.52 179.79L640.52 192.63L648.08 192.63L648.08 220.37C647.97 231.76 655.43 236.83 667.74 236.83C671.88 236.83 674.78 236.41 676.44 236.21L676.44 222.85C674.47 222.96 671.68 223.16 670.23 223.06C667.23 222.96 665.47 221.92 665.47 218.40L665.47 192.63L675.71 192.63Z" fill="currentColor"></path>
+        </svg>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var s = document.getElementById('hinest-splash');
+        if (!s) return;
+        var started = false, removed = false;
+        function remove() { if (removed) return; removed = true; try { s.parentNode && s.parentNode.removeChild(s); } catch (e) {} }
+        function dismiss() { s.classList.add('hs-hide'); setTimeout(remove, 480); }
+        window.__hinestSplashGo = function () {
+          if (started) return; started = true;
+          s.classList.add('hs-go');     // 배지 페이드인 → 'HiNest' 슬라이드인
+          setTimeout(dismiss, 2000);    // 2초 유지 후 페이드아웃
+        };
+        // 테마 — 앱 저장값(hinest.theme) 우선, 없으면 시스템 설정.
+        try {
+          var t = localStorage.getItem('hinest.theme');
+          var dark = t === 'dark' || ((t === 'system' || !t) && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) s.classList.add('hs-dark');
+        } catch (e) {}
+        // 설치형 앱(Capacitor 네이티브 또는 standalone PWA)에서만 스플래시. 일반 웹은 즉시 제거.
+        var isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+        var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+        if (!isNative && !isStandalone) { remove(); return; }
+        // 네이티브는 main.tsx 가 네이티브 스플래시를 내린 직후 __hinestSplashGo() 를 부른다.
+        // standalone PWA(네이티브 아님)는 여기서 바로 시작. 네이티브도 안전망으로 1.1초 뒤 자동 시작.
+        if (!isNative) window.__hinestSplashGo();
+        setTimeout(function () { window.__hinestSplashGo && window.__hinestSplashGo(); }, 1100);
+        setTimeout(remove, 5200); // 극단적 실패 대비 하드 제거
+      })();
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

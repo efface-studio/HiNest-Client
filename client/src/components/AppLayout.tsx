@@ -683,6 +683,20 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     return () => el.classList.remove("hinest-shell-lock");
   }, []);
 
+  // 스플래시(index.html 의 웹 오버레이) 동안엔 네이티브 탭 바를 숨긴다 — 네이티브 바는
+  // 웹뷰 위에 뜨는 별도 뷰라 웹 스플래시로는 가려지지 않아 위로 비친다. 스플래시가 끝나면
+  // (hinest:splash-done) 숨김 사유를 풀어 다시 보이게 한다.
+  useEffect(() => {
+    if (nativePlatform() !== "ios") return;
+    // 스플래시 오버레이가 DOM 에 살아있으면(콜드 실행) 탭바 숨김. 새로고침 땐 인덱스 스크립트가
+    // 파싱 즉시 제거하므로 마운트 시점엔 이미 없어 숨기지 않는다. (window 플래그는 main.tsx 가
+    // 비동기로 늦게 세팅돼 마운트보다 늦을 수 있어, 요소 존재 여부를 신호로 쓴다.)
+    setNativeTabBarHidden("splash", !!document.getElementById("hinest-splash"));
+    const onDone = () => setNativeTabBarHidden("splash", false);
+    window.addEventListener("hinest:splash-done", onDone);
+    return () => window.removeEventListener("hinest:splash-done", onDone);
+  }, []);
+
   // 네이티브 Liquid Glass 탭 바(iOS 26 UIGlassEffect) — 성공하면 웹 하단 바를 숨기고
   // 실제 애플 글래스 바가 대체한다. 미지원(iOS<26)/실패면 아무 일도 없고 웹 CSS 글래스 바가 폴백.
   useEffect(() => {

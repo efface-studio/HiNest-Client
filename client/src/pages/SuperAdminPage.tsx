@@ -542,7 +542,7 @@ function ChatAuditPwModal({ onClose, onSubmit }: { onClose: () => void; onSubmit
   }
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-4"
+      className="fixed inset-0 z-50 grid place-items-center modal-safe"
       style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
       onClick={onClose}
     >

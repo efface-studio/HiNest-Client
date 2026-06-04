@@ -167,7 +167,7 @@ export default function ConfirmHost() {
 
   return (
     <div
-      className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-[200]"
+      className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-[200]"
       onClick={onCancel}
     >
       <div

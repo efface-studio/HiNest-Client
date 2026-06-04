@@ -427,7 +427,7 @@ function ConfirmModal({
   }, [busy, onCancel]);
 
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={() => !busy && onCancel()}>
+    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => !busy && onCancel()}>
       <div className="panel w-full max-w-[420px] shadow-pop" onClick={(e) => e.stopPropagation()}>
         <div className="section-head">
           <div className="title">{title}</div>
@@ -852,7 +852,7 @@ function CreateModal({
   const needDestination = form.type === "TRIP" || form.type === "OFFSITE";
 
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div className="panel w-full max-w-[560px] shadow-pop overflow-hidden" onClick={(e) => e.stopPropagation()}>
         <div className="section-head">
           <div className="title">{reviseFromId ? "수정해서 재상신" : "새 결재 올리기"}</div>

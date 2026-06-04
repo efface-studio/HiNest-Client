@@ -184,7 +184,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Modal({ onClose, onSubmit, children }: { onClose: () => void; onSubmit: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <form
         className="panel w-full max-w-[460px] p-5 max-h-[88vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}

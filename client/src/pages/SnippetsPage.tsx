@@ -295,7 +295,7 @@ function SnippetEditor({
 
   return (
     <div
-      className="fixed inset-0 z-50 grid place-items-center p-4"
+      className="fixed inset-0 z-50 grid place-items-center modal-safe"
       style={{ background: "rgba(0,0,0,0.5)" }}
       onClick={() => { if (!saving) onClose(); }}
     >

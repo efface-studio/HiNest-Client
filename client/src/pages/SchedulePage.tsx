@@ -411,7 +411,7 @@ function DayDetailModal({
 }) {
   const holiday = getHoliday(date);
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div
         className="panel w-full max-w-[480px] shadow-pop overflow-hidden"
         onClick={(e) => e.stopPropagation()}

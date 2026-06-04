@@ -70,7 +70,7 @@ export default function RevisionHistoryModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div className="panel w-full max-w-lg shadow-pop" onClick={(e) => e.stopPropagation()}>
         <div className="section-head">
           <div className="title">버전 히스토리 · {title}</div>

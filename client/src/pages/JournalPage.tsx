@@ -357,7 +357,7 @@ export default function JournalPage() {
 
       {confirmRemoveId && (
         <div
-          className="fixed inset-0 z-50 grid place-items-center p-4"
+          className="fixed inset-0 z-50 grid place-items-center modal-safe"
           style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
           onClick={() => removingId ? null : setConfirmRemoveId(null)}
         >

@@ -91,7 +91,7 @@ export default function ShareLinkModal({ documentId, folderId, documentTitle, on
   }
 
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div className="panel w-full max-w-lg shadow-pop" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="공유 링크 관리">
         <div className="section-head">
           <div className="title">

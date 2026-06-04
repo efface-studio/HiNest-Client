@@ -60,7 +60,7 @@ export default function NotificationPrefsModal({ open, onClose }: { open: boolea
   }
 
   return (
-    <div className="fixed inset-0 bg-slate-900/40 grid place-items-center p-4 z-[70]" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-[70]" onClick={onClose}>
       <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-1">알림 설정</h3>
         <p className="text-[12px] text-ink-500 mb-4">타입별 수신·방해금지·이메일 중계를 설정할 수 있어요.</p>

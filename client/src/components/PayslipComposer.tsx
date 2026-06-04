@@ -168,7 +168,7 @@ export default function PayslipComposer({
   const years = Array.from({ length: 6 }, (_, i) => defaultYear - i + 1);
 
   return (
-    <div className="fixed inset-0 bg-slate-900/45 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-slate-900/45 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div
         className="card w-full max-w-3xl max-h-[92vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}

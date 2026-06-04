@@ -117,7 +117,7 @@ export default function ErrorsPanel() {
       </div>
 
       {openHash && (
-        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={() => setOpenHash(null)}>
+        <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpenHash(null)}>
           <div className="panel w-full max-w-[840px] max-h-[88vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 py-3 border-b border-ink-150 flex items-center justify-between">
               <div className="text-[14px] font-extrabold text-ink-900">에러 상세 · {openHash}</div>

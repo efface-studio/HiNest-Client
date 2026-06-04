@@ -757,7 +757,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           <div className="border-t border-ink-150 px-2 pt-2">
             <NavLink
               to="/download"
-              className="flex items-center gap-2.5 h-[40px] md:h-[32px] px-3 rounded-full text-[13px] md:text-[12.5px] font-semibold text-ink-500 hover:bg-ink-100 hover:text-ink-900 transition"
+              className="tap-row flex items-center gap-2.5 h-[40px] md:h-[32px] px-3 rounded-full text-[13px] md:text-[12.5px] font-semibold text-ink-500 hover:bg-ink-100 hover:text-ink-900 transition"
               title="데스크톱 · 모바일 앱 다운로드"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1464,7 +1464,7 @@ function PinsSection() {
               onDragOver={(e) => { e.preventDefault(); e.dataTransfer.dropEffect = "move"; }}
               onDrop={(e) => { e.preventDefault(); onDrop(p.id); }}
               onDragEnd={() => setDragId(null)}
-              className={`group flex items-center gap-2 h-[40px] md:h-[30px] px-3 rounded-full text-[12.5px] font-semibold cursor-pointer transition ${
+              className={`tap-row group flex items-center gap-2 h-[40px] md:h-[30px] px-3 rounded-full text-[12.5px] font-semibold cursor-pointer transition ${
                 dragId === p.id ? "opacity-40" : ""
               } ${p.missing ? "text-ink-400" : "text-ink-700 hover:bg-ink-100 hover:text-ink-900"}`}
               title={p.missing ? "원본이 삭제되었어요 — 클릭해서 핀 해제" : label}
@@ -1508,7 +1508,7 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function navClass(active: boolean) {
   return [
-    "flex items-center gap-2.5 h-[40px] md:h-[34px] px-3 rounded-full text-[13px] font-bold transition",
+    "tap-row flex items-center gap-2.5 h-[40px] md:h-[34px] px-3 rounded-full text-[13px] font-bold transition",
     active ? "nav-active" : "text-ink-700 hover:bg-ink-100 hover:text-ink-900",
   ].join(" ");
 }

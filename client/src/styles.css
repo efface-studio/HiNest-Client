@@ -352,6 +352,20 @@ textarea.input {
   .touch-reveal { opacity: 1 !important; }
   .touch-reveal-flex { display: flex !important; }
 }
+/* 터치 기기에서 사이드바 행(아이패드는 데스크톱 사이드바를 쓰지만 터치)의 탭 타겟을
+   최소 44px(Apple HIG) 로 확보. 사이드바는 md+ 에서만 렌더되므로 사실상 아이패드 전용.
+   마우스 데스크톱(pointer:fine) 은 기존 콤팩트 높이(34px 등) 유지 → 밀도 무회귀. */
+@media (pointer: coarse) {
+  .tap-row { min-height: 44px; }
+}
+/* 풀높이 모달이 노치/홈인디케이터에 가리지 않도록 오버레이에 safe-area 패딩.
+   env() 는 데스크톱에서 0 이라 웹/Electron 외형은 변하지 않음(p-4 동등). */
+.modal-safe {
+  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
 /* iOS Safari 는 네이티브 date/time/datetime-local 입력에 내장 min-width 를
    강제해서 w-full 지정에도 컨테이너 밖으로 튀어나올 수 있음. 강제로 shrink 허용 */
 input.input[type="date"],

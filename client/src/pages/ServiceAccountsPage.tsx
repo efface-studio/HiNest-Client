@@ -959,7 +959,7 @@ function AccountModal({
   ];
 
   return (
-    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center p-4 z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div className="panel w-full max-w-lg shadow-pop" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-label="계정 편집">
         <div className="section-head">
           <div className="title">{mode === "new" ? "새 계정 추가" : "계정 편집"}</div>

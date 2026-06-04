@@ -301,14 +301,12 @@ export function verifySuperToken(req: Request, userId: string): { exp: number } 
 export function requireSuperAdminStepUp(req: Request, res: Response, next: NextFunction) {
   const u = (req as any).user as AuthUser | undefined;
   if (!u || !u.superAdmin) return res.status(403).json({ error: "forbidden" });
+  // 단계 인증(비밀번호 재확인) 요구 제거 — 사용자 요청. superAdmin 로그인 세션만으로 통과.
+  // step-up 토큰이 있으면 만료시각만 그대로 싣고(레거시 호환), 없어도 막지 않는다.
+  // ⚠️ 보안: 콘솔의 민감 작업(피처플래그·역할권한·2FA정책 등)이 재인증 없이 superAdmin
+  //    세션만으로 보호된다. step-up 게이트를 되살리려면 아래 401 분기를 복원할 것.
   const v = verifySuperToken(req, u.id);
-  if (!v) {
-    return res.status(401).json({
-      error: "비밀번호 재확인이 필요합니다",
-      code: "SUPER_STEPUP_REQUIRED",
-    });
-  }
-  (req as any).superExpiresAt = v.exp;
+  if (v) (req as any).superExpiresAt = v.exp;
   next();
 }
 

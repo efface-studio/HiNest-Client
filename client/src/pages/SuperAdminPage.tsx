@@ -5,7 +5,6 @@ import { safeUploadUrl } from "../lib/safeUrl";
 import { isCapacitorNative } from "../lib/platform";
 import { Browser } from "@capacitor/browser";
 import { useTheme } from "../theme";
-import SuperStepUpGate from "../components/SuperStepUpGate";
 import { ErrorBoundary } from "../components/ErrorBoundary";
 import SessionsPanel from "../components/superadmin/SessionsPanel";
 import ErrorsPanel from "../components/superadmin/ErrorsPanel";
@@ -112,9 +111,8 @@ export default function SuperAdminPage() {
         />
       )}
     >
-      <SuperStepUpGate>
-        <SuperConsoleInner />
-      </SuperStepUpGate>
+      {/* 단계 인증(비밀번호 재확인) 게이트 제거 — 사용자 요청. superAdmin 로그인 세션만으로 진입. */}
+      <SuperConsoleInner />
     </ErrorBoundary>
   );
 }

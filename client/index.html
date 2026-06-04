@@ -111,10 +111,19 @@
         var s = document.getElementById('hinest-splash');
         if (!s) return;
         var started = false, removed = false;
-        function remove() { if (removed) return; removed = true; try { s.parentNode && s.parentNode.removeChild(s); } catch (e) {} }
+        function remove() {
+          if (removed) return; removed = true;
+          // 스플래시 종료 신호 — AppLayout 이 듣고 네이티브 탭바를 다시 보이게 한다.
+          window.__hinestSplashActive = false;
+          try { s.parentNode && s.parentNode.removeChild(s); } catch (e) {}
+          try { window.dispatchEvent(new Event('hinest:splash-done')); } catch (e) {}
+        }
         function dismiss() { s.classList.add('hs-hide'); setTimeout(remove, 480); }
         window.__hinestSplashGo = function () {
-          if (started) return; started = true;
+          if (started || removed) return; started = true;
+          // 스플래시 표시 중 — 네이티브 탭바(웹뷰 위에 뜨는 별도 뷰)가 스플래시를 가리지
+          // 않도록 숨김 신호. AppLayout 이 이 플래그를 보고 탭바를 숨긴다.
+          window.__hinestSplashActive = true;
           s.classList.add('hs-go');     // 배지 페이드인 → 로고 슬라이드인
           setTimeout(dismiss, 2000);    // 2초 유지 후 페이드아웃
         };

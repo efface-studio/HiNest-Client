@@ -692,7 +692,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
       <ImpersonationBanner safeAreaTop={topSlot === "impersonation"} />
       <div className="flex flex-1 min-h-0">
       {/* 사이드바 — 데스크톱(md+) 전용. 모바일은 하단 바 + /menu 페이지를 쓰므로 숨긴다. */}
-      <aside className="hidden md:flex w-[232px] bg-white border-r border-ink-150 flex-col flex-shrink-0">
+      <aside className="app-sidebar hidden md:flex w-[232px] bg-white border-r border-ink-150 flex-col flex-shrink-0">
         {/* 신호등 영역용 드래그 가능 상단바 — 사이드바 배경과 통일 */}
         {showTitlebarSpace && (
           <div
@@ -1059,14 +1059,17 @@ function BottomNav({ items }: { items: NavItem[] }) {
   const ios = nativePlatform() === "ios";
   return (
     <nav
-      className={"md:hidden flex items-stretch" + (ios ? "" : " flex-shrink-0")}
+      className={"app-bottomnav md:hidden flex items-stretch" + (ios ? "" : " flex-shrink-0")}
       style={
         ios
           ? {
-              // 화면 하단에 12px 여백을 두고 떠 있는 알약형 글래스 바.
+              // 화면 하단에 떠 있는 알약형 글래스 바. 좌우 12px 여백 안에서 중앙 정렬 +
+              // 최대 폭 제한 → 아이패드처럼 넓은 화면에서도 가로로 늘어지지 않고 가운데 알약.
               position: "fixed",
-              left: 12,
-              right: 12,
+              left: "50%",
+              transform: "translateX(-50%)",
+              width: "calc(100% - 24px)",
+              maxWidth: 480,
               bottom: "max(10px, env(safe-area-inset-bottom))",
               zIndex: 30,
               borderRadius: 26,

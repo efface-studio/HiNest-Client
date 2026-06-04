@@ -1,6 +1,6 @@
 import { prisma } from "./db.js";
 import { publish } from "./sse.js";
-import { sendApnsToUser } from "./apns.js";
+import { sendApnsToUser, sendApnsToUsers } from "./apns.js";
 
 export type NotifyType =
   | "NOTICE"
@@ -147,16 +147,18 @@ export async function notifyMany(inputs: NotifyInput[]) {
     const mutedSet = await mutedApnsSet(
       Array.from(picked.values()).map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
     );
+    const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string } }[] = [];
     for (const [uid, n] of picked) {
       if (pushFlag.get(`${uid}:${n.type as NotifyType}`) !== false) {
         publish(uid, "notification", n);
         const rid = roomIdFromLink(n.linkUrl);
-        // 원격 푸시(iOS APNs) — fire-and-forget. 미설정/토큰없음이면 내부 no-op.
         if (!(rid && mutedSet.has(`${uid}:${rid}`))) {
-          void sendApnsToUser(uid, { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined });
+          apnsTargets.push({ userId: uid, payload: { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined } });
         }
       }
     }
+    // 원격 푸시(iOS APNs) — fire-and-forget. pushToken 조회를 1회로 묶어 일괄 발송(N→1). 미설정/토큰없음이면 내부 no-op.
+    void sendApnsToUsers(apnsTargets);
   } catch (e) {
     console.error("notifyMany failed", e);
   }

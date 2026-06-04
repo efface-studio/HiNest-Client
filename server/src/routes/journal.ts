@@ -29,10 +29,9 @@ router.get("/", async (req, res) => {
   if (userId !== u.id) {
     if (u.role === "MEMBER") return res.status(403).json({ error: "forbidden" });
     if (u.role === "MANAGER") {
-      const [me, target] = await Promise.all([
-        prisma.user.findUnique({ where: { id: u.id }, select: { team: true } }),
-        prisma.user.findUnique({ where: { id: userId }, select: { team: true } }),
-      ]);
+      // 내 팀은 requireAuth 캐시 유저행에서 — 대상(다른 유저) 팀만 조회.
+      const me = (req as any).userRecord as { team?: string | null } | undefined;
+      const target = await prisma.user.findUnique({ where: { id: userId }, select: { team: true } });
       // 팀 미지정이거나 다른 팀이면 거부 — null/undefined 동일 취급 안 함(둘 다 null 이면 거부).
       if (!me?.team || !target?.team || me.team !== target.team) {
         return res.status(403).json({ error: "forbidden" });

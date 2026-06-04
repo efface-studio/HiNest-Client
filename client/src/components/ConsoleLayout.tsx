@@ -205,33 +205,64 @@ export default function ConsoleLayout() {
               </button>
             </div>
           </div>
-          <div className="px-2 pb-2 flex gap-1 overflow-x-auto">
-            {links.map((l) => (
-              <NavLink
-                key={l.to}
-                to={l.to}
-                className={({ isActive }) =>
-                  [
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12.5px] font-semibold whitespace-nowrap transition",
-                    isActive ? "bg-white/15 text-white" : "text-white/60 hover:text-white",
-                  ].join(" ")
-                }
-              >
-                <l.icon />
-                {l.label}
-              </NavLink>
-            ))}
-          </div>
         </header>
 
         <main
           className="flex-1 overflow-y-auto"
           style={{ overscrollBehaviorY: "contain", WebkitOverflowScrolling: "touch" }}
         >
-          <div className="max-w-[1400px] mx-auto px-4 md:px-8 py-4 md:py-6">
+          {/* 모바일은 하단 글래스 바 높이만큼 본문 바닥 여백 확보(데스크톱은 사이드바라 불필요). */}
+          <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 pb-[calc(84px+env(safe-area-inset-bottom))] md:py-6">
             <Outlet />
           </div>
         </main>
+
+        {/* ===== 모바일 하단 글래스 그룹 내비 (애플 글래스 스타일, CSS) =====
+            데스크톱은 좌측 사이드바를 쓰므로 md:hidden. 콘솔은 AppLayout 과 분리된
+            레이아웃이라 네이티브 탭바 플러그인을 쓰지 않고 동일한 --c-glass 토큰으로 맞춘다. */}
+        <nav
+          className="md:hidden"
+          style={{
+            position: "fixed",
+            left: "50%",
+            transform: "translateX(-50%)",
+            bottom: "max(10px, env(safe-area-inset-bottom))",
+            width: "calc(100% - 24px)",
+            maxWidth: 480,
+            zIndex: 30,
+            borderRadius: 24,
+            background: "var(--c-glass)",
+            backdropFilter: "blur(22px) saturate(180%)",
+            WebkitBackdropFilter: "blur(22px) saturate(180%)",
+            border: "1px solid var(--c-glass-border)",
+            boxShadow: "0 10px 30px rgba(16,18,27,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
+            padding: "6px 4px",
+            display: "flex",
+            alignItems: "stretch",
+          }}
+          aria-label="운영 콘솔 메뉴"
+        >
+          {links.map((l) => (
+            <NavLink
+              key={l.to}
+              to={l.to}
+              className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none text-[10px] font-bold tracking-tight leading-none"
+              style={({ isActive }) => ({ color: isActive ? "var(--c-brand)" : "var(--c-text-3)" })}
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    className="inline-flex items-center justify-center"
+                    style={{ width: 44, height: 26, borderRadius: 999, background: isActive ? "var(--c-brand-soft)" : "transparent" }}
+                  >
+                    <l.icon active={isActive} />
+                  </span>
+                  <span className="truncate max-w-full px-0.5">{l.label.split(" ")[0]}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
       </div>
     </div>
   );

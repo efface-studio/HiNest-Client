@@ -94,6 +94,22 @@ html.hinest-desktop .app-bottomnav { display: none !important; }
    규칙은 웹·안드로이드·네이티브 폴백에서 동일하게 적용된다. :has() 는 iOS 15.4+/모던 브라우저 지원. */
 html:has(.modal-safe) .app-bottomnav { display: none !important; }
 
+/* iOS 앱 — 상단바를 애플 리퀴드 글래스로. TopBar 를 본문 스크롤러(<main>) 위에 떠 있는
+   반투명+blur 헤더(absolute)로 만들고, 본문은 그만큼 위쪽 패딩을 줘 헤더 아래에서 시작한다.
+   스크롤하면 본문이 헤더 뒤로 지나가며 글래스 질감이 드러난다(스크롤 할 때만). TopBar 는
+   main 밖(형제)에 그대로 둬 오버스크롤 '뚫림' 방지(main 의 overscroll-contain)도 유지된다.
+   데스크톱(.hinest-ios 아님)은 기존 in-flow 솔리드 상단바 그대로 — 무회귀. */
+html.hinest-ios .app-topbar {
+  position: absolute; top: 0; left: 0; right: 0; z-index: 30;
+  background: var(--c-glass);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid var(--c-glass-border);
+}
+html.hinest-ios .app-main-scroll {
+  padding-top: calc(56px + env(safe-area-inset-top));
+}
+
 html.dark {
   color-scheme: dark;
 
@@ -318,33 +334,6 @@ html.dark .panel {
     border-left-width: 0;
     border-right-width: 0;
     border-radius: 0;
-  }
-}
-
-/* 일정(달력) 페이지 — 모바일에서 달력이 본문 높이를 꽉 채워 달력 아래 빈 공간이 남지 않게 한다.
-   :has(.sched-page) 로 "일정 페이지일 때만" 본문 래퍼를 플렉스 컬럼으로 바꾸고(다른 페이지·
-   데스크톱 레이아웃은 무영향), 달력 카드를 flex:1 로 늘린 뒤 날짜 그리드 행을 1fr 로 균등
-   분배해 5~6주 어느 달이든 화면을 꽉 채운다. (네이티브 캘린더 앱처럼) */
-@media (max-width: 640px) {
-  html:not(.hinest-desktop) .app-main-content:has(.sched-page) {
-    display: flex; flex-direction: column; min-height: 100%;
-    /* 달력은 떠 있는 글래스 탭바 바로 위까지 채운다 — 기본 본문 하단여백(--hinest-main-pb,
-       ~84px)은 스크롤 페이지용이라 달력엔 과해서 빈 틈으로 보인다. 탭바 알약(높이≈52px +
-       bottom 10px)만 비키도록 좁힌다. (inline padding-bottom 의 var() 가 이 값을 집어간다.) */
-    --hinest-main-pb: calc(max(10px, env(safe-area-inset-bottom)) + 56px);
-  }
-  /* 라우트 페이드 래퍼(.route-fade)가 중간에 끼어 플렉스 체인을 끊으므로 같이 늘려준다. */
-  html:not(.hinest-desktop) .route-fade:has(> .sched-page) {
-    flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
-  }
-  html:not(.hinest-desktop) .sched-page {
-    flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
-  }
-  html:not(.hinest-desktop) .sched-page > .cal-fullbleed {
-    flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0;
-  }
-  html:not(.hinest-desktop) .sched-page > .cal-fullbleed > .grid:last-child {
-    flex: 1 1 auto; grid-auto-rows: 1fr;
   }
 }
 

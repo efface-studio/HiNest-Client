@@ -5,6 +5,7 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import DateTimePicker from "../components/DateTimePicker";
 import { alertAsync } from "../components/ConfirmHost";
+import Portal from "../components/Portal";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { useApprovalCounts, refreshApprovalCounts } from "../lib/useApprovalCounts";
 
@@ -852,8 +853,9 @@ function CreateModal({
   const needDestination = form.type === "TRIP" || form.type === "OFFSITE";
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
-      <div className="panel w-full max-w-[560px] shadow-pop overflow-hidden max-h-full flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <div className="panel w-full max-w-[560px] shadow-pop overflow-hidden max-h-[88dvh] flex flex-col" onClick={(e) => e.stopPropagation()}>
         <div className="section-head flex-shrink-0">
           <div className="title">{reviseFromId ? "수정해서 재상신" : "새 결재 올리기"}</div>
           <button className="btn-icon" onClick={onClose} aria-label="닫기">
@@ -1048,6 +1050,7 @@ function CreateModal({
         </form>
       </div>
     </div>
+    </Portal>
   );
 }
 

@@ -165,8 +165,8 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
-    /// 애플 기본 확인 시트(UIAlertController .actionSheet) — 로그아웃 등 재확인용.
-    /// resolve({confirmed}). VC 없으면 confirmed:false.
+    /// 애플 기본 확인 다이얼로그(UIAlertController .alert) — 화면 중앙에 뜨고 취소+확인(예:
+    /// 로그아웃) 버튼을 나란히 가진다. 재확인용. resolve({confirmed}). VC 없으면 confirmed:false.
     @objc func confirm(_ call: CAPPluginCall) {
         let title = call.getString("title")
         let message = call.getString("message")
@@ -177,19 +177,15 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
             guard let vc = self.bridge?.viewController else {
                 call.resolve(["confirmed": false]); return
             }
-            let alert = UIAlertController(title: title, message: message, preferredStyle: .actionSheet)
-            alert.addAction(UIAlertAction(title: confirmText, style: destructive ? .destructive : .default) { _ in
-                call.resolve(["confirmed": true])
-            })
+            // .alert = 화면 중앙 다이얼로그(하단 액션시트 아님). 취소는 cancel 스타일로 왼쪽,
+            // 로그아웃은 destructive(빨강)로 오른쪽에 나란히 놓인다.
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
             alert.addAction(UIAlertAction(title: cancelText, style: .cancel) { _ in
                 call.resolve(["confirmed": false])
             })
-            // 아이패드는 액션시트에 앵커가 필요(없으면 크래시) — 화면 하단 중앙에 앵커.
-            if let pop = alert.popoverPresentationController {
-                pop.sourceView = vc.view
-                pop.sourceRect = CGRect(x: vc.view.bounds.midX, y: vc.view.bounds.maxY - 40, width: 0, height: 0)
-                pop.permittedArrowDirections = []
-            }
+            alert.addAction(UIAlertAction(title: confirmText, style: destructive ? .destructive : .default) { _ in
+                call.resolve(["confirmed": true])
+            })
             vc.present(alert, animated: true)
         }
     }

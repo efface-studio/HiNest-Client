@@ -714,12 +714,14 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 경로 변화 → 네이티브 탭 하이라이트 동기화 + 포커스 화면(알림 등)에선 바 숨김.
+  // 경로 변화 → 네이티브 탭 하이라이트 동기화.
   useEffect(() => {
     if (nativePlatform() !== "ios") return;
     LiquidGlassTabBar.setSelected({ key: matchNativeTabKey(pathname) }).catch(() => {});
-    // 하단 바를 숨길 라우트(전체 화면 포커스 뷰).
-    const hideOnRoutes = ["/notifications"];
+    // 라우트만으로 하단 바를 숨기지 않는다. 예전엔 /notifications 에서 숨겼는데, 그 페이지엔
+    // 뒤로가기 버튼이 없어 탭바까지 사라지면 빠져나갈 길이 없어 갇혔다(사용자 제보). 알림은
+    // 일반 페이지처럼 탭바를 유지해 다른 탭으로 나갈 수 있게 한다. (모달·채팅은 별도 사유로 숨김)
+    const hideOnRoutes: string[] = [];
     setNativeTabBarHidden("route", hideOnRoutes.some((r) => pathname === r || pathname.startsWith(r + "/")));
   }, [pathname]);
 
@@ -914,7 +916,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
         </div>
       </aside>
 
-      <div className="flex-1 min-w-0 flex flex-col">
+      <div className="flex-1 min-w-0 flex flex-col relative">
         {showTitlebarSpace && (
           <div
             className="bg-white"
@@ -931,7 +933,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
         />
         <main
           ref={mainRef}
-          className="flex-1 overflow-y-auto"
+          className="flex-1 overflow-y-auto app-main-scroll"
           style={{
             // iOS 러버밴드 오버스크롤 방지 — 사용자가 페이지 상단에서 더 끌어내리면
             // 그 동작이 부모 요소로 전파되어 TopBar 가 잠시 사라지며 그 자리에 본문이
@@ -1009,7 +1011,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           </div>
           <div
             ref={ptrContentRef}
-            className="app-main-content max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
+            className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
             style={{
               // 본문 하단 여백 — 토큰(--hinest-main-pb)으로 분기(styles.css).
               //  · 모바일(<md): in-flow 하단 바가 자체 높이+세이프에어리어를 차지하므로
@@ -1676,7 +1678,7 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
     <>
       <header
         className={
-          "flex items-center justify-between px-3 md:px-6 border-b border-ink-150 bg-white flex-shrink-0 " +
+          "app-topbar flex items-center justify-between px-3 md:px-6 border-b border-ink-150 bg-white flex-shrink-0 " +
           // 모바일 56px / 데스크톱 48px(기존 유지). 노치(safe-area-top)가 있으면 그만큼 더해
           // 콘텐츠 영역 높이는 그대로 두고 상태바 밑으로 안 깔리게 한다.
           (safeAreaTop

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, requirePlatformAdmin, writeLog } from "../lib/auth.js";
 import { runUnscoped } from "../lib/tenant.js";
+import { notifyMany } from "../lib/notify.js";
 
 /**
  * 플랫폼 운영 API — 회사(테넌트) 가입 승인 워크플로우.
@@ -103,6 +104,104 @@ router.post("/companies/:id/suspend", async (req, res) => {
   });
   await writeLog(u.id, "COMPANY_SUSPEND", company.id, company.name, req.ip);
   res.json({ company: updated });
+});
+
+/* ===========================================================================
+ * 알림 발송(브로드캐스트) — 전체 / 특정 회사 / 특정 사람에게 즉시 알림.
+ * platformAdmin/개발자 전용. 알림 표준 경로(notifyMany)를 타므로 벨·SSE·APNs(폰 푸시)·
+ * 사용자별 알림설정/DND 가 모두 그대로 적용된다.
+ * ======================================================================== */
+
+// 받는 사람 검색(특정 사람 선택용) — 이름/이메일 부분일치, 최대 50명. 회사명 동봉.
+router.get("/users", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  const companyId =
+    typeof req.query.companyId === "string" && req.query.companyId ? req.query.companyId : null;
+  const where: any = { active: true };
+  if (companyId) where.companyId = companyId;
+  if (q) {
+    where.OR = [
+      { name: { contains: q, mode: "insensitive" } },
+      { email: { contains: q, mode: "insensitive" } },
+    ];
+  }
+  const users = await prisma.user.findMany({
+    where,
+    select: { id: true, name: true, email: true, company: { select: { name: true } } },
+    orderBy: { name: "asc" },
+    take: 50,
+  });
+  res.json({ users });
+});
+
+const broadcastSchema = z.object({
+  target: z.enum(["all", "company", "user"]),
+  companyId: z.string().max(50).optional(),
+  userId: z.string().max(50).optional(),
+  title: z.string().trim().min(1).max(200),
+  body: z.string().trim().max(2000).optional(),
+});
+
+router.post("/broadcast", async (req, res) => {
+  const u = (req as any).user;
+  const parsed = broadcastSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "제목과 대상을 확인해주세요" });
+  const d = parsed.data;
+
+  // 대상 활성 사용자 id 목록 결정.
+  let userIds: string[] = [];
+  let scopeLabel = "";
+  let logTarget = "all";
+  if (d.target === "all") {
+    const users = await prisma.user.findMany({ where: { active: true }, select: { id: true } });
+    userIds = users.map((x) => x.id);
+    scopeLabel = "전체";
+  } else if (d.target === "company") {
+    if (!d.companyId) return res.status(400).json({ error: "회사를 선택해주세요" });
+    const company = await prisma.company.findUnique({
+      where: { id: d.companyId },
+      select: { id: true, name: true },
+    });
+    if (!company) return res.status(404).json({ error: "회사를 찾을 수 없습니다" });
+    const users = await prisma.user.findMany({
+      where: { active: true, companyId: company.id },
+      select: { id: true },
+    });
+    userIds = users.map((x) => x.id);
+    scopeLabel = `회사 「${company.name}」`;
+    logTarget = company.id;
+  } else {
+    if (!d.userId) return res.status(400).json({ error: "받는 사람을 선택해주세요" });
+    const target = await prisma.user.findUnique({
+      where: { id: d.userId },
+      select: { id: true, name: true, active: true },
+    });
+    if (!target) return res.status(404).json({ error: "사용자를 찾을 수 없습니다" });
+    if (!target.active) return res.status(400).json({ error: "비활성 사용자입니다" });
+    userIds = [target.id];
+    scopeLabel = `「${target.name}」`;
+    logTarget = target.id;
+  }
+
+  if (!userIds.length) return res.json({ count: 0 });
+
+  await notifyMany(
+    userIds.map((id) => ({
+      userId: id,
+      type: "SYSTEM" as const,
+      title: d.title,
+      body: d.body,
+      actorName: u.name,
+    })),
+  );
+  await writeLog(
+    u.id,
+    "PLATFORM_BROADCAST",
+    logTarget,
+    `${scopeLabel} · ${d.title} → ${userIds.length}명`,
+    req.ip,
+  );
+  res.json({ count: userIds.length });
 });
 
 export default router;

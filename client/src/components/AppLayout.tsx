@@ -1009,7 +1009,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           </div>
           <div
             ref={ptrContentRef}
-            className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
+            className="app-main-content max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:pt-6"
             style={{
               // 본문 하단 여백 — 토큰(--hinest-main-pb)으로 분기(styles.css).
               //  · 모바일(<md): in-flow 하단 바가 자체 높이+세이프에어리어를 차지하므로

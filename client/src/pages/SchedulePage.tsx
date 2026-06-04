@@ -199,7 +199,7 @@ export default function SchedulePage() {
   const canMakeCompany = user?.role === "ADMIN" || user?.role === "MANAGER";
 
   return (
-    <div>
+    <div className="sched-page">
       <PageHeader
         title="일정관리"
         description="전사/팀/개인 일정을 월별로 관리합니다."

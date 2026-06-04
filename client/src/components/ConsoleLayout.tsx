@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import AdminLockup from "./AdminLockup";
+import { confirmLogout } from "../lib/confirmLogout";
 
 /**
  * 운영 콘솔 셸 — 총관리자(개발자)/플랫폼 운영자 전용. 회사 앱(AppLayout)과
@@ -86,6 +87,7 @@ export default function ConsoleLayout() {
   const hasCompany = !!user?.companyId;
 
   async function doLogout() {
+    if (!(await confirmLogout())) return;
     await logout();
     nav("/login");
   }

@@ -5,6 +5,7 @@ import PageHeader from "../components/PageHeader";
 import { getHoliday } from "../lib/holidays";
 import DateTimePicker from "../components/DateTimePicker";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
+import Portal from "../components/Portal";
 
 export type Category =
   | "MEETING" | "DEADLINE" | "OUT" | "HOLIDAY" | "EVENT"
@@ -199,7 +200,7 @@ export default function SchedulePage() {
   const canMakeCompany = user?.role === "ADMIN" || user?.role === "MANAGER";
 
   return (
-    <div className="sched-page">
+    <div>
       <PageHeader
         title="일정관리"
         description="전사/팀/개인 일정을 월별로 관리합니다."
@@ -248,7 +249,7 @@ export default function SchedulePage() {
             return (
               <div
                 key={i}
-                className={`min-h-[64px] sm:min-h-[110px] border-b border-ink-100 ${i % 7 !== 6 ? "border-r" : ""} p-1 sm:p-2 ${
+                className={`min-h-[78px] sm:min-h-[110px] border-b border-ink-100 ${i % 7 !== 6 ? "border-r" : ""} p-1 sm:p-2 ${
                   holiday ? "bg-rose-50/40 dark:bg-rose-500/10" : ""
                 } ${d ? "cursor-pointer sm:cursor-default hover:bg-ink-25 sm:hover:bg-transparent" : ""}`}
                 onClick={() => {
@@ -711,6 +712,7 @@ function EventModal({
   const viewport = useViewportInset();
 
   return (
+    <Portal>
     <div
       className="fixed inset-x-0 bg-ink-900/40 grid place-items-center modal-safe z-50"
       style={{ top: viewport.top, height: viewport.height }}
@@ -1038,5 +1040,6 @@ function EventModal({
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

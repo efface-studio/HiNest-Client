@@ -719,7 +719,6 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     indicatorRef: ptrIndicatorRef,
     badgeRef: ptrBadgeRef,
     ringRef: ptrRingRef,
-    arcRef: ptrArcRef,
     contentRef: ptrContentRef,
   } = usePullToRefresh();
 
@@ -943,9 +942,10 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                 transform: "scale(0.82)",
               }}
             >
-              {/* iOS 풍 원형 스피너 — 둥근 캡 SVG 호. (이전 conic-gradient 링보다 매끄럽다)
-                  · 당기는 중(결정형): 진행도만큼 호가 채워진다(strokeDashoffset).
-                  · 새로고침 중(비결정형): 짧은 호가 회전(animate-spin). 둘 다 ref 로 직접 갱신. */}
+              {/* iOS 시스템 새로고침 스피너 — 회색 12-스포크(UIActivityIndicator 모양).
+                  당기는 중엔 indicator opacity 로 서서히 나타나고(결정형 대용), 새로고침 중엔
+                  SVG 전체가 animate-spin 으로 회전해 애플 기본 스피너처럼 보인다.
+                  스포크별 opacity 그라데이션 + 회전 = 애플 특유의 '꼬리' 스핀 효과. */}
               <svg
                 aria-hidden
                 ref={ptrRingRef}
@@ -955,20 +955,19 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
                 fill="none"
                 style={{ display: "block", transformOrigin: "center" }}
               >
-                {/* 트랙(옅은 테두리색 원) */}
-                <circle cx="12" cy="12" r={PTR_ARC_R} stroke="var(--c-border)" strokeWidth="2.4" />
-                {/* 진행 호 — 12시 방향에서 시작(rotate -90), 길이는 strokeDashoffset 로 제어. */}
-                <circle
-                  ref={ptrArcRef}
-                  cx="12"
-                  cy="12"
-                  r={PTR_ARC_R}
-                  stroke="var(--c-brand)"
-                  strokeWidth="2.4"
-                  strokeLinecap="round"
-                  transform="rotate(-90 12 12)"
-                  style={{ strokeDasharray: PTR_CIRC, strokeDashoffset: PTR_CIRC }}
-                />
+                {Array.from({ length: 12 }).map((_, i) => (
+                  <rect
+                    key={i}
+                    x="11"
+                    y="2.5"
+                    width="2"
+                    height="6"
+                    rx="1"
+                    fill="var(--c-text-3)"
+                    opacity={0.18 + (0.82 * i) / 11}
+                    transform={`rotate(${i * 30} 12 12)`}
+                  />
+                ))}
               </svg>
             </div>
           </div>

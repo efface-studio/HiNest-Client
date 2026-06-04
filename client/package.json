@@ -9,9 +9,9 @@
     "preview": "vite preview --port 1000",
     "cap:add:ios": "cap add ios",
     "cap:add:android": "cap add android",
-    "cap:sync": "npm run build && cap sync",
-    "cap:ios": "npm run build && cap sync ios && cap open ios",
-    "cap:android": "npm run build && cap sync android && cap open android"
+    "cap:sync": "VITE_API_BASE=${VITE_API_BASE:-https://nest.hi-vits.com} npm run build && cap sync",
+    "cap:ios": "VITE_API_BASE=${VITE_API_BASE:-https://nest.hi-vits.com} npm run build && cap sync ios && cap open ios",
+    "cap:android": "VITE_API_BASE=${VITE_API_BASE:-https://nest.hi-vits.com} npm run build && cap sync android && cap open android"
   },
   "dependencies": {
     "@capacitor/app": "^8.1.0",

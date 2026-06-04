@@ -853,14 +853,14 @@ function CreateModal({
 
   return (
     <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
-      <div className="panel w-full max-w-[560px] shadow-pop overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="section-head">
+      <div className="panel w-full max-w-[560px] shadow-pop overflow-hidden max-h-full flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="section-head flex-shrink-0">
           <div className="title">{reviseFromId ? "수정해서 재상신" : "새 결재 올리기"}</div>
           <button className="btn-icon" onClick={onClose} aria-label="닫기">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
           </button>
         </div>
-        <form onSubmit={submit} className="p-5 space-y-3 max-h-[80vh] overflow-auto">
+        <form onSubmit={submit} className="p-5 space-y-3 flex-1 min-h-0 overflow-auto">
           {templates.length > 0 && (
             <div>
               <label className="field-label">템플릿</label>

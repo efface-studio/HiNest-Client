@@ -88,6 +88,12 @@ html.hinest-native-tabbar .app-bottomnav { display: none !important; }
 html.hinest-desktop .app-sidebar { display: flex !important; }
 html.hinest-desktop .app-bottomnav { display: none !important; }
 
+/* 모달(.modal-safe 오버레이)이 열려 있는 동안 웹 하단 탭 바를 숨긴다 — 모달 풋터(저장·취소
+   버튼 등)가 떠 있는 바와 겹쳐 가려지는 "UI 깨짐"을 막는다. iOS 네이티브는 .hinest-native-tabbar
+   로 웹 바가 이미 숨겨져 있고(실제 네이티브 바는 AppLayout 의 modal 관찰자가 별도로 숨김), 이
+   규칙은 웹·안드로이드·네이티브 폴백에서 동일하게 적용된다. :has() 는 iOS 15.4+/모던 브라우저 지원. */
+html:has(.modal-safe) .app-bottomnav { display: none !important; }
+
 html.dark {
   color-scheme: dark;
 
@@ -393,6 +399,18 @@ textarea.input {
 @media (any-hover: none) {
   .touch-reveal { opacity: 1 !important; }
   .touch-reveal-flex { display: flex !important; }
+}
+/* 터치(모바일) 기기에선 키보드 단축키 힌트를 숨긴다. 데스크톱(마우스)만 노출.
+   ⌘K, ←/→ 이동·Enter, ESC 같은 키 안내는 모바일에서 의미가 없다. */
+@media (pointer: coarse) {
+  .hinest-onb-kbd, .kbd, .hinest-kbd, .kbd-hide { display: none !important; }
+}
+/* 모바일 앱(터치)에서 페이지 헤더를 더 '네이티브 앱'처럼 — 상단바가 이미 페이지명을
+   보여주므로 장황한 설명 문구는 숨기고, 큰 제목(iOS 라지 타이틀 느낌)으로 존재감만 키운다.
+   데스크톱(마우스/Electron)은 기존 그대로(설명 노출 + 20px 제목) — 무회귀. */
+@media (pointer: coarse) {
+  .page-header-desc { display: none; }
+  .page-header .h-display { font-size: 24px; line-height: 30px; letter-spacing: -0.025em; }
 }
 /* 터치 기기에서 사이드바 행(아이패드는 데스크톱 사이드바를 쓰지만 터치)의 탭 타겟을
    최소 44px(Apple HIG) 로 확보. 사이드바는 md+ 에서만 렌더되므로 사실상 아이패드 전용.

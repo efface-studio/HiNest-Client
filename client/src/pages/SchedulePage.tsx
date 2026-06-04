@@ -712,7 +712,7 @@ function EventModal({
 
   return (
     <div
-      className="fixed inset-x-0 bg-ink-900/40 grid place-items-center p-4 z-50"
+      className="fixed inset-x-0 bg-ink-900/40 grid place-items-center modal-safe z-50"
       style={{ top: viewport.top, height: viewport.height }}
       onClick={onClose}
     >

@@ -161,7 +161,7 @@ export default function PreviewOnboarding() {
               border: "1px solid rgba(255,255,255,0.14)",
             }}
           >
-            건너뛰기 <span style={{ opacity: 0.55, marginLeft: 4, fontSize: 10 }}>ESC</span>
+            건너뛰기 <span className="kbd-hide" style={{ opacity: 0.55, marginLeft: 4, fontSize: 10 }}>ESC</span>
           </button>
         </div>
       </div>

@@ -15,8 +15,8 @@ export interface LiquidGlassTab {
   key: string;
   /** 탭 라벨. */
   title: string;
-  /** SF Symbol 이름 (예: "house.fill"). */
-  sf: string;
+  /** iOS 에셋 카탈로그 이미지 이름(앱 기존 아이콘, template 렌더링). 예: "tab-home". */
+  icon: string;
 }
 
 export interface LiquidGlassTabBarPlugin {

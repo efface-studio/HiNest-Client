@@ -456,11 +456,11 @@ const BOTTOM_NAV: NavItem[] = [
 
 /** 네이티브 Liquid Glass 탭 바 구성(iOS). 웹 BOTTOM_NAV + "전체" 와 동일 순서, SF Symbol 매핑. */
 const NATIVE_GLASS_TABS = [
-  { key: "/", title: "개요", sf: "house.fill" },
-  { key: "/schedule", title: "일정", sf: "calendar" },
-  { key: "/approvals", title: "전자결재", sf: "checkmark.seal.fill" },
-  { key: "/meetings", title: "회의록", sf: "doc.text.fill" },
-  { key: "/menu", title: "전체", sf: "line.3.horizontal" },
+  { key: "/", title: "개요", icon: "tab-home" },
+  { key: "/schedule", title: "일정", icon: "tab-schedule" },
+  { key: "/approvals", title: "전자결재", icon: "tab-approval" },
+  { key: "/meetings", title: "회의록", icon: "tab-meeting" },
+  { key: "/menu", title: "전체", icon: "tab-menu" },
 ];
 /** 현재 경로에 해당하는 네이티브 탭 key. 일치 없으면 빈 문자열(하이라이트 없음). */
 function matchNativeTabKey(pathname: string): string {

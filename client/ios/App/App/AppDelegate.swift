@@ -117,9 +117,10 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         var items: [UITabBarItem] = []
         for (i, tab) in tabs.enumerated() {
             keys.append((tab["key"] as? String) ?? "")
+            // 앱 기존 아이콘(에셋 카탈로그) 사용 — template 렌더링으로 탭 바가 회색/브랜드색 틴트.
             let item = UITabBarItem(
                 title: (tab["title"] as? String) ?? "",
-                image: UIImage(systemName: (tab["sf"] as? String) ?? "circle"),
+                image: UIImage(named: (tab["icon"] as? String) ?? "")?.withRenderingMode(.alwaysTemplate),
                 tag: i
             )
             items.append(item)

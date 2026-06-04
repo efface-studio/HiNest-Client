@@ -18,7 +18,7 @@ import { ROUTE_PREFETCH, loadProject } from "../routes";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
 import { isPreviewMode } from "../lib/previewMock";
-import { isInstalledApp, nativePlatform } from "../lib/platform";
+import { isInstalledApp, isDesktopApp, nativePlatform } from "../lib/platform";
 import { LiquidGlassTabBar, setNativeTabBarHidden, syncNativeTabBarVisibility } from "../lib/liquidGlassTabBar";
 import { confirmLogout } from "../lib/confirmLogout";
 
@@ -674,6 +674,12 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     // iOS 네이티브(아이폰·아이패드)에서만 글래스 하단 네비 스타일 + 본문 하단 클리어런스 적용.
     // (웹/안드로이드/Electron 데스크톱은 클래스가 안 붙어 기존 디자인 그대로.)
     el.classList.toggle("hinest-ios", nativePlatform() === "ios");
+    // 데스크톱(Electron 또는 마우스+호버 가능 브라우저)은 창을 폰 크기로 줄여도 모바일
+    // 레이아웃으로 바뀌지 않도록 플래그. 실제 터치 폰/태블릿(coarse pointer)은 제외.
+    const isDesktopDevice =
+      isDesktopApp() ||
+      (typeof window !== "undefined" && !!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches);
+    el.classList.toggle("hinest-desktop", isDesktopDevice);
     return () => el.classList.remove("hinest-shell-lock");
   }, []);
 
@@ -933,6 +939,9 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             overscrollBehaviorY: "contain",
             // iOS Safari momentum scrolling 안정화.
             WebkitOverflowScrolling: "touch",
+            // 가로 스크롤 차단 — 풀블리드 달력 등 일부 요소가 미세하게 넘쳐도 좌우 스크롤이
+            // 생기지 않게 한다(세로 스크롤은 유지). 본문은 vertical 스크롤만 필요.
+            overflowX: "hidden",
             // 당겨서 새로고침 인디케이터의 절대 배치 기준.
             position: "relative",
           }}

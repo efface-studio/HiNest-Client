@@ -2,6 +2,7 @@ import { useEffect, useState, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { useNotifications } from "../notifications";
 import { imgSrc } from "../api";
+import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
 // highlight.js(~92KB) 등 무거운 의존성을 끌고오므로 초기 번들에서 분리한다.
 // 채팅 패널은 사용자가 처음 열 때(mounted=true) 비로소 마운트되므로 lazy 로딩이 안전.
 const ChatMiniApp = lazy(() => import("./ChatMiniApp"));
@@ -49,6 +50,12 @@ export default function ChatFab() {
   const { chatUnread, ready } = useNotifications();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // 채팅이 열려 있는 동안엔 네이티브 하단 탭 바를 숨긴다(풀스크린 채팅을 바가 덮는 것 방지).
+  useEffect(() => {
+    setNativeTabBarHidden("chat", open);
+    return () => setNativeTabBarHidden("chat", false);
+  }, [open]);
   // 모바일(≤640px) 에서는 사내톡을 풀스크린 페이지처럼 띄움.
   // 뷰포트 크기 변화(회전/리사이즈) 시 갱신.
   const [isMobile, setIsMobile] = useState<boolean>(

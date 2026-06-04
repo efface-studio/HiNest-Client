@@ -13,6 +13,7 @@ import HealthPanel from "../components/superadmin/HealthPanel";
 import TrashPanel from "../components/superadmin/TrashPanel";
 import AuditPanel from "../components/superadmin/AuditPanel";
 import FlagsPanel from "../components/superadmin/FlagsPanel";
+import BroadcastPanel from "../components/superadmin/BroadcastPanel";
 import TokensPanel from "../components/superadmin/TokensPanel";
 import SecurityPanel from "../components/superadmin/SecurityPanel";
 import TwoFAPanel from "../components/superadmin/TwoFAPanel";
@@ -52,7 +53,7 @@ type Message = {
   sender: { id: string; name: string; avatarColor: string; avatarUrl?: string | null };
 };
 
-type Tab = "logs" | "chat" | "api" | "console" | "server" | "nav" | "sessions" | "errors" | "health" | "trash" | "audit" | "flags" | "tokens" | "security" | "twofa" | "roles";
+type Tab = "logs" | "chat" | "api" | "console" | "server" | "nav" | "sessions" | "errors" | "health" | "trash" | "audit" | "flags" | "tokens" | "security" | "twofa" | "roles" | "broadcast";
 
 type ApiSpecRoute = {
   method: string;
@@ -70,14 +71,14 @@ export type ConsoleGroup = "logs" | "system" | "security" | "devtools";
  *  사내톡 감사(chat)는 평소 숨김이라 목록에 넣지 않고, 잠금 해제 시 logs 그룹에 동적으로 덧붙인다. */
 const GROUP_TABS: Record<ConsoleGroup, Tab[]> = {
   logs: ["logs", "audit", "server", "errors"],
-  system: ["health", "sessions", "trash", "flags", "nav"],
+  system: ["broadcast", "health", "sessions", "trash", "flags", "nav"],
   security: ["security", "twofa", "roles", "tokens"],
   devtools: ["api", "console"],
 };
 
 const TAB_LABEL: Record<Tab, string> = {
   logs: "활동 로그", chat: "사내톡 감사", audit: "감사 로그", server: "서버 로그", errors: "에러",
-  health: "헬스", sessions: "세션", trash: "휴지통", flags: "기능 플래그", nav: "메뉴 관리",
+  health: "헬스", sessions: "세션", trash: "휴지통", flags: "기능 플래그", nav: "메뉴 관리", broadcast: "알림 발송",
   security: "보안 룰", twofa: "2FA 정책", roles: "역할 권한", tokens: "API 토큰",
   api: "API 명세서", console: "콘솔",
 };
@@ -481,6 +482,7 @@ function renderPanel(tab: Tab) {
     case "trash": return <TrashPanel />;
     case "audit": return <AuditPanel />;
     case "flags": return <FlagsPanel />;
+    case "broadcast": return <BroadcastPanel />;
     case "tokens": return <TokensPanel />;
     case "security": return <SecurityPanel />;
     case "twofa": return <TwoFAPanel />;

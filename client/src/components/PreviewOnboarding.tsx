@@ -121,8 +121,11 @@ export default function PreviewOnboarding() {
       {/* 미세 그레인 노이즈 (SVG) — AI 룩 탈피용 텍스처 */}
       <div className="hinest-onb-noise" aria-hidden />
 
-      {/* 상단 바 — 브랜드 마크 + 챕터 카운터 + 건너뛰기 */}
-      <div className="hinest-onb-topbar absolute top-0 left-0 right-0 flex items-center justify-between px-6 sm:px-8 pt-6">
+      {/* 상단 바 — 브랜드 마크 + 챕터 카운터 + 건너뛰기. 노치/다이내믹아일랜드 회피용 safe-area 패딩. */}
+      <div
+        className="hinest-onb-topbar absolute top-0 left-0 right-0 flex items-center justify-between px-6 sm:px-8"
+        style={{ paddingTop: "max(24px, calc(env(safe-area-inset-top) + 8px))" }}
+      >
         <div className="flex items-center gap-2.5">
           <span
             className="inline-block rounded-md"

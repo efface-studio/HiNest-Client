@@ -85,12 +85,28 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
     private var badgeViews: [String: UILabel] = [:]
     private let brandColor = UIColor(red: 0x3B / 255.0, green: 0x5C / 255.0, blue: 0xF0 / 255.0, alpha: 1.0)
 
+    override public func load() {
+        NSLog("[LGTB] plugin loaded (discovered by Capacitor)")
+    }
+
     @objc func configure(_ call: CAPPluginCall) {
         let tabs = call.getArray("tabs", JSObject.self) ?? []
+        NSLog("[LGTB] configure called, tabs=\(tabs.count)")
         DispatchQueue.main.async {
-            guard #available(iOS 26.0, *) else { call.reject("liquid-glass-unavailable"); return }
-            guard let host = self.bridge?.viewController?.view else { call.reject("no-host-view"); return }
-            self.build(host: host, tabs: tabs)
+            if #available(iOS 26.0, *) {
+                NSLog("[LGTB] iOS 26 available")
+            } else {
+                NSLog("[LGTB] iOS <26 -> reject")
+                call.reject("liquid-glass-unavailable"); return
+            }
+            guard let host = self.bridge?.viewController?.view else {
+                NSLog("[LGTB] no host view -> reject")
+                call.reject("no-host-view"); return
+            }
+            if #available(iOS 26.0, *) {
+                self.build(host: host, tabs: tabs)
+            }
+            NSLog("[LGTB] configured, active=true")
             call.resolve(["active": true])
         }
     }
@@ -217,5 +233,15 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
             badge.centerXAnchor.constraint(equalTo: btn.centerXAnchor, constant: 13),
         ])
         badgeViews[key] = badge
+    }
+}
+
+/// Capacitor 브리지 VC 서브클래스.
+/// 앱에 직접 넣은(app-local) 플러그인은 Capacitor 가 자동 발견하지 못하므로(npm 패키지
+/// 플러그인만 자동 등록됨) 여기서 명시적으로 등록한다. Main.storyboard 의 customClass 를
+/// 이 클래스로 지정해야 적용된다.
+class MainViewController: CAPBridgeViewController {
+    override func capacitorDidLoad() {
+        bridge?.registerPluginInstance(LiquidGlassTabBarPlugin())
     }
 }

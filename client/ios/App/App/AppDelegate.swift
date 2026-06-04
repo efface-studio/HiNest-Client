@@ -123,6 +123,9 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
                 image: UIImage(named: (tab["icon"] as? String) ?? "")?.withRenderingMode(.alwaysTemplate),
                 tag: i
             )
+            // 선택된 탭 라벨을 살짝 더 두껍게(semibold). 비선택은 regular. (글래스 배경은 건드리지 않음)
+            item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 10, weight: .regular)], for: .normal)
+            item.setTitleTextAttributes([.font: UIFont.systemFont(ofSize: 10, weight: .semibold)], for: .selected)
             items.append(item)
         }
         tabBar.setItems(items, animated: false)

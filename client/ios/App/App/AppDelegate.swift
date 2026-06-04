@@ -80,10 +80,8 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "confirm", returnType: CAPPluginReturnPromise),
     ]
 
-    private var glassView: UIView?
-    private var buttons: [UIButton] = []
+    private var tabBarView: UITabBar?
     private var keys: [String] = []
-    private var badgeViews: [String: UILabel] = [:]
     private let brandColor = UIColor(red: 0x3B / 255.0, green: 0x5C / 255.0, blue: 0xF0 / 255.0, alpha: 1.0)
 
     override public func load() {
@@ -94,102 +92,63 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         let tabs = call.getArray("tabs", JSObject.self) ?? []
         NSLog("[LGTB] configure called, tabs=\(tabs.count)")
         DispatchQueue.main.async {
-            if #available(iOS 26.0, *) {
-                NSLog("[LGTB] iOS 26 available")
-            } else {
-                NSLog("[LGTB] iOS <26 -> reject")
-                call.reject("liquid-glass-unavailable"); return
-            }
             guard let host = self.bridge?.viewController?.view else {
                 NSLog("[LGTB] no host view -> reject")
                 call.reject("no-host-view"); return
             }
-            if #available(iOS 26.0, *) {
-                self.build(host: host, tabs: tabs)
-            }
-            NSLog("[LGTB] configured, active=true")
+            self.build(host: host, tabs: tabs)
+            NSLog("[LGTB] configured (real UITabBar), active=true")
             call.resolve(["active": true])
         }
     }
 
-    @available(iOS 26.0, *)
+    /// 실제 애플 UIKit 탭 바(UITabBar) 를 웹뷰 위에 올린다. iOS 26 에선 시스템이 자동으로
+    /// Liquid Glass 머티리얼을 입힌다(앱이 직접 그리지 않음 = 정품 시스템 컴포넌트).
+    /// iOS 26 미만에선 일반 탭 바로 자연스럽게 폴백.
     private func build(host: UIView, tabs: [JSObject]) {
-        glassView?.removeFromSuperview()
-        buttons.removeAll(); keys.removeAll(); badgeViews.removeAll()
+        tabBarView?.removeFromSuperview()
+        keys.removeAll()
 
-        // 실제 애플 Liquid Glass 머티리얼.
-        let effectView = UIVisualEffectView(effect: UIGlassEffect())
-        effectView.translatesAutoresizingMaskIntoConstraints = false
-        effectView.layer.cornerRadius = 26
-        effectView.clipsToBounds = true
-        host.addSubview(effectView)
+        let tabBar = UITabBar()
+        tabBar.translatesAutoresizingMaskIntoConstraints = false
+        tabBar.delegate = self
+        tabBar.tintColor = brandColor
 
-        let stack = UIStackView()
-        stack.axis = .horizontal
-        stack.distribution = .fillEqually
-        stack.alignment = .fill
-        stack.translatesAutoresizingMaskIntoConstraints = false
-        effectView.contentView.addSubview(stack)
-
+        var items: [UITabBarItem] = []
         for (i, tab) in tabs.enumerated() {
-            let key = (tab["key"] as? String) ?? ""
-            let title = (tab["title"] as? String) ?? ""
-            let sf = (tab["sf"] as? String) ?? "circle"
-            keys.append(key)
-
-            var cfg = UIButton.Configuration.plain()
-            cfg.image = UIImage(systemName: sf)
-            cfg.imagePlacement = .top
-            cfg.imagePadding = 3
-            cfg.preferredSymbolConfigurationForImage = UIImage.SymbolConfiguration(pointSize: 18, weight: .semibold)
-            var cont = AttributeContainer()
-            cont.font = UIFont.systemFont(ofSize: 10.5, weight: .semibold)
-            cfg.attributedTitle = AttributedString(title, attributes: cont)
-            cfg.baseForegroundColor = .secondaryLabel
-
-            let btn = UIButton(configuration: cfg)
-            btn.tag = i
-            btn.addTarget(self, action: #selector(self.onTap(_:)), for: .touchUpInside)
-            stack.addArrangedSubview(btn)
-            buttons.append(btn)
+            keys.append((tab["key"] as? String) ?? "")
+            let item = UITabBarItem(
+                title: (tab["title"] as? String) ?? "",
+                image: UIImage(systemName: (tab["sf"] as? String) ?? "circle"),
+                tag: i
+            )
+            items.append(item)
         }
+        tabBar.setItems(items, animated: false)
+        tabBar.selectedItem = items.first
 
-        let guide = host.safeAreaLayoutGuide
-        let widthC = effectView.widthAnchor.constraint(equalTo: guide.widthAnchor, constant: -24)
-        widthC.priority = .defaultHigh
+        host.addSubview(tabBar)
         NSLayoutConstraint.activate([
-            stack.topAnchor.constraint(equalTo: effectView.contentView.topAnchor),
-            stack.bottomAnchor.constraint(equalTo: effectView.contentView.bottomAnchor),
-            stack.leadingAnchor.constraint(equalTo: effectView.contentView.leadingAnchor, constant: 6),
-            stack.trailingAnchor.constraint(equalTo: effectView.contentView.trailingAnchor, constant: -6),
-            effectView.centerXAnchor.constraint(equalTo: guide.centerXAnchor),
-            effectView.bottomAnchor.constraint(equalTo: guide.bottomAnchor, constant: -8),
-            effectView.heightAnchor.constraint(equalToConstant: 58),
-            effectView.widthAnchor.constraint(lessThanOrEqualToConstant: 480),
-            widthC,
+            tabBar.leadingAnchor.constraint(equalTo: host.leadingAnchor),
+            tabBar.trailingAnchor.constraint(equalTo: host.trailingAnchor),
+            tabBar.bottomAnchor.constraint(equalTo: host.bottomAnchor),
         ])
-        glassView = effectView
+        tabBarView = tabBar
     }
 
-    @objc private func onTap(_ sender: UIButton) {
-        let i = sender.tag
-        guard i >= 0, i < keys.count else { return }
-        applySelected(i)
-        notifyListeners("tabSelected", data: ["key": keys[i]])
-    }
-
-    private func applySelected(_ index: Int) {
-        for (i, btn) in buttons.enumerated() {
-            guard var cfg = btn.configuration else { continue }
-            cfg.baseForegroundColor = (i == index) ? brandColor : .secondaryLabel
-            btn.configuration = cfg
+    private func applySelected(_ key: String) {
+        guard let tb = tabBarView, let items = tb.items else { return }
+        if let i = keys.firstIndex(of: key), i < items.count {
+            tb.selectedItem = items[i]
+        } else {
+            tb.selectedItem = nil
         }
     }
 
     @objc func setSelected(_ call: CAPPluginCall) {
         let key = call.getString("key") ?? ""
         DispatchQueue.main.async {
-            self.applySelected(self.keys.firstIndex(of: key) ?? -1)
+            self.applySelected(key)
             call.resolve()
         }
     }
@@ -197,7 +156,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setVisible(_ call: CAPPluginCall) {
         let visible = call.getBool("visible") ?? true
         DispatchQueue.main.async {
-            self.glassView?.isHidden = !visible
+            self.tabBarView?.isHidden = !visible
             call.resolve()
         }
     }
@@ -235,34 +194,20 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         let key = call.getString("key") ?? ""
         let count = call.getInt("count") ?? 0
         DispatchQueue.main.async {
-            self.updateBadge(key: key, count: count)
+            if let items = self.tabBarView?.items, let i = self.keys.firstIndex(of: key), i < items.count {
+                items[i].badgeValue = count > 0 ? (count > 99 ? "99+" : "\(count)") : nil
+            }
             call.resolve()
         }
     }
+}
 
-    private func updateBadge(key: String, count: Int) {
-        guard let i = keys.firstIndex(of: key), i < buttons.count else { return }
-        badgeViews[key]?.removeFromSuperview()
-        badgeViews[key] = nil
-        guard count > 0 else { return }
-        let btn = buttons[i]
-        let badge = UILabel()
-        badge.text = count > 99 ? "99+" : "\(count)"
-        badge.font = UIFont.systemFont(ofSize: 10, weight: .bold)
-        badge.textColor = .white
-        badge.textAlignment = .center
-        badge.backgroundColor = .systemRed
-        badge.layer.cornerRadius = 8
-        badge.clipsToBounds = true
-        badge.translatesAutoresizingMaskIntoConstraints = false
-        btn.addSubview(badge)
-        NSLayoutConstraint.activate([
-            badge.heightAnchor.constraint(equalToConstant: 16),
-            badge.widthAnchor.constraint(greaterThanOrEqualToConstant: 16),
-            badge.topAnchor.constraint(equalTo: btn.topAnchor, constant: 1),
-            badge.centerXAnchor.constraint(equalTo: btn.centerXAnchor, constant: 13),
-        ])
-        badgeViews[key] = badge
+// 실제 UITabBar 탭 선택 → 웹 라우터로 전달.
+extension LiquidGlassTabBarPlugin: UITabBarDelegate {
+    public func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
+        let i = item.tag
+        guard i >= 0, i < keys.count else { return }
+        notifyListeners("tabSelected", data: ["key": keys[i]])
     }
 }
 

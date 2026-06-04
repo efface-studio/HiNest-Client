@@ -81,6 +81,8 @@ html.hinest-ios .app-bottomnav { display: flex !important; }
    웹 하단 바를 숨긴다 — 네이티브 바가 대체. configure 실패/iOS<26 이면 클래스가 안 붙어 웹 바 폴백.
    (이 규칙이 위 hinest-ios .app-bottomnav 보다 뒤라 둘 다 있을 때 display:none 이 이긴다.) */
 html.hinest-native-tabbar .app-bottomnav { display: none !important; }
+/* 운영 콘솔도 네이티브 탭바가 활성화되면 콘솔 CSS 글래스 nav 를 숨긴다(네이티브 바가 대체). */
+html.hinest-native-tabbar .console-bottomnav { display: none !important; }
 
 /* 데스크톱(마우스/호버 가능 기기 또는 Electron)은 창을 폰 크기로 줄여도 모바일 레이아웃으로
    전환되지 않게 — 사이드바 유지 + 하단 탭 바 숨김(md 폭 기준 전환 무시). 실제 모바일/터치

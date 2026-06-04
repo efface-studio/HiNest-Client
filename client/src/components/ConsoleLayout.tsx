@@ -1,8 +1,26 @@
 import { useEffect, useState } from "react";
-import { NavLink, Outlet, useNavigate } from "react-router-dom";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import AdminLockup from "./AdminLockup";
 import { confirmLogout } from "../lib/confirmLogout";
+import { LiquidGlassTabBar } from "../lib/liquidGlassTabBar";
+import { nativePlatform } from "../lib/platform";
+
+// 콘솔 탭 라우트 → 네이티브 탭바용 아이콘 에셋(Assets.xcassets) 이름.
+const CONSOLE_TAB_ICON: Record<string, string> = {
+  "/platform": "tab-company",
+  "/super-admin/logs": "tab-logs",
+  "/super-admin/system": "tab-system",
+  "/super-admin/security": "tab-security",
+  "/super-admin/devtools": "tab-devtools",
+};
+/** 현재 경로에 해당하는 콘솔 탭 key. 더 구체적인(긴) 경로 우선. 없으면 빈 문자열. */
+function matchConsoleTab(pathname: string, keys: string[]): string {
+  for (const k of [...keys].sort((a, b) => b.length - a.length)) {
+    if (pathname === k || pathname.startsWith(k + "/")) return k;
+  }
+  return "";
+}
 
 /**
  * 운영 콘솔 셸 — 총관리자(개발자)/플랫폼 운영자 전용. 회사 앱(AppLayout)과
@@ -56,6 +74,7 @@ function ShieldIcon() {
 export default function ConsoleLayout() {
   const { user, logout } = useAuth();
   const nav = useNavigate();
+  const loc = useLocation();
 
   // macOS 데스크톱 창모드에서 신호등(트래픽라이트) 버튼 영역 확보 (AppLayout 과 동일) — HiNest 로고 겹침 방지.
   const isMacDesktop = !!window.hinest?.isDesktop && window.hinest?.platform === "darwin";
@@ -85,6 +104,47 @@ export default function ConsoleLayout() {
   // 회사 소속이 있는 운영자만 서비스로 복귀 가능. 순수 플랫폼 운영자(companyId=null)는
   // 돌아갈 회사 앱이 없으므로 복귀 링크를 숨긴다.
   const hasCompany = !!user?.companyId;
+
+  // 콘솔도 메인 앱과 동일한 실제 네이티브 리퀴드 글래스 탭바를 쓴다 — 콘솔 전용 탭으로
+  // 재설정한다. 성공하면 .hinest-native-tabbar 가 붙어 아래 CSS 글래스 nav 는 숨고 네이티브
+  // 바가 대체한다. 콘솔을 떠나면(언마운트) 숨기고, AppLayout 이 다시 마운트되며 앱 탭으로
+  // 재설정한다(같은 싱글톤 바). iOS<26/미지원이면 CSS 글래스 nav 가 그대로 폴백.
+  useEffect(() => {
+    if (nativePlatform() !== "ios") return;
+    const tabs = links.map((l) => ({ key: l.to, title: l.label.split(" ")[0], icon: CONSOLE_TAB_ICON[l.to] ?? "" }));
+    if (tabs.length === 0) return;
+    let cancelled = false;
+    let removeListener: (() => void) | undefined;
+    (async () => {
+      try {
+        const res = await LiquidGlassTabBar.configure({ tabs });
+        if (cancelled || !res?.active) return;
+        document.documentElement.classList.add("hinest-native-tabbar");
+        const handle = await LiquidGlassTabBar.addListener("tabSelected", (d: { key?: string }) => {
+          if (d?.key) nav(d.key);
+        });
+        removeListener = () => { try { void handle?.remove?.(); } catch {} };
+        LiquidGlassTabBar.setSelected({ key: matchConsoleTab(window.location.pathname, tabs.map((t) => t.key)) }).catch(() => {});
+        LiquidGlassTabBar.setVisible({ visible: true }).catch(() => {});
+      } catch {
+        /* 미지원 → CSS 글래스 nav 폴백 */
+      }
+    })();
+    return () => {
+      cancelled = true;
+      removeListener?.();
+      document.documentElement.classList.remove("hinest-native-tabbar");
+      LiquidGlassTabBar.setVisible({ visible: false }).catch(() => {});
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // 경로 변화 → 네이티브 탭 하이라이트 동기화.
+  useEffect(() => {
+    if (nativePlatform() !== "ios") return;
+    LiquidGlassTabBar.setSelected({ key: matchConsoleTab(loc.pathname, links.map((l) => l.to)) }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loc.pathname]);
 
   async function doLogout() {
     if (!(await confirmLogout())) return;
@@ -224,7 +284,7 @@ export default function ConsoleLayout() {
             데스크톱은 좌측 사이드바를 쓰므로 md:hidden. 콘솔은 AppLayout 과 분리된
             레이아웃이라 네이티브 탭바 플러그인을 쓰지 않고 동일한 --c-glass 토큰으로 맞춘다. */}
         <nav
-          className="md:hidden"
+          className="md:hidden console-bottomnav"
           style={{
             position: "fixed",
             left: "50%",

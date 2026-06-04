@@ -94,7 +94,7 @@ export default function RolePermissionsPanel() {
       </div>
 
       <div className="overflow-auto" style={{ maxHeight: "65vh" }}>
-        <table className="w-full text-[12.5px]">
+        <table className="w-full text-[12.5px]" style={{ minWidth: 520 }}>
           <thead>
             <tr className="text-ink-500 text-left border-b border-ink-150">
               <th className="py-2 pr-3 w-[42%]">권한</th>

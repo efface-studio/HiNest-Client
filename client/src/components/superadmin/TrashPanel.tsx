@@ -86,7 +86,7 @@ export default function TrashPanel() {
         ) : items.length === 0 ? (
           <div className="py-12 text-center text-ink-500 text-[12px]">비어 있음 ✨</div>
         ) : (
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[12px] pro-cards">
             <thead>
               <tr className="text-ink-500 text-left border-b border-ink-150">
                 <th className="py-2 pr-2">제목</th>
@@ -101,13 +101,13 @@ export default function TrashPanel() {
                 const willPurgeIn = Math.max(0, 30 - days);
                 return (
                   <tr key={it.id} className="border-b border-ink-100">
-                    <td className="py-2 pr-2 font-bold text-ink-900 truncate max-w-[420px]">{it.title || "(제목 없음)"}</td>
-                    <td className="py-2 pr-2 text-ink-700">{it.author?.name ?? "—"}</td>
-                    <td className="py-2 pr-2 text-ink-700">
+                    <td className="cell-primary py-2 pr-2 font-bold text-ink-900 sm:truncate sm:max-w-[420px]">{it.title || "(제목 없음)"}</td>
+                    <td data-label="작성자" className="py-2 pr-2 text-ink-700">{it.author?.name ?? "—"}</td>
+                    <td data-label="삭제 시각" className="py-2 pr-2 text-ink-700">
                       {new Date(it.deletedAt).toLocaleString("ko-KR")}
                       <span className="text-[10px] text-ink-400 ml-1">· {willPurgeIn}일 후 영구</span>
                     </td>
-                    <td className="py-2 pr-2 text-right">
+                    <td className="cell-actions py-2 pr-2 text-right">
                       <button className="btn-ghost btn-xs" onClick={() => restore(tab, it.id, it.title)} disabled={busy}>복구</button>
                       <button className="btn-ghost btn-xs ml-1" style={{ color: "var(--c-danger)" }} onClick={() => purge(tab, it.id, it.title)} disabled={busy}>영구 삭제</button>
                     </td>

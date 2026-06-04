@@ -662,7 +662,7 @@ function LogsPanel() {
         </div>
       </div>
       <div className="overflow-x-auto">
-      <table className="pro" style={{ minWidth: 820 }}>
+      <table className="pro pro-cards" style={{ minWidth: 820 }}>
         <thead>
           <tr>
             <th>시각</th>
@@ -676,17 +676,17 @@ function LogsPanel() {
         <tbody>
           {filtered.map((l) => (
             <tr key={l.id}>
-              <td className="tabular text-[11px] text-ink-600">{new Date(l.createdAt).toLocaleString("ko-KR")}</td>
-              <td>{l.user?.name ?? "—"}</td>
-              <td><span className="chip-gray tabular">{l.action}</span></td>
-              <td className="tabular text-[11px] text-ink-600 max-w-[180px] truncate" title={l.target ?? ""}>{l.target ?? "—"}</td>
-              <td className="text-[11px] text-ink-600 max-w-[280px] truncate" title={l.detail ?? ""}>{l.detail ?? "—"}</td>
-              <td className="tabular text-[11px] text-ink-500">{l.ip ?? "—"}</td>
+              <td className="cell-primary tabular text-[12px] font-semibold text-ink-800 sm:text-[11px] sm:font-normal sm:text-ink-600">{new Date(l.createdAt).toLocaleString("ko-KR")}</td>
+              <td data-label="사용자">{l.user?.name ?? "—"}</td>
+              <td data-label="액션"><span className="chip-gray tabular">{l.action}</span></td>
+              <td data-label="대상" className="tabular text-[11px] text-ink-600 sm:max-w-[180px] sm:truncate" title={l.target ?? ""}>{l.target ?? "—"}</td>
+              <td data-label="상세" className="text-[11px] text-ink-600 sm:max-w-[280px] sm:truncate" title={l.detail ?? ""}>{l.detail ?? "—"}</td>
+              <td data-label="IP" className="tabular text-[11px] text-ink-500">{l.ip ?? "—"}</td>
             </tr>
           ))}
           {filtered.length === 0 && (
             <tr>
-              <td colSpan={6} style={{ textAlign: "center", padding: "40px 0" }} className="t-caption">
+              <td colSpan={6} style={{ textAlign: "center", padding: "40px 0" }} className="t-caption cell-full">
                 로그가 없습니다.
               </td>
             </tr>
@@ -847,7 +847,7 @@ function ChatAuditPanel() {
                           )}
                         </div>
                         <div className="max-w-[72%]">
-                          <div className="flex items-center gap-1.5 mb-0.5">
+                          <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                             <span className="text-[11px] font-semibold text-ink-700">{m.sender.name}</span>
                             <span className="text-[10px] text-ink-400 tabular">
                               {new Date(m.createdAt).toLocaleString("ko-KR", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
@@ -1630,7 +1630,9 @@ function ConsolePanel() {
           <TrafficLight color="#FEBC2E" />
           <TrafficLight color="#28C840" />
         </div>
+        {/* 가운데 절대배치 타이틀 — 좁은 화면에선 양쪽 신호등/컨트롤과 겹쳐 모바일에선 숨김 */}
         <div
+          className="hidden sm:flex items-center gap-1.5"
           style={{
             position: "absolute",
             left: "50%",
@@ -1639,9 +1641,6 @@ function ConsolePanel() {
             fontSize: 11.5,
             fontWeight: 700,
             letterSpacing: "0.04em",
-            display: "flex",
-            alignItems: "center",
-            gap: 6,
           }}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">

@@ -77,7 +77,7 @@ export default function SessionsPanel() {
       </div>
       <div className="text-[11px] text-ink-500 mb-2">총 {filtered.length}개 활성 세션</div>
       <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
-        <table className="w-full text-[12px]">
+        <table className="w-full text-[12px] pro-cards">
           <thead>
             <tr className="text-ink-500 text-left border-b border-ink-150">
               <th className="py-2 pr-2">사용자</th>
@@ -90,14 +90,14 @@ export default function SessionsPanel() {
           <tbody>
             {filtered.map((s) => (
               <tr key={s.id} className="border-b border-ink-100">
-                <td className="py-2 pr-2">
+                <td className="py-2 pr-2 cell-primary">
                   <div className="font-bold text-ink-900">{s.user.name}</div>
                   <div className="text-[10.5px] text-ink-500">{s.user.email}</div>
                 </td>
-                <td className="py-2 pr-2 text-ink-700 truncate max-w-[280px]" title={s.ua ?? ""}>{shortenUA(s.ua)}</td>
-                <td className="py-2 pr-2 text-ink-700 font-mono text-[11px]">{s.ip ?? "—"}</td>
-                <td className="py-2 pr-2 text-ink-700">{relTime(s.lastSeenAt)}</td>
-                <td className="py-2 pr-2 text-right">
+                <td className="py-2 pr-2 text-ink-700 sm:truncate sm:max-w-[280px]" data-label="디바이스" title={s.ua ?? ""}>{shortenUA(s.ua)}</td>
+                <td className="py-2 pr-2 text-ink-700 font-mono text-[11px]" data-label="IP">{s.ip ?? "—"}</td>
+                <td className="py-2 pr-2 text-ink-700" data-label="최근 활동">{relTime(s.lastSeenAt)}</td>
+                <td className="py-2 pr-2 text-right cell-actions">
                   <button className="btn-ghost btn-xs" onClick={() => revokeOne(s.id, s.user.name)} disabled={busy}>이 세션 종료</button>
                   <button className="btn-ghost btn-xs ml-1" onClick={() => revokeUser(s.userId, s.user.name)} disabled={busy}>전 디바이스</button>
                 </td>

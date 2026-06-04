@@ -86,30 +86,30 @@ export default function AuditPanel() {
         {grouped.map(([day, items]) => (
           <div key={day} className="mb-3">
             <div className="text-[10.5px] font-extrabold tracking-[0.06em] uppercase text-ink-500 mb-1.5 px-1">{day}</div>
-            <table className="w-full text-[12px]">
+            <table className="w-full text-[12px] pro-cards">
               <tbody>
                 {items.map((l) => {
                   const color = ACTION_COLORS[l.action] ?? "#64748B";
                   return (
                     <tr key={l.id} className="border-b border-ink-100">
-                      <td className="py-1.5 pr-2 whitespace-nowrap text-ink-500 font-mono text-[11px]" style={{ width: 70 }}>
+                      <td data-label="시각" className="py-1.5 pr-2 whitespace-nowrap text-ink-500 font-mono text-[11px]" style={{ width: 70 }}>
                         {new Date(l.createdAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false })}
                       </td>
-                      <td className="py-1.5 pr-2 whitespace-nowrap" style={{ width: 200 }}>
+                      <td className="cell-primary py-1.5 pr-2 whitespace-nowrap" style={{ width: 200 }}>
                         <span className="inline-block px-1.5 py-0.5 rounded text-[10.5px] font-bold" style={{ background: color + "22", color }}>
                           {l.action}
                         </span>
                       </td>
-                      <td className="py-1.5 pr-2 whitespace-nowrap" style={{ width: 160 }}>
+                      <td data-label="사용자" className="py-1.5 pr-2 whitespace-nowrap" style={{ width: 160 }}>
                         {l.user ? (
                           <span className="font-bold text-ink-900">{l.user.name}</span>
                         ) : (
                           <span className="text-ink-400">—</span>
                         )}
                       </td>
-                      <td className="py-1.5 pr-2 text-ink-700 truncate max-w-[280px] font-mono text-[11px]" title={l.target ?? ""}>{l.target ?? ""}</td>
-                      <td className="py-1.5 pr-2 text-ink-500 truncate max-w-[260px]" title={l.detail ?? ""}>{l.detail ?? ""}</td>
-                      <td className="py-1.5 pr-2 text-ink-500 font-mono text-[10.5px] whitespace-nowrap">{l.ip ?? ""}</td>
+                      <td data-label="대상" className="py-1.5 pr-2 text-ink-700 sm:truncate sm:max-w-[280px] font-mono text-[11px]" title={l.target ?? ""}>{l.target ?? ""}</td>
+                      <td data-label="상세" className="py-1.5 pr-2 text-ink-500 sm:truncate sm:max-w-[260px]" title={l.detail ?? ""}>{l.detail ?? ""}</td>
+                      <td data-label="IP" className="py-1.5 pr-2 text-ink-500 font-mono text-[10.5px] whitespace-nowrap">{l.ip ?? ""}</td>
                     </tr>
                   );
                 })}

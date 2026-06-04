@@ -78,7 +78,7 @@ export default function TwoFAPanel() {
         ) : non.length === 0 ? (
           <div className="py-8 text-center text-ink-500 text-[12px]">전원 충족 ✨</div>
         ) : (
-          <table className="w-full text-[12px]">
+          <table className="w-full text-[12px] pro-cards">
             <thead>
               <tr className="text-ink-500 text-left border-b border-ink-150">
                 <th className="py-2 pr-2">사용자</th>
@@ -91,14 +91,14 @@ export default function TwoFAPanel() {
             <tbody>
               {non.map((u) => (
                 <tr key={u.id} className="border-b border-ink-100">
-                  <td className="py-2 pr-2">
+                  <td className="py-2 pr-2 cell-primary">
                     <div className="font-bold text-ink-900">{u.name}</div>
                     <div className="text-[10.5px] text-ink-500">{u.email}</div>
                   </td>
-                  <td className="py-2 pr-2 text-ink-700">{ROLE_LABEL[u.role] ?? u.role}</td>
-                  <td className="py-2 pr-2 text-ink-700">{u.team ?? "—"}</td>
-                  <td className="py-2 pr-2 text-ink-700">{new Date(u.createdAt).toLocaleDateString("ko-KR")}</td>
-                  <td className="py-2 pr-2 text-right font-bold" style={{ color: "var(--c-danger)" }}>+{u.daysOverdue}일</td>
+                  <td className="py-2 pr-2 text-ink-700" data-label="role">{ROLE_LABEL[u.role] ?? u.role}</td>
+                  <td className="py-2 pr-2 text-ink-700" data-label="팀">{u.team ?? "—"}</td>
+                  <td className="py-2 pr-2 text-ink-700" data-label="가입일">{new Date(u.createdAt).toLocaleDateString("ko-KR")}</td>
+                  <td className="py-2 pr-2 text-right font-bold" data-label="초과" style={{ color: "var(--c-danger)" }}>+{u.daysOverdue}일</td>
                 </tr>
               ))}
             </tbody>

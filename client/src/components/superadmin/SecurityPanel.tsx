@@ -52,7 +52,7 @@ function RateRules() {
         <div className="text-[11px] text-ink-500">{rows.length}개 룰</div>
         <button className="btn-primary btn-xs ml-auto" onClick={() => setEditing({ routeGlob: "/api/auth/*", perMin: 60, perHour: 600, scope: "ip", enabled: true })}>+ 새 룰</button>
       </div>
-      <table className="w-full text-[12px]">
+      <table className="w-full text-[12px] pro-cards">
         <thead>
           <tr className="text-ink-500 text-left border-b border-ink-150">
             <th className="py-2 pr-2">경로</th>
@@ -66,12 +66,12 @@ function RateRules() {
         <tbody>
           {rows.map((r) => (
             <tr key={r.id} className="border-b border-ink-100">
-              <td className="py-2 pr-2 font-mono text-[11.5px] font-bold text-ink-900">{r.routeGlob}</td>
-              <td className="py-2 pr-2 tabular-nums">{r.perMin}</td>
-              <td className="py-2 pr-2 tabular-nums">{r.perHour}</td>
-              <td className="py-2 pr-2">{r.scope}</td>
-              <td className="py-2 pr-2 text-[11px] font-bold" style={{ color: r.enabled ? "var(--c-success)" : "var(--c-text-3)" }}>{r.enabled ? "ON" : "OFF"}</td>
-              <td className="py-2 pr-2 text-right">
+              <td className="cell-primary py-2 pr-2 font-mono text-[11.5px] font-bold text-ink-900">{r.routeGlob}</td>
+              <td data-label="분당" className="py-2 pr-2 tabular-nums">{r.perMin}</td>
+              <td data-label="시간당" className="py-2 pr-2 tabular-nums">{r.perHour}</td>
+              <td data-label="스코프" className="py-2 pr-2">{r.scope}</td>
+              <td data-label="활성" className="py-2 pr-2 text-[11px] font-bold" style={{ color: r.enabled ? "var(--c-success)" : "var(--c-text-3)" }}>{r.enabled ? "ON" : "OFF"}</td>
+              <td className="cell-actions py-2 pr-2 text-right">
                 <button className="btn-ghost btn-xs" onClick={() => setEditing(r)}>편집</button>
                 <button className="btn-ghost btn-xs ml-1" style={{ color: "var(--c-danger)" }} onClick={() => remove(r.id)}>삭제</button>
               </td>
@@ -126,7 +126,7 @@ function IpBlocks() {
         <div className="text-[11px] text-ink-500">{rows.length}개 차단 룰</div>
         <button className="btn-primary btn-xs ml-auto" onClick={() => setEditing({ cidr: "", country: "", enabled: true })}>+ 차단 추가</button>
       </div>
-      <table className="w-full text-[12px]">
+      <table className="w-full text-[12px] pro-cards">
         <thead>
           <tr className="text-ink-500 text-left border-b border-ink-150">
             <th className="py-2 pr-2">대상</th>
@@ -139,11 +139,11 @@ function IpBlocks() {
         <tbody>
           {rows.map((b) => (
             <tr key={b.id} className="border-b border-ink-100">
-              <td className="py-2 pr-2 font-mono text-[11.5px] text-ink-900">{b.country ? `🌍 ${b.country}` : b.cidr}</td>
-              <td className="py-2 pr-2 text-ink-700 truncate max-w-[260px]">{b.reason ?? "—"}</td>
-              <td className="py-2 pr-2 text-ink-700">{b.expiresAt ? new Date(b.expiresAt).toLocaleDateString("ko-KR") : "—"}</td>
-              <td className="py-2 pr-2 text-[11px] font-bold" style={{ color: b.enabled ? "var(--c-danger)" : "var(--c-text-3)" }}>{b.enabled ? "차단 중" : "OFF"}</td>
-              <td className="py-2 pr-2 text-right">
+              <td className="cell-primary py-2 pr-2 font-mono text-[11.5px] text-ink-900">{b.country ? `🌍 ${b.country}` : b.cidr}</td>
+              <td data-label="사유" className="py-2 pr-2 text-ink-700 sm:truncate sm:max-w-[260px]">{b.reason ?? "—"}</td>
+              <td data-label="만료" className="py-2 pr-2 text-ink-700">{b.expiresAt ? new Date(b.expiresAt).toLocaleDateString("ko-KR") : "—"}</td>
+              <td data-label="활성" className="py-2 pr-2 text-[11px] font-bold" style={{ color: b.enabled ? "var(--c-danger)" : "var(--c-text-3)" }}>{b.enabled ? "차단 중" : "OFF"}</td>
+              <td className="cell-actions py-2 pr-2 text-right">
                 <button className="btn-ghost btn-xs" onClick={() => setEditing(b)}>편집</button>
                 <button className="btn-ghost btn-xs ml-1" style={{ color: "var(--c-danger)" }} onClick={() => remove(b.id)}>해제</button>
               </td>

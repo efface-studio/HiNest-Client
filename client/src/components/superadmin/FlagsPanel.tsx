@@ -48,7 +48,7 @@ export default function FlagsPanel() {
       </div>
 
       <div className="overflow-auto" style={{ maxHeight: "60vh" }}>
-        <table className="w-full text-[12px]">
+        <table className="w-full text-[12px] pro-cards">
           <thead>
             <tr className="text-ink-500 text-left border-b border-ink-150">
               <th className="py-2 pr-2">키</th>
@@ -62,8 +62,8 @@ export default function FlagsPanel() {
           <tbody>
             {rows.map((f) => (
               <tr key={f.key} className="border-b border-ink-100">
-                <td className="py-2 pr-2 font-mono text-[11.5px] font-bold text-ink-900">{f.key}</td>
-                <td className="py-2 pr-2">
+                <td className="py-2 pr-2 font-mono text-[11.5px] font-bold text-ink-900 cell-primary">{f.key}</td>
+                <td className="py-2 pr-2" data-label="활성">
                   <button
                     onClick={() => toggle(f)}
                     style={{
@@ -79,17 +79,17 @@ export default function FlagsPanel() {
                     }} />
                   </button>
                 </td>
-                <td className="py-2 pr-2 text-ink-700">{f.scope}</td>
-                <td className="py-2 pr-2 text-ink-500 truncate max-w-[220px]" title={f.targets ?? ""}>{f.targets || "—"}</td>
-                <td className="py-2 pr-2 text-ink-700 truncate max-w-[260px]">{f.description || "—"}</td>
-                <td className="py-2 pr-2 text-right">
+                <td className="py-2 pr-2 text-ink-700" data-label="범위">{f.scope}</td>
+                <td className="py-2 pr-2 text-ink-500 sm:truncate sm:max-w-[220px]" data-label="대상" title={f.targets ?? ""}>{f.targets || "—"}</td>
+                <td className="py-2 pr-2 text-ink-700 sm:truncate sm:max-w-[260px]" data-label="설명">{f.description || "—"}</td>
+                <td className="py-2 pr-2 text-right cell-actions">
                   <button className="btn-ghost btn-xs" onClick={() => setEditing(f)}>편집</button>
                   <button className="btn-ghost btn-xs ml-1" style={{ color: "var(--c-danger)" }} onClick={() => remove(f.key)}>삭제</button>
                 </td>
               </tr>
             ))}
             {!loading && rows.length === 0 && (
-              <tr><td colSpan={6} className="py-12 text-center text-ink-500">플래그 없음 — 우상단 \"+ 새 플래그\"</td></tr>
+              <tr><td colSpan={6} className="py-12 text-center text-ink-500 cell-full">플래그 없음 — 우상단 \"+ 새 플래그\"</td></tr>
             )}
           </tbody>
         </table>

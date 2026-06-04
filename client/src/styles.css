@@ -436,6 +436,11 @@ textarea.input {
 @media (pointer: coarse) {
   .tap-row { min-height: 44px; }
 }
+/* 터치 기기에서 아이콘 버튼(편집·삭제 등)의 탭 타겟을 40px 로 키운다. 아이콘 자체
+   크기는 그대로(가운데 정렬), 히트 영역만 확대. 마우스(pointer:fine)는 32px 유지. */
+@media (pointer: coarse) {
+  .btn-icon { width: 40px; height: 40px; }
+}
 /* 풀높이 모달이 노치/홈인디케이터에 가리지 않도록 오버레이에 safe-area 패딩.
    env() 는 데스크톱에서 0 이라 웹/Electron 외형은 변하지 않음(p-4 동등). */
 .modal-safe {

@@ -221,7 +221,7 @@ export default function SchedulePage() {
         }
       />
 
-      <div className="card p-0 overflow-hidden">
+      <div className="card cal-fullbleed p-0 overflow-hidden">
         <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
           {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
             <div key={d} className={`px-1 sm:px-3 py-2 text-[11px] sm:text-xs font-bold text-center ${i === 0 ? "text-rose-500" : i === 6 ? "text-accent-500" : "text-ink-500"}`}>
@@ -248,7 +248,7 @@ export default function SchedulePage() {
             return (
               <div
                 key={i}
-                className={`min-h-[64px] sm:min-h-[110px] border-b border-r border-ink-100 p-1 sm:p-2 ${
+                className={`min-h-[64px] sm:min-h-[110px] border-b border-ink-100 ${i % 7 !== 6 ? "border-r" : ""} p-1 sm:p-2 ${
                   holiday ? "bg-rose-50/40 dark:bg-rose-500/10" : ""
                 } ${d ? "cursor-pointer sm:cursor-default hover:bg-ink-25 sm:hover:bg-transparent" : ""}`}
                 onClick={() => {

@@ -1398,6 +1398,13 @@ export function MobileMenuPage() {
         </svg>
         <span>로그아웃</span>
       </button>
+
+      {/* 법적 고지 — 로그인 후에도 메뉴에서 접근 가능하게(가입/로그인 화면 외 추가 노출). */}
+      <div className="flex items-center justify-center gap-3 mt-3 text-[12px] text-ink-400">
+        <NavLink to="/privacy" className="hover:text-ink-700 transition">개인정보처리방침</NavLink>
+        <span className="text-ink-200">·</span>
+        <NavLink to="/terms" className="hover:text-ink-700 transition">이용약관</NavLink>
+      </div>
     </div>
   );
 }

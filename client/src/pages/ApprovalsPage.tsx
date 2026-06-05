@@ -116,6 +116,7 @@ export default function ApprovalsPage() {
     setSp(next, { replace: true });
   };
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [loadErr, setLoadErr] = useState(false);
   const [selected, setSelected] = useState<Approval | null>(null);
   const [creating, setCreating] = useState(false);
   // 재상신 시에는 원본 id와 prefill 을 함께 넘겨 POST /:id/revise 로 라우팅.
@@ -144,18 +145,27 @@ export default function ApprovalsPage() {
 
   async function load() {
     const myToken = ++loadTokenRef.current;
-    const res = await api<{ approvals: Approval[] }>(`/api/approval?scope=${scope}`);
-    if (!aliveRef.current || myToken !== loadTokenRef.current) return;
-    setApprovals(res.approvals);
-    if (selected) {
-      const fresh = res.approvals.find((a) => a.id === selected.id);
-      if (fresh) setSelected(fresh);
+    try {
+      const res = await api<{ approvals: Approval[] }>(`/api/approval?scope=${scope}`);
+      if (!aliveRef.current || myToken !== loadTokenRef.current) return;
+      setApprovals(res.approvals);
+      setLoadErr(false);
+      if (selected) {
+        const fresh = res.approvals.find((a) => a.id === selected.id);
+        if (fresh) setSelected(fresh);
+      }
+    } catch {
+      // 401(세션 만료)은 api.ts 가 전역 처리(→ /login). 그 외(500·네트워크)는 재시도 배너.
+      if (!aliveRef.current || myToken !== loadTokenRef.current) return;
+      setLoadErr(true);
     }
   }
   async function loadDirectory() {
-    const res = await api<{ users: DirUser[] }>("/api/users");
-    if (!aliveRef.current) return;
-    setDirectory(res.users);
+    try {
+      const res = await api<{ users: DirUser[] }>("/api/users");
+      if (!aliveRef.current) return;
+      setDirectory(res.users);
+    } catch { /* 디렉터리는 결재 생성 보조용 — 실패해도 목록 자체엔 영향 없음 */ }
   }
   useEffect(() => { load(); /* eslint-disable-next-line */ }, [scope]);
   useEffect(() => { loadDirectory(); }, []);
@@ -261,6 +271,13 @@ export default function ApprovalsPage() {
           </>
         }
       />
+
+      {loadErr && (
+        <div className="card p-3 mb-3 flex items-center justify-between gap-3">
+          <span className="text-[13px] text-ink-600">결재 목록을 불러오지 못했어요.</span>
+          <button type="button" className="btn-ghost btn-xs" onClick={() => load()}>다시 시도</button>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         <div className="lg:col-span-2 panel p-0 overflow-hidden">

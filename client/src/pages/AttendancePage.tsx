@@ -45,6 +45,7 @@ export default function AttendancePage() {
   const { user } = useAuth();
   const [month, setMonth] = useState(ymNow());
   const [records, setRecords] = useState<Attendance[]>([]);
+  const [loading, setLoading] = useState(true);
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [allLeaves, setAllLeaves] = useState<Leave[]>([]);
   const [open, setOpen] = useState(false);
@@ -85,9 +86,11 @@ export default function AttendancePage() {
   const isReviewer = user?.role === "ADMIN" || user?.role === "MANAGER";
   useEffect(() => {
     let alive = true;
+    setLoading(true);
     apiSWR<{ attendances: Attendance[] }>(`/api/attendance/month?month=${month}`, {
-      onCached: (d) => { if (alive) setRecords(d.attendances); },
-      onFresh: (d) => { if (alive) setRecords(d.attendances); },
+      onCached: (d) => { if (alive) { setRecords(d.attendances); setLoading(false); } },
+      onFresh: (d) => { if (alive) { setRecords(d.attendances); setLoading(false); } },
+      onError: () => { if (alive) setLoading(false); },
     });
     apiSWR<{ leaves: Leave[] }>("/api/attendance/leave", {
       onCached: (d) => { if (alive) setLeaves(d.leaves); },
@@ -239,7 +242,13 @@ export default function AttendancePage() {
               <div className="text-[12px] text-ink-500 mt-0.5">총 {records.length}일 기록</div>
             </div>
           </div>
-          {records.length === 0 ? (
+          {loading && records.length === 0 ? (
+            <div className="p-4 space-y-2">
+              {[0, 1, 2, 3, 4].map((i) => (
+                <div key={i} className="h-10 rounded-lg bg-ink-100 dark:bg-ink-800 animate-pulse" />
+              ))}
+            </div>
+          ) : records.length === 0 ? (
             <EmptyState
               icon={
                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

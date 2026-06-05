@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import { alertAsync } from "./ConfirmHost";
+import Portal from "./Portal";
 
 type Prefs = Record<string, boolean>;
 type Loaded = { prefs: Prefs; dndStart: string | null; dndEnd: string | null; emailOn: boolean };
@@ -60,6 +61,7 @@ export default function NotificationPrefsModal({ open, onClose }: { open: boolea
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-[70]" onClick={onClose}>
       <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <h3 className="text-lg font-bold mb-1">알림 설정</h3>
@@ -133,5 +135,6 @@ export default function NotificationPrefsModal({ open, onClose }: { open: boolea
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

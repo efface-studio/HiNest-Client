@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import Portal from "../components/Portal";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
 import { copyToClipboard } from "../lib/clipboard";
@@ -294,6 +295,7 @@ function SnippetEditor({
   }
 
   return (
+    <Portal>
     <div
       className="fixed inset-0 z-50 grid place-items-center modal-safe"
       style={{ background: "rgba(0,0,0,0.5)" }}
@@ -378,5 +380,6 @@ function SnippetEditor({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

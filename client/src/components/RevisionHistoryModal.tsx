@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api , imgSrc} from "../api";
 import { confirmAsync, alertAsync } from "./ConfirmHost";
 import { fmtSize } from "../lib/fmt";
+import Portal from "./Portal";
 
 /**
  * 문서/회의록 공용 히스토리 모달. API 경로만 prefix 로 갈아끼우면 됨.
@@ -70,6 +71,7 @@ export default function RevisionHistoryModal({
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div className="panel w-full max-w-lg shadow-pop" onClick={(e) => e.stopPropagation()}>
         <div className="section-head">
@@ -121,6 +123,7 @@ export default function RevisionHistoryModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 

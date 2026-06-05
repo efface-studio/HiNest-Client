@@ -17,6 +17,7 @@ import TokensPanel from "../components/superadmin/TokensPanel";
 import SecurityPanel from "../components/superadmin/SecurityPanel";
 import TwoFAPanel from "../components/superadmin/TwoFAPanel";
 import RolePermissionsPanel from "../components/superadmin/RolePermissionsPanel";
+import Portal from "../components/Portal";
 
 type Log = {
   id: string;
@@ -541,6 +542,7 @@ function ChatAuditPwModal({ onClose, onSubmit }: { onClose: () => void; onSubmit
     }
   }
   return (
+    <Portal>
     <div
       className="fixed inset-0 z-50 grid place-items-center modal-safe"
       style={{ background: "rgba(0,0,0,0.55)", backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)" }}
@@ -570,6 +572,7 @@ function ChatAuditPwModal({ onClose, onSubmit }: { onClose: () => void; onSubmit
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 

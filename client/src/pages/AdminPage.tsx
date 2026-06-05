@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api, imgSrc, invalidateCache } from "../api";
 import PageHeader from "../components/PageHeader";
+import Portal from "../components/Portal";
 import { downloadCSV, downloadXLSX, openPrintable, parseSheet, type TableColumn } from "../lib/exportTable";
 import DatePicker from "../components/DatePicker";
 import TimePicker from "../components/TimePicker";
@@ -751,6 +752,7 @@ function ResignModal({
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 modal-safe" onClick={onClose}>
       <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
@@ -830,6 +832,7 @@ function ResignModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 
@@ -901,6 +904,7 @@ function UserDetailEditModal({
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div
         className="card w-full max-w-3xl max-h-[90vh] overflow-hidden flex flex-col"
@@ -1049,6 +1053,7 @@ function UserDetailEditModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 
@@ -1480,6 +1485,7 @@ function AttendanceEditModal({
   }
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-black/40 grid place-items-center z-50 modal-safe" onClick={onClose}>
       <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center justify-between mb-1">
@@ -1565,6 +1571,7 @@ function AttendanceEditModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 

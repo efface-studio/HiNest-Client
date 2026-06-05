@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, invalidateCache , imgSrc} from "../api";
 import { confirmAsync } from "./ConfirmHost";
+import Portal from "./Portal";
 
 type Role = "OWNER" | "MANAGER" | "MEMBER";
 
@@ -69,6 +70,7 @@ export default function ProjectSettingsModal({
   const canDelete = myRole === "OWNER" || myRole === "ADMIN";
 
   return (
+    <Portal>
     <div
       className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50"
       onClick={onClose}
@@ -119,6 +121,7 @@ export default function ProjectSettingsModal({
         )}
       </div>
     </div>
+    </Portal>
   );
 }
 

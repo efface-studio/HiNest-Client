@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useModalDismiss } from "../lib/useModalDismiss";
+import Portal from "./Portal";
 import {
   type Payslip,
   attendanceEntries,
@@ -43,6 +44,7 @@ export default function PayslipPreview({
   const calc = p.calcRows ?? [];
 
   return (
+    <Portal>
     <div
       className="fixed inset-0 bg-slate-900/50 grid place-items-center modal-safe z-50"
       onClick={onClose}
@@ -212,6 +214,7 @@ export default function PayslipPreview({
         )}
       </div>
     </div>
+    </Portal>
   );
 }
 

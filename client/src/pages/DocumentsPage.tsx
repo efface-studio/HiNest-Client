@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api, apiFetch , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import Portal from "../components/Portal";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import ShareLinkModal from "../components/ShareLinkModal";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
@@ -1427,6 +1428,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       {/* /폴더+문서 공용 드롭존 */}
 
       {creating === "folder" && (
+        <Portal>
         <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setCreating(null)}>
           <div className="panel w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="section-head">
@@ -1534,9 +1536,11 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
             </form>
           </div>
         </div>
+        </Portal>
       )}
 
       {creating === "doc" && (
+        <Portal>
         <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setCreating(null)}>
           <div className="panel w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <div className="section-head">
@@ -1686,6 +1690,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
             </form>
           </div>
         </div>
+        </Portal>
       )}
 
       {sharingDoc && (

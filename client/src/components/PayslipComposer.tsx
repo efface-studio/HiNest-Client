@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { api } from "../api";
 import { useModalDismiss } from "../lib/useModalDismiss";
+import Portal from "./Portal";
 import {
   type Payslip,
   type LineItem,
@@ -168,6 +169,7 @@ export default function PayslipComposer({
   const years = Array.from({ length: 6 }, (_, i) => defaultYear - i + 1);
 
   return (
+    <Portal>
     <div className="fixed inset-0 bg-slate-900/45 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div
         className="card w-full max-w-3xl max-h-[92vh] overflow-y-auto"
@@ -292,6 +294,7 @@ export default function PayslipComposer({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 

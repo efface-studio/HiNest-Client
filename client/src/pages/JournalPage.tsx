@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR } from "../api";
 import PageHeader from "../components/PageHeader";
 import DateTimePicker from "../components/DateTimePicker";
+import Portal from "../components/Portal";
 import { alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
 
@@ -356,6 +357,7 @@ export default function JournalPage() {
       </div>
 
       {confirmRemoveId && (
+        <Portal>
         <div
           className="fixed inset-0 z-50 grid place-items-center modal-safe"
           style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
@@ -397,6 +399,7 @@ export default function JournalPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

@@ -3,6 +3,7 @@ import { api, apiSWR , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import DateTimePicker from "./DateTimePicker";
 import { confirmAsync, alertAsync } from "./ConfirmHost";
+import Portal from "./Portal";
 
 type ProjectEvent = {
   id: string;
@@ -387,6 +388,7 @@ export default function ProjectCalendar({
 
       {/* 생성 모달 */}
       {openCreate && (
+        <Portal>
         <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpenCreate(false)}>
           <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">새 일정</h3>
@@ -463,10 +465,12 @@ export default function ProjectCalendar({
             </form>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* 상세 모달 */}
       {selected && (
+        <Portal>
         <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setSelected(null)}>
           <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
@@ -533,6 +537,7 @@ export default function ProjectCalendar({
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

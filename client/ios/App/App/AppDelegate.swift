@@ -78,6 +78,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setBadge", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setVisible", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "confirm", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setSharedToken", returnType: CAPPluginReturnPromise),
     ]
 
     private var tabBarView: UITabBar?
@@ -86,6 +87,23 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
 
     override public func load() {
         NSLog("[LGTB] plugin loaded (discovered by Capacitor)")
+    }
+
+    /// 알림 서비스 확장(NSE)이 채팅 발신자 아바타(/uploads, 인증 필요)를 받을 수 있도록,
+    /// 앱 세션 토큰을 공유 App Group 에 기록한다. JS 가 로그인/세션복원 시 호출, 로그아웃 시 빈 값으로 제거.
+    /// ⚠️ Xcode 에서 앱+NSE 타깃에 App Group(group.com.hivits.hinest) capability 가 설정돼야 동작한다.
+    ///    미설정이면 suiteName 이 nil → 무동작(무해). NSE 는 같은 그룹에서 이 키를 읽는다.
+    @objc func setSharedToken(_ call: CAPPluginCall) {
+        let token = call.getString("token") ?? ""
+        let groupId = call.getString("group") ?? "group.com.hivits.hinest"
+        if let defaults = UserDefaults(suiteName: groupId) {
+            if token.isEmpty {
+                defaults.removeObject(forKey: "hinest.session.token")
+            } else {
+                defaults.set(token, forKey: "hinest.session.token")
+            }
+        }
+        call.resolve()
     }
 
     @objc func configure(_ call: CAPPluginCall) {

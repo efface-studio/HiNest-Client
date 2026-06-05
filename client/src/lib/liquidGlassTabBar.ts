@@ -26,6 +26,8 @@ export interface LiquidGlassTabBarPlugin {
   setSelected(options: { key: string }): Promise<void>;
   setBadge(options: { key: string; count: number }): Promise<void>;
   setVisible(options: { visible: boolean }): Promise<void>;
+  /** 세션 토큰을 공유 App Group 에 기록 — NSE(채팅 아바타)의 /uploads 인증용. token="" 이면 제거. */
+  setSharedToken(options: { token: string; group?: string }): Promise<void>;
   /** 애플 기본 확인 시트(action sheet). 로그아웃 등 재확인용. */
   confirm(options: {
     title?: string;

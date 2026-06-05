@@ -445,9 +445,12 @@ textarea.input {
    env() 는 데스크톱에서 0 이라 웹/Electron 외형은 변하지 않음(p-4 동등). */
 .modal-safe {
   padding-top: max(1rem, env(safe-area-inset-top));
-  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  /* --hinest-kb-inset = 키보드 높이(main.tsx visualViewport 추적). 키보드가 뜨면 그만큼 하단
+     패딩이 늘어 가운데 패널이 키보드 위로 올라온다. 키보드 없으면 0 → 기존과 동일. */
+  padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--hinest-kb-inset, 0px));
   padding-left: max(1rem, env(safe-area-inset-left));
   padding-right: max(1rem, env(safe-area-inset-right));
+  transition: padding-bottom 0.18s ease;
 }
 /* iOS Safari 는 네이티브 date/time/datetime-local 입력에 내장 min-width 를
    강제해서 w-full 지정에도 컨테이너 밖으로 튀어나올 수 있음. 강제로 shrink 허용 */

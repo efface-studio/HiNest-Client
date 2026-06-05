@@ -34,6 +34,24 @@ if (typeof window !== "undefined" && (window as any).Capacitor?.isNativePlatform
     .catch(() => {});
 }
 
+// 키보드가 뜰 때 가운데 모달이 가려지지 않도록 — visualViewport 로 키보드 높이를 추적해
+// CSS 변수 --hinest-kb-inset 에 싣는다. .modal-safe 오버레이가 이만큼 하단 패딩을 받아
+// place-items-center 패널이 키보드 위로 올라온다. (모든 모달이 body 로 포털돼 일괄 적용)
+if (typeof window !== "undefined" && window.visualViewport) {
+  const vv = window.visualViewport;
+  const root = document.documentElement;
+  let raf = 0;
+  const update = () => {
+    raf = 0;
+    const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+    root.style.setProperty("--hinest-kb-inset", inset > 1 ? `${Math.round(inset)}px` : "0px");
+  };
+  const schedule = () => { if (!raf) raf = requestAnimationFrame(update); };
+  vv.addEventListener("resize", schedule);
+  vv.addEventListener("scroll", schedule);
+  update();
+}
+
 // iOS Safari 는 user-scalable=no 를 무시하므로 제스처/더블탭 확대를 JS 로 차단.
 if (typeof window !== "undefined") {
   // ─────────────────────────────────────────────────────────────

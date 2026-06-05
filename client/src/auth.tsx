@@ -64,6 +64,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     refresh();
   }, [refresh]);
 
+  // 세션 만료/무효 전역 처리 — 페이지 사용 도중 세션이 끊기면 api.ts 가 'hinest:unauthorized'
+  // 를 디스패치한다. 토큰·세션 캐시를 비우고 user 를 null 로 만들면 Protected(App.tsx)가
+  // 자동으로 /login 으로 보낸다. (인증 엔드포인트의 401 = 로그인 실패 등은 api.ts 에서 제외.)
+  useEffect(() => {
+    function onUnauthorized() {
+      clearAuthToken();
+      clearApiCache();
+      setUser(null);
+      setImpersonator(null);
+    }
+    window.addEventListener("hinest:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("hinest:unauthorized", onUnauthorized);
+  }, []);
+
   // iOS 원격 푸시(APNs) 등록 — 로그인·회원가입뿐 아니라 세션 복원(앱 재실행) 시에도
   // 토큰을 재등록하고 탭→이동 리스너를 다시 건다. setupIosPush 는 멱등이며 iOS 외엔 no-op.
   // user.id 가 바뀔 때만(=로그인/계정전환) 1회 실행 — 매 리렌더마다 register() 가 불리지 않게.

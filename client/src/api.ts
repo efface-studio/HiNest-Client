@@ -130,6 +130,17 @@ export async function api<T = any>(
     err.status = res.status;
     err.code = code;
     err.data = data;
+    // 세션 만료/무효(401) — 인증 엔드포인트 자체(로그인 실패·세션 복원 등)가 아니면 전역으로
+    // 알려 AuthProvider 가 로그아웃 처리(→ /login)하게 한다. 페이지 사용 중 세션이 끊겼는데
+    // 호출부가 catch{} 로 삼켜 빈 화면·stale 데이터로 방치되던 문제를 근본 해결.
+    if (
+      res.status === 401 &&
+      typeof window !== "undefined" &&
+      !path.startsWith("/api/auth") &&
+      !path.startsWith("/api/me")
+    ) {
+      try { window.dispatchEvent(new Event("hinest:unauthorized")); } catch {}
+    }
     throw err;
   }
   if (res.status === 204) return undefined as T;

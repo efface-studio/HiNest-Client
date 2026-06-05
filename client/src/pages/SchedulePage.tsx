@@ -46,6 +46,8 @@ export default function SchedulePage() {
   const { user } = useAuth();
   const [cursor, setCursor] = useState(() => new Date());
   const [events, setEvents] = useState<Event[]>([]);
+  // 일정 로드 실패 표시 — 조용히 빈 달력으로 두지 않고 재시도 배너를 띄운다.
+  const [loadErr, setLoadErr] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     title: "",
@@ -76,11 +78,18 @@ export default function SchedulePage() {
     const toD = endOfMonth(cursor); toD.setDate(toD.getDate() + 7);
     const from = fromD.toISOString();
     const to = toD.toISOString();
-    const res = await api<{ events: Event[] }>(
-      `/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
-    );
-    if (aliveRef && !aliveRef.current) return;
-    setEvents(res.events);
+    try {
+      const res = await api<{ events: Event[] }>(
+        `/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`
+      );
+      if (aliveRef && !aliveRef.current) return;
+      setEvents(res.events);
+      setLoadErr(false);
+    } catch {
+      // 401(세션 만료)은 api.ts 가 전역 처리(→ /login). 그 외(500·네트워크)는 재시도 배너.
+      if (aliveRef && !aliveRef.current) return;
+      setLoadErr(true);
+    }
   }
 
   // cursor 빠르게 넘길 때 이전 달 응답이 나중에 와서 덮는 레이스 방지.
@@ -260,6 +269,13 @@ export default function SchedulePage() {
           </div>
         }
       />
+
+      {loadErr && (
+        <div className="card cal-fullbleed p-3 mb-3 flex items-center justify-between gap-3">
+          <span className="text-[13px] text-ink-600">일정을 불러오지 못했어요.</span>
+          <button type="button" className="btn-ghost btn-xs" onClick={() => load()}>다시 시도</button>
+        </div>
+      )}
 
       {view === "month" ? (
       <>
@@ -576,6 +592,7 @@ function DayDetailModal({
 }) {
   const holiday = getHoliday(date);
   return (
+    <Portal>
     <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <div
         className="panel w-full max-w-[480px] shadow-pop overflow-hidden"
@@ -677,6 +694,7 @@ function DayDetailModal({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }
 

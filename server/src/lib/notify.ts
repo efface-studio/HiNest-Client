@@ -83,7 +83,9 @@ export async function notify(input: NotifyInput) {
     const map = await resolveDelivery([input.userId], input.type);
     const d = map.get(input.userId);
     if (d && !d.allowed) return;
-    const created = await prisma.notification.create({ data: input });
+    // actorAvatarUrl 은 Notification 컬럼이 아님(푸시 전용) → create 데이터에서 제외(notifyMany 와 동일 이유).
+    const { actorAvatarUrl, ...createData } = input;
+    const created = await prisma.notification.create({ data: createData });
     if (!d || d.allowPush) {
       publish(input.userId, "notification", created);
       // 방 음소거 시 APNs(폰 푸시) 만 생략 — 레코드/SSE 는 위에서 이미 보냄.
@@ -131,7 +133,10 @@ export async function notifyMany(inputs: NotifyInput[]) {
     // 거의 동시에 온 두 알림 중 하나의 실시간 SSE/APNs 가 누락됐다(레코드는 남아 다음 새로고침엔 보임).
     // 근본 수정: 각 행의 id 를 미리 생성해 넣고, 그 id 들로 정확히 되짚어 "전부" 푸시한다.
     const rows = filtered.map((i) => ({ ...i, id: randomUUID() as string }));
-    await prisma.notification.createMany({ data: rows });
+    // actorAvatarUrl 은 Notification 컬럼이 아니라 푸시 페이로드 전용(아래 inputById 로만 사용) →
+    // createMany 데이터에서 제외해야 한다. 문자열이 섞이면 Prisma 가 unknown arg 로 throw 해
+    // createMany 전체가 실패 → "프로필 사진 있는 발신자"의 알림이 통째로 누락됐다(전 플랫폼).
+    await prisma.notification.createMany({ data: rows.map(({ actorAvatarUrl, ...row }) => row) });
     const created = await prisma.notification.findMany({ where: { id: { in: rows.map((r) => r.id) } } });
     // 음소거된 방의 채팅 알림은 APNs(폰 푸시) 만 생략 — 한 번에 조회.
     const mutedSet = await mutedApnsSet(

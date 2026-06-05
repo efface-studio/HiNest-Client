@@ -45,6 +45,12 @@ const PRIMARY_HOST = PRODUCTION ? PROD_HOST : SANDBOX_HOST;
 const ALT_HOST = PRODUCTION ? SANDBOX_HOST : PROD_HOST;
 const HOST = PRIMARY_HOST; // 표시·진단용 기본 게이트웨이
 
+// 통신알림(발신자 아바타) 임시 스위치.
+// 현재 iOS 빌드의 NSE(mutable-content 처리)가 채팅 푸시를 가로채 알림이 표시되지 않는 문제가 있어,
+// 안정화 전까지 꺼 둔다 → mutable-content 를 싣지 않으므로 NSE 가 호출되지 않고 "일반 알림으로 정상 표시".
+// NSE 표시 문제(아바타 스타일) 해결 후 이 값을 true 로 되돌리면 통신알림(아바타)이 복구된다.
+const ENABLE_COMMUNICATION_PUSH = false;
+
 export function apnsEnabled(): boolean {
   return Boolean(KEY_RAW && KEY_ID && TEAM_ID);
 }
@@ -133,7 +139,8 @@ function sendOne(deviceToken: string, payload: ApnsPayload, host: string): Promi
     if (payload.groupId) aps["thread-id"] = payload.groupId;
     // Communication Notification — senderName 이 있으면(채팅) NSE 가 발신자 아바타로 알림을 재구성하도록
     // mutable-content 를 켜고, NSE 가 읽을 발신자 정보를 커스텀 키로 싣는다. NSE 미존재 시엔 일반 표시(무해).
-    if (payload.senderName) aps["mutable-content"] = 1;
+    // (ENABLE_COMMUNICATION_PUSH=false 동안은 mutable-content 를 끄고 일반 알림으로 표시 — 위 스위치 주석 참고)
+    if (ENABLE_COMMUNICATION_PUSH && payload.senderName) aps["mutable-content"] = 1;
     const bodyObj: Record<string, unknown> = { aps };
     if (payload.linkUrl) bodyObj.linkUrl = payload.linkUrl;
     if (payload.senderName) bodyObj.senderName = payload.senderName;

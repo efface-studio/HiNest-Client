@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { prisma } from "./db.js";
 import { publish } from "./sse.js";
 import { sendApnsToUser, sendApnsToUsers } from "./apns.js";
@@ -123,41 +124,27 @@ export async function notifyMany(inputs: NotifyInput[]) {
     }
     if (!filtered.length) return;
 
-    // createMany 는 ID를 반환 안 하므로 시간 범위로 방금 만든 레코드만 골라온다.
-    // take: filtered.length 로 top-N 을 쓰면, 고빈도 알림 상황에서 동시에 발생한 다른 배치가
-    // 창(window)을 밀어내 해당 유저의 SSE push 가 누락되는 레이스가 있었음. 1 ms 여유를 빼서
-    // createdAt 의 초단위 절단/클럭 드리프트를 보정.
-    const since = new Date(Date.now() - 1);
-    await prisma.notification.createMany({ data: filtered });
-    const byUser = new Map<string, NotifyInput>();
-    for (const i of filtered) byUser.set(i.userId, i);
-    const fresh = await prisma.notification.findMany({
-      where: {
-        userId: { in: Array.from(byUser.keys()) },
-        createdAt: { gte: since },
-      },
-      orderBy: { createdAt: "desc" },
-    });
-    // user별로 가장 최근 1건만 푸시.
-    const picked = new Map<string, (typeof fresh)[number]>();
-    for (const n of fresh) {
-      if (!picked.has(n.userId)) picked.set(n.userId, n);
-    }
+    // createMany 는 ID를 반환 안 한다. 예전엔 createdAt 시간창으로 방금 만든 행을 되짚었는데,
+    // 동시에 도는 다른 배치가 같은 유저의 창을 오염시켜 "유저당 1건만" 추려 푸시 → 같은 유저에게
+    // 거의 동시에 온 두 알림 중 하나의 실시간 SSE/APNs 가 누락됐다(레코드는 남아 다음 새로고침엔 보임).
+    // 근본 수정: 각 행의 id 를 미리 생성해 넣고, 그 id 들로 정확히 되짚어 "전부" 푸시한다.
+    const rows = filtered.map((i) => ({ ...i, id: randomUUID() }));
+    await prisma.notification.createMany({ data: rows });
+    const created = await prisma.notification.findMany({ where: { id: { in: rows.map((r) => r.id) } } });
     // 음소거된 방의 채팅 알림은 APNs(폰 푸시) 만 생략 — 한 번에 조회.
     const mutedSet = await mutedApnsSet(
-      Array.from(picked.values()).map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
+      created.map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
     );
     const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string } }[] = [];
-    for (const [uid, n] of picked) {
-      if (pushFlag.get(`${uid}:${n.type as NotifyType}`) !== false) {
-        publish(uid, "notification", n);
-        const rid = roomIdFromLink(n.linkUrl);
-        if (!(rid && mutedSet.has(`${uid}:${rid}`))) {
-          apnsTargets.push({ userId: uid, payload: { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined, groupId: rid ?? undefined } });
-        }
+    for (const n of created) {
+      if (pushFlag.get(`${n.userId}:${n.type as NotifyType}`) === false) continue;
+      publish(n.userId, "notification", n);
+      const rid = roomIdFromLink(n.linkUrl);
+      if (!(rid && mutedSet.has(`${n.userId}:${rid}`))) {
+        apnsTargets.push({ userId: n.userId, payload: { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined, groupId: rid ?? undefined } });
       }
     }
-    // 원격 푸시(iOS APNs) — fire-and-forget. pushToken 조회를 1회로 묶어 일괄 발송(N→1). 미설정/토큰없음이면 내부 no-op.
+    // 원격 푸시(iOS APNs) — fire-and-forget. pushToken 조회를 1회로 묶어 일괄 발송. 미설정/토큰없음이면 내부 no-op.
     void sendApnsToUsers(apnsTargets);
   } catch (e) {
     console.error("notifyMany failed", e);

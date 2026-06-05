@@ -20,7 +20,10 @@ export type DesktopNotifPermission = "default" | "granted" | "denied" | "unsuppo
 
 const LS_SEEN = "hinest.notif.seen"; // 이미 알려준 notification id 목록 (localStorage)
 const LS_ENABLED = "hinest.notif.desktop"; // 사용자 토글 (on/off)
-const MAX_SEEN = 500;
+// 이미-표시한 알림 id 캐시 상한. 너무 작으면(구 500) 채팅 다량 수신 시 아직 안 읽은
+// 알림 id 가 밀려나 → 폴백 reload 가 그걸 '처음 본 것'으로 오인해 같은 배너를 다시 띄움(중복).
+// 상한을 크게 잡아 현실적인 세션 내 churn 으론 밀려나지 않게 한다. (id 1건 ~25B → 3000건 ~75KB)
+const MAX_SEEN = 3000;
 
 function supported() {
   return typeof window !== "undefined" && "Notification" in window;

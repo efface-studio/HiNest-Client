@@ -59,7 +59,34 @@ export function imgSrc(url?: string | null): string | undefined {
   return abs + (abs.includes("?") ? "&" : "?") + "token=" + encodeURIComponent(t);
 }
 
+const _inflight = new Map<string, Promise<any>>();
+
+/**
+ * 동일 GET 동시 호출 합치기(in-flight dedup). 한 화면 + 열린 모달이 같은 엔드포인트(예: /api/users)를
+ * 동시에 요청하면 fetch 가 1번만 나가고 결과를 공유한다(React 18 StrictMode 이중 호출도 1회로).
+ * 커스텀 signal(취소 의도)·요청 바디·미리보기 모드는 제외 — 각자 독립 실행. 실제 fetch 로직은
+ * 아래 apiInner 그대로(무변경) — 이 래퍼는 합치기만 담당.
+ */
 export async function api<T = any>(
+  path: string,
+  init: RequestInit & { json?: any } = {}
+): Promise<T> {
+  const method = (init.method ?? "GET").toUpperCase();
+  let previewOn = false;
+  if (typeof window !== "undefined" && (window as any).__HINEST_PREVIEW__ === true) {
+    try { previewOn = sessionStorage.getItem("hinest:preview") === "1"; } catch {}
+  }
+  const dedupable = method === "GET" && !init.signal && init.json === undefined && !init.body && !previewOn;
+  if (!dedupable) return apiInner<T>(path, init);
+  const existing = _inflight.get(path);
+  if (existing) return existing as Promise<T>;
+  const p = apiInner<T>(path, init);
+  _inflight.set(path, p);
+  p.finally(() => { if (_inflight.get(path) === p) _inflight.delete(path); });
+  return p;
+}
+
+async function apiInner<T = any>(
   path: string,
   init: RequestInit & { json?: any } = {}
 ): Promise<T> {

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import Portal from "../components/Portal";
 import MonthPicker from "../components/MonthPicker";
 import DateTimePicker from "../components/DateTimePicker";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
@@ -340,6 +341,7 @@ export default function ExpensePage() {
       </div>
 
       {open && (
+        <Portal>
         <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpen(false)}>
           <div className="card w-full max-w-lg" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">법인카드 사용내역 등록</h3>
@@ -440,12 +442,15 @@ export default function ExpensePage() {
             </form>
           </div>
         </div>
+        </Portal>
       )}
 
       {preview && (
+        <Portal>
         <div className="fixed inset-0 bg-slate-900/70 grid place-items-center modal-safe z-50" onClick={() => setPreview(null)}>
           <img src={preview} alt="receipt" decoding="async" className="max-h-[90vh] max-w-[90vw] rounded-xl" loading="lazy"/>
         </div>
+        </Portal>
       )}
     </div>
   );

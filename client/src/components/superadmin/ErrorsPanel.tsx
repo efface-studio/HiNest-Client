@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync } from "../ConfirmHost";
+import Portal from "../Portal";
 
 type Group = {
   hash: string;
@@ -117,6 +118,7 @@ export default function ErrorsPanel() {
       </div>
 
       {openHash && (
+        <Portal>
         <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpenHash(null)}>
           <div className="panel w-full max-w-[840px] max-h-[88vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
             <div className="px-5 py-3 border-b border-ink-150 flex items-center justify-between">
@@ -149,6 +151,7 @@ export default function ErrorsPanel() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

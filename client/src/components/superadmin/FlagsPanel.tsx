@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync } from "../ConfirmHost";
+import Portal from "../Portal";
 
 type Flag = {
   key: string;
@@ -96,6 +97,7 @@ export default function FlagsPanel() {
       </div>
 
       {editing && (
+        <Portal>
         <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={() => setEditing(null)}>
           <form
             className="panel w-full max-w-[480px] p-5"
@@ -157,6 +159,7 @@ export default function FlagsPanel() {
             </div>
           </form>
         </div>
+        </Portal>
       )}
     </div>
   );

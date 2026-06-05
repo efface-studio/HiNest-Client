@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api, apiSWR } from "../api";
 import { confirmAsync, alertAsync, promptAsync } from "./ConfirmHost";
+import Portal from "./Portal";
 
 type Channel = {
   id: string;
@@ -269,6 +270,7 @@ export default function ProjectWebhooks({ projectId }: { projectId: string }) {
 
       {/* 생성 모달 */}
       {openCreate && (
+        <Portal>
         <div
           className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50"
           onClick={() => setOpenCreate(false)}
@@ -315,6 +317,7 @@ export default function ProjectWebhooks({ projectId }: { projectId: string }) {
             </form>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

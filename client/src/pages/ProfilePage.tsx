@@ -4,6 +4,7 @@ import { api, invalidateCache, clearApiCache, apiFetch , imgSrc} from "../api";
 import { isCapacitorNative } from "../lib/platform";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import Portal from "../components/Portal";
 import { useTheme, type ThemeMode } from "../theme";
 import { PRESENCE_CHOICES, resolvePresence, type PresenceStatus } from "../lib/presence";
 import {
@@ -429,6 +430,7 @@ function DangerZonePanel() {
       </button>
 
       {open && (
+        <Portal>
         <div
           className="fixed inset-0 z-50 flex items-center justify-center modal-safe"
           style={{ background: "rgba(0,0,0,0.45)" }}
@@ -493,6 +495,7 @@ function DangerZonePanel() {
             </form>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

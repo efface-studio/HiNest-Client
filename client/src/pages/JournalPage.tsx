@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR } from "../api";
 import PageHeader from "../components/PageHeader";
 import DateTimePicker from "../components/DateTimePicker";
+import Portal from "../components/Portal";
 import { alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
 
@@ -30,6 +31,7 @@ type Mode = "view" | "create" | "edit";
 
 export default function JournalPage() {
   const [list, setList] = useState<Journal[]>([]);
+  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Journal | null>(null);
   const [form, setForm] = useState({ date: today(), title: "", content: "" });
   const [mode, setMode] = useState<Mode>("view");
@@ -54,13 +56,16 @@ export default function JournalPage() {
       onCached: (d) => {
         if (!aliveRef.current) return;
         setList(d.journals);
+        setLoading(false);
         if (d.journals.length && !selected) setSelected(d.journals[0]);
       },
       onFresh: (d) => {
         if (!aliveRef.current) return;
         setList(d.journals);
+        setLoading(false);
         if (d.journals.length && !selected) setSelected(d.journals[0]);
       },
+      onError: () => { if (aliveRef.current) setLoading(false); },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -196,7 +201,13 @@ export default function JournalPage() {
             </div>
           </div>
           <div className="flex-1 overflow-auto">
-            {filtered.length === 0 ? (
+            {loading && filtered.length === 0 ? (
+              <div className="px-4 py-4 space-y-2">
+                {[0, 1, 2, 3, 4].map((i) => (
+                  <div key={i} className="h-14 rounded-lg bg-ink-100 dark:bg-ink-800 animate-pulse" />
+                ))}
+              </div>
+            ) : filtered.length === 0 ? (
               <div className="px-4 py-12 text-center">
                 <div className="text-[34px] mb-2">📝</div>
                 <div className="text-[13px] font-bold text-ink-900">{q ? "검색 결과가 없어요" : "아직 일지가 없어요"}</div>
@@ -356,6 +367,7 @@ export default function JournalPage() {
       </div>
 
       {confirmRemoveId && (
+        <Portal>
         <div
           className="fixed inset-0 z-50 grid place-items-center modal-safe"
           style={{ background: "rgba(0,0,0,0.45)", backdropFilter: "blur(4px)" }}
@@ -397,6 +409,7 @@ export default function JournalPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </div>
   );

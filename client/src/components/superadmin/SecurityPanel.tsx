@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync } from "../ConfirmHost";
 import DateTimePicker from "../DateTimePicker";
+import Portal from "../Portal";
 
 type Rate = { id: string; routeGlob: string; perMin: number; perHour: number; scope: string; enabled: boolean; note: string | null; createdAt: string };
 type Block = { id: string; cidr: string; country: string | null; reason: string | null; enabled: boolean; expiresAt: string | null; createdAt: string };
@@ -184,6 +185,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 
 function Modal({ onClose, onSubmit, children }: { onClose: () => void; onSubmit: () => void; children: React.ReactNode }) {
   return (
+    <Portal>
     <div className="fixed inset-0 bg-ink-900/40 grid place-items-center modal-safe z-50" onClick={onClose}>
       <form
         className="panel w-full max-w-[460px] p-5 max-h-[88vh] overflow-y-auto"
@@ -197,5 +199,6 @@ function Modal({ onClose, onSubmit, children }: { onClose: () => void; onSubmit:
         </div>
       </form>
     </div>
+    </Portal>
   );
 }

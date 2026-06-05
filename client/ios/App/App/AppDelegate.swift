@@ -90,13 +90,15 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
 
     @objc func configure(_ call: CAPPluginCall) {
         let tabs = call.getArray("tabs", JSObject.self) ?? []
+        // 초기 선택 탭 키(현재 경로). 없으면 첫 탭으로 폴백.
+        let selected = call.getString("selected")
         NSLog("[LGTB] configure called, tabs=\(tabs.count)")
         DispatchQueue.main.async {
             guard let host = self.bridge?.viewController?.view else {
                 NSLog("[LGTB] no host view -> reject")
                 call.reject("no-host-view"); return
             }
-            self.build(host: host, tabs: tabs)
+            self.build(host: host, tabs: tabs, selected: selected)
             NSLog("[LGTB] configured (real UITabBar), active=true")
             call.resolve(["active": true])
         }
@@ -105,7 +107,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
     /// 실제 애플 UIKit 탭 바(UITabBar) 를 웹뷰 위에 올린다. iOS 26 에선 시스템이 자동으로
     /// Liquid Glass 머티리얼을 입힌다(앱이 직접 그리지 않음 = 정품 시스템 컴포넌트).
     /// iOS 26 미만에선 일반 탭 바로 자연스럽게 폴백.
-    private func build(host: UIView, tabs: [JSObject]) {
+    private func build(host: UIView, tabs: [JSObject], selected: String? = nil) {
         tabBarView?.removeFromSuperview()
         keys.removeAll()
 
@@ -129,7 +131,14 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
             items.append(item)
         }
         tabBar.setItems(items, animated: false)
-        tabBar.selectedItem = items.first
+        // 초기 선택을 현재 경로 탭으로 맞춘다. 기본값(items.first = 개요)으로 두면 새로고침
+        // 때 개요가 한 번 하이라이트됐다가 현재 탭으로 점프하는(개요 깜빡임) 문제가 생긴다.
+        // 매칭 탭이 없으면(탭이 아닌 경로: /profile 등) applySelected 와 동일하게 선택 없음(nil).
+        if let sel = selected, let i = keys.firstIndex(of: sel), i < items.count {
+            tabBar.selectedItem = items[i]
+        } else {
+            tabBar.selectedItem = nil
+        }
 
         host.addSubview(tabBar)
         NSLayoutConstraint.activate([

@@ -20,6 +20,18 @@ if (typeof window !== "undefined" && (window as any).Capacitor?.isNativePlatform
     .then(({ SplashScreen }) => SplashScreen.hide())
     .catch(() => {})
     .finally(() => { (window as any).__hinestSplashGo?.(); });
+  // 백그라운드→포그라운드 복귀 시 데이터 재싱크 — iOS WKWebView 는 복귀 때 visibilitychange 가
+  // 항상 발화하진 않는다. @capacitor/app 의 appStateChange(isActive) 를 받아 visibilitychange 를
+  // 합성 발화해, 기존 가시성 핸들러(알림 reload·결재 카운트·채팅 presence)가 재실행되게 한다(중앙/DRY).
+  import("@capacitor/app")
+    .then(({ App }) => {
+      App.addListener("appStateChange", ({ isActive }) => {
+        if (isActive && document.visibilityState === "visible") {
+          document.dispatchEvent(new Event("visibilitychange"));
+        }
+      });
+    })
+    .catch(() => {});
 }
 
 // iOS Safari 는 user-scalable=no 를 무시하므로 제스처/더블탭 확대를 JS 로 차단.

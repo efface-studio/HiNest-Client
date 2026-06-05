@@ -47,6 +47,9 @@ export default function ProfilePage() {
   const [pwForm, setPwForm] = useState({ current: "", next: "", confirm: "" });
   const [pwMsg, setPwMsg] = useState("");
   const [pwErr, setPwErr] = useState("");
+  // 중복 제출 가드 — 빠른 더블탭으로 프로필 저장/비밀번호 변경이 두 번 POST 되는 것 방지.
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [savingPw, setSavingPw] = useState(false);
 
   // 업로드/저장 중에 사용자가 페이지를 떠나면 setState 가 언마운트 후 호출될 수 있음.
   // setTimeout 으로 메시지 초기화도 언마운트 후에 불릴 수 있어 일괄 가드.
@@ -66,7 +69,9 @@ export default function ProfilePage() {
 
   async function saveProfile(e: React.FormEvent) {
     e.preventDefault();
+    if (savingProfile) return;
     setErr(""); setSavedMsg("");
+    setSavingProfile(true);
     try {
       // avatarUrl 은 명시적으로 항상 함께 전송 — 이미지 제거도 PATCH 로 반영해야 하니까.
       await api("/api/profile", {
@@ -90,6 +95,8 @@ export default function ProfilePage() {
       }, 2000);
     } catch (e: any) {
       if (aliveRef.current) setErr(e.message ?? "저장 실패");
+    } finally {
+      if (aliveRef.current) setSavingProfile(false);
     }
   }
 
@@ -134,9 +141,11 @@ export default function ProfilePage() {
 
   async function changePw(e: React.FormEvent) {
     e.preventDefault();
+    if (savingPw) return;
     setPwErr(""); setPwMsg("");
     if (pwForm.next !== pwForm.confirm) return setPwErr("새 비밀번호 확인이 일치하지 않습니다");
     if (pwForm.next.length < 8) return setPwErr("새 비밀번호는 8자 이상이어야 합니다");
+    setSavingPw(true);
     try {
       await api("/api/profile/password", {
         method: "POST",
@@ -149,6 +158,8 @@ export default function ProfilePage() {
       }, 3000);
     } catch (e: any) {
       if (aliveRef.current) setPwErr(e.message ?? "변경 실패");
+    } finally {
+      if (aliveRef.current) setSavingPw(false);
     }
   }
 
@@ -290,7 +301,7 @@ export default function ProfilePage() {
               {err && <InlineAlert tone="error">{err}</InlineAlert>}
               {savedMsg && <InlineAlert tone="success">{savedMsg}</InlineAlert>}
               <div className="flex justify-end">
-                <button className="btn-primary">저장</button>
+                <button className="btn-primary" disabled={savingProfile}>{savingProfile ? "저장 중…" : "저장"}</button>
               </div>
             </form>
           </div>
@@ -345,7 +356,7 @@ export default function ProfilePage() {
               {pwErr && <InlineAlert tone="error">{pwErr}</InlineAlert>}
               {pwMsg && <InlineAlert tone="success">{pwMsg}</InlineAlert>}
               <div className="flex justify-end">
-                <button className="btn-primary">비밀번호 변경</button>
+                <button className="btn-primary" disabled={savingPw}>{savingPw ? "변경 중…" : "비밀번호 변경"}</button>
               </div>
             </form>
           </div>

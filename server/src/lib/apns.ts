@@ -108,6 +108,10 @@ export interface ApnsPayload {
   threadId?: string;
   /** OS 알림센터 그룹핑용 aps.thread-id. collapse(교체) 아님 — 같은 대화 배너를 묶기만 함. */
   groupId?: string;
+  /** Communication Notification 용 — 발신자 표시 이름(채팅 알림만). NSE 가 INPerson 으로 사용. */
+  senderName?: string;
+  /** 발신자 아바타 /uploads 상대경로(예: /uploads/x.png). NSE 가 App Group 세션토큰으로 받아 이미지로. */
+  senderAvatarPath?: string;
 }
 
 interface SendResult {
@@ -127,8 +131,13 @@ function sendOne(deviceToken: string, payload: ApnsPayload, host: string): Promi
     if (typeof payload.badge === "number") aps.badge = payload.badge;
     // OS 알림센터에서 같은 대화(방)끼리 묶이도록 thread-id 지정. (collapse-id 와 달리 교체가 아님)
     if (payload.groupId) aps["thread-id"] = payload.groupId;
+    // Communication Notification — senderName 이 있으면(채팅) NSE 가 발신자 아바타로 알림을 재구성하도록
+    // mutable-content 를 켜고, NSE 가 읽을 발신자 정보를 커스텀 키로 싣는다. NSE 미존재 시엔 일반 표시(무해).
+    if (payload.senderName) aps["mutable-content"] = 1;
     const bodyObj: Record<string, unknown> = { aps };
     if (payload.linkUrl) bodyObj.linkUrl = payload.linkUrl;
+    if (payload.senderName) bodyObj.senderName = payload.senderName;
+    if (payload.senderAvatarPath) bodyObj.senderAvatarPath = payload.senderAvatarPath;
     const body = Buffer.from(JSON.stringify(bodyObj));
 
     let session: http2.ClientHttp2Session;

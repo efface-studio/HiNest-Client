@@ -61,6 +61,7 @@ async function dispatchOne(id: string): Promise<void> {
         body: preview.slice(0, 140),
         linkUrl: `/chat?room=${msg.roomId}`,
         actorName: msg.sender.name,
+        actorAvatarUrl: msg.sender.avatarUrl ?? undefined,
       })),
     );
   } else {
@@ -73,6 +74,7 @@ async function dispatchOne(id: string): Promise<void> {
         body: `${msg.sender.name}: ${preview}`.slice(0, 140),
         linkUrl: `/chat?room=${msg.roomId}`,
         actorName: msg.sender.name,
+        actorAvatarUrl: msg.sender.avatarUrl ?? undefined,
       })),
     );
   }

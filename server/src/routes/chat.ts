@@ -567,6 +567,7 @@ router.post("/rooms/:id/messages", async (req, res) => {
           body: preview.slice(0, 140),
           linkUrl: `/chat?room=${msg.roomId}`,
           actorName: u.name,
+          actorAvatarUrl: msg.sender.avatarUrl ?? undefined,
         }))
       );
     } else {
@@ -586,6 +587,7 @@ router.post("/rooms/:id/messages", async (req, res) => {
           body: `${u.name}: ${preview}`.slice(0, 140),
           linkUrl: `/chat?room=${msg.roomId}`,
           actorName: u.name,
+          actorAvatarUrl: msg.sender.avatarUrl ?? undefined,
         }))
       );
     }

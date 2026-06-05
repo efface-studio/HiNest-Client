@@ -24,13 +24,13 @@ Xcode → File → New → Target → **Notification Service Extension**. 이름
 앱 타깃 + NSE 타깃 **둘 다** Signing & Capabilities → **App Groups** 추가 → 동일 그룹
 `group.com.hivits.hinest` 체크. (Apple 포털 App ID에도 App Group 권한 필요.)
 
-그리고 **앱이 로그인 시 세션 토큰을 이 그룹에 기록**해야 NSE가 `/uploads`(인증 필요) 아바타를 받습니다.
-`AppDelegate.swift`(또는 작은 Capacitor 플러그인)에서, JS가 토큰을 받은 직후 호출되게:
-```swift
-UserDefaults(suiteName: "group.com.hivits.hinest")?
-    .set(sessionToken, forKey: "hinest.session.token")
-```
-JS에서 네이티브로 토큰을 넘기는 브리지가 필요합니다(로그인/세션복원 시 1회). 로그아웃 시 제거.
+**세션 토큰 → App Group 기록(아바타 인증)은 이미 코드로 구현됨** ✅ — 직접 작성할 필요 없습니다:
+- 네이티브: `AppDelegate.swift` `LiquidGlassTabBarPlugin.setSharedToken` 가 토큰을 App Group 에 기록.
+- JS: `src/lib/authToken.ts` `setAuthToken()` 이 로그인/세션복원/로그아웃 때 자동으로 위 메서드를 호출.
+- NSE: 같은 그룹에서 `hinest.session.token` 키를 읽어 `/uploads` 에 `?token=` 으로 인증(코드에 이미 있음).
+
+→ 따라서 **App Groups capability(2번 위)만 설정**하면 토큰 공유가 동작합니다. (capability 미설정이면
+`UserDefaults(suiteName:)` 가 nil 이라 기록이 무동작·무해 — 빌드/기능엔 영향 없음.)
 
 > **대안(App Group 없이):** 서버가 푸시에 **짧은 수명 서명 URL**(`/uploads/x?token=<단기토큰>`)을 직접
 > 실으면 NSE는 그 URL을 그대로 받으면 됩니다. App Group/토큰기록이 불필요한 대신, 푸시·서버로그에

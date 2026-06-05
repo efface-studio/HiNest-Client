@@ -13,6 +13,7 @@
  * WKWebView 에서 새로고침·앱 재실행 후에도 유지된다.
  */
 import { isCapacitorNative } from "./platform";
+import { LiquidGlassTabBar } from "./liquidGlassTabBar";
 
 const KEY = "hinest.authToken";
 
@@ -34,6 +35,13 @@ export function setAuthToken(token: string | null | undefined): void {
     else localStorage.removeItem(KEY);
   } catch {
     /* storage 비활성/quota — 무시 */
+  }
+  // NSE(채팅 발신자 아바타)가 /uploads 인증에 쓰도록 공유 App Group 에도 기록한다.
+  // App Group capability 미설정 / 구버전 네이티브면 내부 no-op·reject → 무시(무해). 토큰 없으면 빈 값=제거.
+  try {
+    void LiquidGlassTabBar.setSharedToken({ token: token ?? "" }).catch(() => {});
+  } catch {
+    /* 플러그인 미가용 — 무시 */
   }
 }
 

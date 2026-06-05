@@ -1480,6 +1480,32 @@ function SettingsView({
         </div>
       </button>
 
+      {/* 멤버 — 그룹/팀방만 (DM 은 위 프로필 블록이 상대를 보여줌). 헤더(방 이름) 탭 → 설정 뷰에서 노출. */}
+      {room.type !== "DIRECT" && (
+        <>
+          <SectionLabel>멤버 {room.members.length}명</SectionLabel>
+          <div style={{ background: C.gray100, borderRadius: 12, padding: "4px 0", overflow: "hidden" }}>
+            {room.members.map((m) => {
+              const isMe = m.user.id === meId;
+              const isOwner = !!room.createdById && room.createdById === m.user.id;
+              return (
+                <div key={m.user.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 14px" }}>
+                  <Avatar name={m.user.name} color={m.user.avatarColor ?? C.blue} imageUrl={m.user.avatarUrl ?? null} size={36} />
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 14, fontWeight: 600, color: C.ink, letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                    {m.user.name}{isMe ? " (나)" : ""}
+                  </div>
+                  {isOwner && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: C.blue, background: "color-mix(in srgb, var(--c-brand) 12%, transparent)", padding: "2px 8px", borderRadius: 999, flexShrink: 0 }}>
+                      방장
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
       <SharedMediaTabs messages={messages} />
 
       {canDeleteRoom && (

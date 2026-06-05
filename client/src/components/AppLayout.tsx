@@ -705,7 +705,12 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     let removeListener: (() => void) | undefined;
     (async () => {
       try {
-        const res = await LiquidGlassTabBar.configure({ tabs: NATIVE_GLASS_TABS });
+        // 초기 선택을 현재 경로 탭으로 넘겨 바가 처음부터 올바른 탭에 켜지게 한다.
+        // (안 넘기면 네이티브가 첫 탭=개요로 켜졌다가 아래 setSelected 로 점프 → 개요 깜빡임)
+        const res = await LiquidGlassTabBar.configure({
+          tabs: NATIVE_GLASS_TABS,
+          selected: matchNativeTabKey(window.location.pathname),
+        });
         if (cancelled || !res?.active) return;
         document.documentElement.classList.add("hinest-native-tabbar");
         const handle = await LiquidGlassTabBar.addListener("tabSelected", (d) => {

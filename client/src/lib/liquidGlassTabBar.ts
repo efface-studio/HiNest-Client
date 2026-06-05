@@ -21,7 +21,8 @@ export interface LiquidGlassTab {
 }
 
 export interface LiquidGlassTabBarPlugin {
-  configure(options: { tabs: LiquidGlassTab[] }): Promise<{ active: boolean }>;
+  /** selected: 초기 선택 탭 key(현재 경로). 새로고침 시 개요가 깜빡였다 점프하는 것 방지. */
+  configure(options: { tabs: LiquidGlassTab[]; selected?: string }): Promise<{ active: boolean }>;
   setSelected(options: { key: string }): Promise<void>;
   setBadge(options: { key: string; count: number }): Promise<void>;
   setVisible(options: { visible: boolean }): Promise<void>;

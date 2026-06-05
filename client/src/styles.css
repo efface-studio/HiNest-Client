@@ -13,6 +13,7 @@
 
   --c-bg:         #F5F6F8;  /* app bg */
   --c-surface:    #FFFFFF;  /* card / panel */
+  --c-surface-1:  var(--c-surface);  /* = 기본 패널/카드 표면 별칭. 미정의 상태로 모달·탭 등 여러 곳에서 var(--c-surface-1) 를 써와 투명 배경 버그(회원탈퇴 모달이 뒤 페이지와 겹쳐 보임 등). --c-surface 별칭이라 라이트/다크 자동 대응. */
   --c-surface-2:  #FAFBFC;  /* subtle surface (hover, thead 등) */
   --c-surface-3:  #F2F4F6;
   --c-border:     #E6E8EC;

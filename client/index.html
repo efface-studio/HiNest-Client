@@ -3,6 +3,24 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <!-- ───────── 테마 부트스트랩 (FOUC 방지) ─────────
+         CSS 번들/React(theme.tsx)가 로드되기 전에 다크 클래스와 배경색을 먼저 적용한다.
+         이게 없으면 새로고침 때 한 프레임 흰 화면이 번쩍였다가 다크로 바뀐다.
+         규칙은 theme.tsx 와 동일: 저장값(hinest.theme) 우선, 없으면 시스템 설정.
+         색상은 styles.css --c-bg 와 일치(라이트 #F5F6F8 / 다크 #0E1014). -->
+    <style>
+      html { background-color: #F5F6F8; color-scheme: light; }
+      html.dark { background-color: #0E1014; color-scheme: dark; }
+    </style>
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('hinest.theme');
+          var dark = t === 'dark' || ((t === 'system' || !t) && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (dark) document.documentElement.classList.add('dark');
+        } catch (e) {}
+      })();
+    </script>
     <meta name="theme-color" content="#3B5CF0" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="HiNest" />

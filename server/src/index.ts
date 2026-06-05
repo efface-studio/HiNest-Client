@@ -547,6 +547,10 @@ const server = app.listen(PORT, () => {
   import("./jobs/dbMaintenance.js").then((m) => m.startDbMaintenance()).catch((e) => {
     console.error("[dbMaintenance] 스케줄러 로드 실패:", e);
   });
+  // 예약 채팅 메시지 디스패처 — 매 분 tick, 도래한 예약 메시지를 실제 발송(SSE+알림).
+  import("./jobs/dispatchScheduled.js").then((m) => m.startScheduledDispatch()).catch((e) => {
+    console.error("[dispatchScheduled] 스케줄러 로드 실패:", e);
+  });
 });
 
 // === Graceful shutdown ===

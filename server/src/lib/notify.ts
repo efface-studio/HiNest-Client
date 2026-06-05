@@ -19,6 +19,8 @@ export interface NotifyInput {
   linkUrl?: string;
   actorName?: string;
   actorColor?: string;
+  /** 발신자 아바타 /uploads 상대경로 — 채팅 알림의 Communication Notification(아바타) 용. DB 저장 X, 푸시에만. */
+  actorAvatarUrl?: string;
 }
 
 /**
@@ -128,20 +130,31 @@ export async function notifyMany(inputs: NotifyInput[]) {
     // 동시에 도는 다른 배치가 같은 유저의 창을 오염시켜 "유저당 1건만" 추려 푸시 → 같은 유저에게
     // 거의 동시에 온 두 알림 중 하나의 실시간 SSE/APNs 가 누락됐다(레코드는 남아 다음 새로고침엔 보임).
     // 근본 수정: 각 행의 id 를 미리 생성해 넣고, 그 id 들로 정확히 되짚어 "전부" 푸시한다.
-    const rows = filtered.map((i) => ({ ...i, id: randomUUID() }));
+    const rows = filtered.map((i) => ({ ...i, id: randomUUID() as string }));
     await prisma.notification.createMany({ data: rows });
     const created = await prisma.notification.findMany({ where: { id: { in: rows.map((r) => r.id) } } });
     // 음소거된 방의 채팅 알림은 APNs(폰 푸시) 만 생략 — 한 번에 조회.
     const mutedSet = await mutedApnsSet(
       created.map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
     );
-    const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string } }[] = [];
+    // 아바타(actorAvatarUrl)는 Notification 컬럼이 아니라 입력에만 있으므로 id 로 되짚는다.
+    const inputById = new Map(rows.map((r) => [r.id, r]));
+    const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string; senderName?: string; senderAvatarPath?: string } }[] = [];
     for (const n of created) {
       if (pushFlag.get(`${n.userId}:${n.type as NotifyType}`) === false) continue;
       publish(n.userId, "notification", n);
       const rid = roomIdFromLink(n.linkUrl);
       if (!(rid && mutedSet.has(`${n.userId}:${rid}`))) {
-        apnsTargets.push({ userId: n.userId, payload: { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined, groupId: rid ?? undefined } });
+        // 채팅(DM/MENTION)만 Communication Notification(발신자 아바타) 대상. 결재/공지 등은 일반 알림.
+        const isChat = n.type === "DM" || n.type === "MENTION";
+        const inp = inputById.get(n.id);
+        apnsTargets.push({
+          userId: n.userId,
+          payload: {
+            title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined, groupId: rid ?? undefined,
+            ...(isChat ? { senderName: n.actorName ?? undefined, senderAvatarPath: inp?.actorAvatarUrl ?? undefined } : {}),
+          },
+        });
       }
     }
     // 원격 푸시(iOS APNs) — fire-and-forget. pushToken 조회를 1회로 묶어 일괄 발송. 미설정/토큰없음이면 내부 no-op.

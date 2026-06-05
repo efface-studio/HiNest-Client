@@ -173,10 +173,12 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
               deliverPendingNotifications([
                 { id: n.id, title: n.title, body: n.body, linkUrl: n.linkUrl },
               ]);
-            } else {
-              // 가드에 걸린 알림도 "이미 본 것" 으로 마킹해서 reload() 시 재발송 방지.
-              markSeen([n.id]);
             }
+            // (음소거·카테고리로 가로막힌 건 위 if 가 OS 배너만 생략 — 벨/미읽음은 이미 반영됨.)
+            // 예전엔 여기서 markSeen 해 "영구 차단" 했는데, 그러면 다른 기기에서 음소거를 풀어도
+            // 그 알림이 영영 안 떴다(localStorage 음소거 미러가 stale 인 채 markSeen 까지 박혀서).
+            // reload() 도 shouldDeliverNotif 로 동일하게 필터하므로 markSeen 없이도 재발송되지 않고,
+            // 음소거 해제 후엔 reload 가 정상 배너를 띄운다. → markSeen 제거(근본 수정).
           } catch {}
         });
         // 채팅 실시간 푸시 — ChatMiniApp 이 window 리스너로 수신.

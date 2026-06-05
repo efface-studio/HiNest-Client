@@ -104,8 +104,10 @@ export interface ApnsPayload {
   sound?: string;
   /** 탭 시 이동할 인앱 경로(클라이언트가 읽어 라우팅). */
   linkUrl?: string;
-  /** 동일 스레드 묶음용 식별자(예: DM 방 id). */
+  /** 동일 스레드 묶음용 식별자(예: DM 방 id). apns-collapse-id 헤더로 = '교체' 동작. */
   threadId?: string;
+  /** OS 알림센터 그룹핑용 aps.thread-id. collapse(교체) 아님 — 같은 대화 배너를 묶기만 함. */
+  groupId?: string;
 }
 
 interface SendResult {
@@ -123,6 +125,8 @@ function sendOne(deviceToken: string, payload: ApnsPayload, host: string): Promi
       sound: payload.sound || "default",
     };
     if (typeof payload.badge === "number") aps.badge = payload.badge;
+    // OS 알림센터에서 같은 대화(방)끼리 묶이도록 thread-id 지정. (collapse-id 와 달리 교체가 아님)
+    if (payload.groupId) aps["thread-id"] = payload.groupId;
     const bodyObj: Record<string, unknown> = { aps };
     if (payload.linkUrl) bodyObj.linkUrl = payload.linkUrl;
     const body = Buffer.from(JSON.stringify(bodyObj));

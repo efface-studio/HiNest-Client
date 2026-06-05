@@ -94,7 +94,7 @@ export async function notify(input: NotifyInput) {
         muted = !!mem?.muted;
       }
       // 원격 푸시(iOS APNs) — fire-and-forget. 미설정/토큰없음이면 내부 no-op.
-      if (!muted) void sendApnsToUser(input.userId, { title: input.title, body: input.body, linkUrl: input.linkUrl });
+      if (!muted) void sendApnsToUser(input.userId, { title: input.title, body: input.body, linkUrl: input.linkUrl, groupId: rid ?? undefined });
     }
   } catch (e) {
     console.error("notify failed", e);
@@ -147,13 +147,13 @@ export async function notifyMany(inputs: NotifyInput[]) {
     const mutedSet = await mutedApnsSet(
       Array.from(picked.values()).map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
     );
-    const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string } }[] = [];
+    const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string } }[] = [];
     for (const [uid, n] of picked) {
       if (pushFlag.get(`${uid}:${n.type as NotifyType}`) !== false) {
         publish(uid, "notification", n);
         const rid = roomIdFromLink(n.linkUrl);
         if (!(rid && mutedSet.has(`${uid}:${rid}`))) {
-          apnsTargets.push({ userId: uid, payload: { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined } });
+          apnsTargets.push({ userId: uid, payload: { title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined, groupId: rid ?? undefined } });
         }
       }
     }

@@ -28,7 +28,7 @@ function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
 export async function registerPasskey(deviceName?: string) {
   console.info("[passkey] registerPasskey start");
   const opts = await api<any>("/api/passkey/register/options", { method: "POST", json: {} });
-  console.info("[passkey] got register options", { rpId: opts?.rp?.id, user: opts?.user?.name });
+  console.info("[passkey] got register options", { rpId: opts?.rp?.id });
   let response: any;
   try {
     response = await withTimeout(startRegistration({ optionsJSON: opts }), 65_000, "패스키 등록");

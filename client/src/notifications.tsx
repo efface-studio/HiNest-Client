@@ -131,6 +131,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     reload();
 
     let retry: number | null = null;
+    // SSE 재연결 백오프 — 서버 장애/인증 만료 시 3초마다 무한 재시도해 /stream 을
+    // 두드리지 않도록 지수 백오프(3→6→…→최대 60초). 연결 성공(onopen) 시 3초로 리셋.
+    let reconnectDelay = 3000;
+    function scheduleReconnect() {
+      retry = window.setTimeout(connect, reconnectDelay);
+      reconnectDelay = Math.min(reconnectDelay * 2, 60_000);
+    }
     // 채팅 이벤트는 별도 컴포넌트(ChatMiniApp) 에서 소비하므로 DOM CustomEvent 로
     // 재방송한다. 기존 "chat:open" / "chat:open-room" 같은 in-app event 와 동일 패턴.
     const rebroadcast = (name: "chat:sse-message" | "chat:sse-update" | "chat:sse-room", payload: unknown) => {
@@ -148,6 +155,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
           apiUrl("/api/notification/stream") + (streamToken ? `?token=${encodeURIComponent(streamToken)}` : "");
         const es = new EventSource(streamUrl, { withCredentials: true });
         esRef.current = es;
+        es.onopen = () => { reconnectDelay = 3000; }; // 연결 성공 → 백오프 리셋
         es.addEventListener("notification", (ev: MessageEvent) => {
           try {
             const n = JSON.parse(ev.data) as Notif;
@@ -184,10 +192,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         es.onerror = () => {
           es.close();
           esRef.current = null;
-          retry = window.setTimeout(connect, 3000);
+          scheduleReconnect();
         };
       } catch {
-        retry = window.setTimeout(connect, 3000);
+        scheduleReconnect();
       }
     }
     connect();

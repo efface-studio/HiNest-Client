@@ -63,6 +63,12 @@ export default function SchedulePage() {
   const [saving, setSaving] = useState(false);
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [view, setView] = useState<"month" | "week">("month");
+  // 모바일 월 보기에서 그리드 아래 아젠다가 보여줄 '선택한 하루'. 기본은 오늘(자정 기준).
+  // eventsOn 이 날짜를 자정 기준으로 비교하므로 시각이 붙은 new Date() 를 그대로 쓰면 당일 일정이 누락됨.
+  const [selectedDay, setSelectedDay] = useState(() => {
+    const t = new Date();
+    return new Date(t.getFullYear(), t.getMonth(), t.getDate());
+  });
 
   async function load(aliveRef?: { current: boolean }) {
     // 주간 보기가 달 경계를 넘는 경우(이전/다음 달 일부 날짜)까지 커버하도록 앞뒤 1주 여유.
@@ -138,8 +144,15 @@ export default function SchedulePage() {
 
   // 헤더 ←/→ — 월 보기는 ±1달, 주 보기는 ±7일.
   function navCursor(dir: 1 | -1) {
-    if (view === "month") setCursor(new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1));
-    else setCursor(new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + dir * 7));
+    if (view === "month") {
+      const next = new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1);
+      setCursor(next);
+      // 아젠다 선택일도 새 달로 옮긴다 — 그 달에 오늘이 있으면 오늘, 아니면 1일. (자정 기준)
+      const t = new Date();
+      const today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+      const sameMonth = today.getFullYear() === next.getFullYear() && today.getMonth() === next.getMonth();
+      setSelectedDay(sameMonth ? today : next);
+    } else setCursor(new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + dir * 7));
   }
 
   async function create(e: React.FormEvent) {
@@ -249,6 +262,7 @@ export default function SchedulePage() {
       />
 
       {view === "month" ? (
+      <>
       <div className="card cal-fullbleed p-0 overflow-hidden">
         <div className="grid grid-cols-7 bg-slate-50 border-b border-slate-100">
           {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
@@ -263,6 +277,7 @@ export default function SchedulePage() {
             const isToday =
               d &&
               new Date().toDateString() === d.toDateString();
+            const isSelected = d && d.toDateString() === selectedDay.toDateString();
             const holiday = d ? getHoliday(d) : undefined;
             const isSunday = d && d.getDay() === 0;
             const isSaturday = d && d.getDay() === 6;
@@ -276,13 +291,13 @@ export default function SchedulePage() {
             return (
               <div
                 key={i}
-                className={`min-h-[78px] sm:min-h-[110px] border-b border-ink-100 ${i % 7 !== 6 ? "border-r" : ""} p-1 sm:p-2 ${
+                className={`min-h-[64px] sm:min-h-[110px] border-b border-ink-100 ${i % 7 !== 6 ? "border-r" : ""} p-1 sm:p-2 transition-colors ${
                   holiday ? "bg-rose-50/40 dark:bg-rose-500/10" : ""
-                } ${d ? "cursor-pointer sm:cursor-default hover:bg-ink-25 sm:hover:bg-transparent" : ""}`}
+                } ${isSelected ? "bg-brand-50/70 dark:bg-brand-500/15 sm:bg-transparent sm:dark:bg-transparent" : ""} ${d ? "cursor-pointer sm:cursor-default hover:bg-ink-25 sm:hover:bg-transparent" : ""}`}
                 onClick={() => {
-                  // 모바일에서는 셀 탭으로 해당 날짜 상세 열기
+                  // 모바일: 셀 탭으로 그 날을 선택 → 아래 아젠다가 해당 날짜 일정으로 갱신.
                   if (d && typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches) {
-                    setDayOpen(d);
+                    setSelectedDay(d);
                   }
                 }}
               >
@@ -344,6 +359,21 @@ export default function SchedulePage() {
           })}
         </div>
       </div>
+      {/* 모바일: 선택한 날의 일정 아젠다 — 그리드 아래 빈 공간을 자연스럽게 채운다. */}
+      <div className="sm:hidden mt-3">
+        <DayAgenda
+          date={selectedDay}
+          events={eventsOn(selectedDay)}
+          onOpenEvent={() => setDayOpen(selectedDay)}
+          onAdd={() => {
+            const p = (n: number) => String(n).padStart(2, "0");
+            const ymd = `${selectedDay.getFullYear()}-${p(selectedDay.getMonth() + 1)}-${p(selectedDay.getDate())}`;
+            setForm((f) => ({ ...f, startAt: `${ymd}T09:00`, endAt: `${ymd}T10:00` }));
+            setOpen(true);
+          }}
+        />
+      </div>
+      </>
       ) : (
         <WeekAgenda days={weekDays} eventsOn={eventsOn} onOpenDay={(d) => setDayOpen(d)} />
       )}
@@ -423,6 +453,59 @@ function WeekAgenda({ days, eventsOn, onOpenDay }: { days: Date[]; eventsOn: (d:
           </div>
         );
       })}
+    </div>
+  );
+}
+
+/** 월 보기(모바일) — 선택한 하루의 일정 아젠다. 컴팩트한 월 그리드 아래의 빈 공간을
+ *  실제 콘텐츠로 채워 'iOS 캘린더'처럼 자연스럽게 만든다. 데스크톱은 셀 안 칩으로 충분해 숨김. */
+function DayAgenda({ date, events, onOpenEvent, onAdd }: { date: Date; events: Event[]; onOpenEvent: () => void; onAdd: () => void }) {
+  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+  const dow = date.getDay();
+  const isToday = new Date().toDateString() === date.toDateString();
+  const titleColor = dow === 0 ? "text-rose-500" : dow === 6 ? "text-accent-500" : "text-ink-900";
+  return (
+    <div className="card cal-fullbleed p-0 overflow-hidden">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-ink-100">
+        <span className={`text-[15px] font-extrabold tabular ${titleColor}`}>
+          {date.getMonth() + 1}월 {date.getDate()}일
+        </span>
+        <span className="text-[12.5px] font-bold text-ink-500">{DOW[dow]}요일</span>
+        {isToday && (
+          <span className="text-[10px] font-extrabold text-brand-600 bg-brand-50 dark:bg-brand-500/15 px-1.5 py-0.5 rounded-full">오늘</span>
+        )}
+        <span className="ml-auto text-[12px] font-bold text-ink-400 tabular">{events.length}건</span>
+      </div>
+      {events.length === 0 ? (
+        <button type="button" onClick={onAdd} className="w-full px-4 py-10 flex flex-col items-center gap-1 active:bg-ink-25 transition">
+          <span className="text-[13px] text-ink-400">이 날은 일정이 없어요</span>
+          <span className="text-[12.5px] font-bold text-brand-600">+ 일정 추가</span>
+        </button>
+      ) : (
+        <div className="divide-y divide-ink-100">
+          {events.map((e) => (
+            <button
+              key={e.id}
+              type="button"
+              onClick={onOpenEvent}
+              className="w-full flex items-center gap-3 text-left px-4 py-3 hover:bg-ink-25 active:bg-ink-50 transition"
+            >
+              <span className="w-1 h-9 rounded-full flex-shrink-0" style={{ background: e.color }} />
+              <div className="flex-1 min-w-0">
+                <div className="text-[14px] font-bold text-ink-900 truncate">{e.title}</div>
+                <div className="text-[11.5px] text-ink-500 tabular mt-0.5">
+                  {new Date(e.startAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                  {" – "}
+                  {new Date(e.endAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                </div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-300 flex-shrink-0">
+                <polyline points="9 18 15 12 9 6" />
+              </svg>
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

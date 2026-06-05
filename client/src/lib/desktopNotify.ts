@@ -102,15 +102,28 @@ export function showDesktopNotification(opts: {
   icon?: string;
   tag?: string;
 }) {
-  if (!supported()) return;
-  if (Notification.permission !== "granted") return;
   if (!isDesktopEnabled()) return;
   if (alreadySeen(opts.id)) return;
 
+  // ── Electron(데스크톱 앱): 검증된 메인 프로세스 경로로 보낸다 ───────────────────
+  // 렌더러의 Web Notification API 는 Mac App Store(샌드박스)+원격 URL 빌드에서
+  // Notification.permission 이 "granted" 로 안 잡혀 위 게이트에 조용히 막히는 경우가 있다.
+  // (로그인 환영 알림이 잘 뜨는 건 메인 프로세스 IPC 라서 — 동일 경로를 재사용한다.)
+  // 데스크톱 앱은 창을 트레이로 숨겨두고 쓰는 일이 많아 포커스와 무관하게 항상 띄운다.
+  if (isElectron()) {
+    try {
+      void window.hinest?.showNotification?.({ title: opts.title, body: opts.body });
+    } catch {}
+    markSeen([opts.id]);
+    return;
+  }
+
+  // ── 일반 웹 브라우저: Web Notifications API ───────────────────────────────────
+  if (!supported()) return;
+  if (Notification.permission !== "granted") return;
+
   // 탭 포커스 중이면 굳이 OS 알림 띄우지 않음 (앱 내 벨로 확인 가능)
-  // 단, Electron(데스크톱 앱) 에선 항상 띄운다 (사용자가 앱 켜두고 다른 일 하는 케이스 많음)
   if (
-    !isElectron() &&
     typeof document !== "undefined" &&
     document.visibilityState === "visible" &&
     document.hasFocus()
@@ -167,7 +180,10 @@ export function deliverPendingNotifications(
     }
     return;
   }
-  if (!supported() || Notification.permission !== "granted" || !isDesktopEnabled()) return;
+  // Electron 은 showDesktopNotification 이 메인 프로세스 경로로 처리하므로 렌더러 권한 게이트를
+  // 건너뛴다. 일반 웹만 미리 권한/지원을 확인(불필요한 루프 회피).
+  if (!isElectron() && (!supported() || Notification.permission !== "granted")) return;
+  if (!isDesktopEnabled()) return;
   for (const it of items) {
     if (alreadySeen(it.id)) continue;
     showDesktopNotification({ id: it.id, title: it.title, body: it.body, url: it.linkUrl });

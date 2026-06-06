@@ -56,14 +56,15 @@ export default function ChatFab() {
     setNativeTabBarHidden("chat", open);
     return () => setNativeTabBarHidden("chat", false);
   }, [open]);
-  // 모바일(≤640px) 에서는 사내톡을 풀스크린 페이지처럼 띄움.
-  // 뷰포트 크기 변화(회전/리사이즈) 시 갱신.
+  // 모바일·iPad portrait(<1024px) 에서는 사내톡을 풀스크린 페이지처럼 띄움(데스크탑은 우하단 팝업).
+  // Tailwind md=1024 와 동일 기준으로 'md 미만 = 풀스크린', 'md+ = 팝업' 분기. 회전/리사이즈 갱신.
+  const MOBILE_MQ = "(max-width: 1023.98px)";
   const [isMobile, setIsMobile] = useState<boolean>(
-    typeof window !== "undefined" ? window.matchMedia("(max-width: 640px)").matches : false
+    typeof window !== "undefined" ? window.matchMedia(MOBILE_MQ).matches : false
   );
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const mq = window.matchMedia("(max-width: 640px)");
+    const mq = window.matchMedia(MOBILE_MQ);
     const update = () => setIsMobile(mq.matches);
     mq.addEventListener?.("change", update);
     return () => mq.removeEventListener?.("change", update);

@@ -5,6 +5,7 @@ import { useAuth } from "../auth";
 import InstallAppBanner from "../components/InstallAppBanner";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
+import { isPreviewMode } from "../lib/previewMock";
 
 type Notice = { id: string; title: string; content: string; createdAt: string; author: { name: string; isDeveloper?: boolean }; pinned: boolean };
 type Event = { id: string; title: string; startAt: string; endAt: string; scope: string; color: string };
@@ -96,10 +97,15 @@ export default function DashboardPage() {
   const startLabel = formatHHmm(startMin);
   const endLabel = formatHHmm(endMin);
   const dayProgress = useMemo(() => {
-    const m = now.getHours() * 60 + now.getMinutes();
     if (endMin <= startMin) return 0; // 잘못된 설정은 0%
+    // 데모(미리보기)는 방문 시각이 새벽일 수도 있어 09–18 절대시각 기준이면 0% 가 떠 자연스럽지 못함.
+    // 출근 후 경과 시간(workedMin) 을 근무 총 시간으로 나눠 '근무한 비율' 로 보여준다 — 항상 그럴듯한 값.
+    if (isPreviewMode() && att?.checkIn) {
+      return Math.max(0, Math.min(1, workedMin / (endMin - startMin)));
+    }
+    const m = now.getHours() * 60 + now.getMinutes();
     return Math.max(0, Math.min(1, (m - startMin) / (endMin - startMin)));
-  }, [now, startMin, endMin]);
+  }, [now, startMin, endMin, workedMin, att?.checkIn]);
 
   return (
     <div className="space-y-4">

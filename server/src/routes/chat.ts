@@ -553,6 +553,13 @@ router.post("/rooms/:id/messages", async (req, res) => {
   if (!scheduledAt) {
     const preview = (d.content ?? "").trim() || (d.fileName ? `📎 ${d.fileName}` : "(첨부)");
     const roomName = msg.room.type === "DIRECT" ? `${u.name}님과의 1:1` : msg.room.name;
+    // 그룹방은 방 사진이 없으므로, 방 id 로 일관된 색을 만들어 '방 이름 이니셜' 기본 아바타에 쓴다.
+    const groupColor = (seed: string) => {
+      let h = 0;
+      for (let i = 0; i < seed.length; i++) h = (Math.imul(h, 31) + seed.charCodeAt(i)) >>> 0;
+      const palette = ["#3D54C4", "#2F6FED", "#5B6BD6", "#3FA0E8", "#2E7FA8", "#4FB6A0", "#3FA65A", "#6FB13C", "#C7942E", "#C77E3A", "#D4622E", "#C8443A"];
+      return palette[h % palette.length];
+    };
 
     if (msg.room.type === "DIRECT") {
       const others = await prisma.roomMember.findMany({
@@ -568,6 +575,7 @@ router.post("/rooms/:id/messages", async (req, res) => {
           linkUrl: `/chat?room=${msg.roomId}`,
           actorName: u.name,
           actorAvatarUrl: msg.sender.avatarUrl ?? undefined,
+          actorColor: msg.sender.avatarColor ?? undefined,
         }))
       );
     } else {
@@ -586,8 +594,10 @@ router.post("/rooms/:id/messages", async (req, res) => {
           title: mentionSet.has(m.userId) ? `@${u.name} · ${roomName}` : roomName,
           body: `${u.name}: ${preview}`.slice(0, 140),
           linkUrl: `/chat?room=${msg.roomId}`,
-          actorName: u.name,
-          actorAvatarUrl: msg.sender.avatarUrl ?? undefined,
+          // 그룹방은 발신자 개인 아바타 대신 '방'(이름 이니셜 + 방별 색)을 보여준다 — 카톡 단톡방처럼.
+          actorName: roomName,
+          actorAvatarUrl: undefined,
+          actorColor: groupColor(msg.roomId),
         }))
       );
     }

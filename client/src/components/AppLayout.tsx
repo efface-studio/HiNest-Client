@@ -1768,7 +1768,7 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
               이벤트로 ChatFab 패널을 토글한다(패널/리스너는 ChatFab 에 그대로 있음).
               데스크톱(md+)은 ChatFab 의 우하단 FAB 를 그대로 쓰므로 여기선 숨긴다. */}
           <button
-            className="btn-icon relative md:hidden !w-[40px] !h-[40px]"
+            className="btn-icon relative md:hidden !w-[40px] !h-[40px] -mr-1.5"
             onClick={() => window.dispatchEvent(new CustomEvent("chat:toggle"))}
             title="사내톡"
             aria-label={chatUnread > 0 ? `사내톡 · 안 읽은 메시지 ${chatUnread}건` : "사내톡"}

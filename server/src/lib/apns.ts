@@ -48,8 +48,10 @@ const HOST = PRIMARY_HOST; // 표시·진단용 기본 게이트웨이
 // 통신알림(발신자 아바타) 임시 스위치.
 // 현재 iOS 빌드의 NSE(mutable-content 처리)가 채팅 푸시를 가로채 알림이 표시되지 않는 문제가 있어,
 // 안정화 전까지 꺼 둔다 → mutable-content 를 싣지 않으므로 NSE 가 호출되지 않고 "일반 알림으로 정상 표시".
-// NSE 표시 문제(아바타 스타일) 해결 후 이 값을 true 로 되돌리면 통신알림(아바타)이 복구된다.
-const ENABLE_COMMUNICATION_PUSH = false;
+// 재활성화: "사진 있는 발신자 알림 0" 의 진짜 원인은 actorAvatarUrl createMany 버그(#315 수정)였고,
+// NSE 도 다운로드 실패 시 "알림 전달 + 실패표시 / 최대 재시도" 로 견고화됨(NotificationService.swift).
+// → true 로 되돌려 통신알림(발신자 아바타) 복구.
+const ENABLE_COMMUNICATION_PUSH = true;
 
 export function apnsEnabled(): boolean {
   return Boolean(KEY_RAW && KEY_ID && TEAM_ID);

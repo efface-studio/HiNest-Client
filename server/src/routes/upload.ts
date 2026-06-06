@@ -22,8 +22,14 @@ if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 // multer는 multipart 파일명을 latin1로 해석해서 한글이 깨짐 → UTF-8로 복원
 function fixName(name: string) {
   if (!name) return name;
+  // multer/busboy 는 파일명을 브라우저가 보낸 방식에 따라 latin1(구식 `filename=`) 또는
+  // UTF-8(`filename*=UTF-8''`, 모던 브라우저)로 디코딩한다. 전자만 latin1→utf8 복원이 필요하고,
+  // 후자(이미 올바른 한글)에 복원을 또 하면 "ë³´ê³ ì„œ" 처럼 깨진다(다운로드 이름이 이상해지는 원인).
+  // → latin1 상위바이트(0x80–0xFF)가 있고 UTF-8 재해석이 유효할 때만 복원, 아니면 원본 유지.
   try {
-    return Buffer.from(name, "latin1").toString("utf8");
+    if (!/[-ÿ]/.test(name)) return name; // ASCII / 이미 정상 UTF-8(코드포인트>0xFF) → 그대로
+    const decoded = Buffer.from(name, "latin1").toString("utf8");
+    return decoded.includes("�") ? name : decoded; // 복원 결과가 깨지면 원본 유지
   } catch {
     return name;
   }

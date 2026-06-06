@@ -215,12 +215,13 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     }
     connect();
 
-    // SSE fallback 폴링 — SSE 가 끊겼을 때만 의미가 있다.
-    // 비용 절감:
-    //   - 30초 → 90초. SSE 가 살아있으면 어차피 push 로 동기화되므로 fallback 빈도 낮춰도 안전.
+    // SSE fallback 폴링. 단 웹은 Vercel 이 SSE 를 버퍼/끊어 라이브 SSE 가 사실상 0 이라
+    // 이 폴링이 '주 동기화 경로'가 된다 → 미읽음 실시간성(①)을 위해 90초→20초로 단축.
+    //   (네이티브는 ?token= 직결 SSE 가 살아있어 이 폴링은 진짜 fallback — 거의 안 돔.)
+    //   (근본 해결 = 웹 SSE 백엔드 직결[B]. 그게 배포되기 전까지의 개선책.)
     //   - 탭 hidden 이면 폴링 자체를 중단 (visibility 복귀 시 한 번 reload + interval 재무장).
     let t: number | null = null;
-    function startPoll() { if (t === null) t = window.setInterval(reload, 90_000); }
+    function startPoll() { if (t === null) t = window.setInterval(reload, 20_000); }
     function stopPoll() { if (t !== null) { window.clearInterval(t); t = null; } }
     if (document.visibilityState === "visible") startPoll();
 

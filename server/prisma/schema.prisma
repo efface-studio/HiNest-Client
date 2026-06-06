@@ -725,6 +725,10 @@ model RoomMember {
   // 방별 알림 음소거 — true 면 서버가 이 방 채팅 알림의 APNs(폰 푸시) 를 보내지 않음.
   // (알림 레코드·SSE·미읽음 뱃지는 유지 — 조용히 쌓이기만 함.) 기기 간 동기화를 위해 서버에 저장.
   muted      Boolean   @default(false)
+  // 1:1 대화 '나만 삭제'(per-user 숨김). A 가 숨기면 A 목록에선 사라지고, A 는 hiddenAt 이후
+  // 메시지만 본다(이전 기록은 안 보임). 상대(B)의 RoomMember 는 무관 → B 는 그대로 유지.
+  // 숨긴 뒤 새 메시지가 오면 방이 A 목록에 다시 나타난다(hiddenAt 이후 내용만).
+  hiddenAt   DateTime?
   room       ChatRoom  @relation(fields: [roomId], references: [id], onDelete: Cascade)
   user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 

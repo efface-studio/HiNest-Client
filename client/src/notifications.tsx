@@ -158,17 +158,27 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         window.dispatchEvent(new CustomEvent(name, { detail: payload }));
       } catch {}
     };
-    function connect() {
+    // 웹은 Vercel 이 SSE 를 버퍼/끊어 라이브 SSE 가 0 이라, 백엔드(api.*)로 직결한다. 직결엔
+    // ?token= 이 필요한데 웹은 JS 에 세션토큰이 없어(httpOnly 쿠키) 짧은 수명 SSE 티켓을 받아 쓴다.
+    // 네이티브는 기존처럼 자기 API_BASE + 저장된 토큰으로 직결(별도 티켓 불필요).
+    let useDirect = !isCapacitorNative();
+    let directOpened = false; // 직결이 한 번이라도 붙었나 — 첫 연결조차 실패하면 프록시로 폴백.
+    async function resolveStreamUrl(): Promise<string> {
+      if (useDirect) {
+        const { ticket } = await api<{ ticket: string }>("/api/notification/sse-ticket");
+        return `https://api.${location.hostname}/api/notification/stream?token=${encodeURIComponent(ticket)}`;
+      }
+      // 네이티브: 저장 토큰으로 ?token= 직결. 웹 폴백: 상대경로(Vercel 프록시)+쿠키.
+      const streamToken = getAuthToken();
+      return apiUrl("/api/notification/stream") + (streamToken ? `?token=${encodeURIComponent(streamToken)}` : "");
+    }
+    async function connect() {
       try {
-        // 네이티브 앱은 EventSource 가 헤더를 못 싣고 쿠키도 cross-site ITP 로 막혀 SSE 가 안 붙는다.
-        // 세션 토큰을 ?token= 쿼리로 보내 인증한다(서버 queryTokenAuth 가 Bearer 로 승격). 웹/데스크톱은
-        // 토큰이 없어 쿼리 없이 기존 쿠키 인증 그대로.
-        const streamToken = getAuthToken();
-        const streamUrl =
-          apiUrl("/api/notification/stream") + (streamToken ? `?token=${encodeURIComponent(streamToken)}` : "");
-        const es = new EventSource(streamUrl, { withCredentials: true });
+        const streamUrl = await resolveStreamUrl();
+        // 직결은 티켓(쿼리)으로 인증 → 쿠키 불필요. 프록시 폴백 경로는 기존 쿠키 인증 유지.
+        const es = new EventSource(streamUrl, { withCredentials: !useDirect });
         esRef.current = es;
-        es.onopen = () => { reconnectDelay = 3000; }; // 연결 성공 → 백오프 리셋
+        es.onopen = () => { reconnectDelay = 3000; if (useDirect) directOpened = true; }; // 연결 성공 → 백오프 리셋
         es.addEventListener("notification", (ev: MessageEvent) => {
           try {
             const n = JSON.parse(ev.data) as Notif;
@@ -207,13 +217,17 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         es.onerror = () => {
           es.close();
           esRef.current = null;
+          // 직결이 한 번도 못 붙으면(CORS/오리진/티켓 등) 프록시 경로로 영구 폴백.
+          if (useDirect && !directOpened) useDirect = false;
           scheduleReconnect();
         };
       } catch {
+        // 티켓 발급 실패 등 → 직결 포기하고 프록시(→폴링 폴백)로.
+        if (useDirect && !directOpened) useDirect = false;
         scheduleReconnect();
       }
     }
-    connect();
+    void connect();
 
     // SSE fallback 폴링. 단 웹은 Vercel 이 SSE 를 버퍼/끊어 라이브 SSE 가 사실상 0 이라
     // 이 폴링이 '주 동기화 경로'가 된다 → 미읽음 실시간성(①)을 위해 90초→20초로 단축.

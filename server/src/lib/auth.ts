@@ -142,6 +142,24 @@ export function signToken(
   return jwt.sign({ ...user, sid: sessionId }, SECRET, { expiresIn: "7d" });
 }
 
+/**
+ * 웹 전용 짧은 수명(2분) SSE 티켓.
+ *
+ * 웹은 보안상 JS 에 세션 토큰을 노출하지 않고 httpOnly 쿠키만 쓴다. 그런데 Vercel 이 SSE 를
+ * 버퍼/끊어 웹 라이브 SSE 가 0 이라, 백엔드(api.*)로 직결해야 한다. 직결 EventSource 는 커스텀
+ * 헤더를 못 싣고 cross-subdomain 쿠키도 안 가므로 `?token=` 이 유일한 인증 경로인데, 웹엔 쓸
+ * 토큰이 없다. → 쿠키 인증된 요청에서만 이 짧은 티켓을 발급해 EventSource 핸드셰이크에 1회 쓴다
+ * (연결 후엔 재검증되지 않으므로 2분이면 충분, 노출 창은 최소). sid 를 실어 강제 로그아웃/세션
+ * 무효화도 그대로 적용된다(requireAuth 가 sid 의 revokedAt 을 확인).
+ */
+export function signSseTicket(user: AuthUser, sid: string): string {
+  return jwt.sign(
+    { id: user.id, role: user.role, name: user.name, email: user.email, companyId: user.companyId ?? null, sid },
+    SECRET,
+    { expiresIn: "2m" },
+  );
+}
+
 /** 로그인 성공 시 호출 — 새 Session row 생성 후 sessionId 반환. JWT 에 박아두면
  *  서버에서 revokedAt 로 즉시 무효화 가능. */
 export async function createSession(userId: string, req: Request): Promise<string> {

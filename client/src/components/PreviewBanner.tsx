@@ -1,12 +1,17 @@
 import { isPreviewMode, disablePreview } from "../lib/previewMock";
+import { isCapacitorNative } from "../lib/platform";
 
 /**
  * 미리보기 모드 알림 배너 — 화면 최상단 고정. 클릭하면 가입 페이지로.
  * 모바일에서는 한 줄에 압축 (긴 텍스트는 줄임표), 데스크톱에서는 풀 메시지.
  * iOS 노치 영역(env(safe-area-inset-top))을 흡수해서 상태바와 자연스럽게 융합.
+ *
+ * 네이티브 앱(Capacitor) 에선 배너를 숨긴다 — '전체' 탭의 로그아웃 = 미리보기 종료.
+ * (모바일 화면을 데모 마크업 없이 깔끔하게 보여주려는 요구사항.)
  */
 export default function PreviewBanner({ safeAreaTop = true }: { safeAreaTop?: boolean }) {
   if (!isPreviewMode()) return null;
+  if (isCapacitorNative()) return null;
   return (
     <div
       className="hinest-preview-banner"

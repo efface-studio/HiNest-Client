@@ -17,8 +17,8 @@ import { PinsProvider, usePins, pinLinkUrl } from "../pins";
 import { ROUTE_PREFETCH, loadProject } from "../routes";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
-import { isPreviewMode } from "../lib/previewMock";
-import { isInstalledApp, isDesktopApp, nativePlatform } from "../lib/platform";
+import { isPreviewMode, disablePreview } from "../lib/previewMock";
+import { isInstalledApp, isDesktopApp, nativePlatform, isCapacitorNative } from "../lib/platform";
 import { LiquidGlassTabBar, setNativeTabBarHidden, syncNativeTabBarVisibility } from "../lib/liquidGlassTabBar";
 import { confirmLogout } from "../lib/confirmLogout";
 
@@ -1385,10 +1385,19 @@ export function MobileMenuPage() {
         </div>
       )}
 
-      {/* 로그아웃 */}
+      {/* 로그아웃 — 미리보기 모드일 땐 '미리보기 종료'로 동작(데모 데이터 끄고 로그인 페이지로). */}
       <button
         type="button"
-        onClick={async () => { if (!(await confirmLogout())) return; await logout(); nav("/login"); }}
+        onClick={async () => {
+          if (isPreviewMode()) {
+            disablePreview();
+            window.location.replace("/login");
+            return;
+          }
+          if (!(await confirmLogout())) return;
+          await logout();
+          nav("/login");
+        }}
         className="w-full flex items-center justify-center gap-2 h-[46px] rounded-full border border-ink-150 text-[13px] font-bold text-ink-600 hover:bg-ink-100 hover:text-ink-900 transition"
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1396,7 +1405,7 @@ export function MobileMenuPage() {
           <path d="m16 17 5-5-5-5" />
           <path d="M21 12H9" />
         </svg>
-        <span>로그아웃</span>
+        <span>{isPreviewMode() ? "미리보기 종료" : "로그아웃"}</span>
       </button>
 
       {/* 법적 고지 — 로그인 후에도 메뉴에서 접근 가능하게(가입/로그인 화면 외 추가 노출). */}

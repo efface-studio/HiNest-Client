@@ -53,6 +53,22 @@ const config: CapacitorConfig = {
       resize: "native",
       resizeOnFullScreen: true,
     },
+    // Capacitor Live Updates (Capgo, MIT, self-hosted) — 셸은 App Store 한 번만 심사받고,
+    // 웹 번들(dist)은 우리 서버에서 OTA 로 받는다. Phase 1: 셸 통합만(autoUpdate=false). Phase 2
+    // 에서 진짜 zip 배포 자동화 들어가면 true 로 전환. autoUpdate 가 켜져 있으면 SDK 가
+    // 백그라운드에서 updateUrl 폴링 → 다음 콜드 스타트 때 새 번들로 교체.
+    //   updateUrl  : POST {device_id, app_id, version, bundle_id, channel} → 새 버전 JSON
+    //   statsUrl   : POST 통계(선택, 우선 비활성)
+    //   appReadyTimeout: notifyAppReady() 가 이 시간 안에 안 불리면 직전 정상 번들로 자동 롤백.
+    CapacitorUpdater: {
+      autoUpdate: false,
+      updateUrl: "https://nest.hi-vits.com/api/updates/check",
+      appReadyTimeout: 10000,
+      responseTimeout: 20,
+      autoDeleteFailed: true,
+      autoDeletePrevious: true,
+      resetWhenUpdate: true,
+    },
     SplashScreen: {
       // 네이티브 스플래시는 솔리드 배경(앱 bg색) 이미지로 콜드 로드만 덮는다. 번들이 로드되면
       // main.tsx 가 즉시 hide() 하고 index.html 의 커스텀 인트로(배지 → 'HiNest' 슬라이드인)가

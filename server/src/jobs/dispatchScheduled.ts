@@ -46,12 +46,8 @@ async function dispatchOne(id: string): Promise<void> {
   // 알림 — 즉시 경로(chat.ts)와 동일 정책. DIRECT: 상대에게 DM / GROUP·TEAM: 멘션=MENTION, 그외=DM.
   const preview = (msg.content ?? "").trim() || (msg.fileName ? `📎 ${msg.fileName}` : "(첨부)");
   const roomName = msg.room.type === "DIRECT" ? `${msg.sender.name}님과의 1:1` : msg.room.name;
-  const groupColor = (seed: string) => {
-    let h = 0;
-    for (let i = 0; i < seed.length; i++) h = (Math.imul(h, 31) + seed.charCodeAt(i)) >>> 0;
-    const palette = ["#3D54C4", "#2F6FED", "#5B6BD6", "#3FA0E8", "#2E7FA8", "#4FB6A0", "#3FA65A", "#6FB13C", "#C7942E", "#C77E3A", "#D4622E", "#C8443A"];
-    return palette[h % palette.length];
-  };
+  // 그룹/팀방 아바타 색 — 클라 roomColor 와 동일(TEAM=청록 #00C4B4, 그 외 그룹=슬레이트 #4E5968).
+  const roomAvatarColor = msg.room.type === "TEAM" ? "#00C4B4" : "#4E5968";
   const mentions = (msg.mentions ?? "")
     .split(",")
     .map((s) => s.trim())
@@ -82,7 +78,7 @@ async function dispatchOne(id: string): Promise<void> {
         linkUrl: `/chat?room=${msg.roomId}`,
         actorName: roomName,
         actorAvatarUrl: undefined,
-        actorColor: groupColor(msg.roomId),
+        actorColor: roomAvatarColor,
       })),
     );
   }

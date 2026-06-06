@@ -368,7 +368,7 @@ router.get("/rooms/:id/messages", async (req, res) => {
       select: {
         id: true,
         type: true,
-        members: { select: { userId: true, lastReadAt: true } },
+        members: { select: { userId: true, lastReadAt: true, hiddenAt: true } },
       },
     }),
     afterId
@@ -405,6 +405,14 @@ router.get("/rooms/:id/messages", async (req, res) => {
   // afterId 가 다른 방의 것을 가리키면 무시 — 클라이언트가 방을 막 전환한 상황
   if (after && after.roomId === room.id) {
     where.createdAt = { gt: after.createdAt };
+  }
+  // per-user 숨김: 내가 숨긴 방이면 hiddenAt 이전 메시지는 안 보인다('나만 삭제' 효과).
+  // afterId(페이지네이션 바닥)와 함께면 더 늦은 쪽이 실제 바닥.
+  const meMember = room.members.find((m) => m.userId === u.id);
+  if (meMember?.hiddenAt) {
+    const hid = new Date(meMember.hiddenAt);
+    const cur = where.createdAt?.gt ? new Date(where.createdAt.gt) : null;
+    where.createdAt = { gt: cur && cur > hid ? cur : hid };
   }
 
   const raw = await prisma.chatMessage.findMany({

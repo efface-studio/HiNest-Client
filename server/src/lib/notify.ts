@@ -78,6 +78,31 @@ async function mutedApnsSet(targets: { userId: string; linkUrl?: string | null }
   return new Set(muted.map((m) => `${m.userId}:${m.roomId}`));
 }
 
+/** 활성 시청자로 간주하는 lastReadAt 신선도 — 이 시간 안에 읽음이 갱신됐으면 "지금 그 방을 보고 있음". */
+const ACTIVE_VIEW_MS = 45_000;
+/**
+ * (userId, roomId) 쌍 중 "지금 그 방을 보고 있는" 조합을 `${userId}:${roomId}` Set 으로 반환.
+ * 보고 있는 방의 채팅 알림은 APNs(폰 푸시) 를 건너뛴다 — 화면에 떠 있으니 알림이 불필요(요구사항).
+ * 판정: RoomMember.lastReadAt 이 최근(ACTIVE_VIEW_MS 이내). 클라가 방을 보는 동안 읽음을 주기적으로
+ * 갱신(하트비트)하므로 보는 중엔 신선하게 유지된다. 레코드·SSE 는 그대로라 미읽음/채팅은 정상.
+ */
+async function activeViewerApnsSet(targets: { userId: string; linkUrl?: string | null }[]): Promise<Set<string>> {
+  const pairs = targets
+    .map((t) => ({ userId: t.userId, roomId: roomIdFromLink(t.linkUrl) }))
+    .filter((p): p is { userId: string; roomId: string } => !!p.roomId);
+  if (!pairs.length) return new Set();
+  const since = new Date(Date.now() - ACTIVE_VIEW_MS);
+  const active = await prisma.roomMember.findMany({
+    where: {
+      lastReadAt: { gte: since },
+      roomId: { in: Array.from(new Set(pairs.map((p) => p.roomId))) },
+      userId: { in: Array.from(new Set(pairs.map((p) => p.userId))) },
+    },
+    select: { roomId: true, userId: true },
+  });
+  return new Set(active.map((m) => `${m.userId}:${m.roomId}`));
+}
+
 export async function notify(input: NotifyInput) {
   try {
     const map = await resolveDelivery([input.userId], input.type);
@@ -142,6 +167,10 @@ export async function notifyMany(inputs: NotifyInput[]) {
     const mutedSet = await mutedApnsSet(
       created.map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
     );
+    // 지금 그 방을 보고 있는 사람에겐 APNs 생략(요구사항: 보는 방 알림 X). 레코드·SSE 는 그대로.
+    const activeSet = await activeViewerApnsSet(
+      created.map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
+    );
     // 아바타(actorAvatarUrl)는 Notification 컬럼이 아니라 입력에만 있으므로 id 로 되짚는다.
     const inputById = new Map(rows.map((r) => [r.id, r]));
     const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string; senderName?: string; senderAvatarPath?: string; senderAvatarColor?: string } }[] = [];
@@ -149,7 +178,7 @@ export async function notifyMany(inputs: NotifyInput[]) {
       if (pushFlag.get(`${n.userId}:${n.type as NotifyType}`) === false) continue;
       publish(n.userId, "notification", n);
       const rid = roomIdFromLink(n.linkUrl);
-      if (!(rid && mutedSet.has(`${n.userId}:${rid}`))) {
+      if (!(rid && (mutedSet.has(`${n.userId}:${rid}`) || activeSet.has(`${n.userId}:${rid}`)))) {
         // 채팅(DM/MENTION)만 Communication Notification(발신자 아바타) 대상. 결재/공지 등은 일반 알림.
         const isChat = n.type === "DM" || n.type === "MENTION";
         const inp = inputById.get(n.id);

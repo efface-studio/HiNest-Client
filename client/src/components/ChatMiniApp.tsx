@@ -312,6 +312,16 @@ export default function ChatMiniApp({
     return () => clearInterval(t);
   }, [activeId, isPanelOpen]);
 
+  // active-viewer 하트비트 — 방을 보는 동안(패널 열림 + 화면 보임) 15초마다 읽음을 갱신해,
+  // 서버가 'lastReadAt 신선 = 지금 보고 있음'으로 판정하게 한다(보는 방엔 APNs 푸시 X). 폴링과
+  // 별개의 전용 경로라 폴링 주기가 바뀌어도 active-viewer 판정이 안 깨진다. 닫거나 숨기면 멈춤.
+  useEffect(() => {
+    if (!activeId || !isPanelOpen) return;
+    const ping = () => { if (isChatVisible()) void markRead(activeId); };
+    const t = setInterval(ping, 15_000);
+    return () => clearInterval(t);
+  }, [activeId, isPanelOpen]);
+
   // SSE 수신 — NotificationProvider 의 EventSource 가 여기로 재방송한 chat:* 이벤트.
   // 대상 방이 현재 열려있는 방과 일치할 때만 상태에 반영. 아니면 rooms 목록만 갱신
   // (마지막 메시지 미리보기 / 미읽음 뱃지용).

@@ -171,12 +171,18 @@ export function showDesktopNotification(opts: {
 export function deliverPendingNotifications(
   items: { id: string; title: string; body?: string; linkUrl?: string }[]
 ) {
-  // 네이티브(Capacitor): WKWebView 는 Web Notification 미지원 → local-notifications 로 배너 표시(데스크톱 동등).
+  // 네이티브(Capacitor): WKWebView 는 Web Notification 미지원 → local-notifications 로 배너 표시.
   if (isCapacitorNative()) {
     const fresh = items.filter((it) => !alreadySeen(it.id));
     if (fresh.length) {
-      void showNativeNotifications(fresh);
+      // 항상 seen 처리 — 포그라운드 복귀 시 같은 알림이 로컬배너로 재등장하지 않게.
       markSeen(fresh.map((f) => f.id));
+      // ★ 포그라운드(visible)일 때만 로컬 배너를 띄운다. 백그라운드면 원격 APNs 푸시(+NSE 발신자
+      //   아바타)가 알림을 처리하므로, 여기서 로컬 알림을 스케줄하면 "앱로고 = 아바타 X" 배너가
+      //   먼저 떠버린다(앱이 백그라운드라도 잠깐 살아있으면 SSE 로 이 경로가 실행됐던 버그).
+      //   iOS 는 포그라운드에선 원격푸시 배너를 억제하므로, 포그라운드만 로컬 배너로 보완.
+      const foreground = typeof document !== "undefined" && document.visibilityState === "visible";
+      if (foreground) void showNativeNotifications(fresh);
     }
     return;
   }

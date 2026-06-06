@@ -653,8 +653,12 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   // 항상 "맨 위에 첫 번째로 보이는 요소" 만 흡수해서 더블 패딩 방지.
   const isPreview = isPreviewMode();
   const isImpersonating = !!impersonator;
+  // ⚠️ 네이티브(Capacitor)에선 PreviewBanner 가 렌더되지 않으므로(모바일 깔끔하게 가리는
+  //    요구사항, PreviewBanner.tsx 의 isCapacitorNative() 가드) 미리보기 모드라도 'preview'
+  //    슬롯을 쓰면 안 된다. 안 그러면 흡수자 없이 콘텐츠가 노치에 가려진다.
+  const previewBannerVisible = isPreview && !isCapacitorNative();
   const topSlot: "preview" | "impersonation" | "topbar" =
-    isPreview ? "preview" : isImpersonating ? "impersonation" : "topbar";
+    previewBannerVisible ? "preview" : isImpersonating ? "impersonation" : "topbar";
 
   useEffect(() => {
     if (!isMacDesktop || !window.hinest?.onFullscreenChange) return;

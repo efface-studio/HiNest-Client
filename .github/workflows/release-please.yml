@@ -18,6 +18,8 @@ name: Release Please
 on:
   push:
     branches: [main]
+  # 수동 트리거 — 권한 토글 직후 등 즉시 검증/재실행이 필요할 때 사용.
+  workflow_dispatch:
 
 permissions:
   contents: write     # 태그 / 릴리스 / CHANGELOG 커밋

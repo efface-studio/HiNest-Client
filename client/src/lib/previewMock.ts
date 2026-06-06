@@ -29,7 +29,8 @@ const DEMO_ME = {
   avatarColor: "#3D54C4",
   avatarUrl: null,
   superAdmin: true,
-  isDeveloper: true,
+  // 데모 사용자 = 일반 사용자 인상을 주기 위해 개발자 뱃지 제거.
+  isDeveloper: false,
   employeeNo: "AD0000001",
   presenceStatus: null,
   presenceMessage: null,
@@ -227,9 +228,12 @@ function schedule() {
 }
 
 function attendanceToday() {
-  // 오늘 09:30 출근, 퇴근 X (\"근무 중\" 상태)
-  const today = new Date(TODAY); today.setHours(9, 30, 0, 0);
-  return { attendance: { checkIn: today.toISOString(), checkOut: null } };
+  // 미리보기 진입 시 "정확히 3시간 38분 근무 중" 으로 보이게 — 현재 시각에서 빼서 checkIn 만든다.
+  // 데모용으로 'X시간 Y분' 카운터가 그럴듯한 값(3:38)으로 떨어진다(고정 09:30 출근이면 시간대마다
+  // 값이 0~10시간 사이로 튐). 퇴근 X = '근무 중' 상태.
+  const WORKED_MIN = 3 * 60 + 38;
+  const checkIn = new Date(Date.now() - WORKED_MIN * 60_000);
+  return { attendance: { checkIn: checkIn.toISOString(), checkOut: null } };
 }
 
 const DEMO_MEETINGS = [

@@ -5,11 +5,16 @@ import App from "./App";
 import { AuthProvider } from "./auth";
 import { FeatureFlagsProvider } from "./lib/featureFlags";
 import { isPreviewMode } from "./lib/previewMock";
+import { notifyLiveUpdateReady } from "./lib/liveUpdates";
 import { ThemeProvider } from "./theme";
 import "./styles.css";
 
 // 미리보기 모드 부트스트랩 — 새로고침 후 fetch/EventSource 가 실제 서버로 새지 않게 가장 먼저 패치.
 isPreviewMode();
+
+// Capacitor Live Updates — 새 OTA 번들이 로드된 직후 10초 안에 호출돼야 '정상 시작' 으로 간주.
+// 안 호출되면 직전 정상 번들로 자동 롤백(벽돌 앱 방지). 네이티브가 아니면 no-op.
+void notifyLiveUpdateReady();
 
 // 네이티브 앱 스플래시 — 번들이 로드되면 네이티브 스플래시(솔리드 배경)를 내리고,
 // index.html 의 커스텀 인트로 애니메이션(배지 → 'HiNest' 슬라이드인, 2초)을 시작한다.

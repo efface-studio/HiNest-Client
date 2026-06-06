@@ -388,8 +388,9 @@ export default function SchedulePage() {
           })}
         </div>
       </div>
-      {/* 모바일: 다가오는 일정(레퍼런스 디자인) — 그리드 아래를 채운다. */}
-      <div className="sm:hidden mt-3">
+      {/* 모바일·iPad: 다가오는 일정(레퍼런스 디자인) — 그리드 아래를 채운다.
+          md:hidden 으로 1024 미만(휴대폰 + iPad portrait)까지 보이게. 데스크탑은 우측 셀 칩으로 충분. */}
+      <div className="md:hidden mt-3">
         <UpcomingAgenda
           events={events}
           onOpenDay={(d) => setDayOpen(d)}

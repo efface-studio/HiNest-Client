@@ -120,6 +120,8 @@ export interface ApnsPayload {
   senderName?: string;
   /** 발신자 아바타 /uploads 상대경로(예: /uploads/x.png). NSE 가 App Group 세션토큰으로 받아 이미지로. */
   senderAvatarPath?: string;
+  /** 발신자 아바타 색(hex, 예 "#3D54C4"). 사진이 없으면 NSE 가 이니셜+이 색 원형(앱 기본 아바타)을 그려 통신알림으로. */
+  senderAvatarColor?: string;
 }
 
 interface SendResult {
@@ -147,6 +149,7 @@ function sendOne(deviceToken: string, payload: ApnsPayload, host: string): Promi
     if (payload.linkUrl) bodyObj.linkUrl = payload.linkUrl;
     if (payload.senderName) bodyObj.senderName = payload.senderName;
     if (payload.senderAvatarPath) bodyObj.senderAvatarPath = payload.senderAvatarPath;
+    if (payload.senderAvatarColor) bodyObj.senderAvatarColor = payload.senderAvatarColor;
     const body = Buffer.from(JSON.stringify(bodyObj));
 
     let session: http2.ClientHttp2Session;

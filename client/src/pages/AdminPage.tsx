@@ -298,8 +298,19 @@ export default function AdminPage() {
         description="구성원·초대키·팀·직급을 관리합니다."
       />
 
-      {/* 통계 스트립 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      {/* 통계 — 모바일은 한 줄 요약, 데스크톱은 카드 */}
+      <div className="sm:hidden flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500 mb-4">
+        <span className="font-bold text-ink-900">구성원 {users.length}</span>
+        <span className="text-ink-300">·</span>
+        <span>활성 <b className="text-ink-800 font-bold">{users.filter((u) => u.active).length}</b></span>
+        <span className="text-ink-300">·</span>
+        <span>팀 <b className="text-ink-800 font-bold">{teams.length}</b></span>
+        <span className="text-ink-300">·</span>
+        <span>직급 <b className="text-ink-800 font-bold">{positions.length}</b></span>
+        <span className="text-ink-300">·</span>
+        <span>미사용 초대키 <b className="text-ink-800 font-bold">{invites.filter((k) => !k.used).length}</b></span>
+      </div>
+      <div className="hidden sm:grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <StatCard label="전체 구성원" value={users.length} sub={`활성 ${users.filter((u) => u.active).length}명`} />
         <StatCard label="미사용 초대키" value={invites.filter((k) => !k.used).length} sub={`총 ${invites.length}건 발급`} />
         <StatCard label="팀" value={teams.length} sub="전사 팀 수" />
@@ -531,9 +542,10 @@ function UsersTab({
       {view === "detail" && (
         <DetailUserTable rows={filtered} positions={positions} update={update} remove={remove} />
       )}
-      {view === "basic" && (
-      <div className="overflow-x-auto">
-      <table className="pro pro-cards" style={{ minWidth: 720 }}>
+      {view === "basic" && (<>
+      {/* 데스크톱: 인라인 편집 테이블 */}
+      <div className="overflow-x-auto hidden sm:block">
+      <table className="pro" style={{ minWidth: 720 }}>
         <thead>
           <tr>
             <th style={{ width: "30%" }}>구성원</th>
@@ -677,7 +689,32 @@ function UsersTab({
         </tbody>
       </table>
       </div>
-      )}
+      {/* 모바일: 깔끔한 구성원 카드 — 탭하면 상세 편집(권한·상태 포함) */}
+      <div className="sm:hidden flex flex-col gap-2">
+        {filtered.map((u) => (
+          <button
+            key={u.id}
+            onClick={() => setEditTarget(u)}
+            className="flex items-center gap-3 w-full text-left rounded-2xl border border-ink-150 bg-[var(--c-surface)] px-3.5 py-3 active:opacity-70 transition"
+          >
+            <UserAvatar name={u.name} color={u.avatarColor ?? "#3D54C4"} imageUrl={u.avatarUrl ?? null} size={46} />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className="text-[15px] font-bold text-ink-900 truncate">{u.name}</span>
+                {u.team && <span className="chip-gray text-[11px] flex-shrink-0">{u.team}</span>}
+              </div>
+              <div className="text-[12px] text-ink-500 truncate mt-0.5">
+                {u.position ? `${u.position} · ` : ""}{u.email}
+              </div>
+            </div>
+            <MemberStatusPill u={u} />
+          </button>
+        ))}
+        {filtered.length === 0 && (
+          <EmptyState title="구성원이 없습니다" description="초대키를 발급해 팀원을 추가해보세요." />
+        )}
+      </div>
+      </>)}
       {attendanceTarget && (
         <AttendanceEditModal
           user={attendanceTarget}
@@ -855,6 +892,7 @@ function UserDetailEditModal({
   // 편집 가능한 필드 초기값 — null 은 "" 로 통일.
   const init = {
     name: user.name ?? "",
+    role: user.role ?? "MEMBER",
     hrCode: user.hrCode ?? "",
     affiliation: user.affiliation ?? "",
     employeeNo: user.employeeNo ?? "",
@@ -878,6 +916,7 @@ function UserDetailEditModal({
     workEndTime: user.workEndTime ?? "",
   };
   const [form, setForm] = useState(init);
+  const [active, setActive] = useState(user.active);
   const [saving, setSaving] = useState(false);
 
   function set<K extends keyof typeof init>(k: K, v: string) {
@@ -892,6 +931,8 @@ function UserDetailEditModal({
       for (const k of Object.keys(init) as (keyof typeof init)[]) {
         if (form[k] !== init[k]) diff[k] = form[k].trim() === "" ? null : form[k].trim();
       }
+      // 상태(활성/비활성)는 boolean — 변경됐으면 함께 전송.
+      if (active !== user.active) (diff as any).active = active;
       if (Object.keys(diff).length > 0) {
         await api(`/api/admin/users/${user.id}`, { method: "PATCH", json: diff });
       }
@@ -920,6 +961,25 @@ function UserDetailEditModal({
         </div>
 
         <div className="overflow-auto py-4 space-y-5 flex-1">
+          <Section title="권한 · 상태">
+            <Field label="권한">
+              <select className="input" value={form.role} onChange={(e) => set("role", e.target.value)}>
+                <option value="MEMBER">MEMBER</option>
+                <option value="MANAGER">MANAGER</option>
+                <option value="ADMIN">ADMIN</option>
+              </select>
+            </Field>
+            <Field label="상태">
+              {user.resignedAt ? (
+                <div className="text-[13px] text-ink-500 h-[38px] flex items-center">퇴사 처리됨 (변경은 데스크톱에서)</div>
+              ) : (
+                <div className="flex gap-2 h-[38px] items-center">
+                  <button type="button" onClick={() => setActive(true)} className={`tab ${active ? "tab-active" : ""}`}>재직</button>
+                  <button type="button" onClick={() => setActive(false)} className={`tab ${!active ? "tab-active" : ""}`}>비활성</button>
+                </div>
+              )}
+            </Field>
+          </Section>
           <Section title="조직 정보">
             {/* 서버 zod(admin.ts updateUserSchema) 상한 500자와 맞춤 — UI 피드백 목적. */}
             <Field label="HR번호"><input className="input" value={form.hrCode} onChange={(e) => set("hrCode", e.target.value)} placeholder="daiso_worker46" maxLength={500} /></Field>
@@ -1575,10 +1635,10 @@ function AttendanceEditModal({
   );
 }
 
-function UserAvatar({ name, color, imageUrl }: { name: string; color: string; imageUrl?: string | null }) {
+function UserAvatar({ name, color, imageUrl, size = 36 }: { name: string; color: string; imageUrl?: string | null; size?: number }) {
   return (
-    <div className="w-9 h-9 rounded-full grid place-items-center text-white text-[13px] font-extrabold flex-shrink-0 overflow-hidden"
-      style={{ background: imageUrl ? "transparent" : color, letterSpacing: "-0.02em" }}>
+    <div className="rounded-full grid place-items-center text-white font-extrabold flex-shrink-0 overflow-hidden"
+      style={{ width: size, height: size, fontSize: Math.round(size * 0.36), background: imageUrl ? "transparent" : color, letterSpacing: "-0.02em" }}>
       {imageUrl ? (
         <img src={imgSrc(imageUrl)} alt={name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
       ) : (
@@ -1586,6 +1646,13 @@ function UserAvatar({ name, color, imageUrl }: { name: string; color: string; im
       )}
     </div>
   );
+}
+
+/** 모바일 구성원 카드용 상태 뱃지 — 재직(green) / 비활성(gray) / 퇴사(gray). */
+function MemberStatusPill({ u }: { u: UserRow }) {
+  if (u.resignedAt) return <span className="chip-gray text-[11px] flex-shrink-0">퇴사</span>;
+  if (!u.active) return <span className="chip-gray text-[11px] flex-shrink-0">비활성</span>;
+  return <span className="chip-green text-[11px] flex-shrink-0">재직</span>;
 }
 
 /* ===================== Invites ===================== */

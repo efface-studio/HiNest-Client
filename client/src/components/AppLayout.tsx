@@ -1686,11 +1686,26 @@ const BREADCRUMB: Record<string, string> = {
 
 function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggable?: boolean; onOpenNav?: () => void; safeAreaTop?: boolean }) {
   const loc = useLocation();
+  const nav = useNavigate();
   const { chatUnread } = useNotifications();
   const { user } = useAuth();
   const label = loc.pathname.startsWith("/projects/")
     ? "프로젝트"
     : BREADCRUMB[loc.pathname] ?? "";
+  // 모바일 하단 탭(MAIN_TABS) 외 페이지면 상단바 좌측에 뒤로가기 — '전체' 메뉴에서 들어간
+  // 공지/팀원/문서함/메모 등에 갇히지 않게. /projects/:id 도 sub-page 로 본다.
+  const MAIN_TABS = new Set(["/", "/schedule", "/approvals", "/meetings", "/menu"]);
+  const isSubPage = !MAIN_TABS.has(loc.pathname);
+  const goBack = () => {
+    // 사이트 내 진입이면 history 한 칸 뒤로, deep-link 첫 진입이면 /menu 로 fallback.
+    // history.length 가 1 이거나 navigate(-1) 후 같은 페이지면 /menu — 단순화 위해 항상 -1
+    // 시도 + 다음 마이크로태스크에 path 변화 없으면 /menu.
+    const beforePath = loc.pathname;
+    nav(-1);
+    setTimeout(() => {
+      if (window.location.pathname === beforePath) nav("/menu");
+    }, 0);
+  };
   const [searchOpen, setSearchOpen] = useState(false);
 
   useEffect(() => {
@@ -1731,8 +1746,23 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
           className="flex items-center gap-2 text-[13px] min-w-0"
           style={draggable ? ({ WebkitAppRegion: "no-drag" } as React.CSSProperties) : undefined}
         >
-          {/* 모바일 햄버거 — md 이상은 숨김 */}
-          {onOpenNav && (
+          {/* 모바일 뒤로가기 — 하단 탭(개요/일정/결재/회의록/전체) 외 페이지에서만 표시.
+              햄버거 자리와 같은 위치라 레이아웃 동일. md+ 는 사이드바가 있어 숨김. */}
+          {isSubPage && (
+            <button
+              type="button"
+              className="md:hidden w-9 h-9 -ml-1 mr-0.5 grid place-items-center rounded-full text-ink-700 hover:bg-ink-100"
+              onClick={goBack}
+              title="뒤로"
+              aria-label="뒤로 가기"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+          )}
+          {/* 모바일 햄버거 — md 이상은 숨김. (메인 탭에서 onOpenNav 가 prop 으로 들어오면 표시) */}
+          {onOpenNav && !isSubPage && (
             <button
               type="button"
               className="md:hidden w-9 h-9 -ml-1 mr-0.5 grid place-items-center rounded-full text-ink-700 hover:bg-ink-100"

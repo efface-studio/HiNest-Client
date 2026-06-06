@@ -22,6 +22,7 @@
     "@capacitor/push-notifications": "^8.1.1",
     "@capacitor/splash-screen": "^8.0.1",
     "@capacitor/status-bar": "^8.0.2",
+    "@capgo/capacitor-updater": "^8.47.9",
     "@simplewebauthn/browser": "^13.3.0",
     "@tiptap/extension-color": "^3.22.4",
     "@tiptap/extension-highlight": "^3.22.4",

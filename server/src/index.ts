@@ -21,6 +21,7 @@ import { isStorageEnabled, downloadFile } from "./lib/storage.js";
 import fs from "node:fs";
 import notificationRouter from "./routes/notification.js";
 import pushRouter from "./routes/push.js";
+import updatesRouter from "./routes/updates.js";
 import searchRouter from "./routes/search.js";
 import documentRouter from "./routes/document.js";
 import approvalRouter from "./routes/approval.js";
@@ -279,6 +280,9 @@ app.use("/api/expense", expenseRouter);
 app.use("/api/upload", uploadLimiter, uploadRouter);
 app.use("/api/notification", notificationRouter);
 app.use("/api/push", pushRouter);
+// Capacitor Live Updates (Capgo self-hosted) — 네이티브 셸이 OTA 새 번들 여부 확인.
+// Phase 1: 항상 'no_new_version_available' 응답(placeholder). Phase 2 에서 진짜 OTA 활성화.
+app.use("/api/updates", updatesRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/document", documentRouter);
 // extras(templates/lines) 를 approval 보다 먼저 마운트 — approval 의 /:id 와 경로가 겹치는

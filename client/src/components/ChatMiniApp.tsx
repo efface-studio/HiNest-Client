@@ -195,6 +195,24 @@ export default function ChatMiniApp({
       hydrateMutedFromServer(res.rooms);
     } catch {}
   };
+  // 1:1 대화 '나만 삭제'(per-user 숨김). 내 목록에서만 사라지고 상대에겐 유지. 새 메시지 오면 다시 나타남.
+  const hideRoom = async (r: Room) => {
+    const ok = await confirmAsync({
+      title: "대화 삭제",
+      description: "이 대화를 내 목록에서 삭제할까요?\n상대방에게는 그대로 남아있고, 새 메시지가 오면 다시 나타나요.",
+      tone: "danger",
+      confirmLabel: "삭제",
+    });
+    if (!ok) return;
+    // 낙관적 — 즉시 목록에서 제거. 실패하면 복원.
+    setRooms((prev) => prev.filter((x) => x.id !== r.id));
+    try {
+      await api(`/api/chat/rooms/${r.id}/hide`, { method: "POST" });
+    } catch (e: any) {
+      await alertAsync({ title: "삭제 실패", description: e?.message || "대화를 삭제하지 못했어요." });
+      loadRooms();
+    }
+  };
   // 메시지 로더.
   // - full=true: 전체 재조회 (방 진입/포커스 복귀/주기적 동기화)
   // - full=false: 마지막 메시지 이후만 증분 조회. 서버가 `?after=<id>` 로 새 메시지만 반환 →
@@ -720,6 +738,7 @@ export default function ChatMiniApp({
           q={q}
           setQ={setQ}
           onOpen={(id) => setActiveId(id)}
+          onHideRoom={hideRoom}
           messageHits={messageHits}
           searching={searching}
           roomSettings={roomSettings}
@@ -732,10 +751,11 @@ export default function ChatMiniApp({
 
 /* ======================= 목록 ======================= */
 function ListView({
-  rooms, meId, unread, q, setQ, onOpen, messageHits, searching, roomSettings, presenceMap,
+  rooms, meId, unread, q, setQ, onOpen, onHideRoom, messageHits, searching, roomSettings, presenceMap,
 }: {
   rooms: Room[]; meId: string; unread: Record<string, number>;
   q: string; setQ: (v: string) => void; onOpen: (id: string) => void;
+  onHideRoom: (r: Room) => void;
   messageHits: MessageHit[]; searching: boolean;
   roomSettings: Record<string, RoomLocalSetting>;
   presenceMap: Record<string, { presenceStatus: string | null; workStatus: string | null; presenceMessage: string | null }>;
@@ -836,6 +856,7 @@ function ListView({
             <ListRow
               key={r.id}
               onClick={() => onOpen(r.id)}
+              onDelete={r.type === "DIRECT" ? () => onHideRoom(r) : undefined}
               avatar={{ name: title, color: roomColor(r, meId), imageUrl: roomImageUrl(r, meId) }}
               title={title}
               titleHighlight={q}
@@ -908,9 +929,10 @@ function EmptyRow({ children }: { children: React.ReactNode }) {
 
 /* ===== 범용 리스트 행 ===== */
 function ListRow({
-  onClick, avatar, title, titleHighlight, subtitle, subtitleHighlight, subtitlePrefix, rightTop, unread, muted, presenceColor, presenceTitle, isGroup, memberCount,
+  onClick, onDelete, avatar, title, titleHighlight, subtitle, subtitleHighlight, subtitlePrefix, rightTop, unread, muted, presenceColor, presenceTitle, isGroup, memberCount,
 }: {
   onClick: () => void;
+  onDelete?: () => void;
   avatar: { name: string; color: string; imageUrl?: string | null };
   title: string;
   titleHighlight?: string;
@@ -925,9 +947,22 @@ function ListRow({
   isGroup?: boolean;
   memberCount?: number;
 }) {
+  // 길게 누르기(모바일) / 우클릭(데스크톱) → 삭제. 짧은 탭은 그대로 열기.
+  const pressTimer = useRef<number | null>(null);
+  const longPressed = useRef(false);
+  const startPress = () => {
+    if (!onDelete) return;
+    longPressed.current = false;
+    pressTimer.current = window.setTimeout(() => { longPressed.current = true; onDelete(); }, 500);
+  };
+  const cancelPress = () => { if (pressTimer.current) { clearTimeout(pressTimer.current); pressTimer.current = null; } };
   return (
     <button
-      onClick={onClick}
+      onClick={() => { if (longPressed.current) { longPressed.current = false; return; } onClick(); }}
+      onContextMenu={onDelete ? (e) => { e.preventDefault(); onDelete(); } : undefined}
+      onTouchStart={startPress}
+      onTouchEnd={cancelPress}
+      onTouchMove={cancelPress}
       style={{
         width: "100%",
         display: "flex", alignItems: "center", gap: 12,

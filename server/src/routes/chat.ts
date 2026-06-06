@@ -92,8 +92,34 @@ router.get("/rooms", async (req, res) => {
     take: auditMode ? 500 : 300,
   });
 
+  // per-user 숨김('나만 삭제') 적용 — 내가 숨긴 방은 목록에서 제외하되, hiddenAt 이후 새 메시지가
+  // 있으면 다시 보인다(상대가 새로 보냈을 때). audit 모드는 전체를 봐야 하므로 미적용.
+  const visible = auditMode
+    ? rooms
+    : rooms.filter((room) => {
+        const me = room.members.find((m) => m.userId === u.id);
+        if (!me?.hiddenAt) return true;
+        const last = room.messages[0];
+        return !!last && new Date(last.createdAt) > new Date(me.hiddenAt);
+      });
+
   if (auditMode) await writeLog(u.id, "CHAT_AUDIT_LIST", undefined, `count=${rooms.length}`);
-  res.json({ rooms, auditMode });
+  res.json({ rooms: visible, auditMode });
+});
+
+/**
+ * 1:1 대화 '나만 삭제'(per-user 숨김). 내 RoomMember.hiddenAt 만 갱신 → 내 목록에서 사라지고,
+ * 나는 이후 메시지만 보게 된다. 상대(B)의 RoomMember 는 무관 → 그대로 유지. 숨긴 뒤 상대가
+ * 새 메시지를 보내면(hiddenAt 이후) 방이 내 목록에 다시 나타난다.
+ */
+router.post("/rooms/:id/hide", async (req, res) => {
+  const u = (req as any).user;
+  const r = await prisma.roomMember.updateMany({
+    where: { roomId: req.params.id, userId: u.id },
+    data: { hiddenAt: new Date() },
+  });
+  if (r.count === 0) return res.status(404).json({ error: "참여 중인 방이 아닙니다" });
+  res.json({ ok: true });
 });
 
 /**
@@ -342,7 +368,7 @@ router.get("/rooms/:id/messages", async (req, res) => {
       select: {
         id: true,
         type: true,
-        members: { select: { userId: true, lastReadAt: true } },
+        members: { select: { userId: true, lastReadAt: true, hiddenAt: true } },
       },
     }),
     afterId
@@ -379,6 +405,14 @@ router.get("/rooms/:id/messages", async (req, res) => {
   // afterId 가 다른 방의 것을 가리키면 무시 — 클라이언트가 방을 막 전환한 상황
   if (after && after.roomId === room.id) {
     where.createdAt = { gt: after.createdAt };
+  }
+  // per-user 숨김: 내가 숨긴 방이면 hiddenAt 이전 메시지는 안 보인다('나만 삭제' 효과).
+  // afterId(페이지네이션 바닥)와 함께면 더 늦은 쪽이 실제 바닥.
+  const meMember = room.members.find((m) => m.userId === u.id);
+  if (meMember?.hiddenAt) {
+    const hid = new Date(meMember.hiddenAt);
+    const cur = where.createdAt?.gt ? new Date(where.createdAt.gt) : null;
+    where.createdAt = { gt: cur && cur > hid ? cur : hid };
   }
 
   const raw = await prisma.chatMessage.findMany({

@@ -96,6 +96,9 @@ html.hinest-desktop .app-bottomnav { display: none !important; }
    로 웹 바가 이미 숨겨져 있고(실제 네이티브 바는 AppLayout 의 modal 관찰자가 별도로 숨김), 이
    규칙은 웹·안드로이드·네이티브 폴백에서 동일하게 적용된다. :has() 는 iOS 15.4+/모던 브라우저 지원. */
 html:has(.modal-safe) .app-bottomnav { display: none !important; }
+/* 미리보기 환영(온보딩) 오버레이가 떠 있는 동안에도 하단바를 숨긴다 — 비치는 현상 +
+   하단바가 입력을 가로채 '건너뛰기' 버튼이 안 눌리던 문제를 함께 해결. */
+html:has(.hinest-onb-overlay) .app-bottomnav { display: none !important; }
 
 /* iOS 앱 — 상단바를 애플 리퀴드 글래스로. TopBar 를 본문 스크롤러(<main>) 위에 떠 있는
    반투명+blur 헤더(absolute)로 만들고, 본문은 그만큼 위쪽 패딩을 줘 헤더 아래에서 시작한다.

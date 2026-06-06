@@ -94,6 +94,27 @@ export function alreadySeen(id: string) {
   return getSeen().has(id);
 }
 
+/** 발신자 기본 아바타(색 원형 + 이름 첫 글자)를 그려 dataURL 로. Electron 알림 아이콘용. */
+function avatarDataUrl(name?: string, color?: string): string | undefined {
+  if (typeof document === "undefined") return undefined;
+  try {
+    const size = 64;
+    const c = document.createElement("canvas");
+    c.width = size; c.height = size;
+    const ctx = c.getContext("2d");
+    if (!ctx) return undefined;
+    ctx.fillStyle = color || "#3D54C4";
+    ctx.beginPath(); ctx.arc(size / 2, size / 2, size / 2, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${Math.round(size * 0.44)}px -apple-system, system-ui, sans-serif`;
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText(name?.[0] ?? "?", size / 2, size / 2 + 2);
+    return c.toDataURL("image/png");
+  } catch {
+    return undefined;
+  }
+}
+
 export function showDesktopNotification(opts: {
   id: string;
   title: string;
@@ -101,6 +122,8 @@ export function showDesktopNotification(opts: {
   url?: string;
   icon?: string;
   tag?: string;
+  actorName?: string;
+  actorColor?: string;
 }) {
   if (!isDesktopEnabled()) return;
   if (alreadySeen(opts.id)) return;
@@ -112,7 +135,9 @@ export function showDesktopNotification(opts: {
   // 데스크톱 앱은 창을 트레이로 숨겨두고 쓰는 일이 많아 포커스와 무관하게 항상 띄운다.
   if (isElectron()) {
     try {
-      void window.hinest?.showNotification?.({ title: opts.title, body: opts.body });
+      // 발신자 아바타(이니셜+색)를 알림 아이콘으로. 사진 URL 은 알림 데이터에 없어 기본 아바타.
+      const icon = opts.icon ?? avatarDataUrl(opts.actorName, opts.actorColor);
+      void window.hinest?.showNotification?.({ title: opts.title, body: opts.body, icon });
     } catch {}
     markSeen([opts.id]);
     return;
@@ -169,7 +194,7 @@ export function showDesktopNotification(opts: {
 
 /** 여러 개를 한 번에 처리. 테스트·초기 동기화 편의용. */
 export function deliverPendingNotifications(
-  items: { id: string; title: string; body?: string; linkUrl?: string }[]
+  items: { id: string; title: string; body?: string; linkUrl?: string; actorName?: string; actorColor?: string }[]
 ) {
   // 네이티브(Capacitor): WKWebView 는 Web Notification 미지원 → local-notifications 로 배너 표시.
   if (isCapacitorNative()) {
@@ -192,6 +217,6 @@ export function deliverPendingNotifications(
   if (!isDesktopEnabled()) return;
   for (const it of items) {
     if (alreadySeen(it.id)) continue;
-    showDesktopNotification({ id: it.id, title: it.title, body: it.body, url: it.linkUrl });
+    showDesktopNotification({ id: it.id, title: it.title, body: it.body, url: it.linkUrl, actorName: it.actorName, actorColor: it.actorColor });
   }
 }

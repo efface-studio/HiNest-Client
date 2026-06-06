@@ -32,6 +32,10 @@
 	<string>동영상을 촬영해 첨부할 때 소리를 함께 녹음하기 위해 마이크를 사용합니다.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>사진·동영상을 선택해 채팅·경비·프로필 등에 첨부하기 위해 사진 보관함에 접근합니다.</string>
+	<key>NSUserActivityTypes</key>
+	<array>
+		<string>INSendMessageIntent</string>
+	</array>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
@@ -51,6 +55,10 @@
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
-	<true/>
+	<false/>
+	<!-- 라이트 모드(흰 배경) 기본 — 다크 글자가 보이도록. 다크 테마 진입 시
+	     applyNativeTheme() 가 StatusBar.setStyle(Light) 로 즉시 흰 글자로 전환. -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDarkContent</string>
 </dict>
 </plist>

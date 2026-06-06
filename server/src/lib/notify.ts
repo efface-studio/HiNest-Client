@@ -144,7 +144,7 @@ export async function notifyMany(inputs: NotifyInput[]) {
     );
     // 아바타(actorAvatarUrl)는 Notification 컬럼이 아니라 입력에만 있으므로 id 로 되짚는다.
     const inputById = new Map(rows.map((r) => [r.id, r]));
-    const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string; senderName?: string; senderAvatarPath?: string } }[] = [];
+    const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string; senderName?: string; senderAvatarPath?: string; senderAvatarColor?: string } }[] = [];
     for (const n of created) {
       if (pushFlag.get(`${n.userId}:${n.type as NotifyType}`) === false) continue;
       publish(n.userId, "notification", n);
@@ -157,7 +157,7 @@ export async function notifyMany(inputs: NotifyInput[]) {
           userId: n.userId,
           payload: {
             title: n.title, body: n.body ?? undefined, linkUrl: n.linkUrl ?? undefined, groupId: rid ?? undefined,
-            ...(isChat ? { senderName: n.actorName ?? undefined, senderAvatarPath: inp?.actorAvatarUrl ?? undefined } : {}),
+            ...(isChat ? { senderName: n.actorName ?? undefined, senderAvatarPath: inp?.actorAvatarUrl ?? undefined, senderAvatarColor: n.actorColor ?? undefined } : {}),
           },
         });
       }

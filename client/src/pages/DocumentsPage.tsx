@@ -1262,8 +1262,10 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
           <div className="text-[12px] text-ink-500 mt-1 max-w-[300px] mx-auto leading-relaxed">우측 상단 "문서 업로드" 버튼을 누르거나 파일을 이 영역으로 끌어다 놓아보세요.</div>
         </div>
       ) : (
-        <div className="panel p-0 overflow-hidden overflow-x-auto">
-          <table className="pro pro-cards min-w-[760px]">
+        <>
+        {/* 데스크톱: 인라인 테이블 */}
+        <div className="panel p-0 overflow-hidden overflow-x-auto hidden sm:block">
+          <table className="pro min-w-[760px]">
             <thead>
               <tr>
                 <th>제목</th>
@@ -1433,6 +1435,47 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
             </tbody>
           </table>
         </div>
+        {/* 모바일: 깔끔한 문서 행 (탭하면 열기) */}
+        <div className="sm:hidden flex flex-col gap-2">
+          {docs.map((d) => {
+            const isMemo = d.content != null;
+            const ext = (d.fileName?.split(".").pop() || "").toLowerCase();
+            const TM: Record<string, [string, string]> = {
+              pdf: ["PDF", "bg-rose-50 text-rose-700"],
+              doc: ["DOC", "bg-sky-50 text-sky-700"], docx: ["DOC", "bg-sky-50 text-sky-700"],
+              xls: ["XLS", "bg-emerald-50 text-emerald-700"], xlsx: ["XLS", "bg-emerald-50 text-emerald-700"], csv: ["CSV", "bg-emerald-50 text-emerald-700"],
+              ppt: ["PPT", "bg-orange-50 text-orange-700"], pptx: ["PPT", "bg-orange-50 text-orange-700"],
+              png: ["IMG", "bg-violet-50 text-violet-700"], jpg: ["IMG", "bg-violet-50 text-violet-700"], jpeg: ["IMG", "bg-violet-50 text-violet-700"], gif: ["IMG", "bg-violet-50 text-violet-700"],
+              zip: ["ZIP", "bg-amber-50 text-amber-700"],
+            };
+            const ft: [string, string] = isMemo
+              ? ["MEMO", "bg-violet-50 text-violet-700"]
+              : (TM[ext] ?? [ext ? ext.slice(0, 3).toUpperCase() : "FILE", "bg-ink-100 text-ink-600"]);
+            const meta = isMemo ? "메모" : `${(ext || "file").toUpperCase()} · ${humanSize(d.fileSize ?? 0)}`;
+            const openDoc = () => {
+              if (isMemo) { setMemoTarget(d); return; }
+              const safe = safeUploadUrl(d.fileUrl);
+              if (!safe) return;
+              if (isCapacitorNative()) { const u = imgSrc(safe); if (u) void Browser.open({ url: u }); }
+              else window.open(safe, "_blank", "noopener");
+            };
+            return (
+              <div key={d.id} className="flex items-center gap-3 rounded-2xl border border-ink-150 bg-[var(--c-surface)] px-3 py-2.5">
+                <button onClick={openDoc} className="flex items-center gap-3 flex-1 min-w-0 text-left">
+                  <div className={`w-9 h-9 rounded-lg grid place-items-center flex-shrink-0 text-[9px] font-extrabold tracking-tight ${ft[1]}`}>{ft[0]}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-[14px] font-bold text-ink-900 truncate">{d.title || "제목 없음"}</div>
+                    <div className="text-[11.5px] text-ink-500 truncate">{meta} · {d.author.name}</div>
+                  </div>
+                </button>
+                <button className="btn-icon flex-shrink-0" onClick={() => deleteDoc(d)} title="삭제">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+        </>
       )}
       </div>
       {/* /폴더+문서 공용 드롭존 */}

@@ -35,8 +35,12 @@ const config: CapacitorConfig = {
   // 다크 모드에선 styles.css 의 background-color 가 위에 덮어 자연스럽게 동작한다.
   ios: {
     backgroundColor: "#F5F6F8",
-    // 키보드 등장 시 native contentInset 으로 자동 스크롤 — 네이티브 키보드 곡선과 같은 타이밍.
-    contentInset: "automatic",
+    // ⚠️ contentInset 은 반드시 "never" — styles.css 의 .hinest-ios 가 이미
+    //   `padding-top: calc(56px + env(safe-area-inset-top))` 로 직접 safe-area 를 관리한다.
+    //   "automatic" 이면 WKWebView 가 자동으로 safe-area inset 을 추가해 CSS 와 이중 적용 →
+    //   콘텐츠가 두 배 아래로 밀려 상단바 위 큰 빈 공간이 생긴다(#338 도입 회귀).
+    //   키보드 부드러운 슬라이드는 별도의 Capacitor Keyboard plugin(resize:'native')이 처리.
+    contentInset: "never",
   },
   server: {
     androidScheme: "https",

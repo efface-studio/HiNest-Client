@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
-import { requireAuth, queryTokenAuth } from "../lib/auth.js";
+import { requireAuth, queryTokenAuth, signSseTicket } from "../lib/auth.js";
 import { addClient, removeClient } from "../lib/sse.js";
 
 const router = Router();
@@ -36,6 +36,14 @@ router.get("/stream", queryTokenAuth, requireAuth, async (req, res) => {
 });
 
 router.use(requireAuth);
+
+// 웹 전용: Vercel 이 SSE 를 버퍼/끊으므로, 짧은 수명 티켓을 받아 백엔드(api.*)로 직결한다.
+// 쿠키 인증(위 requireAuth) 통과한 요청만 발급 — sid 포함이라 세션 무효화도 그대로 적용.
+router.get("/sse-ticket", (req, res) => {
+  const sid = (req as any).sessionId as string | null;
+  if (!sid) return res.status(401).json({ error: "unauthorized" });
+  res.json({ ticket: signSseTicket((req as any).user, sid) });
+});
 
 router.get("/", async (req, res) => {
   const u = (req as any).user;

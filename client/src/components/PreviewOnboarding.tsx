@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { isPreviewMode } from "../lib/previewMock";
+import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
 
 /**
  * 미리보기 진입 직후 한 번만 노출되는 온보딩 오버레이.
@@ -81,6 +82,14 @@ export default function PreviewOnboarding() {
     setStep((n) => Math.max(0, Math.min(STEPS.length - 1, n + delta)));
   }
 
+  // iOS 네이티브 탭바(LiquidGlassTabBar)는 CSS display:none 으로 못 숨기는 별도 네이티브 뷰.
+  // onboarding 떠 있는 동안 'onboarding' 사유로 setVisible(false) 호출. unmount/dismiss 시 복원.
+  useEffect(() => {
+    if (!open) return;
+    setNativeTabBarHidden("onboarding", true);
+    return () => setNativeTabBarHidden("onboarding", false);
+  }, [open]);
+
   // 키보드 단축키
   useEffect(() => {
     if (!open) return;
@@ -121,10 +130,12 @@ export default function PreviewOnboarding() {
       {/* 미세 그레인 노이즈 (SVG) — AI 룩 탈피용 텍스처 */}
       <div className="hinest-onb-noise" aria-hidden />
 
-      {/* 상단 바 — 브랜드 마크 + 챕터 카운터 + 건너뛰기. 노치/다이내믹아일랜드 회피용 safe-area 패딩. */}
+      {/* 상단 바 — 브랜드 마크 + 챕터 카운터 + 건너뛰기. 노치/다이내믹아일랜드 회피용 safe-area 패딩.
+          z-index=20 으로 본문 컨테이너(absolute inset-0)보다 위로 올림. 안 그러면 본문 div 가
+          위에 깔려 '건너뛰기' 클릭이 가로채진다. */}
       <div
         className="hinest-onb-topbar absolute top-0 left-0 right-0 flex items-center justify-between px-6 sm:px-8"
-        style={{ paddingTop: "max(24px, calc(env(safe-area-inset-top) + 8px))" }}
+        style={{ paddingTop: "max(24px, calc(env(safe-area-inset-top) + 8px))", zIndex: 20 }}
       >
         <div className="flex items-center gap-2.5">
           <span
@@ -247,7 +258,7 @@ export default function PreviewOnboarding() {
       </div>
 
       {/* 하단 — 진행률 바 + 액션 + 키보드 힌트 */}
-      <div className="absolute left-0 right-0 bottom-7 sm:bottom-10 flex flex-col items-center gap-5 px-6 hinest-onb-bottom">
+      <div className="absolute left-0 right-0 bottom-7 sm:bottom-10 flex flex-col items-center gap-5 px-6 hinest-onb-bottom" style={{ zIndex: 20 }}>
         {/* 가는 진행률 라인 */}
         <div className="relative" style={{ width: 220, height: 3 }}>
           <div className="absolute inset-0 rounded-full" style={{ background: "rgba(255,255,255,0.14)" }} />

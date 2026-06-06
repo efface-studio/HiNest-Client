@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { applyNativeTheme } from "./lib/nativeTheme";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -53,6 +54,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     mq.addEventListener?.("change", handler);
     return () => mq.removeEventListener?.("change", handler);
   }, [mode]);
+
+  // resolved 가 바뀔 때마다 네이티브 키보드/상태바 색도 동기화 — iOS 가 시스템 설정만 따라가
+  // 앱에서 다크 테마를 켜도 키보드가 라이트로 뜨던 문제 해결.
+  useEffect(() => {
+    void applyNativeTheme(resolved);
+  }, [resolved]);
 
   const value = useMemo(() => ({ mode, resolved, setMode }), [mode, resolved, setMode]);
   return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;

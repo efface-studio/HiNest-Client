@@ -67,6 +67,13 @@
   }
 }
 
+/* 모든 환경에서 html/body 배경을 앱 배경색으로 — 새로고침/페이지 전환 중 WebView 가 비어
+   하단·세이프에어리어가 까맣게 깜빡이던 문제 방어(capacitor.config 의 backgroundColor 와 이중 안전망).
+   라이트/다크 자동 대응(:root / .dark 의 --c-bg). */
+html, body {
+  background-color: var(--c-bg);
+}
+
 /* iOS 네이티브(아이폰·아이패드): 폭과 무관하게 모바일 레이아웃(플로팅 글래스 하단 네비)을 쓴다.
    아이패드(≥768px)도 사이드바 대신 하단 글래스 바를 쓰도록 사이드바를 숨기고 하단 바를
    강제 노출한다. html.hinest-ios 는 iOS 네이티브에서만 붙으므로 웹·안드·데스크톱은 무영향. */

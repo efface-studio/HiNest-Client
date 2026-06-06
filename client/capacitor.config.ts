@@ -27,6 +27,16 @@ const config: CapacitorConfig = {
   // 안드로이드 기본 스킴을 https 로 — Secure 쿠키/Service Worker 가 정상 동작하도록.
   android: {
     allowMixedContent: false,
+    // 새로고침/페이지 전환 중 WebView 가 비어 보이는 순간을 앱 배경색으로 깔아 검은 깜빡임 차단.
+    backgroundColor: "#F5F6F8",
+  },
+  // iOS WebView 의 기본 배경(투명/검정)이 새로고침·전환 중 그대로 노출돼 하단바·세이프에어리어가
+  // 까맣게 깜빡이는 현상이 있다 → 라이트 테마 배경(--c-bg 와 동일) 로 채워 깔끔하게.
+  // 다크 모드에선 styles.css 의 background-color 가 위에 덮어 자연스럽게 동작한다.
+  ios: {
+    backgroundColor: "#F5F6F8",
+    // 키보드 등장 시 native contentInset 으로 자동 스크롤 — 네이티브 키보드 곡선과 같은 타이밍.
+    contentInset: "automatic",
   },
   server: {
     androidScheme: "https",
@@ -36,6 +46,13 @@ const config: CapacitorConfig = {
     // cleartext: false,
   },
   plugins: {
+    // 키보드 등장 애니메이션 — 'native' 리사이즈는 iOS 가 WebView 자체를 키보드 곡선에 맞춰
+    // 끌어올린다(CSS 트랜지션 없이도 부드러움). 'body' 보다 자연스럽고 입력 지연이 없다.
+    // resizeOnFullScreen=true → 안드로이드 전체화면에서도 동일 동작.
+    Keyboard: {
+      resize: "native",
+      resizeOnFullScreen: true,
+    },
     SplashScreen: {
       // 네이티브 스플래시는 솔리드 배경(앱 bg색) 이미지로 콜드 로드만 덮는다. 번들이 로드되면
       // main.tsx 가 즉시 hide() 하고 index.html 의 커스텀 인트로(배지 → 'HiNest' 슬라이드인)가

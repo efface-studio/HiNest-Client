@@ -1678,6 +1678,7 @@ const BREADCRUMB: Record<string, string> = {
 function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggable?: boolean; onOpenNav?: () => void; safeAreaTop?: boolean }) {
   const loc = useLocation();
   const { chatUnread } = useNotifications();
+  const { user } = useAuth();
   const label = loc.pathname.startsWith("/projects/")
     ? "프로젝트"
     : BREADCRUMB[loc.pathname] ?? "";
@@ -1773,6 +1774,21 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
             )}
           </button>
           <NotificationBell />
+          {/* 내 프로필 — 모바일 전용(데스크톱은 사이드바에 있음). 맨 오른쪽. 탭하면 프로필. */}
+          <NavLink
+            to="/profile"
+            className="md:hidden grid place-items-center flex-shrink-0 ml-0.5"
+            title="내 프로필"
+            aria-label="내 프로필"
+          >
+            {user?.avatarUrl ? (
+              <img src={imgSrc(user.avatarUrl)} alt="프로필" className="w-8 h-8 rounded-full object-cover border border-ink-150" loading="lazy" decoding="async" />
+            ) : (
+              <span className="w-8 h-8 rounded-full grid place-items-center text-white text-[13px] font-extrabold flex-shrink-0" style={{ background: user?.avatarColor ?? "#3D54C4", letterSpacing: "-0.02em" }}>
+                {user?.name?.[0] ?? "?"}
+              </span>
+            )}
+          </NavLink>
         </div>
       </header>
       <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />

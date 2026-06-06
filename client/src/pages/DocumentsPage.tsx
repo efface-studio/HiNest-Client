@@ -1154,7 +1154,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       {/* 폴더 그리드 */}
       {currentChildren.length > 0 && (
         <div className="mb-5">
-          <div className="text-[11px] font-extrabold text-ink-500 uppercase tracking-[0.08em] mb-2">폴더</div>
+          <div className="text-[11px] font-extrabold text-ink-500 uppercase tracking-[0.08em] mb-2">폴더 <span className="text-ink-400 tabular">{currentChildren.length}</span></div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {currentChildren.map((f) => {
               const dropKey = `folder:${f.id}`;
@@ -1214,6 +1214,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                   <div className="text-[13px] font-bold text-ink-900 truncate">{f.name}</div>
                   <div className="text-[11px] text-ink-500 tabular">{new Date(f.createdAt).toLocaleDateString("ko-KR")}</div>
                 </div>
+                {/* 모바일: 폴더 열기 셰브론 (데스크톱은 우상단 호버 액션) */}
+                <svg className="sm:hidden text-ink-300 flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                 {/* 호버 액션은 absolute 오버레이 — 평소엔 레이아웃을 먹지 않아 이름·날짜 영역이 잘리지 않음. */}
                 <div className="touch-reveal-flex absolute top-2 right-2 hidden group-hover:flex items-center gap-0.5 bg-[color:var(--c-surface)]/95 backdrop-blur-sm rounded-lg px-1 py-0.5 shadow-sm border border-ink-100">
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); downloadFolder(f); }} title="폴더 전체 다운로드 (ZIP)">
@@ -1237,7 +1239,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       )}
 
       {/* 문서 리스트 */}
-      <div className="mb-2 text-[11px] font-extrabold text-ink-500 uppercase tracking-[0.08em]">문서</div>
+      <div className="mb-2 text-[11px] font-extrabold text-ink-500 uppercase tracking-[0.08em]">문서 <span className="text-ink-400 tabular">{docs.length}</span></div>
       {loadErr && (
         <div className="mb-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-[12px] text-rose-700 flex items-center justify-between gap-2">
           <span>{loadErr}</span>
@@ -1305,13 +1307,21 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                             <path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4z" />
                           </svg>
                         </div>
-                      ) : (
-                        <div className="w-8 h-8 rounded-lg bg-sky-50 text-sky-700 grid place-items-center flex-shrink-0">
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
-                          </svg>
-                        </div>
-                      )}
+                      ) : (() => {
+                        const ext = (d.fileName?.split(".").pop() || "").toLowerCase();
+                        const M: Record<string, [string, string]> = {
+                          pdf: ["PDF", "bg-rose-50 text-rose-700"],
+                          doc: ["DOC", "bg-sky-50 text-sky-700"], docx: ["DOC", "bg-sky-50 text-sky-700"],
+                          xls: ["XLS", "bg-emerald-50 text-emerald-700"], xlsx: ["XLS", "bg-emerald-50 text-emerald-700"], csv: ["CSV", "bg-emerald-50 text-emerald-700"],
+                          ppt: ["PPT", "bg-orange-50 text-orange-700"], pptx: ["PPT", "bg-orange-50 text-orange-700"],
+                          png: ["IMG", "bg-violet-50 text-violet-700"], jpg: ["IMG", "bg-violet-50 text-violet-700"], jpeg: ["IMG", "bg-violet-50 text-violet-700"], gif: ["IMG", "bg-violet-50 text-violet-700"],
+                          zip: ["ZIP", "bg-amber-50 text-amber-700"],
+                        };
+                        const hit = M[ext] || [ext ? ext.slice(0, 3).toUpperCase() : "FILE", "bg-ink-100 text-ink-600"];
+                        return (
+                          <div className={`w-8 h-8 rounded-lg grid place-items-center flex-shrink-0 text-[9px] font-extrabold tracking-tight ${hit[1]}`}>{hit[0]}</div>
+                        );
+                      })()}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <div

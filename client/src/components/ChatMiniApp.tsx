@@ -253,12 +253,16 @@ export default function ChatMiniApp({
     } catch {}
   };
 
-  // 현재 채팅이 사용자에게 실제로 보이는지 — 창이 포커스 잃었거나 탭이 백그라운드면 읽음 처리 금지
+  // 현재 채팅이 사용자에게 실제로 보이는지 — 창이 포커스 잃었거나 탭이 백그라운드면 읽음 처리 금지.
+  // ⚠️ 네이티브(Capacitor WKWebView)에선 document.hasFocus() 가 키보드 표시·인풋 포커스 등
+  //    상호작용 중에 false 반환하는 케이스가 잦아, 사용자가 채팅창을 명백히 보고 있는 동안에도
+  //    하트비트 markRead 가 스킵되어 active-viewer APNs 스킵이 동작하지 않았다.
+  //    → 네이티브에선 hasFocus 의존성 제거(panel 열림 + visible 만 본다). 데스크톱 웹은 기존대로.
   const isChatVisible = () =>
     isPanelOpen &&
     typeof document !== "undefined" &&
     document.visibilityState === "visible" &&
-    (typeof document.hasFocus !== "function" || document.hasFocus());
+    (isCapacitorNative() || typeof document.hasFocus !== "function" || document.hasFocus());
 
   const markRead = async (roomId: string) => {
     try {

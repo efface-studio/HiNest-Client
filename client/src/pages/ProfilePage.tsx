@@ -68,16 +68,17 @@ export default function ProfilePage() {
     }
   }, [user?.id]);
 
-  async function saveProfile(e: React.FormEvent) {
-    e.preventDefault();
-    if (savingProfile) return;
+  // 프로필 저장 공통 경로. avatarOverride 를 주면(업로드/제거) 그 값으로 즉시 저장해서
+  // "사진을 올렸는데 저장을 또 눌러야 반영되던" 문제를 없앤다 — 한 번에 바로 적용.
+  async function persistProfile(avatarOverride?: string | null) {
+    const avatarToSave = avatarOverride === undefined ? avatarUrl : avatarOverride;
     setErr(""); setSavedMsg("");
     setSavingProfile(true);
     try {
       // avatarUrl 은 명시적으로 항상 함께 전송 — 이미지 제거도 PATCH 로 반영해야 하니까.
       await api("/api/profile", {
         method: "PATCH",
-        json: { name, avatarColor: color, avatarUrl: avatarUrl ?? "" },
+        json: { name, avatarColor: color, avatarUrl: avatarToSave ?? "" },
       });
       // 내 프로필을 바꾸면 사용자 이름/아바타가 박혀있는 거의 모든 엔드포인트 응답이
       // 즉시 낡아진다. 내 탭의 sessionStorage 캐시부터 싹 비워서 다음 화면 진입 때
@@ -101,12 +102,20 @@ export default function ProfilePage() {
     }
   }
 
+  async function saveProfile(e: React.FormEvent) {
+    e.preventDefault();
+    if (savingProfile || uploadingAvatar) return;
+    await persistProfile();
+  }
+
   async function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     e.target.value = ""; // 같은 파일 다시 올릴 수 있게 리셋
     if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setErr("이미지 파일만 업로드할 수 있어요.");
+    // 아바타는 알림(iOS NSE)에서도 렌더돼야 하므로 래스터 이미지만 허용한다.
+    // SVG(벡터)는 iOS UIImage/INImage 가 못 그려 알림 아바타로 표시되지 않으므로 차단.
+    if (!file.type.startsWith("image/") || file.type === "image/svg+xml") {
+      setErr("PNG · JPG · GIF · WEBP · HEIC 이미지만 올릴 수 있어요 (SVG 등 벡터는 알림 아바타로 표시되지 않아요).");
       return;
     }
     // 프로필 이미지는 작게 제한 — 큰 파일 올려봐야 원형 아바타로 작게만 쓰임.
@@ -129,6 +138,7 @@ export default function ProfilePage() {
       if (!url) throw new Error("업로드 응답이 올바르지 않습니다.");
       if (!aliveRef.current) return;
       setAvatarUrl(url);
+      await persistProfile(url); // 업로드 즉시 서버 반영 — 저장 버튼 다시 안 눌러도 바로 적용
     } catch (e: any) {
       if (aliveRef.current) setErr(e.message ?? "업로드 실패");
     } finally {
@@ -138,6 +148,7 @@ export default function ProfilePage() {
 
   function clearAvatar() {
     setAvatarUrl(null);
+    void persistProfile(null); // 제거도 즉시 반영
   }
 
   async function changePw(e: React.FormEvent) {
@@ -258,7 +269,7 @@ export default function ProfilePage() {
                   <input
                     ref={avatarInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/png,image/jpeg,image/gif,image/webp,image/heic,image/heif"
                     className="hidden"
                     onChange={onPickAvatar}
                   />
@@ -302,7 +313,7 @@ export default function ProfilePage() {
               {err && <InlineAlert tone="error">{err}</InlineAlert>}
               {savedMsg && <InlineAlert tone="success">{savedMsg}</InlineAlert>}
               <div className="flex justify-end">
-                <button className="btn-primary" disabled={savingProfile}>{savingProfile ? "저장 중…" : "저장"}</button>
+                <button className="btn-primary" disabled={savingProfile || uploadingAvatar}>{savingProfile ? "저장 중…" : "저장"}</button>
               </div>
             </form>
           </div>

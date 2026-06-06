@@ -277,9 +277,11 @@ ipcMain.handle("hinest:flashFrame", () => {
   } catch {}
 });
 
-ipcMain.handle("hinest:showNotification", (_e, opts: { title: string; body?: string; silent?: boolean }) => {
+ipcMain.handle("hinest:showNotification", (_e, opts: { title: string; body?: string; silent?: boolean; icon?: string }) => {
   try {
-    const n = new Notification({ title: opts.title, body: opts.body, silent: opts.silent });
+    // 발신자 아바타(dataURL) 가 오면 알림 아이콘으로 사용. (Win/Linux 확실, macOS 는 빌드로 검증)
+    const icon = opts.icon ? nativeImage.createFromDataURL(opts.icon) : undefined;
+    const n = new Notification({ title: opts.title, body: opts.body, silent: opts.silent, ...(icon && !icon.isEmpty() ? { icon } : {}) });
     n.on("click", () => showWindow());
     n.show();
   } catch {}

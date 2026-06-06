@@ -3,6 +3,20 @@ export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   darkMode: "class",
   theme: {
+    // breakpoint 재정의 — iPad portrait(834px) 까지 모바일 레이아웃으로 끌어들이기 위해
+    // md 기준을 기본 768→1024 로 올림. 이렇게 하면 사이드바·하단탭·상단 채팅/알람/프로필
+    // 등의 'md:' 분기들이 iPad 에서도 모바일과 같게 동작한다. 일반 데스크탑(1280+)은 영향 없음.
+    //   sm = 640  (기본)
+    //   md = 1024 (변경: 768→1024)
+    //   lg = 1280 (변경: 1024→1280)
+    //   xl = 1536 (기본)
+    screens: {
+      sm: "640px",
+      md: "1024px",
+      lg: "1280px",
+      xl: "1536px",
+      "2xl": "1920px",
+    },
     extend: {
       colors: {
         // Primary blue (NAVER WORKS 의 UI 느낌은 유지, 컬러는 블루)

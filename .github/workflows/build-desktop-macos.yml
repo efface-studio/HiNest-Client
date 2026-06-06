@@ -53,20 +53,25 @@ jobs:
       - name: Compile TypeScript
         run: npm run build
 
-      # 시크릿(서명·공증용) 존재 여부에 따라 빌드 옵션을 분기. 빈 시크릿은 GitHub Actions
-      # 에서 빈 문자열로 들어오므로 단순 비교로 분기 가능.
+      # 시크릿 풀스택(MAC_CSC_LINK + APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID)
+      # 존재 여부에 따라 빌드 옵션을 분기. 빈 시크릿은 GitHub Actions 에서 빈 문자열로 들어오므로
+      # 단순 비교로 분기 가능. afterSign.js 가 env var 방식을 지원하므로 시크릿이 다 있으면
+      # 공증까지 자동으로 들어간다.
       - name: Decide signing strategy
         id: signing
         run: |
           if [[ -n "${{ secrets.MAC_CSC_LINK }}" ]]; then
             echo "auto_discovery=true" >> $GITHUB_OUTPUT
             echo "extra_args=" >> $GITHUB_OUTPUT
-            # 시크릿 있으면 공증 시도(desktop/build/afterSign.js — keychain profile 방식).
-            # ⚠️ 단 keychain profile 'hinest-notary' 가 러너에 없으므로, 시크릿 셋업과 함께
-            #    afterSign.js 를 env var(APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD) 기반으로 바꾸는
-            #    별도 작업이 필요. 그 작업 완료 전엔 시크릿이 있어도 SKIP 으로 두는 게 안전.
-            echo "skip_notarize=1" >> $GITHUB_OUTPUT
-            echo "🔐 Code signing enabled (MAC_CSC_LINK secret found)"
+            # 서명 + 공증 풀스택 시크릿이 다 있을 때만 공증 ON. 하나라도 빠지면 서명만 하고
+            # 공증은 스킵(빌드 자체는 굴러감 — 사용자가 .dmg 첫 실행 시 경고가 약간 줄어듦).
+            if [[ -n "${{ secrets.APPLE_ID }}" && -n "${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}" && -n "${{ secrets.APPLE_TEAM_ID }}" ]]; then
+              echo "skip_notarize=0" >> $GITHUB_OUTPUT
+              echo "🔐 Code signing + notarization enabled (all secrets present)"
+            else
+              echo "skip_notarize=1" >> $GITHUB_OUTPUT
+              echo "🔐 Code signing only (APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID missing → notarization skipped)"
+            fi
           else
             echo "auto_discovery=false" >> $GITHUB_OUTPUT
             # package.json 의 mac.identity 가 명시돼 있어 무서명 빌드 시 keychain 탐색이
@@ -89,8 +94,7 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # 시크릿 없으면 keychain 자동 탐색 끔(없는데 찾으려다 실패하는 거 방지).
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.auto_discovery }}
-          # desktop/build/afterSign.js 가 keychain profile 'hinest-notary' 를 찾아 공증을
-          # 시도하는데 CI 러너에는 없다 → SKIP. 시크릿 + 공증 env var 셋업되면 별도 작업으로
-          # afterSign.js 를 env var 기반으로 전환하고 이 변수를 0 으로 토글.
+          # afterSign.js 가 env var(APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID) 방식 지원.
+          # 시크릿 풀스택이 셋업되면 signing step 이 skip_notarize=0 으로 토글해 자동 공증 수행.
           HINEST_SKIP_NOTARIZE: ${{ steps.signing.outputs.skip_notarize }}
         run: npx electron-builder --mac --publish always ${{ steps.signing.outputs.extra_args }}

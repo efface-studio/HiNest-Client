@@ -322,9 +322,11 @@ export default function SchedulePage() {
                   holiday ? "bg-rose-50/40 dark:bg-rose-500/10" : ""
                 } ${isSelected ? "bg-brand-50/70 dark:bg-brand-500/15 sm:bg-transparent sm:dark:bg-transparent" : ""} ${d ? "cursor-pointer sm:cursor-default hover:bg-ink-25 sm:hover:bg-transparent" : ""}`}
                 onClick={() => {
-                  // 모바일: 셀 탭으로 그 날을 선택 → 아래 아젠다가 해당 날짜 일정으로 갱신.
+                  // 모바일: 셀 탭 → 선택(하이라이트). 일정이 있는 날이면 상세 모달도 연다.
+                  // (하단은 '다가오는 일정' 고정이라, 특정 날짜 보기는 모달로)
                   if (d && typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches) {
                     setSelectedDay(d);
+                    if (eventsOn(d).length > 0) setDayOpen(d);
                   }
                 }}
               >
@@ -386,13 +388,12 @@ export default function SchedulePage() {
           })}
         </div>
       </div>
-      {/* 모바일: 선택한 날의 일정 아젠다 — 그리드 아래 빈 공간을 자연스럽게 채운다. */}
+      {/* 모바일: 다가오는 일정(레퍼런스 디자인) — 그리드 아래를 채운다. */}
       <div className="sm:hidden mt-3">
-        <DayAgenda
-          date={selectedDay}
-          events={eventsOn(selectedDay)}
-          onOpenEvent={() => setDayOpen(selectedDay)}
-          onAdd={() => {
+        <UpcomingAgenda
+          events={events}
+          onOpenDay={(d) => setDayOpen(d)}
+          onViewAll={() => {
             const p = (n: number) => String(n).padStart(2, "0");
             const ymd = `${selectedDay.getFullYear()}-${p(selectedDay.getMonth() + 1)}-${p(selectedDay.getDate())}`;
             setForm((f) => ({ ...f, startAt: `${ymd}T09:00`, endAt: `${ymd}T10:00` }));
@@ -531,6 +532,75 @@ function DayAgenda({ date, events, onOpenEvent, onAdd }: { date: Date; events: E
               </svg>
             </button>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** 월 보기(모바일) — '다가오는 일정'. 오늘 이후 일정을 날짜별로 묶어 보여준다(레퍼런스 디자인). */
+function UpcomingAgenda({ events, onOpenDay, onViewAll }: { events: Event[]; onOpenDay: (d: Date) => void; onViewAll: () => void }) {
+  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
+  const [showAll, setShowAll] = useState(false);
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const upcoming = events
+    .filter((e) => new Date(e.endAt) >= todayStart)
+    .sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
+  const groups: { key: string; date: Date; items: Event[] }[] = [];
+  for (const e of upcoming) {
+    const d = new Date(e.startAt);
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    const key = dayStart.toDateString();
+    let g = groups.find((x) => x.key === key);
+    if (!g) { g = { key, date: dayStart, items: [] }; groups.push(g); }
+    g.items.push(e);
+  }
+  const shown = showAll ? groups : groups.slice(0, 5);
+  return (
+    <div className="card cal-fullbleed p-0 overflow-hidden">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-ink-100">
+        <span className="text-[15px] font-extrabold text-ink-900">다가오는 일정</span>
+        {groups.length > 5 && (
+          <button type="button" onClick={() => setShowAll((v) => !v)} className="text-[12.5px] font-bold text-brand-600">
+            {showAll ? "접기" : "전체보기"}
+          </button>
+        )}
+      </div>
+      {shown.length === 0 ? (
+        <button type="button" onClick={onViewAll} className="w-full px-4 py-10 flex flex-col items-center gap-1 active:bg-ink-25 transition">
+          <span className="text-[13px] text-ink-400">다가오는 일정이 없어요</span>
+          <span className="text-[12.5px] font-bold text-brand-600">+ 일정 추가</span>
+        </button>
+      ) : (
+        <div className="divide-y divide-ink-100">
+          {shown.map((g) => {
+            const dow = g.date.getDay();
+            const isToday = todayStart.toDateString() === g.date.toDateString();
+            const numColor = isToday ? "text-brand-600" : dow === 0 ? "text-rose-500" : dow === 6 ? "text-accent-500" : "text-ink-900";
+            return (
+              <div key={g.key} className="flex gap-3 px-4 py-3">
+                <button type="button" onClick={() => onOpenDay(g.date)} className="w-9 flex-shrink-0 text-center pt-0.5 active:opacity-60">
+                  <div className={`text-[19px] font-extrabold tabular leading-none ${numColor}`}>{g.date.getDate()}</div>
+                  <div className="text-[11px] font-bold text-ink-400 mt-1">{DOW[dow]}</div>
+                </button>
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  {g.items.map((e) => {
+                    const multi = new Date(e.startAt).toDateString() !== new Date(e.endAt).toDateString();
+                    return (
+                      <button key={e.id} type="button" onClick={() => onOpenDay(g.date)} className="w-full flex items-center gap-2.5 text-left rounded-xl px-3 py-2.5 bg-ink-25 hover:bg-ink-50 active:opacity-70 transition">
+                        <span className="w-2 h-2 rounded-full flex-shrink-0" style={{ background: e.color }} />
+                        <span className="flex-1 min-w-0 text-[13.5px] font-bold text-ink-900 truncate">{e.title}</span>
+                        <span className="text-[11.5px] text-ink-500 tabular flex-shrink-0">
+                          {multi ? "종일" : new Date(e.startAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

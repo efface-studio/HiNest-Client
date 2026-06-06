@@ -61,12 +61,19 @@ jobs:
           if [[ -n "${{ secrets.MAC_CSC_LINK }}" ]]; then
             echo "auto_discovery=true" >> $GITHUB_OUTPUT
             echo "extra_args=" >> $GITHUB_OUTPUT
+            # 시크릿 있으면 공증 시도(desktop/build/afterSign.js — keychain profile 방식).
+            # ⚠️ 단 keychain profile 'hinest-notary' 가 러너에 없으므로, 시크릿 셋업과 함께
+            #    afterSign.js 를 env var(APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD) 기반으로 바꾸는
+            #    별도 작업이 필요. 그 작업 완료 전엔 시크릿이 있어도 SKIP 으로 두는 게 안전.
+            echo "skip_notarize=1" >> $GITHUB_OUTPUT
             echo "🔐 Code signing enabled (MAC_CSC_LINK secret found)"
           else
             echo "auto_discovery=false" >> $GITHUB_OUTPUT
             # package.json 의 mac.identity 가 명시돼 있어 무서명 빌드 시 keychain 탐색이
             # 실패한다. --config.mac.identity=null 로 명시적으로 무서명 처리.
             echo "extra_args=--config.mac.identity=null" >> $GITHUB_OUTPUT
+            # 무서명 빌드에선 공증도 자동 스킵 (afterSign.js 가 HINEST_SKIP_NOTARIZE=1 존중).
+            echo "skip_notarize=1" >> $GITHUB_OUTPUT
             echo "⚠️ Unsigned build (no MAC_CSC_LINK secret) — users will see Gatekeeper warning."
           fi
 
@@ -82,4 +89,8 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           # 시크릿 없으면 keychain 자동 탐색 끔(없는데 찾으려다 실패하는 거 방지).
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.auto_discovery }}
+          # desktop/build/afterSign.js 가 keychain profile 'hinest-notary' 를 찾아 공증을
+          # 시도하는데 CI 러너에는 없다 → SKIP. 시크릿 + 공증 env var 셋업되면 별도 작업으로
+          # afterSign.js 를 env var 기반으로 전환하고 이 변수를 0 으로 토글.
+          HINEST_SKIP_NOTARIZE: ${{ steps.signing.outputs.skip_notarize }}
         run: npx electron-builder --mac --publish always ${{ steps.signing.outputs.extra_args }}

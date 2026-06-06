@@ -263,9 +263,14 @@ export default function SchedulePage() {
                 : `${weekDays[0].getMonth() + 1}.${weekDays[0].getDate()} – ${weekDays[6].getMonth() + 1}.${weekDays[6].getDate()}`}
             </div>
             <button className="btn-ghost" onClick={() => navCursor(1)}>→</button>
+            {/* 데스크탑(≥sm): 원래 텍스트 버튼 그대로 */}
+            <button className="btn-primary sm:ml-3 max-sm:hidden" onClick={() => setOpen(true)}>
+              + 일정 추가
+            </button>
+            {/* 모바일(<sm): + 아이콘만 — 헤더가 한 줄에 들어가게 */}
             <button
-              className="btn-primary"
-              style={{ width: 34, height: 34, padding: 0, fontSize: 22, fontWeight: 800, lineHeight: 1, display: "grid", placeItems: "center" }}
+              className="btn-primary sm:hidden"
+              style={{ width: 34, height: 34, padding: 0, fontSize: 22, fontWeight: 800, lineHeight: "34px", textAlign: "center" }}
               onClick={() => setOpen(true)}
               aria-label="일정 추가"
               title="일정 추가"

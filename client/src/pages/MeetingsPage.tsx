@@ -144,8 +144,15 @@ export default function MeetingsPage() {
         }
       />
 
-      {/* 통계 카드 — 페이지 진입 시 빠른 컨텍스트 제공. */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
+      {/* 통계 — 모바일은 한 줄 요약(레퍼런스), 데스크톱은 카드 */}
+      <div className="sm:hidden flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500 mb-4">
+        <span className="font-bold text-ink-900">전체 {stats.total}</span>
+        <span className="text-ink-300">·</span>
+        <span>이번 주 <b className="text-ink-800 font-bold">{stats.thisWeek}</b></span>
+        <span className="text-ink-300">·</span>
+        <span>내가 쓴 것 <b className="text-ink-800 font-bold">{stats.mine}</b></span>
+      </div>
+      <div className="hidden sm:grid grid-cols-3 gap-3 mb-5">
         <StatCard
           label="전체 회의록"
           value={stats.total}
@@ -278,7 +285,11 @@ export default function MeetingsPage() {
 }
 
 function MeetingCard({ m, sortKey }: { m: MeetingRow; sortKey: SortKey }) {
-  const projectColor = m.project?.color ?? "#94A3B8";
+  // 좌측 색띠 — 공개범위색(뱃지와 일치): 전사=초록 / 프로젝트=프로젝트색 또는 파랑 / 특정인원=앰버.
+  const bandColor =
+    m.visibility === "ALL" ? "#16A34A"
+    : m.visibility === "PROJECT" ? (m.project?.color ?? "#3B5CF0")
+    : "#D97706";
   const timeIso = sortKey === "updated" ? m.updatedAt : m.createdAt;
   const timeLabel = sortKey === "updated" ? "수정" : "작성";
   return (
@@ -286,9 +297,9 @@ function MeetingCard({ m, sortKey }: { m: MeetingRow; sortKey: SortKey }) {
       to={`/meetings/${m.id}`}
       className="panel p-0 overflow-hidden hover:!border-brand-300 transition group block"
     >
-      {/* 좌측 색띠 — 프로젝트 색 / 없으면 회색 */}
+      {/* 좌측 색띠 — 공개범위색(전사=초록·프로젝트=프로젝트색·특정인원=앰버), 뱃지와 일치 */}
       <div className="flex">
-        <div className="w-1.5 flex-shrink-0" style={{ background: projectColor }} aria-hidden />
+        <div className="w-1.5 flex-shrink-0" style={{ background: bandColor }} aria-hidden />
         <div className="flex-1 p-4 min-w-0">
           <div className="flex items-start justify-between gap-2">
             <div className="text-[15px] font-extrabold text-ink-900 line-clamp-2 leading-snug group-hover:text-brand-600 transition">

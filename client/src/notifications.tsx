@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { api, apiUrl } from "./api";
 import { getAuthToken } from "./lib/authToken";
 import { deliverPendingNotifications, markSeen } from "./lib/desktopNotify";
+import { isCapacitorNative } from "./lib/platform";
 import { initNativeNotificationTaps } from "./lib/nativeNotify";
 import { shouldDeliverNotif } from "./lib/notifPrefs";
 
@@ -49,6 +50,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   const [items, setItems] = useState<Notif[]>([]);
   const [ready, setReady] = useState(false);
   const initialRef = useRef(true);
+  // 백→포그라운드 복귀(resume) 직전에 true 로 세팅 — 그 직후 reload 가 "쌓인 미읽음"을
+  // 라이브 알림처럼 토스트하지 않게(네이티브는 이미 APNs 로 표시됨) 구분하는 플래그.
+  const catchUpRef = useRef(false);
   const esRef = useRef<EventSource | null>(null);
 
   const bellItems = useMemo(() => items.filter((n) => !isChatType(n.type)), [items]);
@@ -62,6 +66,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   );
 
   const reload = useCallback(async () => {
+    // resume 직후의 reload 인지 await 전에 캡처 — 네이티브에서 백그라운드 동안 쌓인 미읽음을
+    // 다시 토스트하지 않기 위해. 폴링/일반 reload 는 false 라 평소대로 deliver.
+    const isResume = catchUpRef.current;
+    catchUpRef.current = false;
     try {
       const res = await api<{ notifications: Notif[]; unread: number }>("/api/notification");
       setItems(res.notifications);
@@ -69,6 +77,11 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       const unreadItems = res.notifications.filter((n) => !n.readAt);
       if (initialRef.current) {
         initialRef.current = false;
+        markSeen(unreadItems.map((n) => n.id));
+      } else if (isResume && isCapacitorNative()) {
+        // 네이티브 포그라운드 복귀: 쌓인 미읽음은 백그라운드 동안 이미 원격 APNs(+NSE 아바타)로
+        // 표시됐다. 여기서 로컬 배너로 또 토스트하면 "아바타 알림 → 로컬 알림" 중복이 된다.
+        // → 배너는 생략하고 seen 처리만(벨/미읽음 카운트는 setItems 로 이미 반영됨).
         markSeen(unreadItems.map((n) => n.id));
       } else {
         // 카테고리 토글 / 방별 음소거를 통과한 것만 OS 알림으로.
@@ -218,6 +231,8 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       // SSE 가 살아있으면 실시간 push 로 이미 동기화됨 — reload() 생략.
       // SSE 가 끊긴 상태(재연결 대기 중)에서만 전체 재조회.
       if (esRef.current && esRef.current.readyState !== EventSource.CLOSED) return;
+      // 이 reload 는 "복귀 직후 캐치업" — 네이티브에선 쌓인 미읽음을 다시 토스트하지 않게 표시.
+      catchUpRef.current = true;
       reload();
     }
     document.addEventListener("visibilitychange", onVisibility);

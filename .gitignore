@@ -15,9 +15,37 @@ dist
 # runtime uploads (user-generated)
 server/uploads/
 
-# envs
+# envs — 모든 dotenv 변형 제외(production/development/staging/test). .env.example 만 트래킹.
 .env
-.env.local
+.env.*
+!.env.example
+
+# 인증서 / 키 / 자격증명 — Apple Developer ID, RSA private key, AWS credential 등.
+# (어떤 파일이든 이 확장자면 절대 커밋되지 않음. 실수로 잘못 add 해도 ignore.)
+*.p12
+*.pfx
+*.key
+*.pem
+*.cer
+*.crt
+*.mobileprovision
+*.provisionprofile
+*.jks
+*.keystore
+id_rsa
+id_rsa.*
+id_ed25519
+id_ed25519.*
+.npmrc
+.netrc
+credentials.json
+secrets.json
+service-account*.json
+GoogleService-Info.plist
+
+# 운영 비밀 데이터 / 디버그 스크립트 (이미 untracked 상태이지만 명시적으로 차단)
+server/scripts/migrateSuperAdmin.ts
+server/scripts/superadmin*.ts
 
 # prisma / sqlite (레거시 — 개발 편의상 아직 로컬 dev.db 는 커밋 안 함)
 server/prisma/*.db

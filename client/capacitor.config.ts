@@ -54,14 +54,14 @@ const config: CapacitorConfig = {
       resizeOnFullScreen: true,
     },
     // Capacitor Live Updates (Capgo, MIT, self-hosted) — 셸은 App Store 한 번만 심사받고,
-    // 웹 번들(dist)은 우리 서버에서 OTA 로 받는다. Phase 1: 셸 통합만(autoUpdate=false). Phase 2
-    // 에서 진짜 zip 배포 자동화 들어가면 true 로 전환. autoUpdate 가 켜져 있으면 SDK 가
-    // 백그라운드에서 updateUrl 폴링 → 다음 콜드 스타트 때 새 번들로 교체.
-    //   updateUrl  : POST {device_id, app_id, version, bundle_id, channel} → 새 버전 JSON
-    //   statsUrl   : POST 통계(선택, 우선 비활성)
-    //   appReadyTimeout: notifyAppReady() 가 이 시간 안에 안 불리면 직전 정상 번들로 자동 롤백.
+    // 웹 번들(dist)은 우리 서버에서 OTA 로 받는다. autoUpdate=true ⇒ SDK 가 백그라운드에서
+    // updateUrl 폴링 → 새 버전이면 zip 다운로드 → 다음 콜드 스타트(앱 재실행) 때 새 번들로 교체.
+    //   updateUrl  : POST {device_id, app_id, version, bundle_id, channel} → 새 버전 JSON 응답
+    //                서버가 Vercel manifest.json 를 읽어 응답을 만든다(routes/updates.ts).
+    //   appReadyTimeout: 새 번들 부팅 후 notifyAppReady() 가 이 시간(ms) 안에 안 불리면 직전
+    //                정상 번들로 자동 롤백 → 빌드가 깨져도 사용자가 벽돌 앱을 만나지 않음.
     CapacitorUpdater: {
-      autoUpdate: false,
+      autoUpdate: true,
       updateUrl: "https://nest.hi-vits.com/api/updates/check",
       appReadyTimeout: 10000,
       responseTimeout: 20,

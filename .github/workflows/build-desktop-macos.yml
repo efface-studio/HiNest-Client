@@ -1,0 +1,85 @@
+# HiNest 데스크톱 macOS 빌드 — Apple Silicon + Intel 둘 다(.dmg + .zip) 자동 빌드 후
+# Xixn2/HiNest-Desktop 릴리스에 publish. electron-updater 가 이 릴리스에서 새 .dmg/.zip 을
+# 자동으로 받아 사용자 앱에 적용한다.
+#
+# 트리거:
+#  - desktop/ 변경이 main 에 push 됐을 때 (Windows 워크플로우와 동일 패턴)
+#  - workflow_dispatch 로 수동 실행 (강제 재빌드)
+#
+# 필요한 시크릿:
+#  DESKTOP_RELEASE_TOKEN          — Xixn2/HiNest-Desktop 에 contents:write 권한을 가진 PAT.
+#                                   GITHUB_TOKEN 은 다른 레포 publish 불가하므로 필수.
+#  (서명·공증용 — 모두 옵셔널. 없으면 무서명 빌드로 fallback)
+#  MAC_CSC_LINK                   — Apple Developer ID Application 인증서(.p12) base64.
+#  MAC_CSC_KEY_PASSWORD           — 그 .p12 의 비밀번호.
+#  APPLE_ID                       — 공증용 Apple ID.
+#  APPLE_APP_SPECIFIC_PASSWORD    — Apple ID 에 발급한 앱 전용 암호.
+#  APPLE_TEAM_ID                  — Apple Developer Team ID (예: 3NVCLTSP9V).
+#
+# 시크릿이 없으면 빌드는 굴러가지만 사용자가 처음 .dmg 를 열 때 Gatekeeper 경고가 뜬다
+# (우클릭 → 열기 로 우회). 시크릿이 셋업되면 다음 빌드부터 자동으로 서명·공증된 .dmg 가
+# 떨어져 일반 더블클릭으로 바로 실행된다.
+
+name: build-desktop-macos
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "desktop/**"
+      - ".github/workflows/build-desktop-macos.yml"
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"  # Node.js 22 LTS (Node 20 EOL 2026-10)
+          cache: "npm"
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Compile TypeScript
+        run: npm run build
+
+      # 시크릿(서명·공증용) 존재 여부에 따라 빌드 옵션을 분기. 빈 시크릿은 GitHub Actions
+      # 에서 빈 문자열로 들어오므로 단순 비교로 분기 가능.
+      - name: Decide signing strategy
+        id: signing
+        run: |
+          if [[ -n "${{ secrets.MAC_CSC_LINK }}" ]]; then
+            echo "auto_discovery=true" >> $GITHUB_OUTPUT
+            echo "extra_args=" >> $GITHUB_OUTPUT
+            echo "🔐 Code signing enabled (MAC_CSC_LINK secret found)"
+          else
+            echo "auto_discovery=false" >> $GITHUB_OUTPUT
+            # package.json 의 mac.identity 가 명시돼 있어 무서명 빌드 시 keychain 탐색이
+            # 실패한다. --config.mac.identity=null 로 명시적으로 무서명 처리.
+            echo "extra_args=--config.mac.identity=null" >> $GITHUB_OUTPUT
+            echo "⚠️ Unsigned build (no MAC_CSC_LINK secret) — users will see Gatekeeper warning."
+          fi
+
+      - name: Build + publish macOS installer
+        env:
+          # Xixn2/HiNest-Desktop 에 쓸 수 있는 PAT. GITHUB_TOKEN 은 cross-repo publish 불가.
+          GH_TOKEN: ${{ secrets.DESKTOP_RELEASE_TOKEN }}
+          # 서명·공증(없으면 빈 문자열 → electron-builder 가 알아서 skip).
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # 시크릿 없으면 keychain 자동 탐색 끔(없는데 찾으려다 실패하는 거 방지).
+          CSC_IDENTITY_AUTO_DISCOVERY: ${{ steps.signing.outputs.auto_discovery }}
+        run: npx electron-builder --mac --publish always ${{ steps.signing.outputs.extra_args }}

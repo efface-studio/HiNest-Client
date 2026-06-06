@@ -11,7 +11,7 @@ declare global {
       setBadge: (count: number) => Promise<void>;
       flashFrame: () => Promise<void>;
       openExternal: (url: string) => Promise<{ ok: boolean; error?: string }>;
-      showNotification: (opts: { title: string; body?: string; silent?: boolean }) => Promise<void>;
+      showNotification: (opts: { title: string; body?: string; silent?: boolean; icon?: string }) => Promise<void>;
       relaunch: () => Promise<void>;
       onFullscreenChange: (cb: (isFs: boolean) => void) => () => void;
       // ─── macOS 네이티브 Touch ID ─────────────────────────────────

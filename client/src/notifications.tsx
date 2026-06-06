@@ -15,6 +15,7 @@ export type Notif = {
   body?: string;
   linkUrl?: string;
   actorName?: string;
+  actorColor?: string;
   readAt?: string | null;
   createdAt: string;
 };
@@ -88,7 +89,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         // 가로막힌 항목은 벨/채팅 UI 에는 그대로 들어가지만 OS 토스트는 안 뜸.
         const allowed = unreadItems.filter((n) => shouldDeliverNotif(n));
         deliverPendingNotifications(
-          allowed.map((n) => ({ id: n.id, title: n.title, body: n.body, linkUrl: n.linkUrl }))
+          allowed.map((n) => ({ id: n.id, title: n.title, body: n.body, linkUrl: n.linkUrl, actorName: n.actorName, actorColor: n.actorColor }))
         );
       }
     } catch {}
@@ -194,7 +195,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
             // 동일 가드 — 음소거된 방의 SSE 푸시는 OS 알림 띄우지 않음.
             if (shouldDeliverNotif(n)) {
               deliverPendingNotifications([
-                { id: n.id, title: n.title, body: n.body, linkUrl: n.linkUrl },
+                { id: n.id, title: n.title, body: n.body, linkUrl: n.linkUrl, actorName: n.actorName, actorColor: n.actorColor },
               ]);
             }
             // (음소거·카테고리로 가로막힌 건 위 if 가 OS 배너만 생략 — 벨/미읽음은 이미 반영됨.)

@@ -17,7 +17,7 @@ contextBridge.exposeInMainWorld("hinest", {
   setBadge: (count: number) => ipcRenderer.invoke("hinest:setBadge", count),
   flashFrame: () => ipcRenderer.invoke("hinest:flashFrame"),
   openExternal: (url: string) => ipcRenderer.invoke("hinest:openExternal", url),
-  showNotification: (opts: { title: string; body?: string; silent?: boolean }) =>
+  showNotification: (opts: { title: string; body?: string; silent?: boolean; icon?: string }) =>
     ipcRenderer.invoke("hinest:showNotification", opts),
   relaunch: () => ipcRenderer.invoke("hinest:relaunch"),
   canTouchID: () => ipcRenderer.invoke("hinest:canTouchID") as Promise<boolean>,

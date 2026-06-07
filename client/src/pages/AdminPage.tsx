@@ -298,8 +298,8 @@ export default function AdminPage() {
         description="구성원·초대키·팀·직급을 관리합니다."
       />
 
-      {/* 통계 — 모바일은 한 줄 요약, 데스크톱은 카드 */}
-      <div className="sm:hidden flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500 mb-4">
+      {/* 통계 — 모바일·iPad 는 한 줄 요약, 데스크톱은 카드 */}
+      <div className="md:hidden flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500 mb-4">
         <span className="font-bold text-ink-900">구성원 {users.length}</span>
         <span className="text-ink-300">·</span>
         <span>활성 <b className="text-ink-800 font-bold">{users.filter((u) => u.active).length}</b></span>
@@ -310,7 +310,7 @@ export default function AdminPage() {
         <span className="text-ink-300">·</span>
         <span>미사용 초대키 <b className="text-ink-800 font-bold">{invites.filter((k) => !k.used).length}</b></span>
       </div>
-      <div className="hidden sm:grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
+      <div className="hidden md:grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
         <StatCard label="전체 구성원" value={users.length} sub={`활성 ${users.filter((u) => u.active).length}명`} />
         <StatCard label="미사용 초대키" value={invites.filter((k) => !k.used).length} sub={`총 ${invites.length}건 발급`} />
         <StatCard label="팀" value={teams.length} sub="전사 팀 수" />
@@ -543,8 +543,8 @@ function UsersTab({
         <DetailUserTable rows={filtered} positions={positions} update={update} remove={remove} />
       )}
       {view === "basic" && (<>
-      {/* 데스크톱: 인라인 편집 테이블 */}
-      <div className="overflow-x-auto hidden sm:block">
+      {/* 데스크톱(md+): 인라인 편집 테이블. iPad portrait 는 모바일 카드로 보낸다. */}
+      <div className="overflow-x-auto hidden md:block">
       <table className="pro" style={{ minWidth: 720 }}>
         <thead>
           <tr>
@@ -689,8 +689,8 @@ function UsersTab({
         </tbody>
       </table>
       </div>
-      {/* 모바일: 깔끔한 구성원 카드 — 탭하면 상세 편집(권한·상태 포함) */}
-      <div className="sm:hidden flex flex-col gap-2">
+      {/* 모바일·iPad(<md): 깔끔한 구성원 카드 — 탭하면 상세 편집(권한·상태 포함) */}
+      <div className="md:hidden flex flex-col gap-2">
         {filtered.map((u) => (
           <button
             key={u.id}

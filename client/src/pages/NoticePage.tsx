@@ -282,7 +282,7 @@ export default function NoticePage() {
                     variant="icon"
                     payload={{
                       kind: "ANNOUNCEMENT",
-                      title: selected.title,
+                      title: selected.title?.trim() || "제목 없는 공지",
                       snippet: selected.content?.slice(0, 120) ?? undefined,
                       href: `/notice?id=${selected.id}`,
                     }}

@@ -282,7 +282,7 @@ export default function MeetingDetailPage() {
             variant="icon"
             payload={{
               kind: "MEETING",
-              title: meeting.title,
+              title: meeting.title?.trim() || "제목 없는 회의록",
               href: `/meetings/${meeting.id}`,
             }}
           />

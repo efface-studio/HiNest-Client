@@ -165,13 +165,14 @@ export async function notifyMany(inputs: NotifyInput[]) {
     await prisma.notification.createMany({ data: rows.map(({ actorAvatarUrl, ...row }) => row) });
     const created = await prisma.notification.findMany({ where: { id: { in: rows.map((r) => r.id) } } });
     // 음소거된 방의 채팅 알림은 APNs(폰 푸시) 만 생략 — 한 번에 조회.
-    const mutedSet = await mutedApnsSet(
-      created.map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
-    );
-    // 지금 그 방을 보고 있는 사람에겐 APNs 생략(요구사항: 보는 방 알림 X). 레코드·SSE 는 그대로.
-    const activeSet = await activeViewerApnsSet(
-      created.map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }))
-    );
+    // ⚡ 음소거 조회 + active-viewer 조회는 서로 독립적(다른 컬럼·다른 where) → 병렬로 묶어
+    //    매 알림마다 한 번의 DB 왕복(약 5-10ms) 줄임. publish(SSE) 가 이 둘 끝나야 트리거되므로
+    //    받는 사람 체감 latency 가 그만큼 단축된다.
+    const linkPairs = created.map((n) => ({ userId: n.userId, linkUrl: n.linkUrl }));
+    const [mutedSet, activeSet] = await Promise.all([
+      mutedApnsSet(linkPairs),
+      activeViewerApnsSet(linkPairs),
+    ]);
     // 아바타(actorAvatarUrl)는 Notification 컬럼이 아니라 입력에만 있으므로 id 로 되짚는다.
     const inputById = new Map(rows.map((r) => [r.id, r]));
     const apnsTargets: { userId: string; payload: { title: string; body?: string; linkUrl?: string; groupId?: string; senderName?: string; senderAvatarPath?: string; senderAvatarColor?: string } }[] = [];

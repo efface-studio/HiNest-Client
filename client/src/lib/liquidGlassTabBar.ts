@@ -28,6 +28,8 @@ export interface LiquidGlassTabBarPlugin {
   setVisible(options: { visible: boolean }): Promise<void>;
   /** 세션 토큰을 공유 App Group 에 기록 — NSE(채팅 아바타)의 /uploads 인증용. token="" 이면 제거. */
   setSharedToken(options: { token: string; group?: string }): Promise<void>;
+  /** 앱 테마를 네이티브 윈도우/탭바에 반영. light/dark/system. 저장돼 다음 실행 첫 페인트에도 적용. */
+  setInterfaceStyle(options: { style: "light" | "dark" | "system" }): Promise<void>;
   /** 애플 기본 확인 시트(action sheet). 로그아웃 등 재확인용. */
   confirm(options: {
     title?: string;

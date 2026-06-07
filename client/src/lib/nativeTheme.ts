@@ -25,3 +25,22 @@ export async function applyNativeTheme(resolved: "light" | "dark"): Promise<void
     await StatusBar.setStyle({ style: resolved === "dark" ? Style.Light : Style.Dark });
   } catch { /* StatusBar 플러그인 미설치 환경 — 조용히 무시 */ }
 }
+
+let _lastMode: "light" | "dark" | "system" | null = null;
+
+/**
+ * 앱 테마 모드(light/dark/system)를 네이티브 윈도우/탭바 트레잇에 반영한다.
+ *
+ * resolved(light|dark) 가 아니라 mode 를 받는 이유: system 모드는 .unspecified 로 둬야
+ * OS 설정을 따라가고 WebView 의 prefers-color-scheme 도 정상 동작한다. 명시(light/dark)
+ * 모드는 그 색으로 고정. 저장은 네이티브가 하므로 다음 실행 첫 페인트부터 올바른 색.
+ */
+export async function applyNativeInterfaceStyle(mode: "light" | "dark" | "system"): Promise<void> {
+  if (!isCapacitorNative()) return;
+  if (_lastMode === mode) return;
+  _lastMode = mode;
+  try {
+    const { LiquidGlassTabBar } = await import("./liquidGlassTabBar");
+    await LiquidGlassTabBar.setInterfaceStyle({ style: mode });
+  } catch { /* iOS<26 미지원/플러그인 부재 — 무해하게 무시 */ }
+}

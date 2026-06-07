@@ -144,15 +144,15 @@ export default function MeetingsPage() {
         }
       />
 
-      {/* 통계 — 모바일은 한 줄 요약(레퍼런스), 데스크톱은 카드 */}
-      <div className="sm:hidden flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500 mb-4">
+      {/* 통계 — 모바일·iPad 는 한 줄 요약(레퍼런스), 데스크톱은 카드 */}
+      <div className="md:hidden flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500 mb-4">
         <span className="font-bold text-ink-900">전체 {stats.total}</span>
         <span className="text-ink-300">·</span>
         <span>이번 주 <b className="text-ink-800 font-bold">{stats.thisWeek}</b></span>
         <span className="text-ink-300">·</span>
         <span>내가 쓴 것 <b className="text-ink-800 font-bold">{stats.mine}</b></span>
       </div>
-      <div className="hidden sm:grid grid-cols-3 gap-3 mb-5">
+      <div className="hidden md:grid grid-cols-3 gap-3 mb-5">
         <StatCard
           label="전체 회의록"
           value={stats.total}

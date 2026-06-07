@@ -133,6 +133,10 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         tabBar.translatesAutoresizingMaskIntoConstraints = false
         tabBar.delegate = self
         tabBar.tintColor = brandColor
+        // 라이트 모드 강제 — Info.plist 의 UIUserInterfaceStyle=Light 가 root window 에 적용되지만,
+        // UITabBar 가 추가될 때 부모 트레잇을 즉시 따라가지 않는 미세한 frame 이 있어 명시.
+        // 사용자가 시스템 다크 모드라도 탭바는 처음부터 라이트 글래스로 그려진다.
+        tabBar.overrideUserInterfaceStyle = .light
 
         var items: [UITabBarItem] = []
         for (i, tab) in tabs.enumerated() {

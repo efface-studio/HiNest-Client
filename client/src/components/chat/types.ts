@@ -15,7 +15,7 @@ export type Room = {
   messages: {
     content: string;
     createdAt: string;
-    kind?: "TEXT" | "IMAGE" | "VIDEO" | "FILE";
+    kind?: "TEXT" | "IMAGE" | "VIDEO" | "FILE" | "SHARE";
     fileName?: string | null;
     senderId?: string;
   }[];
@@ -33,7 +33,7 @@ export type Message = {
   // 페이로드엔 항상 포함 — 클라는 optional 로 읽고 활용.
   roomId?: string;
   content: string;
-  kind: "TEXT" | "IMAGE" | "VIDEO" | "FILE";
+  kind: "TEXT" | "IMAGE" | "VIDEO" | "FILE" | "SHARE";
   fileUrl?: string | null;
   fileName?: string | null;
   fileType?: string | null;

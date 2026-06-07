@@ -899,6 +899,12 @@ function MessageBubbleInner({ msg, mine }: { msg: Message; mine: boolean }) {
   const hasFile = !!fileUrl;
   const hasText = !!msg.content?.trim();
 
+  // 공유 카드 — 공지/메모/회의록 등. ShareSheet 가 보낸 메시지.
+  // fileType 은 "share:announcement" 같은 식별자, fileName 은 카드 제목, fileUrl 은 deep link.
+  if (msg.kind === "SHARE") {
+    return <ShareCardBubble msg={msg} mine={mine} />;
+  }
+
   // 이미지: 버블 없이 썸네일. 캡션은 아래 작은 버블.
   if (hasFile && msg.kind === "IMAGE") {
     return (
@@ -1036,6 +1042,67 @@ export const MessageBubble = memo(
   MessageBubbleInner,
   (a, b) => a.mine === b.mine && a.msg === b.msg
 );
+
+// 공유 카드 — kind="SHARE" 메시지. fileType="share:announcement|memo|meeting|document|journal" 분기.
+// 클릭 시 fileUrl 경로로 SPA 내 이동(react-router). 외부 링크가 들어와도 안전을 위해 same-origin 만.
+const SHARE_LABEL: Record<string, { label: string; icon: string }> = {
+  "share:announcement": { label: "공지", icon: "📣" },
+  "share:memo": { label: "메모", icon: "📝" },
+  "share:meeting": { label: "회의록", icon: "🗒️" },
+  "share:document": { label: "문서", icon: "📄" },
+  "share:journal": { label: "업무일지", icon: "🧾" },
+};
+
+function ShareCardBubble({ msg, mine }: { msg: Message; mine: boolean }) {
+  const meta = SHARE_LABEL[msg.fileType ?? ""] ?? { label: "공유", icon: "🔗" };
+  const href = msg.fileUrl ?? "#";
+  // SPA 라우트만 허용 — 외부 absolute URL 은 보안상 차단(피싱 방지).
+  const safe = href.startsWith("/") ? href : "#";
+  function navigate(e: React.MouseEvent) {
+    e.preventDefault();
+    if (safe === "#") return;
+    // SPA 라우터 — react-router 가 popstate 를 잡지 못하는 경우 대비 직접 navigate.
+    window.history.pushState({}, "", safe);
+    window.dispatchEvent(new PopStateEvent("popstate"));
+  }
+  const bg = mine ? "rgba(255,255,255,0.95)" : "#FFFFFF";
+  const border = mine ? "rgba(255,255,255,0.4)" : "#E5E7EB";
+  return (
+    <a
+      href={safe}
+      onClick={navigate}
+      style={{
+        display: "block",
+        maxWidth: 320,
+        background: bg,
+        border: `1px solid ${border}`,
+        borderRadius: 14,
+        padding: "12px 14px",
+        textDecoration: "none",
+        color: "#0F172A",
+        boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+      }}
+    >
+      <div style={{ fontSize: 10, fontWeight: 700, color: "#3B5CF0", marginBottom: 4, letterSpacing: "-0.01em" }}>
+        {meta.icon} {meta.label}
+      </div>
+      <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+        {msg.fileName ?? "(제목 없음)"}
+      </div>
+      {msg.content && msg.content.trim() && msg.content !== msg.fileName && (
+        <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {/* content 가 "제목 — snippet" 포맷이라 제목 부분 제거 */}
+          {msg.content.startsWith(`${msg.fileName ?? ""} — `)
+            ? msg.content.slice((msg.fileName ?? "").length + 3)
+            : msg.content}
+        </div>
+      )}
+      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9", fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>
+        탭해서 보기 →
+      </div>
+    </a>
+  );
+}
 
 // URL 자동 링크화 — http(s):// 또는 www. 로 시작하는 문자열을 <a> 로 변환.
 // 안전 조치: href 는 반드시 http/https 로만 구성하고, rel=noopener noreferrer + target=_blank.

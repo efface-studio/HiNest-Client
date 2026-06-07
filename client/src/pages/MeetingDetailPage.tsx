@@ -4,6 +4,7 @@ import { api, apiSWR, imgSrc, invalidateCache } from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import PinButton from "../components/PinButton";
+import ShareButton from "../components/ShareButton";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
 import MeetingAttachments, { type MeetingAttachment } from "../components/MeetingAttachments";
 import { copyToClipboard, absoluteUrl } from "../lib/clipboard";
@@ -277,6 +278,14 @@ export default function MeetingDetailPage() {
             링크 복사
           </button>
           <PinButton type="MEETING" id={meeting.id} label={meeting.title} />
+          <ShareButton
+            variant="icon"
+            payload={{
+              kind: "MEETING",
+              title: meeting.title,
+              href: `/meetings/${meeting.id}`,
+            }}
+          />
           <button className="btn-ghost no-print" onClick={() => window.print()} title="A4 인쇄">인쇄</button>
           <button className="btn-ghost" onClick={() => setHistoryOpen(true)} title="버전 히스토리">히스토리</button>
           {canEdit && !edit && (

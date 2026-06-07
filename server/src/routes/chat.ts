@@ -759,6 +759,162 @@ router.delete("/messages/:id", async (req, res) => {
 });
 
 /**
+ * 게시물 공유 — 공지/메모/회의록 등 앱 내 객체를 채팅 메시지로 보낸다.
+ *
+ * 1:1 (userIds) 와 그룹방 (roomIds) 둘 다 받는다. 1:1 은 기존 DIRECT 방 있으면 재사용,
+ * 없으면 새로 생성. 각 대상마다 kind="SHARE" 메시지 1건씩 만든다. 카드 표시 데이터는
+ * 기존 컬럼 재활용 — fileUrl=라우트 경로(deep link), fileName=제목, fileType=share:<kind>,
+ * content=fallback 표시 텍스트(브라우저 알림·검색 등에서 보일 때 사용).
+ *
+ * 보안:
+ *   - userIds 중 본인 회사가 아니면 무시 (공유 대상 제한)
+ *   - roomIds 중 본인이 멤버가 아닌 방은 무시 (외부 방 침입 차단)
+ *   - 본인 자신에게는 보내지 않음(중복 제거)
+ */
+const shareSchema = z.object({
+  kind: z.enum(["ANNOUNCEMENT", "MEMO", "MEETING", "DOCUMENT", "JOURNAL"]),
+  title: z.string().min(1).max(200),
+  snippet: z.string().max(300).optional(),
+  href: z.string().min(1).max(500),
+  userIds: z.array(z.string().max(50)).max(50).optional().default([]),
+  roomIds: z.array(z.string().max(50)).max(50).optional().default([]),
+});
+router.post("/share", async (req, res) => {
+  const u = (req as any).user;
+  const parsed = shareSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "invalid input" });
+  const d = parsed.data;
+  if (!d.userIds.length && !d.roomIds.length) {
+    return res.status(400).json({ error: "받을 대상을 한 명 이상 선택해 주세요" });
+  }
+
+  const recipientRoomIds = new Set<string>();
+
+  // 1) 그룹방 — 본인이 멤버여야만
+  for (const roomId of d.roomIds) {
+    const m = await prisma.roomMember.findUnique({
+      where: { roomId_userId: { roomId, userId: u.id } },
+      select: { id: true },
+    });
+    if (m) recipientRoomIds.add(roomId);
+  }
+
+  // 2) 1:1 — 각 userId 마다 DIRECT 방 찾거나 생성. 같은 회사만 허용.
+  for (const other of d.userIds) {
+    if (other === u.id) continue;
+    let room = await prisma.chatRoom.findFirst({
+      where: {
+        type: "DIRECT",
+        AND: [
+          { members: { some: { userId: u.id } } },
+          { members: { some: { userId: other } } },
+        ],
+      },
+      select: { id: true },
+    });
+    if (!room) {
+      const otherUser = await prisma.user.findUnique({
+        where: { id: other },
+        select: { id: true, companyId: true },
+      });
+      if (!otherUser) continue;
+      if (u.companyId && otherUser.companyId !== u.companyId) continue;
+      room = await prisma.chatRoom.create({
+        data: {
+          companyId: u.companyId ?? null,
+          name: `DM:${u.id}:${other}`,
+          type: "DIRECT",
+          createdById: u.id,
+          members: {
+            create: [
+              { companyId: u.companyId ?? null, userId: u.id },
+              { companyId: u.companyId ?? null, userId: other },
+            ],
+          },
+        },
+        select: { id: true },
+      });
+    }
+    recipientRoomIds.add(room.id);
+  }
+
+  // 3) 각 방에 SHARE 메시지 전송 + 알림
+  const fileType = `share:${d.kind.toLowerCase()}`;
+  const display = d.snippet ? `${d.title} — ${d.snippet}` : d.title;
+  const labelMap: Record<string, string> = {
+    ANNOUNCEMENT: "공지",
+    MEMO: "메모",
+    MEETING: "회의록",
+    DOCUMENT: "문서",
+    JOURNAL: "업무일지",
+  };
+  const label = labelMap[d.kind] ?? "공유";
+  const created: { roomId: string; messageId: string }[] = [];
+  const me = await prisma.user.findUnique({
+    where: { id: u.id },
+    select: { name: true, avatarUrl: true, avatarColor: true },
+  });
+  for (const roomId of recipientRoomIds) {
+    const msg = await prisma.chatMessage.create({
+      data: {
+        companyId: u.companyId ?? null,
+        roomId,
+        senderId: u.id,
+        content: display.slice(0, 8000),
+        kind: "SHARE",
+        fileUrl: d.href,
+        fileName: d.title,
+        fileType,
+      },
+      select: { id: true, roomId: true },
+    });
+    created.push({ roomId: msg.roomId, messageId: msg.id });
+    // SSE 로 같은 방 멤버들에게 즉시 갱신.
+    broadcastToRoom(roomId, "chat:update", { kind: "create", messageId: msg.id, roomId });
+
+    // 방 정보 — 알림 표시명 결정.
+    const room = await prisma.chatRoom.findUnique({
+      where: { id: roomId },
+      select: { type: true, name: true },
+    });
+    const others = await prisma.roomMember.findMany({
+      where: { roomId, userId: { not: u.id } },
+      select: { userId: true },
+    });
+    if (!others.length) continue;
+    if (room?.type === "DIRECT") {
+      await notifyMany(
+        others.map((o) => ({
+          userId: o.userId,
+          type: "DM" as const,
+          title: u.name,
+          body: `📌 ${label} · ${d.title}`.slice(0, 140),
+          linkUrl: `/chat?room=${roomId}`,
+          actorName: u.name,
+          actorAvatarUrl: me?.avatarUrl ?? undefined,
+          actorColor: me?.avatarColor ?? undefined,
+        }))
+      );
+    } else {
+      const roomName = room?.name ?? "대화방";
+      await notifyMany(
+        others.map((o) => ({
+          userId: o.userId,
+          type: "DM" as const,
+          title: roomName,
+          body: `${u.name}: 📌 ${label} · ${d.title}`.slice(0, 140),
+          linkUrl: `/chat?room=${roomId}`,
+          actorName: roomName,
+        }))
+      );
+    }
+  }
+
+  await writeLog(u.id, "SHARE", d.kind, `${recipientRoomIds.size}건:${d.title}`);
+  res.json({ ok: true, count: created.length, messages: created });
+});
+
+/**
  * 내 예약 메시지 목록
  */
 router.get("/scheduled", async (req, res) => {

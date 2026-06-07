@@ -203,10 +203,17 @@ export async function notifyMany(inputs: NotifyInput[]) {
 /** 전사 공지 — 총관리자 제외 모든 활성 유저에게 발송 */
 export async function notifyAllUsers(
   tpl: Omit<NotifyInput, "userId">,
-  excludeUserId?: string
+  excludeUserId?: string,
+  // 대상 회사 한정 — 명시하면 그 회사 활성 사용자에게만 팬아웃. 미인증 경로(회원가입)는 테넌트
+  // AsyncLocalStorage 컨텍스트가 없어 자동 스코프가 안 걸려 전 회사로 새어나가므로 반드시 넘겨야 함.
+  companyId?: string | null
 ) {
   const users = await prisma.user.findMany({
-    where: { active: true, ...(excludeUserId ? { id: { not: excludeUserId } } : {}) },
+    where: {
+      active: true,
+      ...(excludeUserId ? { id: { not: excludeUserId } } : {}),
+      ...(companyId ? { companyId } : {}),
+    },
     select: { id: true },
   });
   await notifyMany(

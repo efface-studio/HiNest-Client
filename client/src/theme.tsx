@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
-import { applyNativeTheme } from "./lib/nativeTheme";
+import { applyNativeTheme, applyNativeInterfaceStyle } from "./lib/nativeTheme";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -60,6 +60,12 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     void applyNativeTheme(resolved);
   }, [resolved]);
+
+  // mode 가 바뀔 때 네이티브 윈도우/탭바 트레잇도 동기화 — 다크모드 사용자의 탭바가
+  // 라이트로 고정되던 회귀 수정. system 모드는 OS 설정을 따라가도록 .unspecified 로 전달.
+  useEffect(() => {
+    void applyNativeInterfaceStyle(mode);
+  }, [mode]);
 
   const value = useMemo(() => ({ mode, resolved, setMode }), [mode, resolved, setMode]);
   return <ThemeCtx.Provider value={value}>{children}</ThemeCtx.Provider>;

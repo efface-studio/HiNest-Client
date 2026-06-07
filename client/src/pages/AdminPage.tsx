@@ -700,27 +700,85 @@ function UsersTab({
         </tbody>
       </table>
       </div>
-      {/* 모바일·iPad(<md): 깔끔한 구성원 카드 — 탭하면 상세 편집(권한·상태 포함) */}
-      <div className="md:hidden flex flex-col gap-2">
-        {filtered.map((u) => (
-          <button
-            key={u.id}
-            onClick={() => setEditTarget(u)}
-            className="flex items-center gap-3 w-full text-left rounded-2xl border border-ink-150 bg-[var(--c-surface)] px-3.5 py-3 active:opacity-70 transition"
-          >
-            <UserAvatar name={u.name} color={u.avatarColor ?? "#3D54C4"} imageUrl={u.avatarUrl ?? null} size={46} />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <span className="text-[15px] font-bold text-ink-900 truncate">{u.name}</span>
-                {u.team && <span className="chip-gray text-[11px] flex-shrink-0">{u.team}</span>}
+      {/* 모바일·iPad(<md): 구성원 카드 — 헤더(아바타·이름·이메일·상태) + 직급/팀 + 권한 드롭다운 + 액션 */}
+      <div className="md:hidden flex flex-col gap-2.5">
+        {filtered.map((u) => {
+          const roleClass =
+            u.role === "ADMIN" ? "role-admin"
+            : u.role === "MANAGER" ? "role-manager"
+            : "role-member";
+          return (
+            <div
+              key={u.id}
+              className="rounded-2xl border border-ink-150 bg-[var(--c-surface)] p-3.5"
+            >
+              {/* 헤더 — 탭하면 상세 편집 */}
+              <button
+                type="button"
+                onClick={() => setEditTarget(u)}
+                className="flex items-start gap-3 w-full text-left active:opacity-70 transition"
+              >
+                <UserAvatar name={u.name} color={u.avatarColor ?? "#3D54C4"} imageUrl={u.avatarUrl ?? null} size={44} />
+                <div className="min-w-0 flex-1">
+                  <div className="text-[15px] font-bold text-ink-900 truncate">{u.name}</div>
+                  <div className="text-[12px] text-ink-500 truncate tabular mt-0.5">{u.email}</div>
+                </div>
+                <MemberCardStatus u={u} />
+              </button>
+
+              <div className="h-px bg-ink-100 my-3" />
+
+              {/* 직급 / 팀 */}
+              <div className="grid grid-cols-2 gap-3 mb-3">
+                <div className="min-w-0">
+                  <div className="text-[10.5px] font-bold text-ink-400 mb-0.5">직급</div>
+                  <div className="text-[13px] font-semibold text-ink-800 truncate">{u.position || "—"}</div>
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[10.5px] font-bold text-ink-400 mb-0.5">팀</div>
+                  <div className="text-[13px] font-semibold text-ink-800 truncate">{u.team || "—"}</div>
+                </div>
               </div>
-              <div className="text-[12px] text-ink-500 truncate mt-0.5">
-                {u.position ? `${u.position} · ` : ""}{u.email}
+
+              {/* 권한 드롭다운 + 액션 아이콘 */}
+              <div className="flex items-end justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="text-[10.5px] font-bold text-ink-400 mb-1">권한</div>
+                  <select
+                    className={`ghost-select role-select ${roleClass}`}
+                    value={u.role}
+                    onChange={(e) => update(u.id, { role: e.target.value })}
+                    disabled={!!u.resignedAt}
+                  >
+                    <option value="MEMBER">MEMBER</option>
+                    <option value="MANAGER">MANAGER</option>
+                    <option value="ADMIN">ADMIN</option>
+                  </select>
+                </div>
+                <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <button className="btn-icon" title="상세 정보 편집" onClick={() => setEditTarget(u)}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4 12.5-12.5z" /></svg>
+                  </button>
+                  <button
+                    className="btn-icon"
+                    title={u.resignedAt ? "퇴사 정보 수정 / 복직" : "퇴사 처리"}
+                    onClick={() => setResignTarget(u)}
+                    style={u.resignedAt ? { color: "#3D54C4" } : { color: "#F97316" }}
+                  >
+                    {u.resignedAt ? (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></svg>
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 17l5-5-5-5" /><path d="M21 12H9" /><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /></svg>
+                    )}
+                  </button>
+                  <button className="btn-icon" title="삭제" onClick={() => remove(u.id)}>
+                    <TrashIcon />
+                  </button>
+                </div>
               </div>
             </div>
-            <MemberStatusPill u={u} />
-          </button>
-        ))}
+          );
+        })}
         {filtered.length === 0 && (
           <EmptyState title="구성원이 없습니다" description="초대키를 발급해 팀원을 추가해보세요." />
         )}
@@ -1660,10 +1718,19 @@ function UserAvatar({ name, color, imageUrl, size = 36 }: { name: string; color:
 }
 
 /** 모바일 구성원 카드용 상태 뱃지 — 재직(green) / 비활성(gray) / 퇴사(gray). */
-function MemberStatusPill({ u }: { u: UserRow }) {
-  if (u.resignedAt) return <span className="chip-gray text-[11px] flex-shrink-0">퇴사</span>;
-  if (!u.active) return <span className="chip-gray text-[11px] flex-shrink-0">비활성</span>;
-  return <span className="chip-green text-[11px] flex-shrink-0">재직</span>;
+// 카드용 상태 — ● Active / ● Inactive / ● 퇴사 (점 + 라벨). 스크린샷2 매칭.
+function MemberCardStatus({ u }: { u: UserRow }) {
+  const { color, label } = u.resignedAt
+    ? { color: "#F97316", label: "퇴사" }
+    : u.active
+      ? { color: "#16A34A", label: "Active" }
+      : { color: "#8E959E", label: "Inactive" };
+  return (
+    <span className="inline-flex items-center gap-1.5 flex-shrink-0 text-[12px] font-bold" style={{ color }}>
+      <span className="w-1.5 h-1.5 rounded-full" style={{ background: color }} />
+      {label}
+    </span>
+  );
 }
 
 /* ===================== Invites ===================== */

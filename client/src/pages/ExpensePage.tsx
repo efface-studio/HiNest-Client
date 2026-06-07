@@ -247,7 +247,7 @@ export default function ExpensePage() {
 
       <div className="card p-0 overflow-hidden overflow-x-auto" style={{ WebkitOverflowScrolling: "touch" }}>
         <table className="pro-cards w-full text-sm min-w-[720px]">
-          <thead className="bg-slate-50 text-slate-500 text-xs">
+          <thead className="bg-[color:var(--c-surface-2)] text-[color:var(--c-text-3)] text-xs">
             <tr>
               <th className="text-left px-4 py-3">사용일시</th>
               {scope === "all" && <th className="text-left px-4 py-3">사용자</th>}
@@ -263,13 +263,13 @@ export default function ExpensePage() {
           <tbody>
             {list.length === 0 && (
               <tr>
-                <td colSpan={9} className="cell-full px-4 py-10 text-center text-slate-400">
+                <td colSpan={9} className="cell-full px-4 py-10 text-center text-ink-400">
                   등록된 사용내역이 없습니다.
                 </td>
               </tr>
             )}
             {list.map((e) => (
-              <tr key={e.id} className="border-t border-slate-100 hover:bg-slate-50/50">
+              <tr key={e.id} className="border-t border-[color:var(--c-border)] hover:bg-[color:var(--c-surface-2)]">
                 <td data-label="사용일시" className="px-4 py-3">
                   {new Date(e.usedAt).toLocaleString("ko-KR", {
                     month: "2-digit",
@@ -281,10 +281,10 @@ export default function ExpensePage() {
                 {scope === "all" && <td data-label="사용자" className="px-4 py-3">{e.user?.name}</td>}
                 <td className="cell-primary px-4 py-3 font-medium">{e.merchant}</td>
                 <td data-label="분류" className="px-4 py-3">
-                  <span className="chip bg-slate-100 text-slate-700">{e.category}</span>
+                  <span className="chip chip-gray">{e.category}</span>
                 </td>
                 <td data-label="금액" className="px-4 py-3 text-right font-semibold">{e.amount.toLocaleString()}원</td>
-                <td data-label="메모" className="px-4 py-3 text-slate-500">
+                <td data-label="메모" className="px-4 py-3 text-ink-500">
                   <span className="block truncate max-w-[160px] md:max-w-[200px]">{e.memo || "-"}</span>
                 </td>
                 <td data-label="영수증" className="px-4 py-3 text-center">
@@ -293,7 +293,7 @@ export default function ExpensePage() {
                       보기
                     </button>
                   ) : (
-                    <span className="text-slate-300 text-xs">-</span>
+                    <span className="text-ink-300 text-xs">-</span>
                   )}
                 </td>
                 <td data-label="상태" className="px-4 py-3 text-center">

@@ -385,12 +385,12 @@ export default function MeetingDetailPage() {
           공개 범위:
           {visibility === "ALL" && <span className="chip-green">전사</span>}
           {visibility === "PROJECT" && (
-            <span className="chip" style={{ background: "#DBEAFE", color: "#1E40AF" }}>
+            <span className="chip chip-blue">
               프로젝트 — {meeting.project?.name ?? "-"}
             </span>
           )}
           {visibility === "SPECIFIC" && (
-            <span className="chip" style={{ background: "#FEF3C7", color: "#92400E" }}>
+            <span className="chip chip-amber">
               특정 {meeting.viewers.length}명 + 작성자
             </span>
           )}
@@ -441,7 +441,7 @@ function VisBtn({ active, onClick, label, desc }: { active: boolean; onClick: ()
     <button
       type="button"
       onClick={onClick}
-      className={`flex-1 text-left p-3 rounded-lg border-2 transition ${active ? "border-brand-500 bg-brand-50" : "border-slate-200 hover:bg-slate-50"}`}
+      className={`flex-1 text-left p-3 rounded-lg border-2 transition ${active ? "border-brand-500 bg-brand-50 dark:bg-brand-900/30 dark:text-brand-200" : "border-ink-200 hover:bg-ink-50 dark:border-ink-700 dark:hover:bg-ink-800"}`}
     >
       <div className="text-[13px] font-bold">{label}</div>
       <div className="text-[11px] text-slate-500 mt-0.5">{desc}</div>

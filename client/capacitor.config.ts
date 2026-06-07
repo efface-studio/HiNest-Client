@@ -41,6 +41,8 @@ const config: CapacitorConfig = {
     //   콘텐츠가 두 배 아래로 밀려 상단바 위 큰 빈 공간이 생긴다(#338 도입 회귀).
     //   키보드 부드러운 슬라이드는 별도의 Capacitor Keyboard plugin(resize:'native')이 처리.
     contentInset: "never",
+    // 링크 롱프레스 시 뜨는 사파리식 미리보기(peek/pop) 비활성화 — 네이티브 앱엔 없는 웹 팝업.
+    allowsLinkPreview: false,
   },
   server: {
     androidScheme: "https",

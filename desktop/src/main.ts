@@ -214,6 +214,27 @@ app.on("second-instance", () => {
   showWindow();
 });
 
+/**
+ * 첫 실행에 자동 시작(OS 로그인 시 트레이 상주)을 기본 ON 으로 등록.
+ * → 앱이 꺼져 있어도 컴퓨터를 켤 때마다 트레이로 자동 실행되어 알람을 항상 받는다.
+ *
+ * 한 번만 초기화: flag 파일이 있으면 skip — 사용자가 토글로 OFF 한 후엔 우리가 다시 켜지 않음.
+ * 사용자 설정 폴더(app.getPath('userData'))에 flag 를 저장하므로 앱 업데이트 후에도 유지.
+ * dev 빌드(packaged 아님)는 안전상 skip — npm run dev 가 사용자 로그인 항목을 건드리지 않게.
+ */
+function initAutoLaunchDefault() {
+  if (!app.isPackaged) return;
+  try {
+    const flagPath = path.join(app.getPath("userData"), "auto-launch-initialized");
+    if (fs.existsSync(flagPath)) return;
+    app.setLoginItemSettings({ openAtLogin: true, openAsHidden: true });
+    fs.writeFileSync(flagPath, String(Date.now()));
+    console.log("[autoLaunch] enabled by default on first run");
+  } catch (e) {
+    console.warn("[autoLaunch] init failed", e);
+  }
+}
+
 app.whenReady().then(() => {
   // Windows 에서 알림 타이틀바에 "Electron" 대신 HiNest 로 뜨게
   if (process.platform === "win32") {
@@ -222,6 +243,7 @@ app.whenReady().then(() => {
   createWindow();
   createTray();
   setupAutoUpdater(() => mainWindow);
+  initAutoLaunchDefault();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

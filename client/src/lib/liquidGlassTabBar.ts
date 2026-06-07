@@ -30,6 +30,8 @@ export interface LiquidGlassTabBarPlugin {
   setSharedToken(options: { token: string; group?: string }): Promise<void>;
   /** 앱 테마를 네이티브 윈도우/탭바에 반영. light/dark/system. 저장돼 다음 실행 첫 페인트에도 적용. */
   setInterfaceStyle(options: { style: "light" | "dark" | "system" }): Promise<void>;
+  /** 햅틱 피드백 — 버튼·토글 탭 등. style 기본 light. */
+  haptic(options: { style?: "light" | "medium" | "heavy" | "selection" | "success" | "warning" | "error" }): Promise<void>;
   /** 애플 기본 확인 시트(action sheet). 로그아웃 등 재확인용. */
   confirm(options: {
     title?: string;

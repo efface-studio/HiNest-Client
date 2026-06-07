@@ -20,6 +20,7 @@ import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
 import { isPreviewMode, disablePreview } from "../lib/previewMock";
 import { isInstalledApp, isDesktopApp, nativePlatform, isCapacitorNative } from "../lib/platform";
 import { LiquidGlassTabBar, setNativeTabBarHidden, syncNativeTabBarVisibility } from "../lib/liquidGlassTabBar";
+import { attachGlobalHaptics } from "../lib/haptics";
 import { confirmLogout } from "../lib/confirmLogout";
 
 /**
@@ -747,6 +748,11 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     const hideOnRoutes: string[] = [];
     setNativeTabBarHidden("route", hideOnRoutes.some((r) => pathname === r || pathname.startsWith(r + "/")));
   }, [pathname]);
+
+  // iOS/iPadOS 전역 햅틱 — 버튼·토글·탭 탭 시 light/selection 피드백. 웹/데스크톱은 no-op.
+  useEffect(() => {
+    return attachGlobalHaptics();
+  }, []);
 
   // 모달이 열려 있는 동안 네이티브 바 숨김. 모달 오버레이는 .modal-safe 로 표시돼 있으므로
   // DOM 에 그게 존재하는지 관찰한다. (채팅 풀스크린은 ChatFab 이 별도로 'chat' 사유로 숨김.)

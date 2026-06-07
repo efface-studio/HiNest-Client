@@ -93,6 +93,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setSharedToken", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setInterfaceStyle", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "promptInput", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
     ]
 
     private var tabBarView: UITabBar?
@@ -277,6 +278,31 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         }
     }
 
+    /// 햅틱 피드백 — JS(버튼·토글 탭 등)에서 호출. style: light|medium|heavy|selection|success|warning|error.
+    /// 메인 스레드에서 즉시 발생. 비지원 기기/시뮬레이터는 무음 no-op.
+    @objc func haptic(_ call: CAPPluginCall) {
+        let style = call.getString("style") ?? "light"
+        DispatchQueue.main.async {
+            switch style {
+            case "selection":
+                UISelectionFeedbackGenerator().selectionChanged()
+            case "success":
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            case "warning":
+                UINotificationFeedbackGenerator().notificationOccurred(.warning)
+            case "error":
+                UINotificationFeedbackGenerator().notificationOccurred(.error)
+            case "medium":
+                UIImpactFeedbackGenerator(style: .medium).impactOccurred()
+            case "heavy":
+                UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+            default:
+                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+            }
+        }
+        call.resolve()
+    }
+
     /// 텍스트 입력 1개를 받는 애플 기본 다이얼로그(UIAlertController + textField).
     /// resolve({ value, cancelled }). 취소/없음이면 cancelled:true.
     @objc func promptInput(_ call: CAPPluginCall) {
@@ -325,6 +351,9 @@ extension LiquidGlassTabBarPlugin: UITabBarDelegate {
     public func tabBar(_ tabBar: UITabBar, didSelect item: UITabBarItem) {
         let i = item.tag
         guard i >= 0, i < keys.count else { return }
+        // 탭 전환 시 선택 햅틱 — 네이티브 탭바 느낌. (실제 OS 탭바도 selection feedback 을 준다)
+        let gen = UISelectionFeedbackGenerator()
+        gen.selectionChanged()
         notifyListeners("tabSelected", data: ["key": keys[i]])
     }
 }

@@ -415,14 +415,16 @@ textarea.input {
 /* iOS Safari 는 font-size < 16px 인 input 에 포커스 시 viewport 를 자동 확대함.
    모바일에서만 16px 로 고정해 자동 줌을 억제한다. */
 @media (max-width: 640px) {
-  .input { font-size: 16px; }
-  .filter-input { font-size: 16px; }
+  /* !important — 일부 입력칸이 Tailwind `!text-[12.5px]` 같은 important 유틸로 16px 규칙을
+     덮어써 iOS 자동 줌이 도로 발생하던 문제(감사 발견 JournalPage 등). 모바일에선 16px 강제. */
+  .input { font-size: 16px !important; }
+  .filter-input { font-size: 16px !important; }
 }
 /* 위 max-width:640px 은 세로 아이폰만 커버 → 아이패드·가로 아이폰(>640px) 은 여전히
    14px/12.5px 라 포커스 시 화면이 줌-점프한다. 호버 불가(=터치) 기기 전반에서 16px 로
    올려 자동 줌을 막는다. 마우스 데스크톱/Electron(pointer:fine) 은 기존 콤팩트 크기 유지. */
 @media (pointer: coarse) {
-  .input, textarea.input, .filter-input, select.filter-input, .ghost-select { font-size: 16px; }
+  .input, textarea.input, .filter-input, select.filter-input, .ghost-select { font-size: 16px !important; }
 }
 
 /* 터치(호버 불가) 기기에서는 hover 로만 드러나는 액션 버튼을 항상 보이게 한다.

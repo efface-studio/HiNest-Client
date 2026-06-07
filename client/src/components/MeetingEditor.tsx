@@ -12,6 +12,8 @@ import TaskItem from "@tiptap/extension-task-item";
 import Mention from "@tiptap/extension-mention";
 import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
+import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
+import { markdownToHtml, looksLikeMarkdown } from "../lib/markdownToHtml";
 import { useEffect, useMemo } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import "./MeetingEditor.css";
@@ -148,19 +150,39 @@ export default function MeetingEditor({ value, onChange, editable = true, placeh
     editorProps: {
       handlePaste: (view, event) => {
         const html = event.clipboardData?.getData("text/html");
-        if (html) return false; // HTML 페이스트는 기본 동작 유지
+        if (html) return false; // 리치 HTML 페이스트(워드·웹 등)는 기본 동작 유지
         const text = event.clipboardData?.getData("text/plain");
         if (!text) return false;
-        if (!looksLikeCodeForEditor(text)) return false;
-        event.preventDefault();
-        // 현재 셀렉션 위치에 codeBlock 노드 삽입.
-        const { schema } = view.state;
-        const codeBlock = schema.nodes.codeBlock;
-        if (!codeBlock) return false;
-        const node = codeBlock.create({}, schema.text(text));
-        const tr = view.state.tr.replaceSelectionWith(node);
-        view.dispatch(tr);
-        return true;
+
+        // 1) 순수 코드 → codeBlock (기존 동작)
+        if (looksLikeCodeForEditor(text)) {
+          event.preventDefault();
+          const { schema } = view.state;
+          const codeBlock = schema.nodes.codeBlock;
+          if (!codeBlock) return false;
+          const node = codeBlock.create({}, schema.text(text));
+          const tr = view.state.tr.replaceSelectionWith(node);
+          view.dispatch(tr);
+          return true;
+        }
+
+        // 2) 마크다운 → HTML 변환 후 ProseMirror 슬라이스로 삽입(서식 살림)
+        if (looksLikeMarkdown(text)) {
+          try {
+            const htmlStr = markdownToHtml(text);
+            const dom = new window.DOMParser().parseFromString(htmlStr, "text/html");
+            const slice = PMDOMParser.fromSchema(view.state.schema).parseSlice(dom.body);
+            const tr = view.state.tr.replaceSelection(slice);
+            view.dispatch(tr);
+            event.preventDefault();
+            return true;
+          } catch {
+            return false; // 변환 실패 시 기본(평문) 동작으로 폴백
+          }
+        }
+
+        // 3) 그 외 → 기본 평문 페이스트
+        return false;
       },
     },
     content: value ?? "",

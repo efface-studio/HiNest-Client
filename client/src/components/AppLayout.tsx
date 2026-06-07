@@ -21,6 +21,7 @@ import { isPreviewMode, disablePreview } from "../lib/previewMock";
 import { isInstalledApp, isDesktopApp, nativePlatform, isCapacitorNative } from "../lib/platform";
 import { LiquidGlassTabBar, setNativeTabBarHidden, syncNativeTabBarVisibility } from "../lib/liquidGlassTabBar";
 import { attachGlobalHaptics } from "../lib/haptics";
+import { attachNativeKeyboard } from "../lib/nativeKeyboard";
 import { confirmLogout } from "../lib/confirmLogout";
 
 /**
@@ -752,6 +753,11 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   // iOS/iPadOS 전역 햅틱 — 버튼·토글·탭 탭 시 light/selection 피드백. 웹/데스크톱은 no-op.
   useEffect(() => {
     return attachGlobalHaptics();
+  }, []);
+
+  // iOS/iPadOS 키보드 보정 — 입력 포커스 시 키보드 위로 scroll-into-view. 웹/데스크톱은 no-op.
+  useEffect(() => {
+    return attachNativeKeyboard();
   }, []);
 
   // 모달이 열려 있는 동안 네이티브 바 숨김. 모달 오버레이는 .modal-safe 로 표시돼 있으므로

@@ -6,6 +6,7 @@ import PageHeader from "../components/PageHeader";
 import Portal from "../components/Portal";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import ShareSheet, { type SharePayload } from "../components/ShareSheet";
+import { presentShareNative } from "../lib/share";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
 import type { MemoDoc } from "../components/DocMemoModal";
 import { safeUploadUrl } from "../lib/safeUrl";
@@ -1221,7 +1222,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); downloadFolder(f); }} title="폴더 전체 다운로드 (ZIP)">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
                   </button>
-                  <button className="btn-icon" onClick={(e) => { e.stopPropagation(); setSharePayload({ kind: "DOCUMENT", title: f.name, href: `/documents?folder=${f.id}` }); }} title="동료에게 공유">
+                  <button className="btn-icon" onClick={async (e) => { e.stopPropagation(); const p = { kind: "DOCUMENT" as const, title: f.name, href: `/documents?folder=${f.id}` }; if (!(await presentShareNative(p))) setSharePayload(p); }} title="동료에게 공유">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
                   </button>
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); renameFolder(f); }} title="이름 변경">
@@ -1416,7 +1417,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                             </button>
                           )}
                           {d.fileUrl && (
-                            <button className="btn-icon" onClick={() => setSharePayload({ kind: "DOCUMENT", title: d.title, snippet: d.fileName ?? undefined, href: d.folderId ? `/documents?folder=${d.folderId}` : "/documents" })} title="동료에게 공유">
+                            <button className="btn-icon" onClick={async () => { const p = { kind: "DOCUMENT" as const, title: d.title, snippet: d.fileName ?? undefined, href: d.folderId ? `/documents?folder=${d.folderId}` : "/documents" }; if (!(await presentShareNative(p))) setSharePayload(p); }} title="동료에게 공유">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
                             </button>
                           )}

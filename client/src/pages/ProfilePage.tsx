@@ -665,6 +665,9 @@ function DesktopNotifyPanel() {
             />
           </label>
 
+          {/* 데스크탑 앱(Electron) 자동 시작 — 종료된 상태에서도 알람 받기 위해 OS 로그인 시 트레이 상주. */}
+          <AutoLaunchToggle />
+
           <NotifCategoryToggles disabled={!enabled} />
 
           <button type="button" className="btn-ghost" onClick={onTest}>
@@ -673,6 +676,50 @@ function DesktopNotifyPanel() {
         </div>
       )}
     </div>
+  );
+}
+
+/* ===== 데스크탑 앱 자동 시작 토글 — Electron 환경 + 자동시작 API 가용한 빌드에서만 노출 =====
+ * macOS/Windows: OS 로그인 시 트레이 상주(앱 자동 실행). 사용자가 명시 활성화. 다른 환경(웹/
+ * 미지원 구버전 셸)에선 컴포넌트 자체가 null 을 반환해 영향 없음. */
+function AutoLaunchToggle() {
+  const [supported, setSupported] = useState<boolean>(false);
+  const [enabled, setEnabled] = useState<boolean>(false);
+  const [pending, setPending] = useState<boolean>(false);
+  useEffect(() => {
+    const api = window.hinest;
+    if (!api?.getAutoLaunch || !api?.setAutoLaunch) return;
+    setSupported(true);
+    api.getAutoLaunch().then((v) => setEnabled(!!v)).catch(() => {});
+  }, []);
+  if (!supported) return null;
+  async function onToggle(next: boolean) {
+    setPending(true);
+    try {
+      const res = await window.hinest!.setAutoLaunch!(next);
+      if (res?.ok) setEnabled(!!res.enabled);
+      else if (!res?.ok && res?.error) window.alert(`자동 시작 변경 실패: ${res.error}`);
+    } finally {
+      setPending(false);
+    }
+  }
+  return (
+    <label className="flex items-center justify-between gap-3 p-3 rounded-lg bg-ink-25 border border-ink-150 cursor-pointer">
+      <div>
+        <div className="text-[13px] font-bold text-ink-900">OS 로그인 시 자동 시작</div>
+        <div className="text-[11.5px] text-ink-500 mt-0.5">
+          켜두면 컴퓨터를 켤 때마다 HiNest 가 트레이로 백그라운드 실행돼, 앱을 직접 켜지 않아도
+          새 알림을 받을 수 있어요.
+        </div>
+      </div>
+      <input
+        type="checkbox"
+        className="accent-brand-500 w-5 h-5 flex-shrink-0"
+        checked={enabled}
+        disabled={pending}
+        onChange={(e) => onToggle(e.target.checked)}
+      />
+    </label>
   );
 }
 

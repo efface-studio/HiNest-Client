@@ -247,6 +247,27 @@ ipcMain.handle("hinest:relaunch", () => {
 });
 
 /**
+ * 자동 시작 (OS 로그인 시 트레이 상주) — 사용자 토글. 알람 항상 수신 목적.
+ * macOS LaunchAgent 등록. openAsHidden=true 로 윈도우 없이 트레이만 시작.
+ */
+ipcMain.handle("hinest:getAutoLaunch", () => {
+  try {
+    return app.getLoginItemSettings().openAtLogin;
+  } catch {
+    return false;
+  }
+});
+
+ipcMain.handle("hinest:setAutoLaunch", (_e, enabled: boolean) => {
+  try {
+    app.setLoginItemSettings({ openAtLogin: !!enabled, openAsHidden: true });
+    return { ok: true, enabled: app.getLoginItemSettings().openAtLogin };
+  } catch (e: any) {
+    return { ok: false, error: String(e?.message ?? e) };
+  }
+});
+
+/**
  * 네이티브 Touch ID 프롬프트.
  * Electron 내부 Chromium 은 WebAuthn 플랫폼 인증기를 노출하지 않기 때문에
  * macOS Local Authentication 을 main 프로세스에서 직접 호출한다. (샌드박스에서 동작)

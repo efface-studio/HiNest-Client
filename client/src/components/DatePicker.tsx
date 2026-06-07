@@ -98,12 +98,13 @@ export default function DatePicker({
         disabled={disabled}
         className={
           variant === "input"
-            ? "input text-left tabular flex items-center justify-between disabled:opacity-60"
+            ? "input text-left tabular flex items-center justify-between gap-1 disabled:opacity-60"
             : "w-full min-w-0 bg-transparent border-0 focus:bg-[color:var(--c-surface)] text-[color:var(--c-text)] focus:outline-none focus:ring-1 focus:ring-brand-400 rounded text-[12px] px-1 py-1.5 tabular text-left hover:bg-[color:var(--c-surface-3)]"
         }
         onClick={() => !disabled && setOpen((v) => !v)}
       >
-        <span className={value ? "" : "text-ink-400"}>
+        {/* whitespace-nowrap — 좁은 칸에서 'YYYY-MM-DD' 가 'YYYY-/MM-DD' 로 줄바꿈되던 깨짐 방지 */}
+        <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${value ? "" : "text-ink-400"}`}>
           {value || placeholder}
         </span>
         {variant === "input" && (

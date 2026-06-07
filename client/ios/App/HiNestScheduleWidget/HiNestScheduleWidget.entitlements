@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- 메인 앱(NSE 가 이미 쓰는 그룹) 와 동일 — 세션 토큰을 위젯이 읽어 API 호출 -->
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.com.hivits.hinest</string>
+	</array>
+</dict>
+</plist>

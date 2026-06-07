@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { notifyMany } from "../lib/notify.js";
+import { allSameCompanyUsers } from "../lib/tenantValidate.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -423,6 +424,15 @@ router.post("/", async (req, res) => {
     }
   }
 
+  // SPECIFIC 열람자(viewerIds)는 반드시 같은 회사 사용자여야 한다 — 안 그러면 타 회사 사용자에게
+  // 고아 MeetingViewer 행 + 알림/SSE/APNs 푸시가 주입되는 cross-tenant 결함(자동 스코프는 nested
+  // create·publish 를 막지 못함). chat.ts 등 다른 라우트와 동일하게 명시 검증.
+  if (d.visibility === "SPECIFIC" && d.viewerIds?.length) {
+    if (!(await allSameCompanyUsers(d.viewerIds))) {
+      return res.status(400).json({ error: "열람자 중 일부를 찾을 수 없습니다" });
+    }
+  }
+
   const meeting = await prisma.meeting.create({
     data: {
       title: d.title,
@@ -530,6 +540,13 @@ router.patch("/:id", async (req, res) => {
   const replaceViewers =
     d.viewerIds !== undefined &&
     ((d.visibility ?? existing.visibility) === "SPECIFIC");
+
+  // 교체될 viewerIds 는 반드시 같은 회사 사용자여야 함(POST 와 동일 — cross-tenant 알림 주입 차단).
+  if (replaceViewers && d.viewerIds?.length) {
+    if (!(await allSameCompanyUsers(d.viewerIds))) {
+      return res.status(400).json({ error: "열람자 중 일부를 찾을 수 없습니다" });
+    }
+  }
 
   // 교체 전 기존 열람자 스냅샷 — 트랜잭션 후 새로 추가된 사람에게만 공유 알림을 보내기 위함.
   const prevViewerIds = replaceViewers

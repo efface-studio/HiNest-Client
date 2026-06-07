@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { nativePlatform } from "../lib/platform";
+import { LiquidGlassTabBar } from "../lib/liquidGlassTabBar";
 
 /**
  * 전역 확인/알림/입력 모달 호스트 — 네이티브 window.confirm/alert/prompt 를 대체한다.
@@ -79,7 +81,62 @@ function cancelPrevious() {
   else d.resolve(null);
 }
 
+// iOS/iPadOS(Capacitor) 에서는 커스텀 웹 모달 대신 애플 기본 UIAlertController 를 쓴다.
+// 내용(제목/본문/버튼 라벨)은 동일하게 전달 — 네이티브 룩앤필만 입힌다. 웹/데스크톱/안드로이드는
+// 기존 커스텀 모달 유지. 네이티브 호출 실패 시(플러그인 부재 등) 웹 모달로 폴백.
+function useNativeDialogs(): boolean {
+  return nativePlatform() === "ios"; // iPad 도 Capacitor 에선 "ios"
+}
+
 export function confirmAsync(opts: ConfirmOpts): Promise<ConfirmResult> {
+  if (useNativeDialogs()) {
+    return LiquidGlassTabBar.confirm({
+      title: opts.title,
+      message: opts.description,
+      confirmText: opts.confirmLabel,
+      cancelText: opts.cancelLabel,
+      destructive: opts.tone === "danger",
+      secondaryText: opts.secondaryLabel,
+    })
+      .then((r): ConfirmResult => (r.action === "secondary" ? "secondary" : !!r.confirmed))
+      .catch(() => webConfirm(opts));
+  }
+  return webConfirm(opts);
+}
+
+export function alertAsync(opts: AlertOpts): Promise<void> {
+  if (useNativeDialogs()) {
+    return LiquidGlassTabBar.confirm({
+      title: opts.title,
+      message: opts.description,
+      confirmText: opts.confirmLabel ?? "확인",
+      alertOnly: true,
+    })
+      .then(() => undefined)
+      .catch(() => webAlert(opts));
+  }
+  return webAlert(opts);
+}
+
+export function promptAsync(opts: PromptOpts): Promise<string | null> {
+  if (useNativeDialogs()) {
+    return LiquidGlassTabBar.promptInput({
+      title: opts.title,
+      message: opts.description,
+      confirmText: opts.confirmLabel,
+      cancelText: opts.cancelLabel,
+      placeholder: opts.placeholder,
+      defaultValue: opts.defaultValue,
+      secure: opts.inputType === "password",
+    })
+      .then((r) => (r.cancelled ? null : r.value ?? ""))
+      .catch(() => webPrompt(opts));
+  }
+  return webPrompt(opts);
+}
+
+// ── 웹/데스크톱/안드로이드용 커스텀 모달 구현(기존 동작) ───────────────────────────
+function webConfirm(opts: ConfirmOpts): Promise<ConfirmResult> {
   return new Promise((resolve) => {
     cancelPrevious();
     currentDialog = { kind: "confirm", opts, resolve };
@@ -87,7 +144,7 @@ export function confirmAsync(opts: ConfirmOpts): Promise<ConfirmResult> {
   });
 }
 
-export function alertAsync(opts: AlertOpts): Promise<void> {
+function webAlert(opts: AlertOpts): Promise<void> {
   return new Promise((resolve) => {
     cancelPrevious();
     currentDialog = { kind: "alert", opts, resolve };
@@ -95,7 +152,7 @@ export function alertAsync(opts: AlertOpts): Promise<void> {
   });
 }
 
-export function promptAsync(opts: PromptOpts): Promise<string | null> {
+function webPrompt(opts: PromptOpts): Promise<string | null> {
   return new Promise((resolve) => {
     cancelPrevious();
     currentDialog = { kind: "prompt", opts, resolve };

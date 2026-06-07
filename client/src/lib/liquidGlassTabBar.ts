@@ -37,7 +37,21 @@ export interface LiquidGlassTabBarPlugin {
     confirmText?: string;
     cancelText?: string;
     destructive?: boolean;
-  }): Promise<{ confirmed: boolean }>;
+    /** true 면 취소 버튼 없는 단일 알림(alertAsync 용). */
+    alertOnly?: boolean;
+    /** 3지선다 가운데 버튼 라벨. 선택 시 action="secondary". */
+    secondaryText?: string;
+  }): Promise<{ confirmed: boolean; action?: "confirm" | "cancel" | "secondary" }>;
+  /** 텍스트 입력 1개를 받는 애플 기본 다이얼로그. */
+  promptInput(options: {
+    title?: string;
+    message?: string;
+    confirmText?: string;
+    cancelText?: string;
+    placeholder?: string;
+    defaultValue?: string;
+    secure?: boolean;
+  }): Promise<{ cancelled: boolean; value?: string }>;
   addListener(
     eventName: "tabSelected",
     listenerFunc: (data: { key: string }) => void,

@@ -92,6 +92,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "confirm", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setSharedToken", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setInterfaceStyle", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "promptInput", returnType: CAPPluginReturnPromise),
     ]
 
     private var tabBarView: UITabBar?
@@ -250,18 +251,58 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         let confirmText = call.getString("confirmText") ?? "확인"
         let cancelText = call.getString("cancelText") ?? "취소"
         let destructive = call.getBool("destructive") ?? false
+        // alertOnly=true → 단일 버튼 알림(취소 없음). secondaryText → 3지선다 가운데 버튼.
+        let alertOnly = call.getBool("alertOnly") ?? false
+        let secondaryText = call.getString("secondaryText")
         DispatchQueue.main.async {
             guard let vc = self.bridge?.viewController else {
-                call.resolve(["confirmed": false]); return
+                call.resolve(["confirmed": false, "action": "cancel"]); return
             }
-            // .alert = 화면 중앙 다이얼로그(하단 액션시트 아님). 취소는 cancel 스타일로 왼쪽,
-            // 로그아웃은 destructive(빨강)로 오른쪽에 나란히 놓인다.
+            // .alert = 화면 중앙 다이얼로그(하단 액션시트 아님).
             let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
-            alert.addAction(UIAlertAction(title: cancelText, style: .cancel) { _ in
-                call.resolve(["confirmed": false])
-            })
+            if !alertOnly {
+                alert.addAction(UIAlertAction(title: cancelText, style: .cancel) { _ in
+                    call.resolve(["confirmed": false, "action": "cancel"])
+                })
+            }
+            if let sec = secondaryText, !sec.isEmpty {
+                alert.addAction(UIAlertAction(title: sec, style: .default) { _ in
+                    call.resolve(["confirmed": false, "action": "secondary"])
+                })
+            }
             alert.addAction(UIAlertAction(title: confirmText, style: destructive ? .destructive : .default) { _ in
-                call.resolve(["confirmed": true])
+                call.resolve(["confirmed": true, "action": "confirm"])
+            })
+            vc.present(alert, animated: true)
+        }
+    }
+
+    /// 텍스트 입력 1개를 받는 애플 기본 다이얼로그(UIAlertController + textField).
+    /// resolve({ value, cancelled }). 취소/없음이면 cancelled:true.
+    @objc func promptInput(_ call: CAPPluginCall) {
+        let title = call.getString("title")
+        let message = call.getString("message")
+        let confirmText = call.getString("confirmText") ?? "확인"
+        let cancelText = call.getString("cancelText") ?? "취소"
+        let placeholder = call.getString("placeholder")
+        let defaultValue = call.getString("defaultValue") ?? ""
+        let secure = call.getBool("secure") ?? false
+        DispatchQueue.main.async {
+            guard let vc = self.bridge?.viewController else {
+                call.resolve(["cancelled": true]); return
+            }
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            alert.addTextField { tf in
+                tf.placeholder = placeholder
+                tf.text = defaultValue
+                tf.isSecureTextEntry = secure
+            }
+            alert.addAction(UIAlertAction(title: cancelText, style: .cancel) { _ in
+                call.resolve(["cancelled": true])
+            })
+            alert.addAction(UIAlertAction(title: confirmText, style: .default) { _ in
+                let v = alert.textFields?.first?.text ?? ""
+                call.resolve(["cancelled": false, "value": v])
             })
             vc.present(alert, animated: true)
         }

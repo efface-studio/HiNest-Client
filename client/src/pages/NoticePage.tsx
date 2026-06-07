@@ -337,7 +337,7 @@ export default function NoticePage() {
                     </button>
                     {pickerOpen && (
                       <div
-                        className="absolute z-10 mt-2 left-0 bg-white border border-slate-200 shadow-lg rounded-lg p-1 flex gap-1"
+                        className="absolute z-10 mt-2 right-0 max-w-[calc(100vw-2rem)] bg-white border border-ink-150 shadow-lg rounded-lg p-1 flex flex-wrap gap-1"
                         onMouseLeave={() => setPickerOpen(false)}
                       >
                         {NOTICE_REACTION_EMOJI.map((e) => (

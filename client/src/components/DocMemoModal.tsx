@@ -372,7 +372,7 @@ export default function DocMemoModal({
                   </svg>
                   <span className="text-[12px] font-bold text-ink-700">공개 범위</span>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                <div className="grid grid-cols-1 min-[360px]:grid-cols-2 sm:grid-cols-4 gap-2">
                   {(["ALL", "TEAM", "PRIVATE", "CUSTOM"] as DocScope[]).map((s) => {
                     const active = scope === s;
                     return (

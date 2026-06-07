@@ -390,7 +390,7 @@ export default function ProjectCalendar({
       {openCreate && (
         <Portal>
         <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpenCreate(false)}>
-          <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="card w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-4">새 일정</h3>
             <form onSubmit={submitCreate} className="space-y-3">
               <div>
@@ -472,7 +472,7 @@ export default function ProjectCalendar({
       {selected && (
         <Portal>
         <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setSelected(null)}>
-          <div className="card w-full max-w-md" onClick={(e) => e.stopPropagation()}>
+          <div className="card w-full max-w-md max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-2 mb-2">
               <span className="w-3 h-3 rounded-full" style={{ background: selected.color }} />
               <h3 className={`text-lg font-bold flex-1 ${selected.completed ? "line-through text-slate-400" : ""}`}>{selected.title}</h3>
@@ -930,9 +930,9 @@ function ListView({
         const isToday = sameDay(g.date, today);
         const weekday = ["일", "월", "화", "수", "목", "금", "토"][g.date.getDay()];
         return (
-          <div key={g.date.toISOString()} className="grid grid-cols-[110px_1fr] gap-4 px-4 py-3">
+          <div key={g.date.toISOString()} className="grid grid-cols-[64px_1fr] sm:grid-cols-[110px_1fr] gap-2 sm:gap-4 px-4 py-3">
             <div className="text-right">
-              <div className={`text-2xl font-bold tabular ${isToday ? "text-brand-600" : "text-slate-800"}`}>
+              <div className={`text-xl sm:text-2xl font-bold tabular ${isToday ? "text-brand-600" : "text-slate-800"}`}>
                 {g.date.getDate()}
               </div>
               <div className={`text-[11px] font-bold ${g.date.getDay() === 0 ? "text-rose-500" : g.date.getDay() === 6 ? "text-blue-500" : "text-slate-500"}`}>

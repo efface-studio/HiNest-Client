@@ -15,6 +15,10 @@ contextBridge.exposeInMainWorld("hinest", {
   showNotification: (opts: { title: string; body?: string; silent?: boolean; icon?: string }) =>
     ipcRenderer.invoke("hinest:showNotification", opts),
   relaunch: () => ipcRenderer.invoke("hinest:relaunch"),
+  // OS 로그인 시 자동 시작(트레이 상주) — 알람 항상 수신 목적.
+  getAutoLaunch: () => ipcRenderer.invoke("hinest:getAutoLaunch") as Promise<boolean>,
+  setAutoLaunch: (enabled: boolean) =>
+    ipcRenderer.invoke("hinest:setAutoLaunch", enabled) as Promise<{ ok: boolean; enabled?: boolean; error?: string }>,
   canTouchID: () => ipcRenderer.invoke("hinest:canTouchID") as Promise<boolean>,
   promptTouchID: (reason: string) =>
     ipcRenderer.invoke("hinest:promptTouchID", reason) as Promise<{ ok: boolean; error?: string }>,

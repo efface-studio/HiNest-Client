@@ -255,6 +255,7 @@ export default function AdminPage() {
   const [invites, setInvites] = useState<Invite[]>([]);
   const [teams, setTeams] = useState<Team[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [ipCount, setIpCount] = useState(0);
 
   // 권한/팀 변경 연타 시 이전 reload() 응답이 나중에 도착해 최신 상태를 덮는 레이스 방지.
   // 언마운트 후 setState 호출도 동시에 막음.
@@ -267,11 +268,13 @@ export default function AdminPage() {
 
   async function loadCommon() {
     const myToken = ++reloadTokenRef.current;
-    const [u, i, t, p] = await Promise.all([
+    const [u, i, t, p, ip] = await Promise.all([
       api<{ users: UserRow[] }>("/api/admin/users"),
       api<{ keys: Invite[] }>("/api/admin/invites"),
       api<{ teams: Team[] }>("/api/admin/teams"),
       api<{ positions: Position[] }>("/api/admin/positions"),
+      // 출근 IP 탭 배지 카운트용 — 실패해도 다른 탭에 영향 없게 catch.
+      api<{ allowedIps: unknown[] }>("/api/admin/attendance-ip").catch(() => ({ allowedIps: [] as unknown[] })),
     ]);
     // 최신 호출이 아니거나 언마운트됐으면 무시.
     if (!aliveRef.current || myToken !== reloadTokenRef.current) return;
@@ -279,6 +282,7 @@ export default function AdminPage() {
     setInvites(i.keys);
     setTeams(t.teams);
     setPositions(p.positions);
+    setIpCount(Array.isArray(ip?.allowedIps) ? ip.allowedIps.length : 0);
   }
 
   useEffect(() => { loadCommon(); }, []);
@@ -288,7 +292,7 @@ export default function AdminPage() {
     { key: "invites", label: "초대키", count: invites.filter((k) => !k.used).length, icon: <KeyIcon /> },
     { key: "teams", label: "팀", count: teams.length, icon: <TeamIcon /> },
     { key: "positions", label: "직급", count: positions.length, icon: <RankIcon /> },
-    { key: "ip", label: "출근 IP", count: 0, icon: <RankIcon /> },
+    { key: "ip", label: "출근 IP", count: ipCount, icon: <RankIcon /> },
   ];
 
   return (
@@ -349,7 +353,7 @@ export default function AdminPage() {
       {tab === "invites" && <InvitesTab invites={invites} teams={teams} positions={positions} reload={loadCommon} />}
       {tab === "teams" && <TeamsTab teams={teams} reload={loadCommon} />}
       {tab === "positions" && <PositionsTab positions={positions} reload={loadCommon} />}
-      {tab === "ip" && <AttendanceIpTab />}
+      {tab === "ip" && <AttendanceIpTab onCountChange={setIpCount} />}
     </div>
   );
 }
@@ -2320,7 +2324,7 @@ function SecurityBlock({ user, onChanged }: { user: UserRow; onChanged: () => vo
 
 
 /* ===================== Attendance IP Restrict ===================== */
-function AttendanceIpTab() {
+function AttendanceIpTab({ onCountChange }: { onCountChange?: (n: number) => void }) {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
   const [items, setItems] = useState<{ id: string; cidr: string; label: string | null; createdAt: string }[]>([]);
@@ -2328,6 +2332,9 @@ function AttendanceIpTab() {
   const [cidrInput, setCidrInput] = useState("");
   const [labelInput, setLabelInput] = useState("");
   const [adding, setAdding] = useState(false);
+
+  // 목록 길이가 바뀔 때마다 상위 탭 배지 카운트 동기화(추가/삭제 즉시 반영).
+  useEffect(() => { onCountChange?.(items.length); }, [items.length, onCountChange]);
 
   async function load() {
     setLoading(true);

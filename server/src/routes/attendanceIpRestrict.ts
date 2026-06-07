@@ -44,6 +44,8 @@ router.get("/", async (req, res) => {
     enabled: !!company?.attendanceIpRestrictEnabled,
     allowedIps: company?.allowedIps ?? [],
     clientIp: normalizeClientIp(req.ip),
+    // 진단용 — X-Forwarded-For 의 가장 왼쪽이 진짜 클라 IP. trust proxy hop 수 검증에 사용.
+    xForwardedFor: String(req.headers["x-forwarded-for"] ?? ""),
   });
 });
 

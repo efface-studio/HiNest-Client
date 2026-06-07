@@ -73,6 +73,37 @@ function createWindow() {
 
   mainWindow.loadURL(DEFAULT_URL);
 
+  // 다운로드 파일명 = 업로드 원본명. 웹은 <a download="원본명"> 으로 저장하지만, Electron 에선
+  // cross-origin(/uploads → api.*) 다운로드 시 download 속성이 무시되고 URL 마지막 경로(스토리지 키,
+  // 예: 1780787010314-8a229...)가 파일명이 되는 문제가 있다. will-download 에서 직접 원본명을 강제한다.
+  //   우선순위: URL 의 ?name=<원본명>  →  Content-Disposition filename*  →  filename  →  기본(키)
+  mainWindow.webContents.session.on("will-download", (_e, item) => {
+    try {
+      let name = "";
+      // 1) ?name= 쿼리 (클라가 다운로드 URL 에 항상 붙임)
+      try {
+        const u = new URL(item.getURL());
+        const q = u.searchParams.get("name");
+        if (q) name = decodeURIComponent(q);
+      } catch {}
+      // 2) Content-Disposition (RFC5987 filename*=UTF-8'' 우선, 그다음 filename=)
+      if (!name) {
+        const cd = item.getContentDisposition?.() || "";
+        const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+        const plain = /filename="?([^";]+)"?/i.exec(cd);
+        if (star) name = decodeURIComponent(star[1]);
+        else if (plain) name = plain[1];
+      }
+      // 3) 그래도 없으면 Electron 기본(getFilename)
+      if (!name) name = item.getFilename();
+      // 경로 구분자 제거(보안) 후 저장 대화상자 기본 파일명으로.
+      name = name.replace(/[/\\]/g, "_").trim();
+      if (name) item.setSaveDialogOptions({ defaultPath: name });
+    } catch {
+      /* 실패해도 Electron 기본 동작으로 진행 — 다운로드 자체는 막지 않는다 */
+    }
+  });
+
   // 창 상태 변경 시 렌더러에 알려서 상단 여백을 동적으로 조정
   const sendFullscreenState = () => {
     try {

@@ -77,6 +77,30 @@ function createWindow() {
 
   mainWindow.loadURL(DEFAULT_URL);
 
+  // 다운로드 파일명 = 업로드 원본명. Electron 에선 cross-origin(/uploads → api.*) 다운로드 시
+  // <a download> 속성이 무시되고 URL 마지막 경로(스토리지 키)가 파일명이 되는 문제가 있다.
+  // will-download 에서 ?name= → Content-Disposition → getFilename 순으로 원본명을 강제한다.
+  mainWindow.webContents.session.on("will-download", (_e, item) => {
+    try {
+      let name = "";
+      try {
+        const u = new URL(item.getURL());
+        const q = u.searchParams.get("name");
+        if (q) name = decodeURIComponent(q);
+      } catch {}
+      if (!name) {
+        const cd = item.getContentDisposition?.() || "";
+        const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
+        const plain = /filename="?([^";]+)"?/i.exec(cd);
+        if (star) name = decodeURIComponent(star[1]);
+        else if (plain) name = plain[1];
+      }
+      if (!name) name = item.getFilename();
+      name = name.replace(/[/\\]/g, "_").trim();
+      if (name) item.setSaveDialogOptions({ defaultPath: name });
+    } catch { /* 기본 동작으로 진행 */ }
+  });
+
   // 창 상태 변경 시 렌더러에 알려서 상단 여백을 동적으로 조정
   const sendFullscreenState = () => {
     try {

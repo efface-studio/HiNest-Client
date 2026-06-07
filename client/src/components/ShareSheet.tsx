@@ -7,10 +7,11 @@
  * 검색은 이름·방 이름 모두 부분 일치. 선택은 상단 칩으로 표시 → 다시 누르면 해제.
  * 모바일: 풀폭 바텀시트. 데스크톱: 가운데 중형 모달.
  */
-import { useEffect, useMemo, useState } from "react";
-import { api, apiSWR } from "../api";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { api, apiSWR, imgSrc } from "../api";
 import Portal from "./Portal";
 import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
+import { nativePlatform } from "../lib/platform";
 
 export type ShareKind = "ANNOUNCEMENT" | "MEMO" | "MEETING" | "DOCUMENT" | "JOURNAL";
 
@@ -72,6 +73,13 @@ export default function ShareSheet({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
+  // iOS/iPadOS(Capacitor) 는 애플 기본 시트처럼 — 화면 크기 무관 하단 바텀시트 + 슬라이드업
+  // + 핸들 드래그-투-디스미스. 웹/데스크톱은 기존(모바일=하단, md+=중앙 모달) 유지.
+  const native = nativePlatform() === "ios";
+  const [shown, setShown] = useState(false);   // 슬라이드업 트리거(마운트 후 rAF 로 true)
+  const [dragY, setDragY] = useState(0);        // 드래그 중 아래로 끌린 px
+  const dragStartRef = useRef<number | null>(null);
+
   // 시트 열릴 때마다 선택 초기화 — 이전 공유의 잔상이 남지 않게.
   useEffect(() => {
     if (open) {
@@ -79,8 +87,31 @@ export default function ShareSheet({
       setPickedUsers(new Set());
       setPickedRooms(new Set());
       setSent(false);
+      setDragY(0);
+      setShown(false);
+      // 다음 프레임에 shown=true → translateY(100%→0) 슬라이드업.
+      const id = requestAnimationFrame(() => setShown(true));
+      return () => cancelAnimationFrame(id);
     }
   }, [open]);
+
+  // 핸들/헤더 드래그로 아래로 끌어 닫기(네이티브 시트 제스처). 100px 이상 끌면 닫힘.
+  function onDragStart(clientY: number) { dragStartRef.current = clientY; }
+  function onDragMove(clientY: number) {
+    if (dragStartRef.current == null) return;
+    setDragY(Math.max(0, clientY - dragStartRef.current));
+  }
+  function onDragEnd() {
+    if (dragStartRef.current == null) return;
+    dragStartRef.current = null;
+    if (dragY > 100) {
+      // 임계 초과 → 아래로 슬라이드 아웃 후 닫기(드래그 종료라 transition 활성).
+      setDragY(1000);
+      setTimeout(onClose, 220);
+      return;
+    }
+    setDragY(0); // 임계 미달 → 제자리 스프링백
+  }
 
   // 시트가 열린 동안 네이티브 탭바(웹뷰 위에 떠 있는 UITabBar)를 확실히 숨긴다.
   // 안 그러면 시트 하단의 '공유' 버튼이 네이티브 탭바에 가려 탭이 안 먹는다(=안 눌림).
@@ -184,22 +215,33 @@ export default function ShareSheet({
       role="dialog"
       aria-modal="true"
       aria-label={`${label} 공유`}
-      className="modal-safe fixed inset-0 z-[1000] flex items-end md:items-center justify-center"
-      style={{ background: "rgba(15,18,28,0.45)" }}
+      className={`modal-safe fixed inset-0 z-[1000] flex justify-center ${native ? "items-end" : "items-end md:items-center"}`}
+      style={{ background: `rgba(15,18,28,${shown ? 0.45 : 0})`, transition: "background 280ms ease" }}
       onClick={onClose}
     >
       <div
-        className="w-full md:max-w-md bg-white rounded-t-[20px] md:rounded-[18px] shadow-2xl flex flex-col"
-        style={{ maxHeight: "85vh" }}
+        className={`w-full bg-white shadow-2xl flex flex-col ${native ? "rounded-t-[20px]" : "md:max-w-md rounded-t-[20px] md:rounded-[18px]"}`}
+        style={{
+          maxHeight: "85vh",
+          // 네이티브: 슬라이드업(translateY 100%→0) + 드래그 추종. 드래그 중엔 트랜지션 끔(손가락 추적).
+          transform: native ? `translateY(${shown ? dragY : 1000}px)` : undefined,
+          transition: native && dragStartRef.current == null ? "transform 300ms cubic-bezier(0.32,0.72,0,1)" : "none",
+        }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 핸들바 — 모바일 시트 표시 */}
-        <div className="flex justify-center pt-2 md:hidden">
+        {/* 핸들바 — 드래그해서 닫기(네이티브 시트 제스처). 웹 데스크톱(md+, !native)에선 숨김 */}
+        <div
+          className={`flex justify-center pt-2.5 pb-1 ${native ? "" : "md:hidden"} touch-none cursor-grab active:cursor-grabbing`}
+          data-no-haptic
+          onTouchStart={(e) => onDragStart(e.touches[0].clientY)}
+          onTouchMove={(e) => onDragMove(e.touches[0].clientY)}
+          onTouchEnd={onDragEnd}
+        >
           <div className="w-10 h-1.5 rounded-full bg-ink-200" />
         </div>
 
         {/* 헤더 */}
-        <div className="px-5 pt-3 pb-2 flex items-center justify-between">
+        <div className="px-5 pt-2 pb-2 flex items-center justify-between">
           <h3 className="text-[15px] font-bold text-ink-900">공유</h3>
           <button
             onClick={onClose}
@@ -327,14 +369,15 @@ export default function ShareSheet({
                       picked ? "bg-brand-50" : "hover:bg-ink-50"
                     }`}
                   >
+                    {/* 컬러 이니셜을 바탕으로 깔고 사진을 그 위에 덮는다 — 사진 로드 실패 시 이니셜이 보임.
+                        avatarUrl 은 /uploads 상대경로라 imgSrc() 로 절대 URL + 인증 토큰을 붙여야 뜬다. */}
                     <div
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white overflow-hidden flex-shrink-0"
-                      style={{ background: u.avatarUrl ? "transparent" : u.avatarColor ?? "#3D54C4" }}
+                      className="w-9 h-9 rounded-full flex items-center justify-center text-[12px] font-bold text-white overflow-hidden flex-shrink-0 relative"
+                      style={{ background: u.avatarColor ?? "#3D54C4" }}
                     >
-                      {u.avatarUrl ? (
-                        <img src={u.avatarUrl} alt={u.name} className="w-full h-full object-cover" />
-                      ) : (
-                        u.name.slice(0, 1)
+                      {u.name.slice(0, 1)}
+                      {imgSrc(u.avatarUrl) && (
+                        <img src={imgSrc(u.avatarUrl)} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" decoding="async" />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">

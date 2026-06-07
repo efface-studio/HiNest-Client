@@ -4,6 +4,7 @@ import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { notify } from "../lib/notify.js";
 import { todayStr } from "../lib/dates.js";
+import { ipMatchesAny, normalizeClientIp } from "../lib/ipMatch.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -27,6 +28,31 @@ router.post("/check-in", async (req, res) => {
   const u = (req as any).user;
   const date = todayStr();
   const force = req.body?.force === true;
+
+  // 회사 IP 화이트리스트 검사 — 관리자가 켜놓은 경우만. 매치 안 되면 403.
+  // 슈퍼/플랫폼 어드민은 우회(원격 운영 편의). user 의 companyId 가 없으면(플랫폼 운영자) 우회.
+  if (u.companyId && !u.superAdmin && !u.platformAdmin) {
+    const company = await prisma.company.findUnique({
+      where: { id: u.companyId },
+      select: {
+        attendanceIpRestrictEnabled: true,
+        allowedIps: { select: { cidr: true } },
+      },
+    });
+    if (company?.attendanceIpRestrictEnabled) {
+      const clientIp = normalizeClientIp(req.ip);
+      const allowed = !!clientIp && ipMatchesAny(clientIp, company.allowedIps.map((a) => a.cidr));
+      if (!allowed) {
+        await writeLog(u.id, "CHECK_IN_DENIED_IP", date, clientIp ?? "(no-ip)");
+        return res.status(403).json({
+          code: "IP_NOT_ALLOWED",
+          error: "회사에서 허용한 IP 에서만 출근할 수 있어요. 사무실 네트워크에 연결됐는지 확인해 주세요.",
+          clientIp,
+        });
+      }
+    }
+  }
+
   const existing = await prisma.attendance.findUnique({
     where: { userId_date: { userId: u.id, date } },
   });

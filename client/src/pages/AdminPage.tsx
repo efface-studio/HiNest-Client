@@ -187,7 +187,7 @@ type Invite = {
 type Team = { id: string; name: string; createdAt: string };
 type Position = { id: string; name: string; rank: number; createdAt: string };
 
-type Tab = "users" | "invites" | "teams" | "positions";
+type Tab = "users" | "invites" | "teams" | "positions" | "ip";
 
 // 내보내기 버튼에 쓰는 작은 브랜드 로고들. 외부 에셋 없이 inline SVG 로 둬서
 // 번들 사이즈/네트워크 요청 영향 없음. 크기는 16px 고정 — 버튼 높이(32)에 맞춘 값.
@@ -242,7 +242,7 @@ function PdfLogo() {
 export default function AdminPage() {
   // 새로고침해도 현재 탭 유지되도록 URL 쿼리로 동기화.
   const [sp, setSp] = useSearchParams();
-  const tab = (["users", "invites", "teams", "positions"].includes(sp.get("tab") ?? "")
+  const tab = (["users", "invites", "teams", "positions", "ip"].includes(sp.get("tab") ?? "")
     ? (sp.get("tab") as Tab)
     : "users") as Tab;
   const setTab = (t: Tab) => {
@@ -288,6 +288,7 @@ export default function AdminPage() {
     { key: "invites", label: "초대키", count: invites.filter((k) => !k.used).length, icon: <KeyIcon /> },
     { key: "teams", label: "팀", count: teams.length, icon: <TeamIcon /> },
     { key: "positions", label: "직급", count: positions.length, icon: <RankIcon /> },
+    { key: "ip", label: "출근 IP", count: 0, icon: <RankIcon /> },
   ];
 
   return (
@@ -343,6 +344,7 @@ export default function AdminPage() {
       {tab === "invites" && <InvitesTab invites={invites} teams={teams} positions={positions} reload={loadCommon} />}
       {tab === "teams" && <TeamsTab teams={teams} reload={loadCommon} />}
       {tab === "positions" && <PositionsTab positions={positions} reload={loadCommon} />}
+      {tab === "ip" && <AttendanceIpTab />}
     </div>
   );
 }
@@ -2307,6 +2309,152 @@ function SecurityBlock({ user, onChanged }: { user: UserRow; onChanged: () => vo
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+
+/* ===================== Attendance IP Restrict ===================== */
+function AttendanceIpTab() {
+  const [loading, setLoading] = useState(true);
+  const [enabled, setEnabled] = useState(false);
+  const [items, setItems] = useState<{ id: string; cidr: string; label: string | null; createdAt: string }[]>([]);
+  const [clientIp, setClientIp] = useState<string | null>(null);
+  const [cidrInput, setCidrInput] = useState("");
+  const [labelInput, setLabelInput] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await api<{
+        enabled: boolean;
+        allowedIps: { id: string; cidr: string; label: string | null; createdAt: string }[];
+        clientIp: string | null;
+      }>("/api/admin/attendance-ip");
+      setEnabled(res.enabled);
+      setItems(res.allowedIps);
+      setClientIp(res.clientIp);
+    } catch (e: any) {
+      alertAsync({ title: "불러오기 실패", description: e?.message ?? String(e) });
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { load(); }, []);
+
+  async function toggle(next: boolean) {
+    setEnabled(next);
+    try {
+      await api("/api/admin/attendance-ip", { method: "PATCH", json: { enabled: next } });
+    } catch (e: any) {
+      setEnabled(!next);
+      alertAsync({ title: "변경 실패", description: e?.message ?? String(e) });
+    }
+  }
+
+  async function add(useMyIp = false) {
+    const cidr = useMyIp ? (clientIp ? `${clientIp}/32` : "") : cidrInput.trim();
+    if (!cidr) { alertAsync({ title: "IP 를 입력하세요", description: "예: 203.241.45.67 또는 192.168.1.0/24" }); return; }
+    setAdding(true);
+    try {
+      const res = await api<{ ok: boolean; item: typeof items[number] }>("/api/admin/attendance-ip", {
+        method: "POST",
+        json: { cidr, label: useMyIp ? "내 현재 위치" : (labelInput.trim() || undefined) },
+      });
+      setItems((arr) => [...arr, res.item]);
+      setCidrInput(""); setLabelInput("");
+    } catch (e: any) {
+      alertAsync({ title: "추가 실패", description: e?.message ?? String(e) });
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  async function remove(id: string) {
+    const ok = await confirmAsync({
+      title: "이 IP 를 화이트리스트에서 제거할까요?",
+      description: "이 IP 에서는 더 이상 출근 처리가 안 돼요.",
+      tone: "danger",
+      confirmLabel: "제거",
+    });
+    if (!ok) return;
+    const prev = items;
+    setItems((arr) => arr.filter((x) => x.id !== id));
+    try { await api(`/api/admin/attendance-ip/${id}`, { method: "DELETE" }); }
+    catch (e: any) { setItems(prev); alertAsync({ title: "제거 실패", description: e?.message ?? String(e) }); }
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="panel p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[15px] font-extrabold text-ink-900">출근 IP 제한</div>
+            <div className="text-[12.5px] text-ink-500 mt-1 leading-relaxed">
+              켜면 등록한 IP 에서만 출근 처리할 수 있어요. 사무실 인터넷에서만 출근을 허용하고 싶을 때 사용.
+              플랫폼/슈퍼 관리자는 이 제한과 무관하게 출근 가능합니다.
+            </div>
+          </div>
+          <label className="flex items-center gap-2 select-none cursor-pointer">
+            <input type="checkbox" className="accent-brand-500 w-5 h-5" checked={enabled}
+              onChange={(e) => toggle(e.target.checked)} disabled={loading} />
+            <span className="text-[13px] font-bold text-ink-800">사용</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="panel p-5">
+        <div className="text-[13px] font-bold text-ink-800 mb-3">허용 IP 추가</div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[200px]">
+            <label className="field-label">IP 또는 CIDR</label>
+            <input className="input" placeholder="203.241.45.67 또는 192.168.1.0/24"
+              value={cidrInput} onChange={(e) => setCidrInput(e.target.value)} maxLength={64} />
+          </div>
+          <div className="flex-1 min-w-[160px]">
+            <label className="field-label">라벨 (선택)</label>
+            <input className="input" placeholder="예: 본사 사무실"
+              value={labelInput} onChange={(e) => setLabelInput(e.target.value)} maxLength={60} />
+          </div>
+          <button className="btn-primary" disabled={adding || !cidrInput.trim()} onClick={() => add(false)}>추가</button>
+          {clientIp && (
+            <button className="btn-ghost" disabled={adding} onClick={() => add(true)} title={`현재 ${clientIp}`}>
+              내 현재 IP 추가 ({clientIp})
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="panel p-0 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-ink-100">
+          <div className="text-[13px] font-bold text-ink-800">허용 IP 목록 <span className="text-ink-400 tabular ml-1">{items.length}</span></div>
+          {!enabled && <span className="chip-amber text-[11px]">사용 꺼짐</span>}
+        </div>
+        {loading ? (
+          <div className="px-4 py-8 text-center text-[13px] text-ink-500">불러오는 중…</div>
+        ) : items.length === 0 ? (
+          <div className="px-4 py-10 text-center text-[13px] text-ink-500">
+            등록된 IP 가 없어요. 위에서 추가하세요.
+          </div>
+        ) : (
+          <ul className="divide-y divide-ink-100">
+            {items.map((it) => (
+              <li key={it.id} className="px-4 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-bold text-ink-900 truncate">{it.cidr}</div>
+                  <div className="text-[11.5px] text-ink-500 truncate">
+                    {it.label ? <span>{it.label} · </span> : null}{new Date(it.createdAt).toLocaleString("ko-KR")}
+                  </div>
+                </div>
+                <button className="btn-icon" title="삭제" onClick={() => remove(it.id)}>
+                  <TrashIcon />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

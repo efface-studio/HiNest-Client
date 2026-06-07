@@ -128,6 +128,10 @@ model User {
 model Company {
   id             String    @id @default(cuid())
   name           String // 회사명 (표시용)
+  // 출근 IP 화이트리스트 모드. 켜져있으면 attendance/check-in 시 클라 IP 가
+  // CompanyAttendanceAllowedIp(CIDR 다중) 중 하나에 매치돼야 한다. 꺼져있으면 어디서든 OK.
+  attendanceIpRestrictEnabled Boolean @default(false)
+  allowedIps     CompanyAttendanceAllowedIp[]
   slug           String?   @unique // URL/식별용 (선택)
   status         String    @default("PENDING") // PENDING | ACTIVE | SUSPENDED | REJECTED
   // ── 가입 신청자 정보 (스냅샷) ──
@@ -1266,6 +1270,20 @@ model FeatureFlag {
   description String?
   updatedAt   DateTime @updatedAt
   updatedById String?
+}
+
+/// 회사 출근 화이트리스트 IP (CIDR). Company.attendanceIpRestrictEnabled=true 일 때만 의미.
+/// 단일 IP 는 "/32" (또는 IPv6 "/128") 로 저장. 여러 개 등록 가능, OR 매칭(하나라도 매치되면 통과).
+model CompanyAttendanceAllowedIp {
+  id        String   @id @default(cuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  cidr      String // 예: "203.241.45.67/32" 또는 "192.168.1.0/24"
+  label     String? // 메모용 (예: "본사 사무실", "도쿄 지점")
+  createdAt DateTime @default(now())
+  createdById String?
+
+  @@index([companyId])
 }
 
 /// 사이드바 메뉴 항목 표시 여부 (전사 단위) — 총관리자 토글로 즉시 숨김/노출.

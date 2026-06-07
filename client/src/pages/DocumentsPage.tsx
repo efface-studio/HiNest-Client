@@ -1215,7 +1215,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                   <div className="text-[11px] text-ink-500 tabular">{new Date(f.createdAt).toLocaleDateString("ko-KR")}</div>
                 </div>
                 {/* 모바일: 폴더 열기 셰브론 (데스크톱은 우상단 호버 액션) */}
-                <svg className="sm:hidden text-ink-300 flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
+                <svg className="md:hidden text-ink-300 flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                 {/* 호버 액션은 absolute 오버레이 — 평소엔 레이아웃을 먹지 않아 이름·날짜 영역이 잘리지 않음. */}
                 <div className="touch-reveal-flex absolute top-2 right-2 hidden group-hover:flex items-center gap-0.5 bg-[color:var(--c-surface)]/95 backdrop-blur-sm rounded-lg px-1 py-0.5 shadow-sm border border-ink-100">
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); downloadFolder(f); }} title="폴더 전체 다운로드 (ZIP)">
@@ -1263,8 +1263,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         </div>
       ) : (
         <>
-        {/* 데스크톱: 인라인 테이블 */}
-        <div className="panel p-0 overflow-hidden overflow-x-auto hidden sm:block">
+        {/* 데스크톱(md+): 인라인 테이블. iPad portrait 는 이 너비를 못 받쳐 모바일 카드로 보낸다. */}
+        <div className="panel p-0 overflow-hidden overflow-x-auto hidden md:block">
           <table className="pro min-w-[760px]">
             <thead>
               <tr>
@@ -1435,8 +1435,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
             </tbody>
           </table>
         </div>
-        {/* 모바일: 깔끔한 문서 행 (탭하면 열기) */}
-        <div className="sm:hidden flex flex-col gap-2">
+        {/* 모바일·iPad(<md): 깔끔한 문서 행 (탭하면 열기) */}
+        <div className="md:hidden flex flex-col gap-2">
           {docs.map((d) => {
             const isMemo = d.content != null;
             const ext = (d.fileName?.split(".").pop() || "").toLowerCase();

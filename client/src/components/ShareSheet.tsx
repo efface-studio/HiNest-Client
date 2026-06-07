@@ -9,6 +9,8 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
+import Portal from "./Portal";
+import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
 
 export type ShareKind = "ANNOUNCEMENT" | "MEMO" | "MEETING" | "DOCUMENT" | "JOURNAL";
 
@@ -36,6 +38,14 @@ type Room = {
   members?: { user: { id: string; name: string; avatarColor?: string | null } }[];
 };
 
+/** 선택된 사람 수/방 수에 맞는 버튼 라벨. "1명에게 공유"가 방에도 쓰이던 오류 수정. */
+function shareTargetLabel(users: number, rooms: number): string {
+  const parts: string[] = [];
+  if (users) parts.push(`${users}명`);
+  if (rooms) parts.push(`${rooms}개 대화방`);
+  return `${parts.join(" · ")}에 공유`;
+}
+
 const KIND_LABEL: Record<ShareKind, string> = {
   ANNOUNCEMENT: "공지",
   MEMO: "메모",
@@ -60,6 +70,7 @@ export default function ShareSheet({
   const [pickedUsers, setPickedUsers] = useState<Set<string>>(new Set());
   const [pickedRooms, setPickedRooms] = useState<Set<string>>(new Set());
   const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
 
   // 시트 열릴 때마다 선택 초기화 — 이전 공유의 잔상이 남지 않게.
   useEffect(() => {
@@ -67,7 +78,16 @@ export default function ShareSheet({
       setQ("");
       setPickedUsers(new Set());
       setPickedRooms(new Set());
+      setSent(false);
     }
+  }, [open]);
+
+  // 시트가 열린 동안 네이티브 탭바(웹뷰 위에 떠 있는 UITabBar)를 확실히 숨긴다.
+  // 안 그러면 시트 하단의 '공유' 버튼이 네이티브 탭바에 가려 탭이 안 먹는다(=안 눌림).
+  useEffect(() => {
+    if (!open) return;
+    setNativeTabBarHidden("share", true);
+    return () => setNativeTabBarHidden("share", false);
   }, [open]);
 
   // 시트 열릴 때만 fetch — 닫힌 동안 네트워크 트래픽 0.
@@ -142,12 +162,12 @@ export default function ShareSheet({
         },
       });
       if (r?.ok) {
-        // 가벼운 토스트 대신 시트 자체 닫음 — 이후 알림센터/채팅 갱신은 SSE 가 처리.
-        onClose();
+        // 성공 체크 표시 후 살짝 뒤 닫음 — 사용자가 전송됐다는 걸 인지.
+        setSent(true);
+        setTimeout(() => onClose(), 700);
       }
     } catch (e: any) {
       window.alert(e?.message ?? "공유에 실패했어요");
-    } finally {
       setSending(false);
     }
   }
@@ -156,6 +176,7 @@ export default function ShareSheet({
   const label = KIND_LABEL[payload.kind] ?? "공유";
 
   return (
+   <Portal>
     <div
       role="dialog"
       aria-modal="true"
@@ -186,13 +207,19 @@ export default function ShareSheet({
           </button>
         </div>
 
-        {/* 공유 카드 미리보기 */}
-        <div className="mx-5 mb-2 p-3 rounded-[12px] border border-ink-150 bg-ink-50/60">
-          <div className="text-[10px] font-bold text-brand-500 mb-0.5">📌 {label}</div>
-          <div className="text-[13px] font-bold text-ink-900 line-clamp-1">{payload.title}</div>
-          {payload.snippet && (
-            <div className="text-[11px] text-ink-500 line-clamp-2 mt-0.5">{payload.snippet}</div>
-          )}
+        {/* 공유 카드 미리보기 — 다크/라이트 자동 대응(var 토큰), 브랜드 좌측 바 */}
+        <div
+          className="mx-5 mb-2 p-3 rounded-[12px] border flex gap-2.5"
+          style={{ background: "color-mix(in srgb, var(--c-brand, #3B5CF0) 7%, var(--c-surface))", borderColor: "var(--c-border)" }}
+        >
+          <div className="w-1 rounded-full self-stretch flex-shrink-0" style={{ background: "var(--c-brand, #3B5CF0)" }} />
+          <div className="min-w-0">
+            <div className="text-[10px] font-bold text-brand-500 mb-0.5">📌 {label}</div>
+            <div className="text-[13px] font-bold text-ink-900 line-clamp-1">{payload.title}</div>
+            {payload.snippet && (
+              <div className="text-[11px] text-ink-500 line-clamp-2 mt-0.5">{payload.snippet}</div>
+            )}
+          </div>
         </div>
 
         {/* 검색 */}
@@ -208,7 +235,7 @@ export default function ShareSheet({
         {/* 선택된 칩 */}
         {total > 0 && (
           <div
-            className="hinest-x-scroll px-5 pb-2 flex gap-2 overflow-x-auto"
+            className="hinest-x-scroll px-5 pt-1 pb-2.5 flex items-center gap-2 overflow-x-auto"
             style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
           >
             {[...pickedUsers].map((id) => {
@@ -340,13 +367,14 @@ export default function ShareSheet({
         >
           <button
             onClick={send}
-            disabled={!total || sending}
+            disabled={!total || sending || sent}
             className="w-full h-11 rounded-[12px] bg-brand-500 text-white font-bold text-[14px] disabled:opacity-40 disabled:cursor-not-allowed transition active:scale-[0.98]"
           >
-            {sending ? "보내는 중…" : total ? `${total}명에게 공유` : "받을 사람을 선택해 주세요"}
+            {sent ? "공유했어요 ✓" : sending ? "보내는 중…" : total ? `${shareTargetLabel(pickedUsers.size, pickedRooms.size)}` : "받을 사람을 선택해 주세요"}
           </button>
         </div>
       </div>
     </div>
+   </Portal>
   );
 }

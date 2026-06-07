@@ -10,7 +10,16 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Override point for customization after application launch.
+        // 저장된 앱 테마(light/dark/system)를 첫 페인트 전에 윈도우에 적용 — 다크/라이트 깜빡임 방지.
+        // 이전엔 Info.plist 로 라이트를 '강제'해 다크모드 사용자의 탭바·상태바가 라이트로 고정됐다.
+        // 이제 마지막으로 저장된 사용자 테마를 읽어 윈도우 트레잇을 맞춘다(없으면 라이트 = 브랜드 기본).
+        //   light  → .light,  dark → .dark,  system → .unspecified(OS 설정 따라감)
+        let mode = UserDefaults.standard.string(forKey: "hinest.interfaceStyle") ?? "light"
+        switch mode {
+        case "dark": window?.overrideUserInterfaceStyle = .dark
+        case "system": window?.overrideUserInterfaceStyle = .unspecified
+        default: window?.overrideUserInterfaceStyle = .light
+        }
         return true
     }
 
@@ -82,6 +91,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setVisible", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "confirm", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "setSharedToken", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "setInterfaceStyle", returnType: CAPPluginReturnPromise),
     ]
 
     private var tabBarView: UITabBar?
@@ -119,6 +129,29 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         call.resolve()
     }
 
+    /// 문자열 테마 모드 → UIUserInterfaceStyle 매핑.
+    static func uiStyle(from raw: String?) -> UIUserInterfaceStyle {
+        switch raw {
+        case "dark": return .dark
+        case "light": return .light
+        default: return .unspecified // "system" 또는 미설정 → OS 설정 따라감
+        }
+    }
+
+    /// 앱 테마를 네이티브 윈도우/탭바에 반영한다. JS(theme.tsx)가 테마 변경 시 호출.
+    /// - light/dark: 명시 고정. system: .unspecified 로 OS 설정 따라감(웹의 prefers-color-scheme 도 정상 동작).
+    /// 저장값은 다음 실행의 didFinishLaunching 가 읽어 첫 페인트부터 올바른 색을 그린다(깜빡임 방지).
+    @objc func setInterfaceStyle(_ call: CAPPluginCall) {
+        let mode = call.getString("style") ?? "light" // light | dark | system
+        UserDefaults.standard.set(mode, forKey: "hinest.interfaceStyle")
+        let style = AppDelegate.uiStyle(from: mode)
+        DispatchQueue.main.async {
+            self.bridge?.viewController?.view.window?.overrideUserInterfaceStyle = style
+            self.tabBarView?.overrideUserInterfaceStyle = style
+        }
+        call.resolve()
+    }
+
     @objc func configure(_ call: CAPPluginCall) {
         let tabs = call.getArray("tabs", JSObject.self) ?? []
         // 초기 선택 탭 키(현재 경로). 없으면 첫 탭으로 폴백.
@@ -146,10 +179,10 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         tabBar.translatesAutoresizingMaskIntoConstraints = false
         tabBar.delegate = self
         tabBar.tintColor = brandColor
-        // 라이트 모드 강제 — Info.plist 의 UIUserInterfaceStyle=Light 가 root window 에 적용되지만,
-        // UITabBar 가 추가될 때 부모 트레잇을 즉시 따라가지 않는 미세한 frame 이 있어 명시.
-        // 사용자가 시스템 다크 모드라도 탭바는 처음부터 라이트 글래스로 그려진다.
-        tabBar.overrideUserInterfaceStyle = .light
+        // 탭바 트레잇을 앱 테마(저장값)에 맞춘다. 윈도우를 따라가도 되지만, addSubview 직후
+        // 부모 트레잇을 즉시 반영하지 않는 미세한 frame 갭이 있어 명시적으로 같은 값을 박는다.
+        // light→.light / dark→.dark / system→.unspecified(윈도우=OS 따라감).
+        tabBar.overrideUserInterfaceStyle = AppDelegate.uiStyle(from: UserDefaults.standard.string(forKey: "hinest.interfaceStyle"))
 
         var items: [UITabBarItem] = []
         for (i, tab) in tabs.enumerated() {

@@ -318,9 +318,14 @@ export default function AdminPage() {
         <StatCard label="직급" value={positions.length} sub="전사 직급 수" />
       </div>
 
-      {/* 탭 */}
-      <div className="mb-5 border-b border-ink-150 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="flex items-center gap-1 min-w-max">
+      {/* 탭 — 모바일에서 좌우 스와이프 스크롤. touch-action:pan-x 로 세로 페이지 스크롤과 충돌 차단,
+           -webkit-overflow-scrolling:touch 로 iOS momentum, scrollbar 숨겨 깔끔하게.
+           w-max 는 min-w-max 와 달리 inline 컨테이너에서도 안정적으로 자식 폭 확보. */}
+      <div
+        className="hinest-x-scroll mb-5 border-b border-ink-150 overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0"
+        style={{ touchAction: "pan-x", WebkitOverflowScrolling: "touch" }}
+      >
+        <div className="flex items-center gap-1 w-max">
           {TABS.map((t) => (
             <button
               key={t.key}

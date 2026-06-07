@@ -146,7 +146,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func setInterfaceStyle(_ call: CAPPluginCall) {
         let mode = call.getString("style") ?? "light" // light | dark | system
         UserDefaults.standard.set(mode, forKey: "hinest.interfaceStyle")
-        let style = AppDelegate.uiStyle(from: mode)
+        let style = LiquidGlassTabBarPlugin.uiStyle(from: mode)
         DispatchQueue.main.async {
             self.bridge?.viewController?.view.window?.overrideUserInterfaceStyle = style
             self.tabBarView?.overrideUserInterfaceStyle = style
@@ -184,7 +184,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         // 탭바 트레잇을 앱 테마(저장값)에 맞춘다. 윈도우를 따라가도 되지만, addSubview 직후
         // 부모 트레잇을 즉시 반영하지 않는 미세한 frame 갭이 있어 명시적으로 같은 값을 박는다.
         // light→.light / dark→.dark / system→.unspecified(윈도우=OS 따라감).
-        tabBar.overrideUserInterfaceStyle = AppDelegate.uiStyle(from: UserDefaults.standard.string(forKey: "hinest.interfaceStyle"))
+        tabBar.overrideUserInterfaceStyle = LiquidGlassTabBarPlugin.uiStyle(from: UserDefaults.standard.string(forKey: "hinest.interfaceStyle"))
 
         var items: [UITabBarItem] = []
         for (i, tab) in tabs.enumerated() {

@@ -70,42 +70,44 @@ function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
   const preview = extractText(memo.content);
   const tags = (memo.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean);
 
+  const badge = memo.scope !== "ALL" && (
+    <span className={`flex-shrink-0 text-[10px] font-bold px-1.5 py-[2px] rounded ${
+      memo.scope === "PRIVATE"
+        ? "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
+        : memo.scope === "TEAM"
+        ? "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
+        : "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
+    }`}>
+      {SCOPE_LABEL[memo.scope]}{memo.scope === "TEAM" && memo.scopeTeam ? ` · ${memo.scopeTeam}` : ""}
+    </span>
+  );
+
   return (
     <button
       type="button"
       onClick={onClick}
       className="group w-full text-left rounded-2xl border border-ink-100 bg-white dark:bg-ink-900 dark:border-ink-800
-                 p-5 flex flex-col gap-3 hover:border-brand-300 hover:shadow-md transition-all duration-150
+                 p-5 flex flex-col min-h-[210px] hover:border-brand-300 hover:shadow-md transition-all duration-150
                  focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400"
     >
-      {/* 스코프 배지 */}
-      {memo.scope !== "ALL" && (
-        <span className={`self-start text-[10px] font-bold px-1.5 py-[2px] rounded ${
-          memo.scope === "PRIVATE"
-            ? "bg-rose-50 text-rose-700 dark:bg-rose-900/30 dark:text-rose-400"
-            : memo.scope === "TEAM"
-            ? "bg-sky-50 text-sky-700 dark:bg-sky-900/30 dark:text-sky-400"
-            : "bg-violet-50 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400"
-        }`}>
-          {SCOPE_LABEL[memo.scope]}{memo.scope === "TEAM" && memo.scopeTeam ? ` · ${memo.scopeTeam}` : ""}
-        </span>
-      )}
-
-      {/* 제목 */}
-      <h3 className="text-[14px] font-bold text-ink-900 dark:text-ink-50 line-clamp-2 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">
-        {memo.title || "(제목 없음)"}
-      </h3>
+      {/* 배지 + 제목 — 같은 줄(배지 인라인) */}
+      <div className="flex items-start gap-1.5">
+        {badge}
+        <h3 className="text-[14px] font-bold text-ink-900 dark:text-ink-50 line-clamp-2 group-hover:text-brand-700 dark:group-hover:text-brand-400 transition-colors">
+          {memo.title || "(제목 없음)"}
+        </h3>
+      </div>
 
       {/* 본문 미리보기 */}
       {preview && (
-        <p className="text-[12px] text-ink-500 dark:text-ink-400 line-clamp-3 leading-relaxed">
+        <p className="text-[12px] text-ink-500 dark:text-ink-400 line-clamp-4 leading-relaxed mt-2.5">
           {preview}
         </p>
       )}
 
       {/* 태그 */}
       {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap gap-1 mt-2.5">
           {tags.slice(0, 4).map((t) => (
             <span key={t} className="text-[10px] font-medium px-1.5 py-[1px] rounded bg-ink-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">
               #{t}
@@ -114,10 +116,10 @@ function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
         </div>
       )}
 
-      {/* 하단 — 작성자 + 날짜 */}
-      <div className="flex items-center gap-2 mt-auto pt-1">
+      {/* 하단 — 구분선 위, 작성자(좌) + 날짜(우) */}
+      <div className="flex items-center gap-2 mt-auto pt-3 border-t border-ink-100 dark:border-ink-800/70">
         <div
-          className="w-5 h-5 rounded-full grid place-items-center text-white text-[9px] font-bold flex-shrink-0 overflow-hidden"
+          className="w-6 h-6 rounded-full grid place-items-center text-white text-[10px] font-bold flex-shrink-0 overflow-hidden"
           style={{ background: memo.author?.avatarUrl ? "transparent" : (memo.author?.avatarColor ?? "#6B7280") }}
         >
           {memo.author?.avatarUrl ? (
@@ -126,7 +128,7 @@ function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
             memo.author?.name?.[0] ?? "?"
           )}
         </div>
-        <span className="text-[11px] text-ink-500 dark:text-ink-400 truncate flex-1">{memo.author?.name ?? "알 수 없음"}</span>
+        <span className="text-[12px] font-medium text-ink-600 dark:text-ink-300 truncate flex-1">{memo.author?.name ?? "알 수 없음"}</span>
         <span className="text-[11px] text-ink-400 dark:text-ink-500 flex-shrink-0">{relativeDate(memo.updatedAt)}</span>
       </div>
     </button>

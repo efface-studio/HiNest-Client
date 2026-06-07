@@ -11,7 +11,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR, imgSrc } from "../api";
 import Portal from "./Portal";
 import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
-import { nativePlatform } from "../lib/platform";
 
 export type ShareKind = "ANNOUNCEMENT" | "MEMO" | "MEETING" | "DOCUMENT" | "JOURNAL";
 
@@ -73,9 +72,7 @@ export default function ShareSheet({
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
 
-  // iOS/iPadOS(Capacitor) 는 애플 기본 시트처럼 — 화면 크기 무관 하단 바텀시트 + 슬라이드업
-  // + 핸들 드래그-투-디스미스. 웹/데스크톱은 기존(모바일=하단, md+=중앙 모달) 유지.
-  const native = nativePlatform() === "ios";
+  // 애플 기본 시트처럼 — 모든 화면 크기에서 하단 바텀시트 + 슬라이드업 + 핸들 드래그-투-디스미스.
   const [shown, setShown] = useState(false);   // 슬라이드업 트리거(마운트 후 rAF 로 true)
   const [dragY, setDragY] = useState(0);        // 드래그 중 아래로 끌린 px
   const dragStartRef = useRef<number | null>(null);
@@ -215,23 +212,23 @@ export default function ShareSheet({
       role="dialog"
       aria-modal="true"
       aria-label={`${label} 공유`}
-      className={`modal-safe fixed inset-0 z-[1000] flex justify-center ${native ? "items-end" : "items-end md:items-center"}`}
+      className="modal-safe fixed inset-0 z-[1000] flex items-end justify-center"
       style={{ background: `rgba(15,18,28,${shown ? 0.45 : 0})`, transition: "background 280ms ease" }}
       onClick={onClose}
     >
       <div
-        className={`w-full bg-white shadow-2xl flex flex-col ${native ? "rounded-t-[20px]" : "md:max-w-md rounded-t-[20px] md:rounded-[18px]"}`}
+        className="w-full md:max-w-lg bg-white shadow-2xl flex flex-col rounded-t-[22px]"
         style={{
-          maxHeight: "85vh",
-          // 네이티브: 슬라이드업(translateY 100%→0) + 드래그 추종. 드래그 중엔 트랜지션 끔(손가락 추적).
-          transform: native ? `translateY(${shown ? dragY : 1000}px)` : undefined,
-          transition: native && dragStartRef.current == null ? "transform 300ms cubic-bezier(0.32,0.72,0,1)" : "none",
+          maxHeight: "88vh",
+          // 항상 하단에서 슬라이드업(translateY 100%→0). 드래그(네이티브 터치) 중엔 손가락 추종.
+          transform: `translateY(${shown ? dragY : 1000}px)`,
+          transition: dragStartRef.current == null ? "transform 320ms cubic-bezier(0.32,0.72,0,1)" : "none",
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        {/* 핸들바 — 드래그해서 닫기(네이티브 시트 제스처). 웹 데스크톱(md+, !native)에선 숨김 */}
+        {/* 핸들바 — 드래그해서 닫기(아래로 끌면 시트 닫힘) */}
         <div
-          className={`flex justify-center pt-2.5 pb-1 ${native ? "" : "md:hidden"} touch-none cursor-grab active:cursor-grabbing`}
+          className="flex justify-center pt-2.5 pb-1 touch-none cursor-grab active:cursor-grabbing"
           data-no-haptic
           onTouchStart={(e) => onDragStart(e.touches[0].clientY)}
           onTouchMove={(e) => onDragMove(e.touches[0].clientY)}

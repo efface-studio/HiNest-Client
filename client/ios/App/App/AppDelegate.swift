@@ -1,4 +1,5 @@
 import UIKit
+import SwiftUI
 import Capacitor
 #if canImport(WidgetKit)
 import WidgetKit
@@ -94,6 +95,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "setInterfaceStyle", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "promptInput", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "presentShareSheet", returnType: CAPPluginReturnPromise),
     ]
 
     private var tabBarView: UITabBar?
@@ -152,6 +154,40 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
             self.tabBarView?.overrideUserInterfaceStyle = style
         }
         call.resolve()
+    }
+
+    /// 애플 기본 바텀시트(UISheetPresentationController) 로 공유 UI 를 띄운다.
+    /// 내용(대상 미리보기 + 대화방·동료 목록 다중선택 + 전송)은 SwiftUI 로 그리고, 목록/전송 API 는
+    /// JS 가 넘긴 세션 토큰으로 호출한다(웹뷰와 동일 세션). medium/large detent + 그래버 = 정품 룩앤필.
+    @objc func presentShareSheet(_ call: CAPPluginCall) {
+        let kind = call.getString("kind") ?? "MEMO"
+        let title = call.getString("title") ?? ""
+        let snippet = call.getString("snippet")
+        let href = call.getString("href") ?? "/"
+        let token = call.getString("token") ?? ""
+        // apiBase 미지정 시 운영 오리진. (웹 빌드의 VITE_API_BASE 와 동일해야 /api 가 맞는다.)
+        let apiBase = (call.getString("apiBase") ?? "https://nest.hi-vits.com").trimmingCharacters(in: .init(charactersIn: "/"))
+        DispatchQueue.main.async {
+            guard let presenter = self.bridge?.viewController else {
+                call.resolve(["presented": false]); return
+            }
+            let payload = SharePayloadData(kind: kind, title: title, snippet: snippet, href: href)
+            var hostRef: UIViewController?
+            let root = NativeShareSheetView(payload: payload, apiBase: apiBase, token: token, onClose: {
+                hostRef?.dismiss(animated: true)
+            })
+            let host = UIHostingController(rootView: root)
+            hostRef = host
+            host.overrideUserInterfaceStyle = LiquidGlassTabBarPlugin.uiStyle(from: UserDefaults.standard.string(forKey: "hinest.interfaceStyle"))
+            if let sheet = host.sheetPresentationController {
+                sheet.detents = [.medium(), .large()]
+                sheet.prefersGrabberVisible = true
+                sheet.preferredCornerRadius = 22
+                sheet.prefersScrollingExpandsWhenScrolledToEdge = true
+            }
+            presenter.present(host, animated: true)
+            call.resolve(["presented": true])
+        }
     }
 
     @objc func configure(_ call: CAPPluginCall) {
@@ -365,5 +401,342 @@ extension LiquidGlassTabBarPlugin: UITabBarDelegate {
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(LiquidGlassTabBarPlugin())
+    }
+}
+
+// ============================================================================
+// MARK: - 네이티브 공유 시트 (SwiftUI) — 애플 기본 바텀시트 안에 표시
+// ============================================================================
+
+struct SharePayloadData {
+    let kind: String      // ANNOUNCEMENT | MEMO | MEETING | DOCUMENT | JOURNAL
+    let title: String
+    let snippet: String?
+    let href: String
+}
+
+private struct ShareUsersResp: Decodable { let users: [ShareUser] }
+private struct ShareUser: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let team: String?
+    let position: String?
+    let avatarColor: String?
+    let avatarUrl: String?
+    let isDeveloper: Bool?
+}
+private struct ShareRoomsResp: Decodable { let rooms: [ShareRoom] }
+private struct ShareRoom: Decodable, Identifiable {
+    let id: String
+    let name: String
+    let type: String
+}
+
+/// share 카테고리 라벨/아이콘.
+private func shareKindMeta(_ kind: String) -> (label: String, icon: String) {
+    switch kind {
+    case "ANNOUNCEMENT": return ("공지", "📢")
+    case "MEETING": return ("회의록", "📝")
+    case "DOCUMENT": return ("문서", "📄")
+    case "JOURNAL": return ("업무일지", "🗒️")
+    default: return ("메모", "📌")
+    }
+}
+
+private func colorFromHex(_ hex: String?) -> Color {
+    guard let hex = hex else { return Color(red: 0.23, green: 0.36, blue: 0.94) }
+    let s = hex.hasPrefix("#") ? String(hex.dropFirst()) : hex
+    var rgb: UInt64 = 0
+    Scanner(string: s).scanHexInt64(&rgb)
+    return Color(
+        red: Double((rgb >> 16) & 0xff) / 255.0,
+        green: Double((rgb >> 8) & 0xff) / 255.0,
+        blue: Double(rgb & 0xff) / 255.0
+    )
+}
+
+struct NativeShareSheetView: View {
+    let payload: SharePayloadData
+    let apiBase: String
+    let token: String
+    let onClose: () -> Void
+
+    @State private var rooms: [ShareRoom] = []
+    @State private var users: [ShareUser] = []
+    @State private var query: String = ""
+    @State private var pickedUsers: Set<String> = []
+    @State private var pickedRooms: Set<String> = []
+    @State private var loading = true
+    @State private var sending = false
+    @State private var sent = false
+    @State private var errorText: String?
+
+    private let brand = Color(red: 0.23, green: 0.36, blue: 0.94)
+
+    private var filteredRooms: [ShareRoom] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        let base = rooms.filter { $0.type != "DIRECT" }
+        if q.isEmpty { return base }
+        return base.filter { $0.name.lowercased().contains(q) }
+    }
+    private var filteredUsers: [ShareUser] {
+        let q = query.trimmingCharacters(in: .whitespaces).lowercased()
+        if q.isEmpty { return users }
+        return users.filter {
+            $0.name.lowercased().contains(q)
+            || ($0.team?.lowercased().contains(q) ?? false)
+            || ($0.position?.lowercased().contains(q) ?? false)
+        }
+    }
+    private var total: Int { pickedUsers.count + pickedRooms.count }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            previewCard
+            searchBar
+            Divider()
+            if loading {
+                Spacer(); ProgressView().tint(brand); Spacer()
+            } else if let err = errorText {
+                Spacer()
+                VStack(spacing: 8) {
+                    Text("불러오지 못했어요").font(.system(size: 14, weight: .bold))
+                    Text(err).font(.system(size: 12)).foregroundColor(.secondary).multilineTextAlignment(.center)
+                }.padding()
+                Spacer()
+            } else {
+                list
+            }
+            sendButton
+        }
+        .background(Color(uiColor: .systemBackground))
+        .task { await load() }
+    }
+
+    private var header: some View {
+        HStack {
+            Text("공유").font(.system(size: 17, weight: .bold))
+            Spacer()
+            Button(action: onClose) {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.system(size: 22)).foregroundColor(Color(uiColor: .tertiaryLabel))
+            }
+        }
+        .padding(.horizontal, 18).padding(.top, 14).padding(.bottom, 8)
+    }
+
+    private var previewCard: some View {
+        let meta = shareKindMeta(payload.kind)
+        return HStack(spacing: 10) {
+            RoundedRectangle(cornerRadius: 2).fill(brand).frame(width: 4)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("\(meta.icon) \(meta.label)").font(.system(size: 11, weight: .bold)).foregroundColor(brand)
+                Text(payload.title).font(.system(size: 14, weight: .bold)).lineLimit(1)
+                if let s = payload.snippet, !s.isEmpty {
+                    Text(s).font(.system(size: 12)).foregroundColor(.secondary).lineLimit(2)
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(12)
+        .background(brand.opacity(0.07))
+        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal, 18).padding(.bottom, 8)
+    }
+
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass").foregroundColor(.secondary).font(.system(size: 14))
+            TextField("이름 또는 대화방 검색", text: $query)
+                .font(.system(size: 15)).autocorrectionDisabled()
+        }
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .background(Color(uiColor: .secondarySystemBackground))
+        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .padding(.horizontal, 18).padding(.bottom, 10)
+    }
+
+    private var list: some View {
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: 2) {
+                if !filteredRooms.isEmpty {
+                    sectionHeader("대화방")
+                    ForEach(filteredRooms) { r in
+                        row(
+                            id: r.id, picked: pickedRooms.contains(r.id),
+                            avatar: AnyView(initialAvatar(text: String(r.name.prefix(1)), color: Color(red: 0.30, green: 0.35, blue: 0.41), prefixHash: true)),
+                            title: r.name, subtitle: r.type == "TEAM" ? "팀방" : "그룹방"
+                        ) { toggleRoom(r.id) }
+                    }
+                }
+                if !filteredUsers.isEmpty {
+                    sectionHeader("동료")
+                    ForEach(filteredUsers) { u in
+                        row(
+                            id: u.id, picked: pickedUsers.contains(u.id),
+                            avatar: AnyView(userAvatar(u)),
+                            title: u.name,
+                            subtitle: [u.team, u.position].compactMap { $0 }.joined(separator: " · ")
+                        ) { toggleUser(u.id) }
+                    }
+                }
+                if filteredRooms.isEmpty && filteredUsers.isEmpty {
+                    Text("검색 결과가 없어요").font(.system(size: 12)).foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity).padding(.vertical, 40)
+                }
+            }
+            .padding(.horizontal, 12).padding(.vertical, 6)
+        }
+    }
+
+    private func sectionHeader(_ t: String) -> some View {
+        Text(t).font(.system(size: 10, weight: .bold)).foregroundColor(.secondary)
+            .padding(.horizontal, 8).padding(.top, 10).padding(.bottom, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func row(id: String, picked: Bool, avatar: AnyView, title: String, subtitle: String, tap: @escaping () -> Void) -> some View {
+        Button(action: tap) {
+            HStack(spacing: 12) {
+                avatar.frame(width: 38, height: 38)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.system(size: 14, weight: .bold)).foregroundColor(.primary).lineLimit(1)
+                    if !subtitle.isEmpty {
+                        Text(subtitle).font(.system(size: 11)).foregroundColor(.secondary).lineLimit(1)
+                    }
+                }
+                Spacer(minLength: 0)
+                Image(systemName: picked ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 21)).foregroundColor(picked ? brand : Color(uiColor: .tertiaryLabel))
+            }
+            .padding(.horizontal, 8).padding(.vertical, 7)
+            .background(picked ? brand.opacity(0.08) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 10))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func userAvatar(_ u: ShareUser) -> some View {
+        ZStack {
+            Circle().fill(colorFromHex(u.avatarColor))
+            Text(String(u.name.prefix(1))).font(.system(size: 14, weight: .bold)).foregroundColor(.white)
+            if let url = u.avatarUrl, let full = avatarURL(url) {
+                AsyncImage(url: full) { img in img.resizable().scaledToFill() } placeholder: { Color.clear }
+                    .clipShape(Circle())
+            }
+        }
+    }
+    private func initialAvatar(text: String, color: Color, prefixHash: Bool) -> some View {
+        ZStack {
+            Circle().fill(color)
+            Text((prefixHash ? "#" : "") + text).font(.system(size: 13, weight: .bold)).foregroundColor(.white)
+        }
+    }
+
+    private var sendButton: some View {
+        VStack(spacing: 0) {
+            Divider()
+            Button(action: { Task { await send() } }) {
+                Text(sent ? "공유했어요 ✓" : (sending ? "보내는 중…" : (total > 0 ? targetLabel() : "받을 사람을 선택해 주세요")))
+                    .font(.system(size: 15, weight: .bold)).foregroundColor(.white)
+                    .frame(maxWidth: .infinity).frame(height: 50)
+                    .background(total > 0 && !sending && !sent ? brand : brand.opacity(0.4))
+                    .clipShape(RoundedRectangle(cornerRadius: 14))
+            }
+            .disabled(total == 0 || sending || sent)
+            .padding(.horizontal, 18).padding(.top, 10).padding(.bottom, 8)
+        }
+    }
+
+    private func targetLabel() -> String {
+        var parts: [String] = []
+        if pickedUsers.count > 0 { parts.append("\(pickedUsers.count)명") }
+        if pickedRooms.count > 0 { parts.append("\(pickedRooms.count)개 대화방") }
+        return parts.joined(separator: " · ") + "에 공유"
+    }
+
+    private func toggleUser(_ id: String) {
+        if pickedUsers.contains(id) { pickedUsers.remove(id) } else { pickedUsers.insert(id) }
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+    private func toggleRoom(_ id: String) {
+        if pickedRooms.contains(id) { pickedRooms.remove(id) } else { pickedRooms.insert(id) }
+        UISelectionFeedbackGenerator().selectionChanged()
+    }
+
+    private func avatarURL(_ path: String) -> URL? {
+        if path.hasPrefix("http") { return URL(string: path) }
+        var s = "\(apiBase)\(path)"
+        if !token.isEmpty {
+            s += (path.contains("?") ? "&" : "?") + "token=\(token)"
+        }
+        return URL(string: s)
+    }
+
+    private func authedRequest(_ path: String) -> URLRequest? {
+        guard let url = URL(string: "\(apiBase)\(path)") else { return nil }
+        var req = URLRequest(url: url)
+        if !token.isEmpty { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        req.timeoutInterval = 12
+        return req
+    }
+
+    @MainActor private func load() async {
+        loading = true; errorText = nil
+        do {
+            async let u: ShareUsersResp = fetch("/api/users")
+            async let r: ShareRoomsResp = fetch("/api/chat/rooms")
+            let (uu, rr) = try await (u, r)
+            await MainActor.run {
+                self.users = uu.users
+                self.rooms = rr.rooms
+                self.loading = false
+            }
+        } catch {
+            await MainActor.run { self.errorText = "네트워크 오류"; self.loading = false }
+        }
+    }
+
+    private func fetch<T: Decodable>(_ path: String) async throws -> T {
+        guard let req = authedRequest(path) else { throw URLError(.badURL) }
+        let (data, resp) = try await URLSession.shared.data(for: req)
+        guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else { throw URLError(.badServerResponse) }
+        return try JSONDecoder().decode(T.self, from: data)
+    }
+
+    @MainActor private func send() async {
+        guard total > 0, !sending else { return }
+        sending = true
+        guard let url = URL(string: "\(apiBase)/api/chat/share") else { return }
+        var req = URLRequest(url: url)
+        req.httpMethod = "POST"
+        req.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        if !token.isEmpty { req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization") }
+        let body: [String: Any] = [
+            "kind": payload.kind,
+            "title": payload.title,
+            "snippet": payload.snippet ?? "",
+            "href": payload.href,
+            "userIds": Array(pickedUsers),
+            "roomIds": Array(pickedRooms),
+        ]
+        req.httpBody = try? JSONSerialization.data(withJSONObject: body)
+        do {
+            let (_, resp) = try await URLSession.shared.data(for: req)
+            let ok = (resp as? HTTPURLResponse)?.statusCode == 200
+            await MainActor.run {
+                if ok {
+                    sent = true
+                    UINotificationFeedbackGenerator().notificationOccurred(.success)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.7) { onClose() }
+                } else {
+                    sending = false
+                    errorText = "전송 실패"
+                }
+            }
+        } catch {
+            await MainActor.run { sending = false; errorText = "전송 실패" }
+        }
     }
 }

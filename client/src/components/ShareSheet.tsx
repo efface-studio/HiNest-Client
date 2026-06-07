@@ -8,7 +8,7 @@
  * 모바일: 풀폭 바텀시트. 데스크톱: 가운데 중형 모달.
  */
 import { useEffect, useMemo, useState } from "react";
-import { api } from "../api";
+import { api, apiSWR } from "../api";
 import Portal from "./Portal";
 import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
 
@@ -90,18 +90,21 @@ export default function ShareSheet({
     return () => setNativeTabBarHidden("share", false);
   }, [open]);
 
-  // 시트 열릴 때만 fetch — 닫힌 동안 네트워크 트래픽 0.
+  // 시트 열릴 때만 로드 — apiSWR 로 캐시 우선(즉시 표시) + 백그라운드 갱신.
+  // 반복해서 열어도 캐시가 있으면 즉시 뜨고 서버 호출은 갱신 1회로 절감(서버비 ↓).
   const [usersData, setUsersData] = useState<{ users: DirectoryUser[] } | null>(null);
   const [roomsData, setRoomsData] = useState<{ rooms: Room[] } | null>(null);
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    void api<{ users: DirectoryUser[] }>("/api/users").then((d) => {
-      if (!cancelled) setUsersData(d);
-    }).catch(() => {});
-    void api<{ rooms: Room[] }>("/api/chat/rooms").then((d) => {
-      if (!cancelled) setRoomsData(d);
-    }).catch(() => {});
+    void apiSWR<{ users: DirectoryUser[] }>("/api/users", {
+      onCached: (d) => { if (!cancelled) setUsersData(d); },
+      onFresh: (d) => { if (!cancelled) setUsersData(d); },
+    });
+    void apiSWR<{ rooms: Room[] }>("/api/chat/rooms", {
+      onCached: (d) => { if (!cancelled) setRoomsData(d); },
+      onFresh: (d) => { if (!cancelled) setRoomsData(d); },
+    });
     return () => { cancelled = true; };
   }, [open]);
 

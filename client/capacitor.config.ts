@@ -48,6 +48,14 @@ const config: CapacitorConfig = {
     // (B) 원격 URL 방식으로 빠르게 테스트하려면 아래 두 줄의 주석을 해제:
     // url: "https://nest.hi-vits.com",
     // cleartext: false,
+    //
+    // (C) Dev hot-reload — 개발 중 npm run cap:ios:dev 로 가면 이 분기가 켜진다.
+    //     시뮬레이터/실기기가 호스트 Mac 의 Vite dev 서버(http://localhost:1000)를 직접 로드 →
+    //     코드 저장 시 HMR 으로 즉시 반영(매번 cap:ios 불필요). cleartext=true 로 http 허용.
+    //     env var 가 없으면 평소대로 번들 자산 + Live Updates 흐름.
+    ...(process.env.HINEST_CAP_DEV_SERVER
+      ? { url: process.env.HINEST_CAP_DEV_SERVER, cleartext: true }
+      : {}),
   },
   plugins: {
     // 키보드 등장 애니메이션 — 'native' 리사이즈는 iOS 가 WebView 자체를 키보드 곡선에 맞춰

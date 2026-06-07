@@ -1309,9 +1309,10 @@ export function MobileMenuPage() {
   const res = filterByVisibility(RESOURCE_NAV);
 
   return (
-    <div className="max-w-lg sm:max-w-2xl mx-auto space-y-6">
-      {/* 프로필 카드 — 탭하면 내 프로필로. 컨테이너 폭: 폰 lg(512) → 640+ 2xl(672)
-          iPad portrait(834) 에서 좌우 여백 자연스러움. */}
+    <div className="space-y-6">
+      {/* 프로필 카드 — 탭하면 내 프로필로. 부모 main 컨테이너가 이미
+          max-w-[1400px] mx-auto px-4 로 정렬해주므로 여기서 추가 max-w 안 둠 — 그래야
+          iPad portrait(834) 에서 화면 폭 가득 활용(좁게 가운데 정렬 안 됨). */}
       <NavLink
         to="/profile"
         className="flex items-center gap-3 p-3.5 rounded-2xl bg-ink-50 border border-ink-150 hover:bg-ink-100 transition"

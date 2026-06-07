@@ -13,6 +13,7 @@
 import { useState } from "react";
 import ShareSheet, { type SharePayload } from "./ShareSheet";
 import { useAuth } from "../auth";
+import { presentShareNative } from "../lib/share";
 
 function ShareIcon({ size = 16 }: { size?: number }) {
   return (
@@ -44,8 +45,10 @@ export default function ShareButton({
     <>
       <button
         type="button"
-        onClick={(e) => {
+        onClick={async (e) => {
           e.stopPropagation();
+          // iOS/iPadOS 는 애플 기본 바텀시트(네이티브). 미지원/실패 시에만 웹 시트로 폴백.
+          if (await presentShareNative(payload)) return;
           setOpen(true);
         }}
         aria-label="공유"

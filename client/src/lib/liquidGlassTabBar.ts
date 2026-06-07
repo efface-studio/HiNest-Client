@@ -32,6 +32,15 @@ export interface LiquidGlassTabBarPlugin {
   setInterfaceStyle(options: { style: "light" | "dark" | "system" }): Promise<void>;
   /** 햅틱 피드백 — 버튼·토글 탭 등. style 기본 light. */
   haptic(options: { style?: "light" | "medium" | "heavy" | "selection" | "success" | "warning" | "error" }): Promise<void>;
+  /** 애플 기본 바텀시트로 공유 UI 표시(목록·전송은 네이티브가 token 으로 API 호출). presented=false 면 웹 폴백. */
+  presentShareSheet(options: {
+    kind: string;
+    title: string;
+    snippet?: string;
+    href: string;
+    token?: string;
+    apiBase?: string;
+  }): Promise<{ presented: boolean }>;
   /** 애플 기본 확인 시트(action sheet). 로그아웃 등 재확인용. */
   confirm(options: {
     title?: string;

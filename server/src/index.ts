@@ -11,6 +11,7 @@ import authRouter from "./routes/auth.js";
 import adminRouter from "./routes/admin.js";
 import usersRouter from "./routes/users.js";
 import scheduleRouter from "./routes/schedule.js";
+import widgetRouter from "./routes/widget.js";
 import attendanceRouter from "./routes/attendance.js";
 import journalRouter from "./routes/journal.js";
 import noticeRouter from "./routes/notice.js";
@@ -291,6 +292,8 @@ app.use("/api/admin", adminRouter);
 app.use("/api/platform", platformRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/schedule", scheduleRouter);
+// iOS/iPadOS/macOS WidgetKit 전용 — 위젯 페이로드 한계(~16KB) 고려한 가벼운 응답.
+app.use("/api/widget", widgetRouter);
 app.use("/api/attendance", attendanceRouter);
 app.use("/api/journal", journalRouter);
 app.use("/api/notice", noticeRouter);

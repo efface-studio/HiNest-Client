@@ -6,6 +6,7 @@ import { useNotifications } from "../notifications";
 import PageHeader from "../components/PageHeader";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import PinButton from "../components/PinButton";
+import ShareButton from "../components/ShareButton";
 import Portal from "../components/Portal";
 import { copyToClipboard, absoluteUrl } from "../lib/clipboard";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
@@ -277,6 +278,15 @@ export default function NoticePage() {
                     링크 복사
                   </button>
                   <PinButton type="NOTICE" id={selected.id} label={selected.title} />
+                  <ShareButton
+                    variant="icon"
+                    payload={{
+                      kind: "ANNOUNCEMENT",
+                      title: selected.title,
+                      snippet: selected.content?.slice(0, 120) ?? undefined,
+                      href: `/notice?id=${selected.id}`,
+                    }}
+                  />
                   {canPost && (
                     <button
                       className="btn-ghost"

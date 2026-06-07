@@ -60,5 +60,12 @@
 	     applyNativeTheme() 가 StatusBar.setStyle(Light) 로 즉시 흰 글자로 전환. -->
 	<key>UIStatusBarStyle</key>
 	<string>UIStatusBarStyleDarkContent</string>
+	<!-- 앱 전체 UI 모드 라이트 강제 — 시스템 다크 모드여도 root window/UITabBar/액션시트 등
+	     모든 native UI 가 라이트로 그려진다. 이전엔 시스템 모드 따라 다크로 잠깐 그려졌다가
+	     React mount 후 applyNativeTheme() 가 라이트로 바꿔 깜빡임이 보였다. 사용자가 명시적으로
+	     다크 모드 켜면 applyNativeTheme() 가 window.overrideUserInterfaceStyle=.dark 로 동적
+	     전환(아래 nativeTheme.ts). 즉 정적 기본=라이트, 동적 전환만 다크. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

@@ -917,7 +917,7 @@ function InfoField({ label, value, tone, mono }: { label: string; value: string;
   return (
     <div>
       <div className="text-[11px] font-bold text-ink-500 uppercase tracking-[0.06em]">{label}</div>
-      <div className={`text-[13px] font-semibold mt-0.5 ${tone === "green" ? "text-emerald-600" : "text-ink-900"} ${mono ? "font-mono tracking-[0.02em]" : ""}`}>{value}</div>
+      <div className={`text-[13px] font-semibold mt-0.5 break-words ${tone === "green" ? "text-emerald-600" : "text-ink-900"} ${mono ? "font-mono tracking-[0.02em]" : ""}`} title={typeof value === "string" ? value : undefined}>{value}</div>
     </div>
   );
 }

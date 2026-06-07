@@ -87,7 +87,7 @@ export default function PublicSharePage() {
               ) : (
                 <span className="text-2xl">📄</span>
               )}
-              <div className="text-lg font-bold text-ink-900">
+              <div className="text-lg font-bold text-ink-900 min-w-0 break-words">
                 {meta.document?.title ?? (meta.hasPassword ? "🔒 비밀번호로 보호된 파일" : "파일")}
               </div>
             </div>

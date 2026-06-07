@@ -392,7 +392,7 @@ export default function ServiceAccountsPage() {
   ];
 
   return (
-    <div className="container-narrow py-6">
+    <div className="max-w-[960px] mx-auto py-6">
       <PageHeader
         eyebrow="팀 리소스"
         title="계정 관리"

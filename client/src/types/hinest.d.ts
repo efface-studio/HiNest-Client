@@ -13,6 +13,9 @@ declare global {
       openExternal: (url: string) => Promise<{ ok: boolean; error?: string }>;
       showNotification: (opts: { title: string; body?: string; silent?: boolean; icon?: string }) => Promise<void>;
       relaunch: () => Promise<void>;
+      // OS 로그인 시 자동 시작(트레이 상주). 미구현 빌드면 undefined.
+      getAutoLaunch?: () => Promise<boolean>;
+      setAutoLaunch?: (enabled: boolean) => Promise<{ ok: boolean; enabled?: boolean; error?: string }>;
       onFullscreenChange: (cb: (isFs: boolean) => void) => () => void;
       // ─── macOS 네이티브 Touch ID ─────────────────────────────────
       // Electron Chromium 이 WebAuthn 플랫폼 인증기를 노출하지 않아서

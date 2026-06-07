@@ -1,6 +1,6 @@
 {
   "name": "hinest-desktop",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "description": "HiNest Desktop (Electron wrapper)",
   "main": "dist/main.js",

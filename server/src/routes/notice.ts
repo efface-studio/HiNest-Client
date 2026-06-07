@@ -91,6 +91,7 @@ router.post("/", async (req, res) => {
       actorName: u.name,
     },
     u.id,
+    u.companyId,
   );
   res.json({ notice: n });
 });

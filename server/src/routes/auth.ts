@@ -275,7 +275,7 @@ router.post("/signup", async (req, res) => {
     linkUrl: `/users/${user.id}`,
     actorName: user.name,
     actorColor: user.avatarColor,
-  }, user.id).catch((e) => console.error("[signup] notifyAllUsers failed", e));
+  }, user.id, user.companyId).catch((e) => console.error("[signup] notifyAllUsers failed", e));
 
   res.json({
     user: {

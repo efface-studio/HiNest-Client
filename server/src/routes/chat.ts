@@ -854,6 +854,24 @@ router.post("/share", async (req, res) => {
     where: { id: u.id },
     select: { name: true, avatarUrl: true, avatarColor: true },
   });
+
+  // 방 정보 + 수신자 멤버를 루프 전에 일괄 조회(N+1 제거 — 방마다 findUnique/findMany 하던 것을 2쿼리로).
+  const roomIdList = [...recipientRoomIds];
+  const roomInfos = await prisma.chatRoom.findMany({
+    where: { id: { in: roomIdList } },
+    select: { id: true, type: true, name: true },
+  });
+  const roomById = new Map(roomInfos.map((r) => [r.id, r]));
+  const allMembers = await prisma.roomMember.findMany({
+    where: { roomId: { in: roomIdList }, userId: { not: u.id } },
+    select: { roomId: true, userId: true },
+  });
+  const othersByRoom = new Map<string, string[]>();
+  for (const m of allMembers) {
+    if (!othersByRoom.has(m.roomId)) othersByRoom.set(m.roomId, []);
+    othersByRoom.get(m.roomId)!.push(m.userId);
+  }
+
   for (const roomId of recipientRoomIds) {
     const msg = await prisma.chatMessage.create({
       data: {
@@ -872,20 +890,14 @@ router.post("/share", async (req, res) => {
     // SSE 로 같은 방 멤버들에게 즉시 갱신.
     broadcastToRoom(roomId, "chat:update", { kind: "create", messageId: msg.id, roomId });
 
-    // 방 정보 — 알림 표시명 결정.
-    const room = await prisma.chatRoom.findUnique({
-      where: { id: roomId },
-      select: { type: true, name: true },
-    });
-    const others = await prisma.roomMember.findMany({
-      where: { roomId, userId: { not: u.id } },
-      select: { userId: true },
-    });
+    // 방 정보 — 알림 표시명 결정(루프 전 prefetch 한 맵 사용).
+    const room = roomById.get(roomId);
+    const others = othersByRoom.get(roomId) ?? [];
     if (!others.length) continue;
     if (room?.type === "DIRECT") {
       await notifyMany(
-        others.map((o) => ({
-          userId: o.userId,
+        others.map((userId) => ({
+          userId,
           type: "DM" as const,
           title: u.name,
           body: `📌 ${label} · ${d.title}`.slice(0, 140),
@@ -898,8 +910,8 @@ router.post("/share", async (req, res) => {
     } else {
       const roomName = room?.name ?? "대화방";
       await notifyMany(
-        others.map((o) => ({
-          userId: o.userId,
+        others.map((userId) => ({
+          userId,
           type: "DM" as const,
           title: roomName,
           body: `${u.name}: 📌 ${label} · ${d.title}`.slice(0, 140),

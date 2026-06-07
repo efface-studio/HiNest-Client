@@ -146,9 +146,10 @@ export async function streamFolderZip(
   }
   const folderIds = collectIds(folderId);
 
-  // 해당 폴더들에 속한 문서
+  // 해당 폴더들에 속한 문서 — deletedAt:null 필수. 소프트 삭제(deletedAt 만 세팅, fileUrl/folderId 보존)된
+  // 문서가 과거 발급된 공개 링크로 계속 다운로드되던 결함 차단(인증 경로 document.ts 와 동작 일치).
   const docs = await prisma.document.findMany({
-    where: { folderId: { in: folderIds }, fileUrl: { not: null } },
+    where: { folderId: { in: folderIds }, fileUrl: { not: null }, deletedAt: null },
     select: { id: true, title: true, fileName: true, fileUrl: true, folderId: true },
   });
 

@@ -1359,3 +1359,18 @@ html.dark .nav-active svg { stroke: var(--c-brand-soft-fg); }
 body.hinest-chat-fs .hinest-preview-banner {
   visibility: hidden;
 }
+
+/* ============================================================ */
+/*  가로 스크롤 영역 — 좌우 탭바·필터 등 모바일 스와이프용.        */
+/*  scrollbar 숨김(가로 스크롤바가 세로 콘텐츠를 깎아내림 방지),  */
+/*  iOS momentum 활성화. 부모 정의: overflow-x-auto + w-max 자식. */
+/* ============================================================ */
+.hinest-x-scroll {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hinest-x-scroll::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}

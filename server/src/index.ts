@@ -22,6 +22,7 @@ import fs from "node:fs";
 import notificationRouter from "./routes/notification.js";
 import pushRouter from "./routes/push.js";
 import updatesRouter from "./routes/updates.js";
+import attendanceIpRestrictRouter from "./routes/attendanceIpRestrict.js";
 import searchRouter from "./routes/search.js";
 import documentRouter from "./routes/document.js";
 import approvalRouter from "./routes/approval.js";
@@ -280,6 +281,8 @@ app.use("/api/auth", loginLimiter, authRouter);
 app.use("/api/me", meRouter);
 app.use("/api/feature-flags", featureFlagsRouter);
 app.use("/api/admin", adminRouter);
+// 회사 출근 IP 화이트리스트 — 회사 관리자(ADMIN) 전용. CRUD.
+app.use("/api/admin/attendance-ip", attendanceIpRestrictRouter);
 app.use("/api/platform", platformRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/schedule", scheduleRouter);

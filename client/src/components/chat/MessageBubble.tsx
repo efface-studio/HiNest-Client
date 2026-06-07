@@ -1065,40 +1065,50 @@ function ShareCardBubble({ msg, mine }: { msg: Message; mine: boolean }) {
     window.history.pushState({}, "", safe);
     window.dispatchEvent(new PopStateEvent("popstate"));
   }
-  const bg = mine ? "rgba(255,255,255,0.95)" : "#FFFFFF";
-  const border = mine ? "rgba(255,255,255,0.4)" : "#E5E7EB";
+  const snippet =
+    msg.content && msg.content.trim() && msg.content !== msg.fileName
+      ? (msg.content.startsWith(`${msg.fileName ?? ""} — `)
+          ? msg.content.slice((msg.fileName ?? "").length + 3)
+          : msg.content)
+      : "";
+  // 다크/라이트 자동 대응 — CSS 변수. 카드는 항상 표면색(버블색과 분리되어 또렷).
   return (
     <a
       href={safe}
       onClick={navigate}
       style={{
-        display: "block",
-        maxWidth: 320,
-        background: bg,
-        border: `1px solid ${border}`,
-        borderRadius: 14,
-        padding: "12px 14px",
+        display: "flex",
+        alignItems: "stretch",
+        gap: 0,
+        width: 264,
+        maxWidth: "78vw",
+        background: "var(--c-surface)",
+        border: "1px solid var(--c-border)",
+        borderRadius: 16,
+        overflow: "hidden",
         textDecoration: "none",
-        color: "#0F172A",
-        boxShadow: "0 1px 2px rgba(15,23,42,0.04)",
+        boxShadow: "0 1px 3px rgba(15,23,42,0.08)",
       }}
     >
-      <div style={{ fontSize: 10, fontWeight: 700, color: "#3B5CF0", marginBottom: 4, letterSpacing: "-0.01em" }}>
-        {meta.icon} {meta.label}
+      {/* 좌측 브랜드 컬러 바 + 아이콘 */}
+      <div style={{ width: 44, flexShrink: 0, background: "var(--c-brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19 }}>
+        {meta.icon}
       </div>
-      <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.35, marginBottom: 4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-        {msg.fileName ?? "(제목 없음)"}
-      </div>
-      {msg.content && msg.content.trim() && msg.content !== msg.fileName && (
-        <div style={{ fontSize: 12, color: "#64748B", lineHeight: 1.4, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-          {/* content 가 "제목 — snippet" 포맷이라 제목 부분 제거 */}
-          {msg.content.startsWith(`${msg.fileName ?? ""} — `)
-            ? msg.content.slice((msg.fileName ?? "").length + 3)
-            : msg.content}
+      <div style={{ flex: 1, minWidth: 0, padding: "11px 13px" }}>
+        <div style={{ fontSize: 10.5, fontWeight: 800, color: "var(--c-brand)", marginBottom: 3, letterSpacing: "0.02em" }}>
+          {meta.label}
         </div>
-      )}
-      <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px solid #F1F5F9", fontSize: 11, color: "#94A3B8", fontWeight: 600 }}>
-        탭해서 보기 →
+        <div style={{ fontSize: 14, fontWeight: 700, lineHeight: 1.3, color: "var(--c-text)", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+          {msg.fileName ?? "(제목 없음)"}
+        </div>
+        {snippet && (
+          <div style={{ fontSize: 12, color: "var(--c-text-3)", lineHeight: 1.4, marginTop: 3, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
+            {snippet}
+          </div>
+        )}
+        <div style={{ marginTop: 8, fontSize: 11, color: "var(--c-brand)", fontWeight: 700 }}>
+          탭해서 열기 →
+        </div>
       </div>
     </a>
   );

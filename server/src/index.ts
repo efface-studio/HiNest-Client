@@ -147,7 +147,18 @@ function scrubUrl(raw: string): string {
 //   - GET /api/notification/stream 도 SSE long-poll 시작 핸드셰이크가 끊임없이 찍힘.
 //   - 위 두 경로는 정상 200/204 일 때만 스킵. 비정상 응답(5xx, 4xx)은 그대로 기록해야
 //     장애 진단이 가능.
-const ACCESS_LOG_SKIP_PATHS = new Set(["/api/health", "/api/notification/stream"]);
+// 정상(2xx/3xx) 응답만 스킵 — 비정상은 로그에 남겨 진단 가능. 추가 후보는 호출 빈도가 높은
+// 폴링·heartbeat 류로, 정상 응답 시 콘텐츠가 없거나 동일해 진단 가치가 낮은 것들.
+//   /api/health                  : ALB healthcheck (~30초 주기)
+//   /api/notification/stream     : SSE long-poll 핸드셰이크
+//   /api/updates/check           : Capgo Live Updates 폴링 (셸이 시작 시·간헐 호출)
+//   /api/version                 : 데스크탑/웹 버전 폴링 (UpdateBanner)
+const ACCESS_LOG_SKIP_PATHS = new Set([
+  "/api/health",
+  "/api/notification/stream",
+  "/api/updates/check",
+  "/api/version",
+]);
 app.use((req, res, next) => {
   const start = Date.now();
   res.on("finish", () => {

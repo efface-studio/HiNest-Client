@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import Portal from "../components/Portal";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
-import ShareLinkModal from "../components/ShareLinkModal";
+import ShareSheet, { type SharePayload } from "../components/ShareSheet";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
 import type { MemoDoc } from "../components/DocMemoModal";
 import { safeUploadUrl } from "../lib/safeUrl";
@@ -144,8 +144,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     scope: DocScope;
     scopeUserIds: string[];
   }>({ name: "", scope: "ALL", scopeUserIds: [] });
-  const [sharingDoc, setSharingDoc] = useState<Doc | null>(null);
-  const [sharingFolder, setSharingFolder] = useState<Folder | null>(null);
+  // 외부 공유 링크 폐지 — 사내 전용 서비스. 문서/폴더 공유는 사내 동료·대화방으로 보내는 ShareSheet 로 일원화.
+  const [sharePayload, setSharePayload] = useState<SharePayload | null>(null);
   const [historyDoc, setHistoryDoc] = useState<Doc | null>(null);
   /** 현재 열린 메모 편집/열람 모달 (null = 닫힘 | "new" = 새 메모 | Doc = 기존 메모) */
   const [memoTarget, setMemoTarget] = useState<Doc | "new" | null>(null);
@@ -1221,7 +1221,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); downloadFolder(f); }} title="폴더 전체 다운로드 (ZIP)">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
                   </button>
-                  <button className="btn-icon" onClick={(e) => { e.stopPropagation(); setSharingFolder(f); }} title="외부 공유 링크">
+                  <button className="btn-icon" onClick={(e) => { e.stopPropagation(); setSharePayload({ kind: "DOCUMENT", title: f.name, href: `/documents?folder=${f.id}` }); }} title="동료에게 공유">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
                   </button>
                   <button className="btn-icon" onClick={(e) => { e.stopPropagation(); renameFolder(f); }} title="이름 변경">
@@ -1416,7 +1416,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                             </button>
                           )}
                           {d.fileUrl && (
-                            <button className="btn-icon" onClick={() => setSharingDoc(d)} title="외부 공유 링크">
+                            <button className="btn-icon" onClick={() => setSharePayload({ kind: "DOCUMENT", title: d.title, snippet: d.fileName ?? undefined, href: d.folderId ? `/documents?folder=${d.folderId}` : "/documents" })} title="동료에게 공유">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
                             </button>
                           )}
@@ -1746,21 +1746,13 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         </Portal>
       )}
 
-      {sharingDoc && (
-        <ShareLinkModal
-          documentId={sharingDoc.id}
-          documentTitle={sharingDoc.title}
-          onClose={() => setSharingDoc(null)}
-        />
-      )}
-
-      {sharingFolder && (
-        <ShareLinkModal
-          folderId={sharingFolder.id}
-          documentTitle={sharingFolder.name}
-          onClose={() => setSharingFolder(null)}
-        />
-      )}
+      {/* 외부 링크 공유 폐지 → 사내 동료/대화방 공유 시트로 일원화 */}
+      <ShareSheet
+        open={!!sharePayload}
+        payload={sharePayload}
+        onClose={() => setSharePayload(null)}
+        meId={user?.id ?? null}
+      />
 
       {historyDoc && (
         <RevisionHistoryModal

@@ -280,9 +280,11 @@ app.use("/api/download", desktopDownloadRouter);
 app.use("/api/auth", loginLimiter, authRouter);
 app.use("/api/me", meRouter);
 app.use("/api/feature-flags", featureFlagsRouter);
-app.use("/api/admin", adminRouter);
+// ⚠️ specific 한 sub-router 를 prefix-router 보다 먼저 마운트 — 안 그러면
+//    Express 가 /api/admin/attendance-ip 를 adminRouter 안에서 처리하려다 404 가 됨.
 // 회사 출근 IP 화이트리스트 — 회사 관리자(ADMIN) 전용. CRUD.
 app.use("/api/admin/attendance-ip", attendanceIpRestrictRouter);
+app.use("/api/admin", adminRouter);
 app.use("/api/platform", platformRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/schedule", scheduleRouter);

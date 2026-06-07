@@ -26,7 +26,10 @@ const createSchema = z.object({
  * 핀에 붙은 리소스의 최신 표시 정보를 한 번에 가져온다 — 리소스 삭제 후 핀만 남을 수 있어서
  * null 인 항목은 클라가 "[삭제된 항목]" 으로 표시 or 자동 제거 가능.
  */
-async function hydratePins(pins: { id: string; targetType: string; targetId: string; label: string | null; sortOrder: number; createdAt: Date }[]) {
+async function hydratePins(
+  pins: { id: string; targetType: string; targetId: string; label: string | null; sortOrder: number; createdAt: Date }[],
+  u: { id: string; role: string; team: string | null },
+) {
   const groups: Record<TargetType, string[]> = {
     DOCUMENT: [], MEETING: [], CHAT_ROOM: [], PROJECT: [], NOTICE: [],
   };
@@ -35,19 +38,42 @@ async function hydratePins(pins: { id: string; targetType: string; targetId: str
       groups[p.targetType as TargetType].push(p.targetId);
     }
   }
+  const isAdmin = u.role === "ADMIN";
+  // 접근통제(BAC): 핀은 임의 targetId 를 저장할 수 있으므로, 하이드레이션 단계에서 '현재 사용자가
+  // 실제로 볼 수 있는 것'만 이름을 조회한다. 접근 불가 항목은 nameBy 에 안 들어가 missing=true 로
+  // 떨어져 기존 '[삭제된 항목]' UX 로 흡수 → 비공개 리소스의 제목/이름이 새지 않음.
+  const docAcl = isAdmin
+    ? {}
+    : { OR: [
+        { scope: "ALL" },
+        { authorId: u.id },
+        ...(u.team ? [{ scope: "TEAM", scopeTeam: u.team }] : []),
+        { scope: "CUSTOM", scopeUserIds: { contains: u.id } },
+      ] };
+  const meetingAcl = isAdmin
+    ? {}
+    : { OR: [
+        { visibility: "ALL" },
+        { authorId: u.id },
+        { viewers: { some: { userId: u.id } } },
+        { visibility: "PROJECT", project: { members: { some: { userId: u.id } } } },
+      ] };
+  const projectAcl = isAdmin ? {} : { members: { some: { userId: u.id } } };
+
   const [docs, meetings, rooms, projects, notices] = await Promise.all([
     groups.DOCUMENT.length
-      ? prisma.document.findMany({ where: { id: { in: groups.DOCUMENT }, deletedAt: null }, select: { id: true, title: true } })
+      ? prisma.document.findMany({ where: { id: { in: groups.DOCUMENT }, deletedAt: null, ...docAcl }, select: { id: true, title: true } })
       : Promise.resolve([]),
     groups.MEETING.length
-      ? prisma.meeting.findMany({ where: { id: { in: groups.MEETING }, deletedAt: null }, select: { id: true, title: true } })
+      ? prisma.meeting.findMany({ where: { id: { in: groups.MEETING }, deletedAt: null, ...meetingAcl }, select: { id: true, title: true } })
       : Promise.resolve([]),
     groups.CHAT_ROOM.length
-      ? prisma.chatRoom.findMany({ where: { id: { in: groups.CHAT_ROOM } }, select: { id: true, name: true, type: true } })
+      ? prisma.chatRoom.findMany({ where: { id: { in: groups.CHAT_ROOM }, members: { some: { userId: u.id } } }, select: { id: true, name: true, type: true } })
       : Promise.resolve([]),
     groups.PROJECT.length
-      ? prisma.project.findMany({ where: { id: { in: groups.PROJECT } }, select: { id: true, name: true, color: true } })
+      ? prisma.project.findMany({ where: { id: { in: groups.PROJECT }, ...projectAcl }, select: { id: true, name: true, color: true } })
       : Promise.resolve([]),
+    // 공지는 회사 전체 공개 — companyId 자동 스코프로 충분(추가 ACL 불필요).
     groups.NOTICE.length
       ? prisma.notice.findMany({ where: { id: { in: groups.NOTICE }, deletedAt: null }, select: { id: true, title: true } })
       : Promise.resolve([]),
@@ -82,7 +108,7 @@ router.get("/", async (req, res) => {
     orderBy: [{ sortOrder: "asc" }, { createdAt: "asc" }],
     take: 100,
   });
-  const items = await hydratePins(pins);
+  const items = await hydratePins(pins, { id: u.id, role: u.role, team: u.team ?? null });
   res.json({ pins: items });
 });
 

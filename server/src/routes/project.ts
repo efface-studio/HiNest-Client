@@ -37,13 +37,17 @@ router.get("/:id", async (req, res) => {
     where: { id: req.params.id },
     include: {
       members: {
+        // 퇴사/비활성 멤버 제외 — 일정 담당자·필터칩에 더 이상 안 뜨게.
+        // (퇴사 처리 시 active=false 동시 설정되므로 active:true 면 둘 다 걸러짐.)
+        where: { user: { active: true } },
         include: { user: { select: { id: true, name: true, email: true, team: true, position: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
       },
       createdBy: { select: { id: true, name: true } },
     },
   });
   if (!p) return res.status(404).json({ error: "not found" });
-  // 멤버가 아니면 조회 불가 (ADMIN 제외)
+  // 멤버가 아니면 조회 불가 (ADMIN 제외). 위 where 로 비활성 멤버는 빠지지만,
+  // 로그인 사용자는 active=true 이므로 본인 멤버십 판정에는 영향 없음.
   const isMember = p.members.some((m) => m.userId === u.id);
   if (!isMember && u.role !== "ADMIN") return res.status(403).json({ error: "forbidden" });
   res.json({ project: p });

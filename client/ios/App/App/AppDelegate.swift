@@ -1,5 +1,8 @@
 import UIKit
 import Capacitor
+#if canImport(WidgetKit)
+import WidgetKit
+#endif
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -102,6 +105,16 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
             } else {
                 defaults.set(token, forKey: "hinest.session.token")
             }
+        }
+        // 일정 위젯도 같은 토큰을 쓰니, 토큰 갱신 즉시 다음 타임라인 갱신을 요청한다.
+        // (로그인 직후 위젯이 '로그인 필요' 빈 상태에 머무르는 회귀 방지)
+        // WidgetCenter 는 iOS 14+ — Capacitor 8 의 deployment target 보다 훨씬 낮아 안전.
+        if #available(iOS 14.0, *) {
+            #if canImport(WidgetKit)
+            // 위젯 extension 이 빌드 타깃에 포함됐을 때만 컴파일.
+            // (아직 Xcode 에 widget target 안 추가됐어도 메인 앱 빌드는 통과)
+            WidgetCenter.shared.reloadTimelines(ofKind: "HiNestScheduleWidget")
+            #endif
         }
         call.resolve()
     }

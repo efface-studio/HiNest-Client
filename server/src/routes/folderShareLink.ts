@@ -133,18 +133,23 @@ export async function streamFolderZip(
   folderName: string,
   res: any,
 ) {
-  // 폴더 + 하위 폴더 전체 조회
-  const allFolders = await prisma.folder.findMany({ select: { id: true, name: true, parentId: true } });
-  const folderMap = new Map(allFolders.map((f) => [f.id, f]));
-
-  function collectIds(rootId: string): string[] {
-    const result = [rootId];
-    for (const f of allFolders) {
-      if (f.parentId === rootId) result.push(...collectIds(f.id));
-    }
-    return result;
+  // 하위 폴더를 BFS 로 수집(트리 깊이당 1쿼리, parentId 인덱스 사용) — 전 회사 Folder 테이블을
+  // 매 요청 통째로 로드하던 것 제거(공개 endpoint 라 테넌트 스코프도 없어 더 위험했음).
+  // document.ts /folders/:id/download 와 동일 패턴.
+  type FolderNode = { id: string; name: string; parentId: string | null };
+  const subtree: FolderNode[] = [];
+  let frontier: string[] = [folderId];
+  while (frontier.length) {
+    const children = await prisma.folder.findMany({
+      where: { parentId: { in: frontier } },
+      select: { id: true, name: true, parentId: true },
+    });
+    if (!children.length) break;
+    subtree.push(...children);
+    frontier = children.map((c) => c.id);
   }
-  const folderIds = collectIds(folderId);
+  const folderMap = new Map(subtree.map((f) => [f.id, f]));
+  const folderIds = [folderId, ...subtree.map((f) => f.id)];
 
   // 해당 폴더들에 속한 문서 — deletedAt:null 필수. 소프트 삭제(deletedAt 만 세팅, fileUrl/folderId 보존)된
   // 문서가 과거 발급된 공개 링크로 계속 다운로드되던 결함 차단(인증 경로 document.ts 와 동작 일치).

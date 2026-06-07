@@ -96,10 +96,9 @@ router.get("/schedule/today", async (req, res) => {
 router.get("/work-status", async (req, res) => {
   const u = (req as any).user;
   const date = todayStr();
-  const [rec, userRow] = await Promise.all([
-    prisma.attendance.findUnique({ where: { userId_date: { userId: u.id, date } } }),
-    prisma.user.findUnique({ where: { id: u.id }, select: { workStartTime: true, workEndTime: true } }),
-  ]);
+  // requireAuth 가 캐시해 둔 전체 user row 재사용(workStartTime/workEndTime 포함) — 중복 user 조회 제거.
+  const userRow = (req as any).userRecord ?? null;
+  const rec = await prisma.attendance.findUnique({ where: { userId_date: { userId: u.id, date } } });
 
   const now = Date.now();
   const checkIn = rec?.checkIn ? new Date(rec.checkIn).getTime() : null;

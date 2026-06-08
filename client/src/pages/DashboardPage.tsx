@@ -3,13 +3,14 @@ import { Link } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import InstallAppBanner from "../components/InstallAppBanner";
-import { confirmAsync, alertAsync } from "../components/ConfirmHost";
+import { alertAsync } from "../components/ConfirmHost";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { isPreviewMode } from "../lib/previewMock";
 
 type Notice = { id: string; title: string; content: string; createdAt: string; author: { name: string; isDeveloper?: boolean }; pinned: boolean };
 type Event = { id: string; title: string; startAt: string; endAt: string; scope: string; color: string };
-type Attendance = { checkIn?: string; checkOut?: string } | null;
+type WorkSession = { s: string; e: string | null; src?: string };
+type Attendance = { checkIn?: string; checkOut?: string; sessions?: WorkSession[] | null } | null;
 
 /**
  * 개요 — Toss 디자인 톤.
@@ -53,26 +54,13 @@ export default function DashboardPage() {
   useEffect(() => { load(); }, []);
 
   async function checkIn() {
+    // 다중 세션 — "다시 출근" 은 이전 기록을 보존하고 새 세션을 추가하므로 강제확인 불필요.
     try {
       await api("/api/attendance/check-in", { method: "POST" });
     } catch (err: any) {
-      if (err?.code === "ALREADY_CHECKED_OUT") {
-        const ok = await confirmAsync({
-          title: "재출근",
-          description: "오늘은 이미 퇴근 처리되었어요. 재출근으로 덮어쓸까요?\n(기존 퇴근 시각이 초기화됩니다)",
-          confirmLabel: "재출근",
-        });
-        if (!ok) return;
-        try {
-          await api("/api/attendance/check-in", { method: "POST", json: { force: true } });
-        } catch (e: any) {
-          alertAsync({ title: "출근 실패", description: e?.message ?? "출근 처리에 실패했어요" });
-          return;
-        }
-      } else {
-        alertAsync({ title: "출근 실패", description: err?.message ?? "출근 처리에 실패했어요" });
-        return;
-      }
+      const title = err?.code === "IP_NOT_ALLOWED" ? "출근 불가" : "출근 실패";
+      alertAsync({ title, description: err?.message ?? "출근 처리에 실패했어요" });
+      return;
     }
     load();
   }
@@ -87,10 +75,18 @@ export default function DashboardPage() {
   }
 
   const dateLabel = now.toLocaleDateString("ko-KR", { month: "long", day: "numeric", weekday: "long" });
-  const status: WorkStatus = att?.checkOut ? "OFF" : att?.checkIn ? "IN" : "NONE";
-  const workedMin = att?.checkIn
-    ? Math.max(0, Math.floor(((att.checkOut ? new Date(att.checkOut).getTime() : now.getTime()) - new Date(att.checkIn).getTime()) / 60000))
-    : 0;
+  // 다중 세션 — sessions 가 있으면 그대로, 없으면 checkIn/checkOut 단일 세션(하위호환).
+  const sessions: WorkSession[] = Array.isArray(att?.sessions)
+    ? att!.sessions!
+    : att?.checkIn ? [{ s: att.checkIn, e: att.checkOut ?? null }] : [];
+  const working = sessions.some((s) => !s.e); // 열린 세션 = 근무 중
+  const status: WorkStatus = working ? "IN" : sessions.length > 0 ? "OFF" : "NONE";
+  // 근무시간 = 모든 세션 합산(열린 세션은 now 까지). "다시 출근" 해도 누적된다.
+  const workedMin = sessions.reduce((acc, s) => {
+    const start = new Date(s.s).getTime();
+    const end = s.e ? new Date(s.e).getTime() : now.getTime();
+    return acc + (end > start ? Math.floor((end - start) / 60000) : 0);
+  }, 0);
   // 관리자 설정 기반 근무 시각 — 미설정 시 09:00/18:00 fallback.
   const startMin = parseHHmm(user?.workStartTime ?? "") ?? 9 * 60;
   const endMin = parseHHmm(user?.workEndTime ?? "") ?? 18 * 60;
@@ -133,25 +129,25 @@ export default function DashboardPage() {
             <div className="text-[13px] font-bold text-ink-500 mb-1">오늘 근무</div>
             <div className="flex items-baseline gap-1">
               <span className="text-[36px] sm:text-[40px] font-extrabold text-ink-900 tabular-nums" style={{ letterSpacing: "-0.03em" }}>
-                {att?.checkIn ? formatHours(workedMin) : "0"}
+                {sessions.length ? formatHours(workedMin) : "0"}
               </span>
-              <span className="text-[16px] font-bold text-ink-500">시간 {att?.checkIn ? formatMinutesPart(workedMin) : "0"}분</span>
+              <span className="text-[16px] font-bold text-ink-500">시간 {sessions.length ? formatMinutesPart(workedMin) : "0"}분</span>
             </div>
           </div>
           <div className="flex gap-2">
             <button
               type="button"
               onClick={checkIn}
-              disabled={!!att?.checkIn && !att?.checkOut}
+              disabled={working}
               className="px-5 py-2.5 rounded-xl text-[13.5px] font-extrabold transition disabled:opacity-40"
               style={{ background: "var(--c-brand)", color: "#fff" }}
             >
-              {att?.checkOut ? "다시 출근" : att?.checkIn ? "출근됨" : "출근하기"}
+              {working ? "출근됨" : sessions.length ? "다시 출근" : "출근하기"}
             </button>
             <button
               type="button"
               onClick={checkOut}
-              disabled={!att?.checkIn || !!att?.checkOut}
+              disabled={!working}
               className="px-5 py-2.5 rounded-xl text-[13.5px] font-extrabold transition disabled:opacity-40"
               style={{ background: "var(--c-surface-3)", color: "var(--c-text-1)" }}
             >

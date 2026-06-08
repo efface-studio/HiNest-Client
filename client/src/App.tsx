@@ -1,6 +1,7 @@
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { useAuth } from "./auth";
+import { isDesktopApp } from "./lib/platform";
 import UpdateBanner from "./components/UpdateBanner";
 import DesktopUpdateBanner from "./components/DesktopUpdateBanner";
 import ConfirmHost from "./components/ConfirmHost";
@@ -106,6 +107,19 @@ export default function App() {
   // 라우트 단위 ErrorBoundary 의 reset 트리거 — 다음 페이지로 이동하면 자동 초기화.
   // 이렇게 안 하면 한 페이지에서 에러 나면 다른 메뉴로 가도 fallback 이 계속 보임.
   const { pathname } = useLocation();
+
+  // 데스크톱 디바이스 클래스(.hinest-desktop)를 최상위에서 항상 보장한다.
+  // 예전엔 AppLayout 마운트 시에만 붙였는데, 콘솔(ConsoleLayout)은 AppLayout 과 분리된
+  // 라우트라 — 특히 회사 앱을 거치지 않고 바로 콘솔로 가는 consoleOnly 계정에선 — 클래스가
+  // 안 붙어 "콘솔 하단 네비바 숨김"(html.hinest-desktop .console-bottomnav) CSS 가 안 먹었다.
+  // 디바이스 사실(데스크톱 여부)이라 라우트와 무관하게 1회만 판정해 둔다.
+  useEffect(() => {
+    const isDesktopDevice =
+      isDesktopApp() ||
+      (typeof window !== "undefined" && !!window.matchMedia?.("(hover: hover) and (pointer: fine)").matches);
+    document.documentElement.classList.toggle("hinest-desktop", isDesktopDevice);
+  }, []);
+
   return (
     <>
     <UpdateBanner />

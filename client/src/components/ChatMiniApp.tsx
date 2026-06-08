@@ -961,9 +961,10 @@ function ListRow({
   isGroup?: boolean;
   memberCount?: number;
 }) {
-  // 길게 누르기(모바일) / 우클릭(데스크톱) → 삭제. 짧은 탭은 그대로 열기.
+  // 길게 누르기(모바일) / 우클릭(데스크톱) / 호버 시 나타나는 × 버튼 → 삭제. 짧은 탭은 그대로 열기.
   const pressTimer = useRef<number | null>(null);
   const longPressed = useRef(false);
+  const [hovered, setHovered] = useState(false);
   const startPress = () => {
     if (!onDelete) return;
     longPressed.current = false;
@@ -978,6 +979,7 @@ function ListRow({
       onTouchEnd={cancelPress}
       onTouchMove={cancelPress}
       style={{
+        position: "relative",
         width: "100%",
         display: "flex", alignItems: "center", gap: 12,
         padding: "12px 12px",
@@ -987,9 +989,29 @@ function ListRow({
         fontFamily: FONT,
         transition: "background .12s ease",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = C.gray100)}
-      onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+      onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; setHovered(true); }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; setHovered(false); }}
     >
+      {/* 삭제 버튼 — 호버 시 우측에 표시(데스크톱 발견성). 모바일은 길게 누르기도 동작. */}
+      {onDelete && hovered && (
+        <span
+          role="button"
+          aria-label="대화 삭제"
+          title="대화 삭제 (길게 누르기·우클릭도 가능)"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          style={{
+            position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)",
+            width: 28, height: 28, borderRadius: 8, zIndex: 2,
+            display: "grid", placeItems: "center",
+            background: "var(--c-surface)", color: C.gray500,
+            boxShadow: "0 1px 4px rgba(0,0,0,.12)", cursor: "pointer",
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+          </svg>
+        </span>
+      )}
       <div style={{ position: "relative", flexShrink: 0 }}>
         <Avatar name={avatar.name} color={avatar.color} imageUrl={avatar.imageUrl ?? null} size={46} presenceColor={isGroup ? undefined : presenceColor} presenceTitle={isGroup ? undefined : presenceTitle} />
         {isGroup && (

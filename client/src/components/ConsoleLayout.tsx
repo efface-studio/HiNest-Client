@@ -286,7 +286,11 @@ export default function ConsoleLayout() {
             데스크톱은 좌측 사이드바를 쓰므로 md:hidden. 콘솔은 AppLayout 과 분리된
             레이아웃이라 네이티브 탭바 플러그인을 쓰지 않고 동일한 --c-glass 토큰으로 맞춘다. */}
         <nav
-          className="console-bottomnav"
+          // flex: 모바일에서 아이콘을 가로로 배치(예전엔 display 규칙이 없어 세로로 깨져 보였음).
+          // md:hidden: 데스크톱(≥1024px, 사이드바 md:flex 와 동일 분기)에선 JS 클래스와 무관하게
+          //            순수 CSS 로 숨긴다 — hinest-desktop 클래스가 안 붙는 경로(콘솔 전용 계정 등)
+          //            에서도 확실히 사라지도록. 좁은 데스크톱 창은 html.hinest-desktop 규칙이 보강.
+          className="console-bottomnav flex md:hidden"
           style={{
             position: "fixed",
             left: "50%",

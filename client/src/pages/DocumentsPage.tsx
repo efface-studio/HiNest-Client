@@ -730,6 +730,24 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     downloadFromUrl(url.toString(), d.fileName ?? "");
   }
 
+  // 미리보기 가능한 타입(이미지·PDF·영상)인가. 그 외(.docx·.pptx·.zip 등)는 미리보기 의미가 없어 다운로드.
+  function isPreviewable(d: Doc): boolean {
+    const t = (d.fileType ?? "").toLowerCase();
+    return t.startsWith("image/") || t.startsWith("video/") || t === "application/pdf";
+  }
+
+  // 파일명/카드 클릭 — 다운로드 버튼과 동작 통일:
+  //  - 미리보기 가능(이미지·PDF·영상) → 열어서 본다(인앱 브라우저/새 탭).
+  //  - 그 외(.docx 등) → 다운로드 버튼과 똑같이 downloadDoc 으로 저장.
+  function openDocOrDownload(d: Doc) {
+    if (!d.fileUrl) return;
+    if (!isPreviewable(d)) { downloadDoc(d); return; }
+    const safe = safeUploadUrl(d.fileUrl);
+    if (!safe) return;
+    if (isCapacitorNative()) { const u = imgSrc(safe); if (u) void Browser.open({ url: u }); }
+    else window.open(safe, "_blank", "noopener");
+  }
+
   // 폴더 전체 — 서버에서 ZIP 스트림으로 내려옴. 큰 폴더는 시간이 꽤 걸릴 수 있음.
   // 기존엔 <a target="_blank"> 로 새 탭 열어 attachment 헤더로 다운로드 유도했는데
   // 서버가 404/500 을 내면 새 탭에 JSON/빈페이지가 뜨고 사용자는 왜 안되는지 알 수 없었음.
@@ -1371,19 +1389,15 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                           {d.fileName} <span className="text-ink-300">(invalid)</span>
                         </span>
                       );
-                      // 파일명 링크도 ?name=<원본명> 을 붙인다 — 비-인라인 타입(.docx 등)이 다운로드될 때
-                      // 서버 Content-Disposition 이 스토리지 키 대신 원본명을 쓰게. (download=1 은 안 붙여
-                      // 이미지·PDF 는 인라인 프리뷰 유지 — 다운로드 아이콘만 강제 저장.)
-                      const named = d.fileName
-                        ? safe + (safe.includes("?") ? "&" : "?") + "name=" + encodeURIComponent(d.fileName)
-                        : safe;
+                      // 파일명 클릭 = 다운로드 버튼과 동일 동작(openDocOrDownload). 미리보기 가능한
+                      // 타입만 열어서 보고, 그 외(.docx 등)는 다운로드 버튼과 똑같이 저장된다.
                       return (
-                        <a href={named} target="_blank" rel="noreferrer" title={d.fileName ?? undefined}
-                          onClick={(e) => { if (isCapacitorNative()) { e.preventDefault(); const u = imgSrc(named); if (u) void Browser.open({ url: u }); } }}
-                          className="inline-flex items-center gap-1 max-w-[180px] sm:max-w-[260px] align-middle text-[12px] font-bold text-brand-600 hover:underline tabular">
+                        <button type="button" title={d.fileName ?? undefined}
+                          onClick={() => openDocOrDownload(d)}
+                          className="inline-flex items-center gap-1 max-w-[180px] sm:max-w-[260px] align-middle text-[12px] font-bold text-brand-600 hover:underline tabular text-left">
                           <span className="truncate">{d.fileName}</span>
                           <span className="text-ink-400 flex-shrink-0">({humanSize(d.fileSize ?? 0)})</span>
-                        </a>
+                        </button>
                       );
                     })()}
                   </td>
@@ -1464,12 +1478,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
             const meta = isMemo ? "메모" : `${(ext || "file").toUpperCase()} · ${humanSize(d.fileSize ?? 0)}`;
             const openDoc = () => {
               if (isMemo) { setMemoTarget(d); return; }
-              const safe0 = safeUploadUrl(d.fileUrl);
-              if (!safe0) return;
-              // ?name=<원본명> — 다운로드되는 타입(.docx 등)이 스토리지 키 대신 원본명으로 저장되게.
-              const safe = d.fileName ? safe0 + (safe0.includes("?") ? "&" : "?") + "name=" + encodeURIComponent(d.fileName) : safe0;
-              if (isCapacitorNative()) { const u = imgSrc(safe); if (u) void Browser.open({ url: u }); }
-              else window.open(safe, "_blank", "noopener");
+              // 데스크톱 파일명 링크와 동일: 미리보기 가능하면 열고, 그 외(.docx 등)는 다운로드.
+              openDocOrDownload(d);
             };
             return (
               <div key={d.id} className="flex items-center gap-3 rounded-2xl border border-ink-150 bg-[var(--c-surface)] px-3 py-2.5">

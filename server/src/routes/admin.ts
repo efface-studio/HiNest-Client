@@ -1391,12 +1391,24 @@ ops.get("/server-logs", requireSuperAdminStepUp, async (req, res) => {
 
 ops.get("/logs", requireSuperAdminStepUp, async (req, res) => {
   const limit = Math.min(Number(req.query.limit ?? 200), 500);
+  // companyId 가 주어지면 해당 회사 활동만 — 개발자 콘솔의 회사 선택 드롭다운용.
+  const companyId = typeof req.query.companyId === "string" && req.query.companyId ? req.query.companyId : undefined;
   const logs = await prisma.auditLog.findMany({
+    where: companyId ? { companyId } : undefined,
     orderBy: { createdAt: "desc" },
     take: limit,
     include: { user: { select: { name: true, email: true } } },
   });
   res.json({ logs });
+});
+
+/** 회사 목록 — 개발자 콘솔의 회사 선택 드롭다운 채우기용(경량). */
+ops.get("/companies", requireSuperAdminStepUp, async (_req, res) => {
+  const companies = await prisma.company.findMany({
+    orderBy: { createdAt: "desc" },
+    select: { id: true, name: true, slug: true, status: true },
+  });
+  res.json({ companies });
 });
 
 /* ===== 출근 기록 조회 — 특정 유저의 특정 날짜 ===== */
@@ -1708,11 +1720,13 @@ ops.get("/audit", requireSuperAdminStepUp, async (req, res) => {
   const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
   const fromMs = req.query.from ? Number(req.query.from) : undefined;
   const toMs = req.query.to ? Number(req.query.to) : undefined;
+  const companyId = typeof req.query.companyId === "string" && req.query.companyId ? req.query.companyId : undefined;
   const limit = Math.min(500, Math.max(1, parseInt(String(req.query.limit ?? "200"), 10) || 200));
 
   const where: any = {};
   if (action) where.action = action;
   if (userId) where.userId = userId;
+  if (companyId) where.companyId = companyId;
   if (fromMs || toMs) {
     where.createdAt = {};
     if (fromMs) where.createdAt.gte = new Date(fromMs);
@@ -1753,30 +1767,33 @@ function trashModel(t: TrashType) {
   return ({ meeting: prisma.meeting, document: prisma.document, journal: prisma.journal, notice: prisma.notice } as const)[t];
 }
 
-ops.get("/trash", requireSuperAdminStepUp, async (_req, res) => {
+ops.get("/trash", requireSuperAdminStepUp, async (req, res) => {
   const include = { deletedBy: false }; // we resolve names below
   void include;
+  // companyId 가 주어지면 해당 회사의 휴지통만 — 개발자 콘솔의 회사 선택 드롭다운용.
+  const companyId = typeof req.query.companyId === "string" && req.query.companyId ? req.query.companyId : undefined;
+  const scope = companyId ? { companyId } : {};
   const [meetings, documents, journals, notices] = await Promise.all([
     prisma.meeting.findMany({
-      where: { deletedAt: { not: null } },
+      where: { deletedAt: { not: null }, ...scope },
       orderBy: { deletedAt: "desc" },
       take: 200,
       select: { id: true, title: true, deletedAt: true, deletedById: true, authorId: true, author: { select: { name: true } } },
     }),
     prisma.document.findMany({
-      where: { deletedAt: { not: null } },
+      where: { deletedAt: { not: null }, ...scope },
       orderBy: { deletedAt: "desc" },
       take: 200,
       select: { id: true, title: true, deletedAt: true, deletedById: true, authorId: true, author: { select: { name: true } } },
     }),
     prisma.journal.findMany({
-      where: { deletedAt: { not: null } },
+      where: { deletedAt: { not: null }, ...scope },
       orderBy: { deletedAt: "desc" },
       take: 200,
       select: { id: true, title: true, deletedAt: true, deletedById: true, userId: true, user: { select: { name: true } } },
     }),
     prisma.notice.findMany({
-      where: { deletedAt: { not: null } },
+      where: { deletedAt: { not: null }, ...scope },
       orderBy: { deletedAt: "desc" },
       take: 200,
       select: { id: true, title: true, deletedAt: true, deletedById: true, authorId: true, author: { select: { name: true } } },
@@ -1941,11 +1958,13 @@ ops.delete("/errors", requireSuperAdminStepUp, async (req, res) => {
 /** 활성 세션 목록. ?userId 로 특정 유저만, 기본은 전체 (최근 활동 순). */
 ops.get("/sessions", requireSuperAdminStepUp, async (req, res) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
+  const companyId = typeof req.query.companyId === "string" && req.query.companyId ? req.query.companyId : undefined;
   const onlyActive = req.query.active !== "false";
   const limit = Math.min(500, parseInt(String(req.query.limit ?? "100"), 10) || 100);
   const sessions = await prisma.session.findMany({
     where: {
       ...(userId ? { userId } : {}),
+      ...(companyId ? { user: { companyId } } : {}),
       ...(onlyActive ? { revokedAt: null } : {}),
     },
     orderBy: { lastSeenAt: "desc" },

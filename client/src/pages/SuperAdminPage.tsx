@@ -17,6 +17,7 @@ import TokensPanel from "../components/superadmin/TokensPanel";
 import SecurityPanel from "../components/superadmin/SecurityPanel";
 import TwoFAPanel from "../components/superadmin/TwoFAPanel";
 import RolePermissionsPanel from "../components/superadmin/RolePermissionsPanel";
+import { CompanyFilterProvider, CompanyFilterDropdown, isCompanyScoped, useConsoleCompany } from "../components/superadmin/companyFilter";
 import Portal from "../components/Portal";
 
 type Log = {
@@ -186,7 +187,7 @@ function SuperConsoleInner() {
   const chat: ChatCtx = { unlocked: chatUnlocked, lock: lockChat };
 
   return (
-    <>
+    <CompanyFilterProvider>
       <Routes>
         <Route index element={<Navigate to="logs" replace />} />
         <Route path="logs" element={<GroupView group="logs" chat={chat} />} />
@@ -201,7 +202,7 @@ function SuperConsoleInner() {
           onSubmit={unlockChat}
         />
       )}
-    </>
+    </CompanyFilterProvider>
   );
 }
 
@@ -303,7 +304,10 @@ function LogsChrome({ tabs, tab, setTab, chat, meta }: ChromeProps) {
           <h1 className="text-[22px] font-extrabold text-ink-900 leading-tight">{meta.title}</h1>
           <p className="text-[12.5px] text-ink-500 mt-1">{meta.description}</p>
         </div>
-        <LogsGlyph />
+        <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          {isCompanyScoped(tab) && <CompanyFilterDropdown accent={LOGS_ACCENT} />}
+          <LogsGlyph />
+        </div>
       </div>
       <div className="flex items-center gap-1 mb-4 border-b border-ink-150 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: "thin" }}>
         {tabs.map((t) =>
@@ -349,19 +353,22 @@ function SystemChrome({ tabs, tab, setTab, meta }: ChromeProps) {
           </div>
         </div>
       </div>
-      <div className="inline-flex items-center gap-1 p-1 rounded-xl mb-4 bg-slate-100 max-w-full overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
-        {tabs.map((t) => {
-          const active = tab === t;
-          return (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-3.5 h-[34px] rounded-lg text-[12.5px] font-semibold whitespace-nowrap transition flex-shrink-0 ${active ? "bg-white text-emerald-700 shadow-sm" : "text-ink-500 hover:text-ink-800"}`}
-            >
-              {TAB_LABEL[t]}
-            </button>
-          );
-        })}
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-slate-100 max-w-full overflow-x-auto" style={{ scrollbarWidth: "thin" }}>
+          {tabs.map((t) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`px-3.5 h-[34px] rounded-lg text-[12.5px] font-semibold whitespace-nowrap transition flex-shrink-0 ${active ? "bg-white text-emerald-700 shadow-sm" : "text-ink-500 hover:text-ink-800"}`}
+              >
+                {TAB_LABEL[t]}
+              </button>
+            );
+          })}
+        </div>
+        {isCompanyScoped(tab) && <CompanyFilterDropdown accent="#10B981" />}
       </div>
       <PanelArea tab={tab} />
     </div>
@@ -605,6 +612,8 @@ function LogsPanel() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [q, setQ] = useState("");
   const [actionFilter, setActionFilter] = useState("");
+  // 회사 선택 드롭다운 값 — 있으면 해당 회사 활동만 서버에서 좁혀 받는다.
+  const { companyId } = useConsoleCompany();
   // 500개 로그를 필터할 때 한글 IME 입력이 끊기지 않도록 우선순위 낮춰 실행.
   const deferredQ = useDeferredValue(q);
 
@@ -618,14 +627,17 @@ function LogsPanel() {
 
   async function load() {
     const myToken = ++tokenRef.current;
-    const res = await api<{ logs: Log[] }>("/api/admin/logs?limit=500");
+    const params = new URLSearchParams({ limit: "500" });
+    if (companyId) params.set("companyId", companyId);
+    const res = await api<{ logs: Log[] }>(`/api/admin/logs?${params}`);
     if (!aliveRef.current || myToken !== tokenRef.current) return;
     setLogs(res.logs);
   }
 
   useEffect(() => {
     load();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [companyId]);
 
   const uniqueActions = useMemo(() => Array.from(new Set(logs.map((l) => l.action))).sort(), [logs]);
 

@@ -177,8 +177,16 @@ export async function getSignedDownloadUrl(
   opts: { downloadName?: string | null; contentType?: string | null; expiresIn?: number } = {}
 ): Promise<string | null> {
   const expiresIn = opts.expiresIn ?? 300;
+  // ⚠️ Content-Disposition 헤더는 ISO-8859-1 만 허용한다(S3 가 한글 등 비-ASCII 가 들어가면
+  // InvalidArgument 로 거부). 따라서 plain filename="..." 은 ASCII 로 치환한 폴백을 쓰고, 실제 원본명은
+  // RFC 5987 filename*=UTF-8''<percent-encoded> 로 전달한다(최신 브라우저·OS 가 이걸 우선 사용).
   const disposition = opts.downloadName
-    ? `attachment; filename="${opts.downloadName.replace(/"/g, "")}"; filename*=UTF-8''${encodeURIComponent(opts.downloadName)}`
+    ? (() => {
+        const asciiFallback = opts.downloadName!
+          .replace(/[^\x20-\x7E]/g, "_") // 비-ASCII → _
+          .replace(/["\\]/g, "_");
+        return `attachment; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(opts.downloadName!)}`;
+      })()
     : "inline";
 
   // 1) S3 presigned GET — ResponseContentDisposition 으로 파일명/inline 제어.

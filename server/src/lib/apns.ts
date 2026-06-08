@@ -46,12 +46,12 @@ const ALT_HOST = PRODUCTION ? SANDBOX_HOST : PROD_HOST;
 const HOST = PRIMARY_HOST; // 표시·진단용 기본 게이트웨이
 
 // 통신알림(발신자 아바타) 임시 스위치.
-// 현재 iOS 빌드의 NSE(mutable-content 처리)가 채팅 푸시를 가로채 알림이 표시되지 않는 문제가 있어,
-// 안정화 전까지 꺼 둔다 → mutable-content 를 싣지 않으므로 NSE 가 호출되지 않고 "일반 알림으로 정상 표시".
-// 재활성화: "사진 있는 발신자 알림 0" 의 진짜 원인은 actorAvatarUrl createMany 버그(#315 수정)였고,
-// NSE 도 다운로드 실패 시 "알림 전달 + 실패표시 / 최대 재시도" 로 견고화됨(NotificationService.swift).
-// → true 로 되돌려 통신알림(발신자 아바타) 복구.
-const ENABLE_COMMUNICATION_PUSH = true;
+// ⚠️ false 로 둔다 — true 로 켜면 채팅 푸시에 mutable-content 가 실려 NSE 가 가로채는데, 현재 iOS
+// 빌드의 NSE 가 백그라운드에서 contentHandler 를 제때 못 부르면 "알림 자체가 안 뜨는" 회귀가 재발했다
+// (사용자 보고: 백그라운드 알람 자체가 안 옴). 알림 전달이 아바타보다 우선이므로 끈다 → mutable-content
+// 미탑재 → NSE 미호출 → 일반 알림으로 100% 정상 표시(발신자 이름·본문 그대로, 아바타 이미지만 생략).
+// 아바타 복구는 NSE 안정성을 실기기에서 충분히 검증한 뒤 별도로 재활성화한다.
+const ENABLE_COMMUNICATION_PUSH = false;
 
 export function apnsEnabled(): boolean {
   return Boolean(KEY_RAW && KEY_ID && TEAM_ID);

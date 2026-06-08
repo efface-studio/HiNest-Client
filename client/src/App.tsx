@@ -67,7 +67,8 @@ function Protected({ children }: { children: React.ReactNode }) {
 
 function AdminOnly({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  if (user?.role !== "ADMIN") return <Navigate to="/" replace />;
+  // 회사 ADMIN + HiNest 개발자(콘솔로만 부여) 허용 — 개발자도 관리자 페이지 제어 가능.
+  if (user?.role !== "ADMIN" && !user?.isDeveloper) return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 

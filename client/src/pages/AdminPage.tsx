@@ -187,7 +187,7 @@ type Invite = {
 type Team = { id: string; name: string; createdAt: string };
 type Position = { id: string; name: string; rank: number; createdAt: string };
 
-type Tab = "users" | "invites" | "teams" | "positions" | "ip";
+type Tab = "users" | "invites" | "teams" | "positions" | "ip" | "attendance";
 
 // 내보내기 버튼에 쓰는 작은 브랜드 로고들. 외부 에셋 없이 inline SVG 로 둬서
 // 번들 사이즈/네트워크 요청 영향 없음. 크기는 16px 고정 — 버튼 높이(32)에 맞춘 값.
@@ -293,6 +293,7 @@ export default function AdminPage() {
     { key: "teams", label: "팀", count: teams.length, icon: <TeamIcon /> },
     { key: "positions", label: "직급", count: positions.length, icon: <RankIcon /> },
     { key: "ip", label: "출근 IP", count: ipCount, icon: <RankIcon /> },
+    { key: "attendance", label: "근태", count: users.length, icon: <ClockIcon /> },
   ];
 
   return (
@@ -354,11 +355,12 @@ export default function AdminPage() {
       {tab === "teams" && <TeamsTab teams={teams} reload={loadCommon} />}
       {tab === "positions" && <PositionsTab positions={positions} reload={loadCommon} />}
       {tab === "ip" && <AttendanceIpTab onCountChange={setIpCount} />}
+      {tab === "attendance" && <AttendanceOverviewTab />}
     </div>
   );
 }
 
-function StatCard({ label, value, sub }: { label: string; value: number; sub: string }) {
+function StatCard({ label, value, sub }: { label: string; value: number | string; sub: string }) {
   return (
     <div className="panel p-4">
       <div className="text-[11px] font-bold text-ink-500 uppercase tracking-[0.06em]">{label}</div>
@@ -2219,6 +2221,109 @@ function RankIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M6 9 12 3l6 6" /><path d="M12 3v18" /><path d="M6 15l6 6 6-6" />
   </svg>;
+}
+function ClockIcon() {
+  return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" />
+  </svg>;
+}
+
+/* ===== 근태 — 전 직원 출퇴근 + 이번주/이번달/총 근무시간 ===== */
+type OverviewRow = {
+  id: string; name: string; team: string | null; position: string | null;
+  avatarColor?: string; avatarUrl?: string | null;
+  workStartTime?: string | null; workEndTime?: string | null;
+  today: { checkIn: string | null; checkOut: string | null; worked: number } | null;
+  weekMinutes: number; monthMinutes: number; totalMinutes: number;
+};
+function fmtMin(min: number): string {
+  if (!min) return "0분";
+  const h = Math.floor(min / 60), m = min % 60;
+  return h ? (m ? `${h}시간 ${m}분` : `${h}시간`) : `${m}분`;
+}
+function fmtTime(iso: string | null): string {
+  if (!iso) return "—";
+  return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+function AttendanceOverviewTab() {
+  const [rows, setRows] = useState<OverviewRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  useEffect(() => {
+    let alive = true;
+    api<{ rows: OverviewRow[] }>("/api/admin/attendance/overview")
+      .then((r) => { if (alive) setRows(r.rows || []); })
+      .catch(() => {})
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
+  const workingNow = rows.filter((r) => r.today?.checkIn && !r.today?.checkOut).length;
+  const weekTotal = rows.reduce((a, r) => a + r.weekMinutes, 0);
+  const monthTotal = rows.reduce((a, r) => a + r.monthMinutes, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <StatCard label="구성원" value={rows.length} sub={`근무 중 ${workingNow}명`} />
+        <StatCard label="이번 주 합계" value={`${Math.floor(weekTotal / 60)}h`} sub={`${rows.length}명 합산`} />
+        <StatCard label="이번 달 합계" value={`${Math.floor(monthTotal / 60)}h`} sub={`${rows.length}명 합산`} />
+        <StatCard label="평균(이번 달)" value={rows.length ? `${Math.floor(monthTotal / rows.length / 60)}h` : "0h"} sub="1인당" />
+      </div>
+      <div className="panel p-0 overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-ink-100 flex items-center justify-between">
+          <span className="font-bold text-ink-900">직원별 근태 <span className="text-ink-400 font-medium ml-1">{rows.length}</span></span>
+          {loading && <span className="text-[12px] text-ink-400">불러오는 중…</span>}
+        </div>
+        <div className="overflow-x-auto hinest-x-scroll">
+          <table className="w-full text-[13px] whitespace-nowrap">
+            <thead>
+              <tr className="text-ink-500 border-b border-ink-100 text-[11.5px] uppercase tracking-wide">
+                <th className="text-left font-bold px-5 py-2.5 sticky left-0 bg-[var(--c-surface-1)]">구성원</th>
+                <th className="text-center font-bold px-3 py-2.5">오늘 출근</th>
+                <th className="text-center font-bold px-3 py-2.5">오늘 퇴근</th>
+                <th className="text-right font-bold px-3 py-2.5">오늘 근무</th>
+                <th className="text-right font-bold px-3 py-2.5">이번 주</th>
+                <th className="text-right font-bold px-3 py-2.5">이번 달</th>
+                <th className="text-right font-bold px-5 py-2.5">총 근무</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => {
+                const working = !!r.today?.checkIn && !r.today?.checkOut;
+                return (
+                  <tr key={r.id} className="border-b border-ink-100">
+                    <td className="px-5 py-3 sticky left-0 bg-[var(--c-surface-1)]">
+                      <div className="flex items-center gap-2.5">
+                        <span className="grid place-items-center rounded-full text-white text-[11px] font-bold flex-shrink-0"
+                          style={{ width: 30, height: 30, background: r.avatarColor || "#64748B" }}>
+                          {r.name.slice(0, 1)}
+                        </span>
+                        <div className="min-w-0">
+                          <div className="font-bold text-ink-900 flex items-center gap-1.5">
+                            {r.name}
+                            {working && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" title="근무 중" />}
+                          </div>
+                          <div className="text-[11px] text-ink-400">{[r.team, r.position].filter(Boolean).join(" · ") || "—"}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="text-center px-3 py-3 tabular-nums text-ink-700">{fmtTime(r.today?.checkIn ?? null)}</td>
+                    <td className="text-center px-3 py-3 tabular-nums text-ink-700">{fmtTime(r.today?.checkOut ?? null)}</td>
+                    <td className="text-right px-3 py-3 tabular-nums font-semibold text-ink-900">{r.today ? fmtMin(r.today.worked) : "—"}</td>
+                    <td className="text-right px-3 py-3 tabular-nums text-ink-700">{fmtMin(r.weekMinutes)}</td>
+                    <td className="text-right px-3 py-3 tabular-nums text-ink-700">{fmtMin(r.monthMinutes)}</td>
+                    <td className="text-right px-5 py-3 tabular-nums font-bold text-ink-900">{fmtMin(r.totalMinutes)}</td>
+                  </tr>
+                );
+              })}
+              {!loading && rows.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-10 text-ink-400">표시할 구성원이 없어요.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
 }
 function TrashIcon() {
   return <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

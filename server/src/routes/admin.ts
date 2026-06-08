@@ -11,6 +11,7 @@ import {
   signImpersonate, setImpCookie, clearImpCookie,
 } from "../lib/auth.js";
 import { todayStr } from "../lib/dates.js";
+import { normalizeSessions, workedMinutes } from "../lib/attendanceSessions.js";
 import { getLogs, type LogLevel, getErrorGroups, getErrorGroup, clearErrorGroups } from "../lib/logBuffer.js";
 import { evictNavVisibilityCache } from "./nav.js";
 
@@ -194,17 +195,25 @@ router.patch("/users/:id", async (req, res) => {
   // ADMIN 이 자신 또는 동료의 role 을 임의로 바꿀 수 없게 함.
   const isRoleChange = data.role !== undefined && data.role !== target.role;
   if (isRoleChange) {
-    if (!u.superAdmin) {
-      return res.status(403).json({ error: "역할 변경 권한이 없습니다 (총관리자 전용)" });
+    // 총관리자(superAdmin) + 개발자(isDeveloper) 가 역할(ADMIN 포함) 변경 가능.
+    // isDeveloper 는 콘솔(superAdmin)에서만 부여되는 신뢰 플래그라, 일반 ADMIN 의 자가 권한상승
+    // 경로가 되지 않는다(업데이트 스키마에 isDeveloper 없음).
+    const actorIsDev = !!(req as any).userRecord?.isDeveloper;
+    if (!u.superAdmin && !actorIsDev) {
+      return res.status(403).json({ error: "역할 변경 권한이 없습니다 (총관리자·개발자 전용)" });
     }
-    const v = verifySuperToken(req, u.id);
-    if (!v) {
-      return res.status(401).json({
-        error: "역할 변경 전에 비밀번호 재확인이 필요합니다",
-        code: "SUPER_STEPUP_REQUIRED",
-      });
+    // 총관리자는 step-up 재확인 필요(권한 에스컬레이션 보호). 개발자(superAdmin 아님)는
+    // super 쿠키를 발급받을 수 없으므로 step-up 면제 — 대신 신뢰 플래그로 게이트.
+    if (u.superAdmin) {
+      const v = verifySuperToken(req, u.id);
+      if (!v) {
+        return res.status(401).json({
+          error: "역할 변경 전에 비밀번호 재확인이 필요합니다",
+          code: "SUPER_STEPUP_REQUIRED",
+        });
+      }
     }
-    // 본인 역할 강등은 사고 방지용 차단 — 필요하면 다른 총관리자가 처리.
+    // 본인 역할 강등은 사고 방지용 차단 — 필요하면 다른 총관리자·개발자가 처리.
     if (target.id === u.id) {
       return res.status(400).json({ error: "본인 역할은 변경할 수 없습니다" });
     }
@@ -1473,6 +1482,67 @@ router.patch("/users/:id/attendance", async (req, res) => {
   // 출근 기록은 임금/평가 근거가 되는 민감 데이터 — 변경 감사 추적 필수.
   await writeLog(u.id, "ATTENDANCE_EDIT", id, `${date} in=${body.checkIn ?? "·"} out=${body.checkOut ?? "·"}`, req.ip);
   res.json({ attendance: rec });
+});
+
+/* ===== 전 직원 근태 한눈에 — 오늘 출퇴근 + 이번주/이번달/총 근무시간 합산 =====
+ * 회사 관리자(또는 개발자)용. 같은 회사 활성 사용자만. 근무시간은 세션 합산 기준. */
+router.get("/attendance/overview", async (req, res) => {
+  const u = (req as any).user;
+  const users = await prisma.user.findMany({
+    where: {
+      companyId: u.companyId ?? null,
+      active: true,
+      ...(u.superAdmin ? {} : { superAdmin: false }), // 일반 관리자에겐 총관리자 은닉
+    },
+    select: {
+      id: true, name: true, team: true, position: true,
+      avatarColor: true, avatarUrl: true, workStartTime: true, workEndTime: true,
+    },
+    orderBy: [{ team: "asc" }, { name: "asc" }],
+  });
+  if (users.length === 0) return res.json({ rows: [] });
+  const ids = users.map((x) => x.id);
+  const today = todayStr();
+  const monthPrefix = today.slice(0, 7); // YYYY-MM
+  // 이번 주 월요일(KST) — date 문자열 비교용(>= weekMonday).
+  const [yy, mm, dd] = today.split("-").map(Number);
+  const base = new Date(Date.UTC(yy, mm - 1, dd));
+  const dow = base.getUTCDay(); // 0=일
+  base.setUTCDate(base.getUTCDate() - (dow === 0 ? 6 : dow - 1));
+  const weekMonday = base.toISOString().slice(0, 10);
+
+  const att = await prisma.attendance.findMany({
+    where: { userId: { in: ids } },
+    select: { userId: true, date: true, checkIn: true, checkOut: true, sessions: true },
+  });
+  const byUser = new Map<string, typeof att>();
+  for (const a of att) {
+    const arr = byUser.get(a.userId) ?? [];
+    arr.push(a);
+    byUser.set(a.userId, arr);
+  }
+  const rows = users.map((usr) => {
+    const recs = byUser.get(usr.id) ?? [];
+    let week = 0, month = 0, total = 0;
+    let todayRec: (typeof att)[number] | undefined;
+    for (const r of recs) {
+      const w = workedMinutes(normalizeSessions(r));
+      total += w;
+      if (r.date.startsWith(monthPrefix)) month += w;
+      if (r.date >= weekMonday) week += w;
+      if (r.date === today) todayRec = r;
+    }
+    return {
+      id: usr.id, name: usr.name, team: usr.team, position: usr.position,
+      avatarColor: usr.avatarColor, avatarUrl: usr.avatarUrl,
+      workStartTime: usr.workStartTime, workEndTime: usr.workEndTime,
+      today: todayRec
+        ? { checkIn: todayRec.checkIn, checkOut: todayRec.checkOut, worked: workedMinutes(normalizeSessions(todayRec)) }
+        : null,
+      weekMinutes: week, monthMinutes: month, totalMinutes: total,
+    };
+  });
+  res.json({ rows, weekMonday, month: monthPrefix });
 });
 
 /* ===== Impersonation (사용자 대신 보기) =====

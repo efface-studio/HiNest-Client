@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync, alertAsync } from "../ConfirmHost";
+import { useConsoleCompany } from "./companyFilter";
 
 type Item = { id: string; title: string; deletedAt: string; deletedById: string | null; authorId: string; author: { name: string } | null };
 type Trash = { meeting: Item[]; document: Item[]; journal: Item[]; notice: Item[] };
@@ -18,13 +19,18 @@ export default function TrashPanel() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [tab, setTab] = useState<keyof Trash>("meeting");
+  // 회사 선택 드롭다운 값 — 있으면 해당 회사의 휴지통만 받는다.
+  const { companyId } = useConsoleCompany();
 
   async function load() {
     setLoading(true);
-    try { setData(await api<Trash>("/api/admin/trash")); }
+    try {
+      const qs = companyId ? `?companyId=${encodeURIComponent(companyId)}` : "";
+      setData(await api<Trash>(`/api/admin/trash${qs}`));
+    }
     finally { setLoading(false); }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [companyId]);
 
   async function restore(type: keyof Trash, id: string, title: string) {
     if (!(await confirmAsync({ title: `"${title}" 복구?`, description: "원래 위치로 되돌립니다." }))) return;

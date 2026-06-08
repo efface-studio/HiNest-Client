@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync, alertAsync } from "../ConfirmHost";
+import { useConsoleCompany } from "./companyFilter";
 
 type Session = {
   id: string;
@@ -19,17 +20,21 @@ export default function SessionsPanel() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [q, setQ] = useState("");
+  // 회사 선택 드롭다운 값 — 있으면 해당 회사 소속 유저의 세션만 받는다.
+  const { companyId } = useConsoleCompany();
 
   async function load() {
     setLoading(true);
     try {
-      const r = await api<{ sessions: Session[] }>("/api/admin/sessions?limit=300");
+      const params = new URLSearchParams({ limit: "300" });
+      if (companyId) params.set("companyId", companyId);
+      const r = await api<{ sessions: Session[] }>(`/api/admin/sessions?${params}`);
       setRows(r.sessions);
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [companyId]);
 
   async function revokeOne(id: string, name: string) {
     if (!(await confirmAsync({ title: "이 세션 강제 로그아웃?", description: `${name} 의 디바이스 1개에서 즉시 로그아웃됩니다.` }))) return;

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
+import { useConsoleCompany } from "./companyFilter";
 
 type Log = {
   id: string;
@@ -37,6 +38,8 @@ export default function AuditPanel() {
   const [filterAction, setFilterAction] = useState("");
   const [filterUserId, setFilterUserId] = useState("");
   const [q, setQ] = useState("");
+  // 회사 선택 드롭다운 값 — 있으면 해당 회사 감사 로그만 받는다.
+  const { companyId } = useConsoleCompany();
 
   async function load() {
     setLoading(true);
@@ -45,13 +48,14 @@ export default function AuditPanel() {
       if (filterAction) params.set("action", filterAction);
       if (filterUserId.trim()) params.set("userId", filterUserId.trim());
       if (q.trim()) params.set("q", q.trim());
+      if (companyId) params.set("companyId", companyId);
       const r = await api<{ logs: Log[] }>(`/api/admin/audit?${params}`);
       setLogs(r.logs);
     } finally {
       setLoading(false);
     }
   }
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filterAction]);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [filterAction, companyId]);
 
   useEffect(() => {
     api<{ actions: ActionRow[] }>("/api/admin/audit/actions").then((r) => setActions(r.actions));

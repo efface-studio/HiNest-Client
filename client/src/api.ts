@@ -160,9 +160,15 @@ async function apiInner<T = any>(
     // 세션 만료/무효(401) — 인증 엔드포인트 자체(로그인 실패·세션 복원 등)가 아니면 전역으로
     // 알려 AuthProvider 가 로그아웃 처리(→ /login)하게 한다. 페이지 사용 중 세션이 끊겼는데
     // 호출부가 catch{} 로 삼켜 빈 화면·stale 데이터로 방치되던 문제를 근본 해결.
+    //
+    // 단, SUPER_STEPUP_REQUIRED(총관리자 재인증 필요)는 "세션 만료"가 아니라 "step-up 재인증
+    // 필요"다 — 예: 사내톡 감사 진입, 역할 변경. 이걸 로그아웃으로 처리하면 chat log 비번을 맞춰도
+    // step-up 쿠키가 만료/부재일 때 튕겨버린다. 이 코드의 401 은 전역 로그아웃에서 제외하고,
+    // 호출부(패널)가 자체적으로 재인증을 유도하도록 둔다.
     if (
       res.status === 401 &&
       typeof window !== "undefined" &&
+      code !== "SUPER_STEPUP_REQUIRED" &&
       !path.startsWith("/api/auth") &&
       !path.startsWith("/api/me")
     ) {

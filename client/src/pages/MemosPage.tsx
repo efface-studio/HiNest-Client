@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
@@ -183,6 +184,20 @@ export default function MemosPage() {
   const [debouncedQ, setDebouncedQ] = useState("");
   const [memoTarget, setMemoTarget] = useState<Memo | "new" | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const [sp, setSp] = useSearchParams();
+
+  // 공유 카드("탭해서 열기") 등에서 /memos?memo=<id> 로 진입하면 해당 메모를 자동으로 연다.
+  // 목록 로드 후 매칭되면 1회 열고 쿼리를 제거(새로고침·뒤로가기 시 재오픈 방지).
+  useEffect(() => {
+    const id = sp.get("memo");
+    if (!id || loading) return;
+    const found = memos.find((m) => m.id === id);
+    if (found) {
+      setMemoTarget(found);
+      sp.delete("memo");
+      setSp(sp, { replace: true });
+    }
+  }, [sp, memos, loading, setSp]);
 
   // q 디바운스 300ms
   useEffect(() => {

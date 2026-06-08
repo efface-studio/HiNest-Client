@@ -11,6 +11,7 @@ import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useRef, useSta
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync } from "./ConfirmHost";
+import ShareButton from "./ShareButton";
 
 const MeetingEditor = lazy(() => import("./MeetingEditor"));
 
@@ -42,6 +43,19 @@ type Props = {
   onSaved: (doc: MemoDoc) => void;
   onDeleted?: (id: string) => void;
 };
+
+/** TipTap JSON 콘텐츠에서 앞부분 텍스트만 뽑아 공유 카드 미리보기로 쓴다(최대 120자). */
+function memoTextSnippet(node: any, limit = 120): string {
+  if (!node) return "";
+  let out = "";
+  const walk = (n: any) => {
+    if (out.length >= limit || !n) return;
+    if (typeof n.text === "string") out += n.text;
+    if (Array.isArray(n.content)) { for (const c of n.content) { walk(c); if (out.length >= limit) break; } }
+  };
+  walk(node);
+  return out.trim().slice(0, limit);
+}
 
 const SCOPE_LABEL: Record<DocScope, string> = {
   ALL: "전체 공개",
@@ -257,23 +271,37 @@ export default function DocMemoModal({
                 </button>
               </>
             ) : (
-              isMine && (
-                <>
-                  {doc && (
-                    <button
-                      className="btn-ghost btn-sm text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/30"
-                      onClick={handleDelete}
-                      disabled={deleting}
-                      title="메모 삭제"
-                    >
-                      {deleting ? "삭제 중…" : "삭제"}
+              <>
+                {/* 공유 — 열람 가능한 사람이면 누구나 사내 동료/대화방으로 공유 */}
+                {doc && (
+                  <ShareButton
+                    variant="icon"
+                    payload={{
+                      kind: "MEMO",
+                      title: title?.trim() || "제목 없는 메모",
+                      snippet: memoTextSnippet(doc.content),
+                      href: `/memos?memo=${doc.id}`,
+                    }}
+                  />
+                )}
+                {isMine && (
+                  <>
+                    {doc && (
+                      <button
+                        className="btn-ghost btn-sm text-rose-600 hover:bg-rose-50 dark:text-rose-400 dark:hover:bg-rose-900/30"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                        title="메모 삭제"
+                      >
+                        {deleting ? "삭제 중…" : "삭제"}
+                      </button>
+                    )}
+                    <button className="btn-ghost btn-sm" onClick={() => setEditMode(true)} disabled={deleting}>
+                      편집
                     </button>
-                  )}
-                  <button className="btn-ghost btn-sm" onClick={() => setEditMode(true)} disabled={deleting}>
-                    편집
-                  </button>
-                </>
-              )
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>

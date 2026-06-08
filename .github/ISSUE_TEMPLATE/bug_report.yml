@@ -1,6 +1,7 @@
 name: 🐛 버그 리포트
 description: 버그 · 오류 · 회귀를 신고합니다
 title: "fix: "
+type: Bug
 labels: ["type: fix"]
 assignees:
   - Xixn2

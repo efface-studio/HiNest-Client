@@ -1,6 +1,7 @@
 name: ✨ 기능 요청
 description: 새 기능 · 개선을 제안합니다
 title: "feat: "
+type: Feature
 labels: ["type: feat"]
 assignees:
   - Xixn2

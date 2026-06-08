@@ -717,40 +717,21 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   }
 
   // ===== 다운로드 =====
-  // 빠르고(스트리밍) 파일명도 정확하게 저장한다.
+  // blob 으로 받아 원본 파일명으로 저장(파일명 보장). showSaveFilePicker(FSA)는 일부 Electron 빌드에서
+  // 빈 창이 뜨는 문제가 있어 쓰지 않는다. 데스크톱의 '진짜 빠른' 스트리밍은 네이티브 will-download
+  // 핸들러(앱 재빌드 시 활성)가 직접 다운로드를 처리한다.
   async function downloadDoc(d: Doc) {
     if (!d.fileUrl) return;
     const url = new URL(d.fileUrl, window.location.origin);
     url.searchParams.set("download", "1");
     if (d.fileName) url.searchParams.set("name", d.fileName);
 
-    // iOS 네이티브: 인앱 브라우저(블롭/FSA 불가).
-    if (isCapacitorNative()) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }
-
-    // 1) File System Access API — 저장 위치를 먼저 고르고(대화상자 즉시) 응답을 스트리밍으로 흘려보낸다.
-    //    전체를 메모리에 버퍼링하는 blob 방식보다 빠르고(대용량도 OK), suggestedName 으로 원본 파일명 보장.
-    //    Electron(Chromium)·Chrome 지원. picker 를 클릭 제스처 안에서 먼저 await 한다.
-    const picker = (window as any).showSaveFilePicker as ((o: any) => Promise<any>) | undefined;
-    if (typeof picker === "function" && d.fileName) {
-      try {
-        const handle = await picker({ suggestedName: d.fileName });
-        const res = await apiFetch(url.pathname + url.search);
-        if (res.ok && res.body) {
-          const writable = await handle.createWritable();
-          await res.body.pipeTo(writable);
-          return;
-        }
-        // 응답 실패 → 아래 폴백
-      } catch (e: any) {
-        if (e?.name === "AbortError") return; // 사용자가 저장 취소
-        // 그 외(권한·미지원 런타임) → 폴백으로 진행
-      }
-    }
-
-    // 2) 폴백 — FSA 미지원(Firefox/Safari/구 Electron). 200MB 이하는 blob(파일명 보장),
-    //    초과는 직접 다운로드(메모리 보호; 파일명은 서버 Content-Disposition 의존).
+    // iOS 네이티브: 인앱 브라우저. 200MB 초과: 메모리 보호 위해 직접 다운로드(파일명은 서버 CD 의존).
     const tooBig = (d.fileSize ?? 0) > 200 * 1024 * 1024;
-    if (tooBig) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }
+    if (isCapacitorNative() || tooBig) {
+      downloadFromUrl(url.toString(), d.fileName ?? "");
+      return;
+    }
     try {
       const res = await apiFetch(url.pathname + url.search);
       if (!res.ok) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }

@@ -2,6 +2,7 @@ import { Router } from "express";
 import { z } from "zod";
 import { requireAuth, clearImpCookie, writeLog } from "../lib/auth.js";
 import { prisma } from "../lib/db.js";
+import { isConsoleOnlyUser } from "../lib/consoleOnly.js";
 
 const router = Router();
 
@@ -29,6 +30,8 @@ router.get("/", requireAuth, async (req, res) => {
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
       platformAdmin: user.platformAdmin,
+      // 개발자 콘솔 전용 계정이면 회사 앱(일반 페이지) 접근을 막고 /super-admin 으로 보낸다.
+      consoleOnly: isConsoleOnlyUser(user),
       companyId: user.companyId ?? null,
       isDeveloper: user.isDeveloper,
       employeeNo: user.employeeNo,

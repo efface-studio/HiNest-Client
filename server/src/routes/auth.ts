@@ -5,6 +5,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { notifyAllUsers } from "../lib/notify.js";
 import { sendEmail } from "../lib/email.js";
+import { isConsoleOnlyUser } from "../lib/consoleOnly.js";
 import {
   signToken,
   setAuthCookie,
@@ -157,6 +158,7 @@ router.post("/login", async (req, res) => {
       avatarColor: user.avatarColor,
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
+      consoleOnly: isConsoleOnlyUser(user),
     },
     // 네이티브 앱(Capacitor)은 cross-site 쿠키가 ITP 에 막혀 새로고침 시 세션이 끊긴다.
     // 네이티브 origin 일 때만 세션 JWT 를 본문으로 함께 내려, 클라가 저장해 Authorization
@@ -288,6 +290,7 @@ router.post("/signup", async (req, res) => {
       avatarColor: user.avatarColor,
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
+      consoleOnly: isConsoleOnlyUser(user),
     },
     // 로그인과 동일 — 네이티브 origin 에만 세션 토큰을 본문으로 함께 내린다.
     ...(isNativeOrigin(req) ? { token } : {}),

@@ -119,20 +119,13 @@ export default function SuperAdminPage() {
   );
 }
 
-/** 사내톡 감사 탭은 평소엔 UI 에서 가려두고, 콘솔의 \`chat log\` 명령 + 비밀번호로만 노출.
+/** 사내톡 감사 탭은 평소엔 UI 에서 완전히 가려두고, 콘솔의 \`chat log\` 명령 + 비밀번호로만 노출.
  *  서버 측 ChatAuditPanel API 들은 요청 자체에 super-stepup 게이트가 또 걸려있어 이중 가드.
- *  비밀번호 일치 시 30분 unlock — sessionStorage 사용으로 탭 닫으면 자동 잠금. */
+ *
+ *  unlock 상태는 **메모리(React state)에만** 둔다 — 새로고침/콘솔 재진입 시 무조건 재잠금되어,
+ *  탭은 매번 \`chat log\` + 비밀번호를 다시 입력해야만 나타난다. (이전엔 sessionStorage 로 30분
+ *  유지돼 "한 번 열면 계속 보이는" 문제가 있었음 — 보안상 노출 최소화로 변경.) */
 const CHAT_LOG_KEY = "hinest.chatAudit.unlock";
-
-function isChatAuditUnlocked(): boolean {
-  try {
-    const v = sessionStorage.getItem(CHAT_LOG_KEY);
-    if (!v) return false;
-    return Date.now() < Number(v);
-  } catch {
-    return false;
-  }
-}
 
 type ChatCtx = { unlocked: boolean; lock: () => void };
 
@@ -142,8 +135,14 @@ type ChatCtx = { unlocked: boolean; lock: () => void };
  */
 function SuperConsoleInner() {
   const nav = useNavigate();
-  const [chatUnlocked, setChatUnlocked] = useState<boolean>(() => isChatAuditUnlocked());
+  // 메모리 전용 — 콘솔 재진입/새로고침 시 항상 false 로 시작해 사내톡 감사 탭이 가려진다.
+  const [chatUnlocked, setChatUnlocked] = useState<boolean>(false);
   const [chatPwOpen, setChatPwOpen] = useState(false);
+
+  // 과거 sessionStorage 로 저장돼 있던 unlock 흔적이 남아있으면 정리(마운트 시 1회).
+  useEffect(() => {
+    try { sessionStorage.removeItem(CHAT_LOG_KEY); } catch {}
+  }, []);
 
   // 콘솔(개발자 도구)에서 \`chat log\` 명령 시 발사되는 이벤트 — 어느 그룹에 있든 받아서 모달 노출.
   useEffect(() => {
@@ -167,13 +166,11 @@ function SuperConsoleInner() {
 
   async function unlockChat(pw: string): Promise<boolean> {
     try {
-      const r = await api<{ ok: true; ttlMs: number }>("/api/admin/chat-audit/unlock", {
+      await api<{ ok: true; ttlMs: number }>("/api/admin/chat-audit/unlock", {
         method: "POST",
         json: { password: pw },
       });
-      try {
-        sessionStorage.setItem(CHAT_LOG_KEY, String(Date.now() + (r.ttlMs ?? 30 * 60 * 1000)));
-      } catch {}
+      // 메모리에만 유지 — 새로고침/재진입 시 다시 잠긴다(persist 안 함).
       setChatUnlocked(true);
       setChatPwOpen(false);
       // 사내톡 감사 탭은 로그·감사 그룹에 있으므로 그쪽으로 이동시켜 바로 보이게 한다.

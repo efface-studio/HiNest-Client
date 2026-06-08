@@ -91,6 +91,17 @@ function ConsoleOnly({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+// 회사 앱(일반 페이지) 진입 가드 — 개발자 콘솔 전용 계정(consoleOnly)은 회사 앱에 들어올 수
+// 없고 자기 콘솔 홈으로 보낸다. superAdmin 이면 /super-admin, 아니면 /platform 으로 — 그래야
+// SuperOnly/PlatformOnly 게이트에 막혀 "/" 로 되돌아오는 리다이렉트 루프가 생기지 않는다.
+function CompanyAppGate({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  if (user?.consoleOnly) {
+    return <Navigate to={user.superAdmin ? "/super-admin" : "/platform"} replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   // 라우트 단위 ErrorBoundary 의 reset 트리거 — 다음 페이지로 이동하면 자동 초기화.
   // 이렇게 안 하면 한 페이지에서 에러 나면 다른 메뉴로 가도 fallback 이 계속 보임.
@@ -117,7 +128,9 @@ export default function App() {
           path="/"
           element={
             <Protected>
-              <AppLayout />
+              <CompanyAppGate>
+                <AppLayout />
+              </CompanyAppGate>
             </Protected>
           }
         >

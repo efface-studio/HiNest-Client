@@ -103,7 +103,9 @@ export default function ConsoleLayout() {
 
   // 회사 소속이 있는 운영자만 서비스로 복귀 가능. 순수 플랫폼 운영자(companyId=null)는
   // 돌아갈 회사 앱이 없으므로 복귀 링크를 숨긴다.
-  const hasCompany = !!user?.companyId;
+  // 개발자 콘솔 전용 계정(consoleOnly)도 회사 앱 진입이 막혀 있어(복귀해도 즉시 콘솔로
+  // 튕겨 돌아옴) companyId 가 있어도 복귀 링크를 숨긴다.
+  const hasCompany = !!user?.companyId && !user?.consoleOnly;
 
   // 콘솔도 메인 앱과 동일한 실제 네이티브 리퀴드 글래스 탭바를 쓴다 — 콘솔 전용 탭으로
   // 재설정한다. 성공하면 .hinest-native-tabbar 가 붙어 아래 CSS 글래스 nav 는 숨고 네이티브

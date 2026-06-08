@@ -15,6 +15,8 @@ export type User = {
   avatarUrl?: string | null;
   superAdmin?: boolean;
   platformAdmin?: boolean;
+  /** 개발자 콘솔 전용 계정 — 회사 앱(일반 페이지) 접근 불가, /super-admin 만 사용. */
+  consoleOnly?: boolean;
   companyId?: string | null;
   isDeveloper?: boolean;
   employeeNo?: string | null;

@@ -6,6 +6,7 @@ import {
   DeleteObjectCommand,
   NoSuchKey,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Readable } from "node:stream";
 
 /**
@@ -158,6 +159,51 @@ export async function downloadFile(key: string): Promise<{
       contentType: data.type || "application/octet-stream",
       size: ab.byteLength,
     };
+  }
+
+  return null;
+}
+
+/**
+ * 다운로드용 presigned URL — 클라이언트가 ECS 를 거치지 않고 스토리지(S3/Supabase CDN)에서 직접
+ * 받게 한다(서버 버퍼링·프록시 hop 제거로 속도 대폭 향상). 만료 짧게(기본 5분).
+ *
+ *  - downloadName 지정 시: 첨부(attachment)로 그 파일명 강제(Content-Disposition).
+ *  - downloadName 미지정 시: inline(브라우저 미리보기).
+ * 키가 어느 백엔드에도 없으면 null(호출부가 기존 버퍼 스트림으로 폴백).
+ */
+export async function getSignedDownloadUrl(
+  key: string,
+  opts: { downloadName?: string | null; contentType?: string | null; expiresIn?: number } = {}
+): Promise<string | null> {
+  const expiresIn = opts.expiresIn ?? 300;
+  const disposition = opts.downloadName
+    ? `attachment; filename="${opts.downloadName.replace(/"/g, "")}"; filename*=UTF-8''${encodeURIComponent(opts.downloadName)}`
+    : "inline";
+
+  // 1) S3 presigned GET — ResponseContentDisposition 으로 파일명/inline 제어.
+  if (s3) {
+    try {
+      const cmd = new GetObjectCommand({
+        Bucket: S3_BUCKET as string,
+        Key: key,
+        ResponseContentDisposition: disposition,
+        ...(opts.contentType ? { ResponseContentType: opts.contentType } : {}),
+      });
+      // s3 캐스팅 — client-s3 와 presigner 의 S3Client 타입이 중복 선언돼 TS 가 비호환으로 보지만
+      // 런타임은 동일 인스턴스라 안전(흔한 AWS SDK 버전 타입 이슈).
+      return await getSignedUrl(s3 as any, cmd as any, { expiresIn });
+    } catch {
+      /* 키 없음/실패 → Supabase 시도 */
+    }
+  }
+
+  // 2) Supabase signed URL — download 옵션에 파일명을 주면 attachment.
+  if (supabase) {
+    const { data, error } = await supabase.storage
+      .from(SB_BUCKET)
+      .createSignedUrl(key, expiresIn, opts.downloadName ? { download: opts.downloadName } : undefined);
+    if (!error && data?.signedUrl) return data.signedUrl;
   }
 
   return null;

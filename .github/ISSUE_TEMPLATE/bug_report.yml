@@ -1,0 +1,64 @@
+name: 🐛 버그 리포트
+description: 버그 · 오류 · 회귀를 신고합니다
+title: "fix: "
+labels: ["type: fix"]
+assignees:
+  - Xixn2
+body:
+  - type: markdown
+    attributes:
+      value: |
+        버그를 자세히 적어주세요. 재현 단계가 있으면 해결이 훨씬 빨라져요.
+  - type: textarea
+    id: summary
+    attributes:
+      label: 증상
+      description: 무엇이 잘못됐고, 원래 어떻게 동작해야 하는지
+      placeholder: |
+        현재: ...
+        기대: ...
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: 재현 단계
+      placeholder: |
+        1. ...
+        2. ...
+        3. 오류 발생
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: 영역 (area)
+      multiple: true
+      options:
+        - "client (웹)"
+        - "server"
+        - "ios"
+        - "desktop"
+        - "console (운영 콘솔)"
+        - "ci / 인프라"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: 플랫폼 / 환경
+      options:
+        - "웹 (브라우저)"
+        - "iOS 앱"
+        - "iPadOS"
+        - "macOS 데스크탑"
+        - "Windows 데스크탑"
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: 스크린샷 · 로그 (선택)
+      description: 콘솔 에러, 네트워크 401/500, 스크린샷 등
+    validations:
+      required: false

@@ -1,0 +1,55 @@
+name: ✨ 기능 요청
+description: 새 기능 · 개선을 제안합니다
+title: "feat: "
+labels: ["type: feat"]
+assignees:
+  - Xixn2
+body:
+  - type: markdown
+    attributes:
+      value: |
+        어떤 문제를 풀고 싶은지부터 적어주세요. "무엇을"보다 "왜"가 중요해요.
+  - type: textarea
+    id: problem
+    attributes:
+      label: 문제 · 필요
+      description: 지금 무엇이 불편하거나 무엇이 필요한가요?
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: 제안하는 동작
+      description: 어떻게 동작하면 좋을지 (UI/흐름/예시)
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: 영역 (area)
+      multiple: true
+      options:
+        - "client (웹)"
+        - "server"
+        - "ios"
+        - "desktop"
+        - "console (운영 콘솔)"
+        - "ci / 인프라"
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 우선순위
+      options:
+        - "P2 보통"
+        - "P1 높음"
+        - "P0 긴급"
+    validations:
+      required: false
+  - type: textarea
+    id: extra
+    attributes:
+      label: 참고 (목업 · 맥락, 선택)
+    validations:
+      required: false

@@ -54,7 +54,10 @@
        위에서 끝나고 그 아래(safe-area)는 콘텐츠가 뒤로 지나가게 한다.
      · 모바일(<md)은 in-flow 하단 바가 safe-area 를 흡수하므로 본문엔 숨 쉴 여백(24px)만 —
        아래 미디어쿼리에서 덮어쓴다(바 패딩과 이중 여백 방지). */
-  --hinest-main-pb: max(24px, env(safe-area-inset-bottom));
+  /* 90px: 우하단 ChatFab(60px + bottom 20px = 상단 80px)에 마지막 콘텐츠(표 마지막 행의
+     '처리' 버튼 등)가 가리지 않도록 클리어런스 확보. FAB 는 md+ 에서만 뜨므로(아래 모바일
+     쿼리가 24px 로 덮어씀) 데스크톱·태블릿 웹에만 적용된다. */
+  --hinest-main-pb: max(90px, env(safe-area-inset-bottom));
 }
 
 /* Tailwind md 브레이크포인트(768px) 미만 = 사이드바가 드로어로 접히는 구간.

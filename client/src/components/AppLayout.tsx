@@ -843,7 +843,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           <PinsSection />
           <ProjectsSection />
 
-          {user?.role === "ADMIN" && (
+          {(user?.role === "ADMIN" || user?.isDeveloper) && (
             <div>
               <SectionLabel>관리</SectionLabel>
               <NavLink
@@ -1365,7 +1365,7 @@ export function MobileMenuPage() {
       <PinsSection />
       <ProjectsSection />
 
-      {user?.role === "ADMIN" && (
+      {(user?.role === "ADMIN" || user?.isDeveloper) && (
         <div>
           <SectionLabel>관리</SectionLabel>
           <NavLink to="/admin" className={({ isActive }) => navClass(isActive)}>

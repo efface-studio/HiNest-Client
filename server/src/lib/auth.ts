@@ -133,6 +133,9 @@ export interface AuthUser {
   companyId: string | null;
   // 플랫폼 운영자 — 테넌트를 가로지르는 최상위 권한 (회사 가입 승인 등).
   platformAdmin: boolean;
+  // HiNest 개발자 플래그 — 콘솔(superAdmin)에서만 부여되는 신뢰 designation.
+  // 회사 관리자 페이지 접근 + 역할 변경(ADMIN 부여)을 총관리자와 함께 허용한다.
+  isDeveloper: boolean;
 }
 
 export function signToken(
@@ -243,6 +246,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       superAdmin: activeUser.superAdmin,
       companyId: activeUser.companyId ?? null,
       platformAdmin: activeUser.platformAdmin,
+      isDeveloper: activeUser.isDeveloper,
     } as AuthUser;
     // 핸들러에서 user row 가 또 필요하면 재조회하지 말고 이거 쓰기 — /api/me 처럼
     // 인증만 거치고 바로 user 필드를 되돌려주는 엔드포인트에서 DB 왕복 1번 절약.
@@ -263,7 +267,8 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
 
 export function requireAdmin(req: Request, res: Response, next: NextFunction) {
   const u = (req as any).user as AuthUser | undefined;
-  if (!u || u.role !== "ADMIN") return res.status(403).json({ error: "forbidden" });
+  // 회사 ADMIN + HiNest 개발자(콘솔로만 부여) 허용 — 개발자도 관리자 페이지를 제어할 수 있게.
+  if (!u || (u.role !== "ADMIN" && !u.isDeveloper)) return res.status(403).json({ error: "forbidden" });
   next();
 }
 

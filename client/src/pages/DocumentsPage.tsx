@@ -717,23 +717,40 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   }
 
   // ===== 다운로드 =====
-  // 개별 문서 — 웹/데스크톱은 파일을 blob 으로 받아 원본 파일명으로 저장한다.
-  // 이유: <a download href> 직접 다운로드는 데스크톱(Electron)에서 cross-origin/Content-Disposition
-  // 처리에 따라 저장 파일명이 스토리지 키로 깨질 수 있다(특히 네이티브 will-download 핸들러가 없는
-  // 구 빌드). blob(objectURL) 다운로드는 <a download> 파일명을 항상 존중하므로 빌드 버전과 무관하게
-  // 원본명으로 저장된다. iOS 네이티브는 blob 저장이 안 되니 기존 인앱 브라우저 경로 유지.
+  // 빠르고(스트리밍) 파일명도 정확하게 저장한다.
   async function downloadDoc(d: Doc) {
     if (!d.fileUrl) return;
     const url = new URL(d.fileUrl, window.location.origin);
     url.searchParams.set("download", "1");
     if (d.fileName) url.searchParams.set("name", d.fileName);
 
-    // 너무 큰 파일은 메모리 부담 → blob 화하지 않고 직접 다운로드로 폴백(200MB 초과).
-    const tooBig = (d.fileSize ?? 0) > 200 * 1024 * 1024;
-    if (isCapacitorNative() || tooBig) {
-      downloadFromUrl(url.toString(), d.fileName ?? "");
-      return;
+    // iOS 네이티브: 인앱 브라우저(블롭/FSA 불가).
+    if (isCapacitorNative()) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }
+
+    // 1) File System Access API — 저장 위치를 먼저 고르고(대화상자 즉시) 응답을 스트리밍으로 흘려보낸다.
+    //    전체를 메모리에 버퍼링하는 blob 방식보다 빠르고(대용량도 OK), suggestedName 으로 원본 파일명 보장.
+    //    Electron(Chromium)·Chrome 지원. picker 를 클릭 제스처 안에서 먼저 await 한다.
+    const picker = (window as any).showSaveFilePicker as ((o: any) => Promise<any>) | undefined;
+    if (typeof picker === "function" && d.fileName) {
+      try {
+        const handle = await picker({ suggestedName: d.fileName });
+        const res = await apiFetch(url.pathname + url.search);
+        if (res.ok && res.body) {
+          const writable = await handle.createWritable();
+          await res.body.pipeTo(writable);
+          return;
+        }
+        // 응답 실패 → 아래 폴백
+      } catch (e: any) {
+        if (e?.name === "AbortError") return; // 사용자가 저장 취소
+        // 그 외(권한·미지원 런타임) → 폴백으로 진행
+      }
     }
+
+    // 2) 폴백 — FSA 미지원(Firefox/Safari/구 Electron). 200MB 이하는 blob(파일명 보장),
+    //    초과는 직접 다운로드(메모리 보호; 파일명은 서버 Content-Disposition 의존).
+    const tooBig = (d.fileSize ?? 0) > 200 * 1024 * 1024;
+    if (tooBig) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }
     try {
       const res = await apiFetch(url.pathname + url.search);
       if (!res.ok) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }

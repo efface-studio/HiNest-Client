@@ -717,29 +717,17 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   }
 
   // ===== 다운로드 =====
-  // blob 으로 받아 원본 파일명으로 저장(파일명 보장). showSaveFilePicker(FSA)는 일부 Electron 빌드에서
-  // 빈 창이 뜨는 문제가 있어 쓰지 않는다. 데스크톱의 '진짜 빠른' 스트리밍은 네이티브 will-download
-  // 핸들러(앱 재빌드 시 활성)가 직접 다운로드를 처리한다.
-  async function downloadDoc(d: Doc) {
+  // 직접 다운로드(브라우저/네이티브 다운로더가 스트리밍 저장) — 504 게이트웨이 타임아웃·빈 창 없이
+  // 안정적. ?download=1&name=<원본명> 으로 강제 첨부 + 파일명 힌트.
+  //  - 웹: <a download> 속성으로 원본 파일명 정상.
+  //  - macOS 데스크톱: 네이티브 will-download 핸들러(앱 재빌드 시 활성)가 ?name= 으로 원본명 강제.
+  //  - blob/FSA 방식은 큰 파일에서 프록시 타임아웃(504)·빈 창 회귀가 있어 쓰지 않는다.
+  function downloadDoc(d: Doc) {
     if (!d.fileUrl) return;
     const url = new URL(d.fileUrl, window.location.origin);
     url.searchParams.set("download", "1");
     if (d.fileName) url.searchParams.set("name", d.fileName);
-
-    // iOS 네이티브: 인앱 브라우저. 200MB 초과: 메모리 보호 위해 직접 다운로드(파일명은 서버 CD 의존).
-    const tooBig = (d.fileSize ?? 0) > 200 * 1024 * 1024;
-    if (isCapacitorNative() || tooBig) {
-      downloadFromUrl(url.toString(), d.fileName ?? "");
-      return;
-    }
-    try {
-      const res = await apiFetch(url.pathname + url.search);
-      if (!res.ok) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }
-      const blob = await res.blob();
-      downloadBlob(blob, d.fileName || "download");
-    } catch {
-      downloadFromUrl(url.toString(), d.fileName ?? "");
-    }
+    downloadFromUrl(url.toString(), d.fileName ?? "");
   }
 
   // 폴더 전체 — 서버에서 ZIP 스트림으로 내려옴. 큰 폴더는 시간이 꽤 걸릴 수 있음.

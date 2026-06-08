@@ -163,7 +163,7 @@ export default function ConsoleLayout() {
     <div className="flex bg-ink-50" style={{ height: "100dvh" }}>
       {/* ===== 데스크톱 사이드바 (어두운 운영 테마) ===== */}
       <aside
-        className="hidden md:flex w-[252px] flex-col flex-shrink-0 bg-ink-900 text-white"
+        className="console-sidebar hidden md:flex w-[252px] flex-col flex-shrink-0 bg-ink-900 text-white"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         {/* 신호등 버튼용 드래그 가능 여백 — macOS 창모드에서만 */}
@@ -284,7 +284,7 @@ export default function ConsoleLayout() {
             데스크톱은 좌측 사이드바를 쓰므로 md:hidden. 콘솔은 AppLayout 과 분리된
             레이아웃이라 네이티브 탭바 플러그인을 쓰지 않고 동일한 --c-glass 토큰으로 맞춘다. */}
         <nav
-          className="md:hidden console-bottomnav"
+          className="console-bottomnav"
           style={{
             position: "fixed",
             left: "50%",
@@ -300,7 +300,6 @@ export default function ConsoleLayout() {
             border: "1px solid var(--c-glass-border)",
             boxShadow: "0 10px 30px rgba(16,18,27,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
             padding: "6px 4px",
-            display: "flex",
             alignItems: "stretch",
           }}
           aria-label="운영 콘솔 메뉴"

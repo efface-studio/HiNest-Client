@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
 import { C, FONT, formatBytes } from "./theme";
 import type { Attachment, Message, Reaction } from "./types";
 import { api, imgSrc } from "../../api";
@@ -1054,6 +1055,7 @@ const SHARE_LABEL: Record<string, { label: string; icon: string }> = {
 };
 
 function ShareCardBubble({ msg, mine }: { msg: Message; mine: boolean }) {
+  const nav = useNavigate();
   const meta = SHARE_LABEL[msg.fileType ?? ""] ?? { label: "공유", icon: "🔗" };
   const href = msg.fileUrl ?? "#";
   // SPA 라우트만 허용 — 외부 absolute URL 은 보안상 차단(피싱 방지).
@@ -1061,9 +1063,10 @@ function ShareCardBubble({ msg, mine }: { msg: Message; mine: boolean }) {
   function navigate(e: React.MouseEvent) {
     e.preventDefault();
     if (safe === "#") return;
-    // SPA 라우터 — react-router 가 popstate 를 잡지 못하는 경우 대비 직접 navigate.
-    window.history.pushState({}, "", safe);
-    window.dispatchEvent(new PopStateEvent("popstate"));
+    // 채팅 오버레이를 먼저 닫고(전체화면이라 안 닫으면 이동해도 가려짐) react-router 로 이동.
+    // 이전엔 pushState+popstate 로 직접 바꿔 react-router location 이 갱신을 놓쳐 이동이 안 됐다.
+    window.dispatchEvent(new CustomEvent("chat:close"));
+    nav(safe);
   }
   const snippet =
     msg.content && msg.content.trim() && msg.content !== msg.fileName

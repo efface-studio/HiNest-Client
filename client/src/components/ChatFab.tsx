@@ -129,13 +129,16 @@ export default function ChatFab() {
       setOpen(true);
       setOpenRoomReq((prev) => ({ id: (prev?.id ?? 0) + 1, roomId: rid }));
     };
+    const onCloseEvt = () => setOpen(false);
     window.addEventListener("chat:toggle", onToggle);
     window.addEventListener("chat:open", onOpen);
     window.addEventListener("chat:open-room", onOpenRoom);
+    window.addEventListener("chat:close", onCloseEvt);
     return () => {
       window.removeEventListener("chat:toggle", onToggle);
       window.removeEventListener("chat:open", onOpen);
       window.removeEventListener("chat:open-room", onOpenRoom);
+      window.removeEventListener("chat:close", onCloseEvt);
     };
   }, []);
 

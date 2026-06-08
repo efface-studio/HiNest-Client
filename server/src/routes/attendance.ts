@@ -5,29 +5,33 @@ import { requireAuth, writeLog } from "../lib/auth.js";
 import { notify } from "../lib/notify.js";
 import { todayStr } from "../lib/dates.js";
 import { ipMatchesAny, normalizeClientIp } from "../lib/ipMatch.js";
+import { normalizeSessions, workedMinutes, hasOpenSession, closeOpenSessions, type WorkSession } from "../lib/attendanceSessions.js";
 
 const router = Router();
 router.use(requireAuth);
 
-// 오늘 출퇴근 상태
+// 오늘 출퇴근 상태 — sessions 합산 근무 분(workedMinutes)도 함께 내려준다.
 router.get("/today", async (req, res) => {
   const u = (req as any).user;
   const rec = await prisma.attendance.findUnique({
     where: { userId_date: { userId: u.id, date: todayStr() } },
   });
-  res.json({ attendance: rec });
+  const sessions = normalizeSessions(rec);
+  res.json({
+    attendance: rec,
+    workedMinutes: workedMinutes(sessions),
+    working: hasOpenSession(sessions),
+  });
 });
 
-// 출근 — 하루에 여러 번 가능하지만, 이미 "출근 + 퇴근" 이 찍혀 있으면 한 번 더 확인을 받음.
-// 기존엔 checkOut 을 무조건 null 로 덮어써 퇴근 시각이 소실되는 데이터 손실 버그가 있었음.
-// 이제는:
-//   (a) 기록 없음 → 신규 생성
-//   (b) 출근만 있음 → checkIn 시각만 최신으로 덮어쓰기 (퇴근 기록은 건드리지 않음)
-//   (c) 출근 + 퇴근 둘 다 있음 → 409 Conflict 반환. 클라가 { force: true } 로 재요청 시에만 퇴근 시각 초기화.
+// 출근 — 다중 세션 방식. "다시 출근" 해도 이전 세션을 보존하고 새 세션을 추가한다.
+//   (a) 기록 없음 → 새 세션으로 생성
+//   (b) 이미 근무 중(열린 세션 존재) → 멱등(그대로 반환)
+//   (c) 퇴근 후 다시 출근 → 새 세션 추가(이전 세션·시간 보존), checkOut 요약만 초기화
+// 예전의 "checkOut 을 null 로 덮어써 퇴근 시각 소실" 버그 + 409 강제확인 흐름을 제거.
 router.post("/check-in", async (req, res) => {
   const u = (req as any).user;
   const date = todayStr();
-  const force = req.body?.force === true;
 
   // 회사 IP 화이트리스트 검사 — 관리자가 켜놓은 경우만. 매치 안 되면 403.
   // 슈퍼/플랫폼 어드민은 우회(원격 운영 편의). user 의 companyId 가 없으면(플랫폼 운영자) 우회.
@@ -56,40 +60,48 @@ router.post("/check-in", async (req, res) => {
   const existing = await prisma.attendance.findUnique({
     where: { userId_date: { userId: u.id, date } },
   });
-  if (existing?.checkOut && !force) {
-    return res.status(409).json({
-      code: "ALREADY_CHECKED_OUT",
-      error: "오늘은 이미 퇴근 처리가 되어 있어요. 정말 재출근으로 덮어쓸까요?",
-      attendance: existing,
-    });
+  const sessions = normalizeSessions(existing);
+
+  // 이미 근무 중이면 멱등 — 새 세션을 또 열지 않는다.
+  if (hasOpenSession(sessions)) {
+    return res.json({ attendance: existing, workedMinutes: workedMinutes(sessions), working: true });
   }
+
   const now = new Date();
+  sessions.push({ s: now.toISOString(), e: null, src: "manual" });
+  const firstCheckIn = existing?.checkIn ?? now; // 최초 출근 시각 보존
   const rec = await prisma.attendance.upsert({
     where: { userId_date: { userId: u.id, date } },
-    update: force
-      ? { checkIn: now, checkOut: null } // 명시적 동의 하에만 checkOut 초기화
-      : { checkIn: now },
-    create: { userId: u.id, date, checkIn: now },
+    update: { sessions: sessions as unknown as object, checkIn: firstCheckIn, checkOut: null },
+    create: {
+      userId: u.id,
+      companyId: u.companyId ?? null,
+      date,
+      checkIn: now,
+      sessions: [{ s: now.toISOString(), e: null, src: "manual" }] as unknown as object,
+    },
   });
-  await writeLog(u.id, "CHECK_IN", date, force ? "force" : undefined);
-  res.json({ attendance: rec });
+  await writeLog(u.id, "CHECK_IN", date, sessions.length > 1 ? "re-in" : undefined);
+  res.json({ attendance: rec, workedMinutes: workedMinutes(normalizeSessions(rec)), working: true });
 });
 
-// 퇴근
-// 출근 기록 없이 퇴근 눌러도 500 나지 않도록 upsert.
-// (앱 재설치 직후, 새벽 경계 타이밍, 관리자 수동 조정 등 엣지 케이스 대응)
-// create 시 checkIn 은 null 로 두고 checkOut 만 기록 — 리포트에서 "출근 누락 후 퇴근" 으로 보임.
+// 퇴근 — 열린 세션을 닫는다(다중 세션 합산 보존). 출근 기록 없이 눌러도 안전.
 router.post("/check-out", async (req, res) => {
   const u = (req as any).user;
   const date = todayStr();
   const now = new Date();
+  const existing = await prisma.attendance.findUnique({
+    where: { userId_date: { userId: u.id, date } },
+  });
+  const sessions = normalizeSessions(existing);
+  closeOpenSessions(sessions, now); // 열린 세션 종료
   const rec = await prisma.attendance.upsert({
     where: { userId_date: { userId: u.id, date } },
-    update: { checkOut: now },
-    create: { userId: u.id, date, checkOut: now },
+    update: { sessions: sessions as unknown as object, checkOut: now },
+    create: { userId: u.id, companyId: u.companyId ?? null, date, checkOut: now },
   });
   await writeLog(u.id, "CHECK_OUT", date);
-  res.json({ attendance: rec });
+  res.json({ attendance: rec, workedMinutes: workedMinutes(normalizeSessions(rec)), working: false });
 });
 
 // 월별 근태 기록

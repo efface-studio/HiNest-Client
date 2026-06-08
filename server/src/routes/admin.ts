@@ -1454,13 +1454,21 @@ router.patch("/users/:id/attendance", async (req, res) => {
   };
   const checkIn = parseTime(body.checkIn);
   const checkOut = parseTime(body.checkOut);
-  const data: { checkIn?: Date | null; checkOut?: Date | null } = {};
+  // 관리자 수정은 단일 세션으로 정규화 — sessions 합산 근무시간이 수정한 checkIn/checkOut 을
+  // 그대로 반영하게(기존 다중 세션은 덮어쓴다. 관리자가 입력한 값이 권위 있는 값).
+  const existing = await prisma.attendance.findUnique({ where: { userId_date: { userId: id, date } } });
+  const finalIn = checkIn !== undefined ? checkIn : (existing?.checkIn ?? null);
+  const finalOut = checkOut !== undefined ? checkOut : (existing?.checkOut ?? null);
+  const sessions = finalIn
+    ? [{ s: finalIn.toISOString(), e: finalOut ? finalOut.toISOString() : null, src: "edit" }]
+    : [];
+  const data: { checkIn?: Date | null; checkOut?: Date | null; sessions?: object } = { sessions };
   if (checkIn !== undefined) data.checkIn = checkIn;
   if (checkOut !== undefined) data.checkOut = checkOut;
   const rec = await prisma.attendance.upsert({
     where: { userId_date: { userId: id, date } },
     update: data,
-    create: { userId: id, date, checkIn: checkIn ?? null, checkOut: checkOut ?? null },
+    create: { userId: id, date, checkIn: checkIn ?? null, checkOut: checkOut ?? null, sessions: sessions as object },
   });
   // 출근 기록은 임금/평가 근거가 되는 민감 데이터 — 변경 감사 추적 필수.
   await writeLog(u.id, "ATTENDANCE_EDIT", id, `${date} in=${body.checkIn ?? "·"} out=${body.checkOut ?? "·"}`, req.ip);

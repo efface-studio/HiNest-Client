@@ -21,6 +21,10 @@
  */
 
 import { prisma } from "../lib/db.js";
+import { normalizeSessions, hasOpenSession, closeOpenSessions } from "../lib/attendanceSessions.js";
+
+/** 기본 퇴근시간 — workEndTime 미설정(null) 사용자에게 적용. */
+const DEFAULT_END = "18:00";
 
 /** KST 현재 시각을 { hhmm, ymd } 로 반환. */
 function nowInKst(): { hhmm: string; ymd: string } {
@@ -46,34 +50,37 @@ function nowInKst(): { hhmm: string; ymd: string } {
 async function tick() {
   try {
     const { hhmm, ymd } = nowInKst();
-    // 1) 자동 퇴근 대상 사용자
-    const users = await prisma.user.findMany({
-      where: {
-        active: true,
-        autoClockOutTime: hhmm,
-      },
-      select: { id: true },
-    });
+    // 1) 퇴근시간(workEndTime, 미설정 시 18:00)이 지금(hhmm)인 활성 사용자.
+    //    ※ 자동퇴근 기준을 별도 autoClockOutTime → workEndTime 으로 전환(설정 불일치로 엉뚱한
+    //       시각에 퇴근되던 버그 해결). 미설정 사용자는 기본 18:00 에 적용.
+    const where =
+      hhmm === DEFAULT_END
+        ? { active: true, OR: [{ workEndTime: DEFAULT_END }, { workEndTime: null }] }
+        : { active: true, workEndTime: hhmm };
+    const users = await prisma.user.findMany({ where, select: { id: true } });
     if (users.length === 0) return;
 
-    // 2) 각 사용자의 오늘 출근기록에 대해 checkOut 채움 — updateMany 로 단일 쿼리.
-    //    복합 unique(userId,date) 라 updateMany 는 통과하지만,
-    //    "checkIn 있고 checkOut 없음" 조건을 함께 걸어 멱등성 보장.
-    const now = new Date();
-    const result = await prisma.attendance.updateMany({
-      where: {
-        userId: { in: users.map((u) => u.id) },
-        date: ymd,
-        checkIn: { not: null },
-        checkOut: null,
-      },
-      data: { checkOut: now, note: "자동 퇴근" },
+    // 2) 그 사용자들의 오늘 근태 중 '열린 세션'이 있는 것만 닫아 자동 퇴근.
+    const recs = await prisma.attendance.findMany({
+      where: { userId: { in: users.map((u) => u.id) }, date: ymd },
     });
+    const now = new Date();
+    let count = 0;
+    for (const rec of recs) {
+      // 야근(추가근무) 승인으로 연장됐으면 그 시각까지 자동퇴근 보류.
+      if (rec.overtimeUntil && new Date(rec.overtimeUntil).getTime() > now.getTime()) continue;
+      const sessions = normalizeSessions(rec);
+      if (!hasOpenSession(sessions)) continue; // 이미 퇴근했거나 출근 안 함 → 건너뜀(멱등)
+      closeOpenSessions(sessions, now);
+      await prisma.attendance.update({
+        where: { id: rec.id },
+        data: { sessions: sessions as unknown as object, checkOut: now, note: "자동 퇴근" },
+      });
+      count++;
+    }
 
-    if (result.count > 0) {
-      console.log(
-        `[autoClockOut] ${ymd} ${hhmm} KST — 자동 퇴근 처리 ${result.count}건 (대상 ${users.length}명)`
-      );
+    if (count > 0) {
+      console.log(`[autoClockOut] ${ymd} ${hhmm} KST — 자동 퇴근 ${count}건 (대상 ${users.length}명)`);
     }
   } catch (e) {
     // 스케줄러는 절대 프로세스를 죽이지 않음 — 다음 tick 에서 재시도.

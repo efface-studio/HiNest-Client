@@ -8,12 +8,28 @@ import Portal from "../components/Portal";
 import { alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
 
+type WorkSession = { s: string; e: string | null; src?: string };
 type Attendance = {
   id: string;
   date: string;
   checkIn?: string;
   checkOut?: string;
+  sessions?: WorkSession[] | null;
 };
+
+/** 하루 근무 ms — 다중 세션 합산(갭 제외). sessions 없으면 checkIn/checkOut 단일(하위호환). */
+function attWorkedMs(r: Attendance): number {
+  const sessions: WorkSession[] = Array.isArray(r.sessions)
+    ? r.sessions
+    : r.checkIn ? [{ s: r.checkIn, e: r.checkOut ?? null }] : [];
+  let ms = 0;
+  for (const s of sessions) {
+    const start = new Date(s.s).getTime();
+    const end = s.e ? new Date(s.e).getTime() : Date.now();
+    if (end > start) ms += end - start;
+  }
+  return ms;
+}
 
 type Leave = {
   id: string;
@@ -145,10 +161,7 @@ export default function AttendancePage() {
   // === 통계 계산 ===
   const stats = useMemo(() => {
     const completed = records.filter((r) => r.checkIn && r.checkOut);
-    const totalMs = completed.reduce(
-      (acc, r) => acc + (new Date(r.checkOut!).getTime() - new Date(r.checkIn!).getTime()),
-      0,
-    );
+    const totalMs = completed.reduce((acc, r) => acc + attWorkedMs(r), 0);
     const avgMs = completed.length ? totalMs / completed.length : 0;
     const usedDays = leaves
       .filter((l) => l.status === "APPROVED")
@@ -297,7 +310,7 @@ export default function AttendancePage() {
                         </td>
                         <td data-label="근무시간" className="px-5 py-3 text-right">
                           {r.checkIn && r.checkOut ? (
-                            <span className="font-bold text-ink-900">{durationLabel(r.checkIn, r.checkOut)}</span>
+                            <span className="font-bold text-ink-900">{msToHM(attWorkedMs(r))}</span>
                           ) : (
                             <span className="text-ink-400">—</span>
                           )}

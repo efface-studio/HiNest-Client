@@ -717,14 +717,31 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   }
 
   // ===== 다운로드 =====
-  // 개별 문서 — /uploads/<key>?download=1&name=<원본이름> 으로 강제 첨부 헤더 받기.
-  // 이미지·영상처럼 기본이 인라인인 타입도 확실히 "저장" 대화상자를 띄우게 함.
-  function downloadDoc(d: Doc) {
+  // 개별 문서 — 웹/데스크톱은 파일을 blob 으로 받아 원본 파일명으로 저장한다.
+  // 이유: <a download href> 직접 다운로드는 데스크톱(Electron)에서 cross-origin/Content-Disposition
+  // 처리에 따라 저장 파일명이 스토리지 키로 깨질 수 있다(특히 네이티브 will-download 핸들러가 없는
+  // 구 빌드). blob(objectURL) 다운로드는 <a download> 파일명을 항상 존중하므로 빌드 버전과 무관하게
+  // 원본명으로 저장된다. iOS 네이티브는 blob 저장이 안 되니 기존 인앱 브라우저 경로 유지.
+  async function downloadDoc(d: Doc) {
     if (!d.fileUrl) return;
     const url = new URL(d.fileUrl, window.location.origin);
     url.searchParams.set("download", "1");
     if (d.fileName) url.searchParams.set("name", d.fileName);
-    downloadFromUrl(url.toString(), d.fileName ?? "");
+
+    // 너무 큰 파일은 메모리 부담 → blob 화하지 않고 직접 다운로드로 폴백(200MB 초과).
+    const tooBig = (d.fileSize ?? 0) > 200 * 1024 * 1024;
+    if (isCapacitorNative() || tooBig) {
+      downloadFromUrl(url.toString(), d.fileName ?? "");
+      return;
+    }
+    try {
+      const res = await apiFetch(url.pathname + url.search);
+      if (!res.ok) { downloadFromUrl(url.toString(), d.fileName ?? ""); return; }
+      const blob = await res.blob();
+      downloadBlob(blob, d.fileName || "download");
+    } catch {
+      downloadFromUrl(url.toString(), d.fileName ?? "");
+    }
   }
 
   // 폴더 전체 — 서버에서 ZIP 스트림으로 내려옴. 큰 폴더는 시간이 꽤 걸릴 수 있음.

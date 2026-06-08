@@ -931,6 +931,14 @@ ops.post("/console", requireSuperAdminStepUp, async (req, res) => {
         "  rooms list [limit]                  최근 방 N개",
         "  room info <roomId>                  방 상세 + 멤버",
         "",
+        "  [회사·멀티테넌트]",
+        "  companies [limit]                   전 회사 목록 + 인원수",
+        "  company <id|name|slug>              회사별 상세 + 카운트(유저·방·문서·회의·공지)",
+        "",
+        "  [세션]",
+        "  sessions <id|email>                 해당 유저 활성 세션 목록",
+        "  session revoke <sessionId>          세션 강제 무효화(로그아웃)",
+        "",
         "  [공지·시스템]",
         "  notice broadcast <text>             고정 공지 즉시 발행",
         "  system stats                        전체 카운트 한눈에",
@@ -1217,6 +1225,77 @@ ops.post("/console", requireSuperAdminStepUp, async (req, res) => {
       else {
         await evictUserCache(target.id);
         result = out(`OK · cache evicted: ${target.email}`);
+      }
+    } else if (head === "companies") {
+      // 전 회사 목록 + 인원수. (멀티테넌트 전체 조망)
+      const limit = Math.min(500, Math.max(1, parseInt(tokens[1] || "100", 10) || 100));
+      const list = await prisma.company.findMany({
+        orderBy: { createdAt: "desc" }, take: limit,
+        select: { id: true, name: true, slug: true, status: true },
+      });
+      const counts = await prisma.user.groupBy({ by: ["companyId"], _count: { _all: true } });
+      const cmap = new Map<string | null, number>(counts.map((c) => [c.companyId, c._count._all]));
+      const rows = list.map(
+        (c) => `${c.id}  ${c.status.padEnd(9)} ${String(cmap.get(c.id) ?? 0).padStart(4)}명  ${c.slug ? "@" + c.slug + " " : ""}${c.name}`,
+      );
+      result = out([`회사 ${list.length}개 (status / 인원):`, ...rows]);
+    } else if (head === "company") {
+      // company <id|name|slug> — 회사별 상세 + 카운트(유저·방·문서·회의·공지).
+      const key = tokens[1] || "";
+      if (!key) { result = err("회사 키가 필요해요. 예: company <id|name|slug>"); }
+      else {
+        const co = await prisma.company.findFirst({
+          where: { OR: [{ id: key }, { slug: key }, { name: { contains: key, mode: "insensitive" } }] },
+        });
+        if (!co) { result = err(`회사를 찾을 수 없음: ${key}`); }
+        else {
+          const [users, activeUsers, rooms, docs, meetings, notices] = await Promise.all([
+            prisma.user.count({ where: { companyId: co.id } }),
+            prisma.user.count({ where: { companyId: co.id, active: true } }),
+            prisma.chatRoom.count({ where: { companyId: co.id } }),
+            prisma.document.count({ where: { companyId: co.id } }),
+            prisma.meeting.count({ where: { companyId: co.id } }),
+            prisma.notice.count({ where: { companyId: co.id } }),
+          ]);
+          result = out([
+            `id      : ${co.id}`,
+            `name    : ${co.name}`,
+            `slug    : ${co.slug ?? "-"}`,
+            `status  : ${co.status}`,
+            `users   : ${users} (active ${activeUsers})`,
+            `rooms   : ${rooms}`,
+            `docs    : ${docs}`,
+            `meetings: ${meetings}`,
+            `notices : ${notices}`,
+          ]);
+        }
+      }
+    } else if (head === "sessions") {
+      // sessions <user> — 해당 유저의 활성 세션 목록.
+      const target = await findUser(tokens[1] || "");
+      if (!target) { result = err(`유저를 찾을 수 없음: ${tokens[1] || "(없음)"}`); }
+      else {
+        const list = await prisma.session.findMany({
+          where: { userId: target.id, revokedAt: null },
+          orderBy: { createdAt: "desc" }, take: 50,
+          select: { id: true, createdAt: true },
+        });
+        if (list.length === 0) { result = out(`활성 세션 없음 — ${target.email}`); }
+        else {
+          const rows = list.map((s) => `${s.id}  ${s.createdAt.toISOString()}`);
+          result = out([`활성 세션 ${list.length}개 — ${target.email}:`, ...rows]);
+        }
+      }
+    } else if (head === "session" && sub === "revoke") {
+      // session revoke <sessionId> — 강제 로그아웃(세션 무효화).
+      const sid = arg1;
+      if (!sid) { result = err("세션 id 가 필요해요. 예: session revoke <sessionId>"); }
+      else {
+        const r = await prisma.session.updateMany({
+          where: { id: sid, revokedAt: null },
+          data: { revokedAt: new Date(), revokedById: u.id },
+        });
+        result = r.count > 0 ? out(`OK · 세션 무효화: ${sid}`) : err(`활성 세션을 찾을 수 없음: ${sid}`);
       }
     } else {
       result = err(`알 수 없는 명령: "${raw}". help 로 사용법 확인.`);

@@ -18,7 +18,7 @@ import noticeRouter from "./routes/notice.js";
 import chatRouter from "./routes/chat.js";
 import expenseRouter from "./routes/expense.js";
 import uploadRouter, { UPLOAD_DIR } from "./routes/upload.js";
-import { isStorageEnabled, downloadFile } from "./lib/storage.js";
+import { isStorageEnabled, downloadFile, getSignedDownloadUrl } from "./lib/storage.js";
 import fs from "node:fs";
 import notificationRouter from "./routes/notification.js";
 import pushRouter from "./routes/push.js";
@@ -404,13 +404,33 @@ app.use("/uploads", uploadsQueryToken, requireAuth, async (req, res) => {
   const rawName = typeof req.query.name === "string" ? req.query.name : undefined;
   const downloadName = rawName ? sanitizeDownloadName(rawName) : undefined;
 
-  // 1) Supabase Storage 우선 — 새 업로드는 여기 있음
+  // 1) 스토리지(S3/Supabase).
   if (isStorageEnabled()) {
+    const mt = String(mime.lookup(name) || "application/octet-stream");
+    const inline = INLINE_MIME_PREFIXES.some((p) => mt.startsWith(p));
+    const wantAttachment = forceDownload || !inline;
+
+    // 다운로드(첨부)는 presigned URL 로 302 리다이렉트 — 클라이언트가 스토리지(S3 CDN)에서 직접 받는다.
+    // ECS 가 전체 파일을 메모리로 버퍼링해 되넘기던 4-hop 경로 제거 → 속도 대폭 향상 + 504 타임아웃 해소 +
+    // ResponseContentDisposition 으로 원본 파일명 보장. (인라인 이미지/영상은 아래 버퍼+캐시 경로 유지 —
+    // 아바타 재요청 시 max-age 캐시 활용, 매 로드마다 리다이렉트 hop 이 생기지 않게.)
+    if (wantAttachment) {
+      const signed = await getSignedDownloadUrl(name, {
+        downloadName: downloadName || name,
+        contentType: mt,
+      });
+      if (signed) {
+        res.setHeader("Cache-Control", "no-store"); // 서명이 매번 달라 캐시 의미 없음
+        return res.redirect(302, signed);
+      }
+    }
+
+    // 인라인 이미지/영상, 또는 presigned 실패 → 기존 버퍼 스트림(+캐시).
     const file = await downloadFile(name);
     if (file) {
-      const mt = file.contentType || mime.lookup(name) || "application/octet-stream";
-      applyUploadSecurityHeaders(res, name, String(mt), forceDownload, downloadName);
-      res.setHeader("Content-Type", String(mt));
+      const fmt = file.contentType || mt;
+      applyUploadSecurityHeaders(res, name, String(fmt), forceDownload, downloadName);
+      res.setHeader("Content-Type", String(fmt));
       res.setHeader("Content-Length", String(file.size));
       res.setHeader("Cache-Control", "private, max-age=86400");
       return res.end(file.buffer);

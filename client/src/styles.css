@@ -97,6 +97,10 @@ html.hinest-native-tabbar .console-bottomnav { display: none !important; }
    기기는 .hinest-desktop 이 안 붙어 기존 반응형 그대로. */
 html.hinest-desktop .app-sidebar { display: flex !important; }
 html.hinest-desktop .app-bottomnav { display: none !important; }
+/* 데스크톱은 운영 콘솔의 하단 탭바를 숨기고 좌측 사이드바를 강제 표시 — 창을 좁혀도 사이드바로 탐색
+   (앱 본체와 동일 정책). 사이드바는 hidden md:flex 라 좁은 창에서 숨으므로 여기서 다시 켠다. */
+html.hinest-desktop .console-bottomnav { display: none !important; }
+html.hinest-desktop .console-sidebar { display: flex !important; }
 
 /* 모달(.modal-safe 오버레이)이 열려 있는 동안 웹 하단 탭 바를 숨긴다 — 모달 풋터(저장·취소
    버튼 등)가 떠 있는 바와 겹쳐 가려지는 "UI 깨짐"을 막는다. iOS 네이티브는 .hinest-native-tabbar

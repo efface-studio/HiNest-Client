@@ -1243,14 +1243,18 @@ ops.post("/chat-audit/unlock", requireSuperAdminStepUp, async (req, res) => {
   // 길이가 다르면 즉시 false — timingSafeEqual 은 같은 길이만 받음.
   if (got.length !== expected.length) {
     await writeLog(u.id, "CHAT_AUDIT_UNLOCK_FAIL", undefined, undefined, req.ip).catch(() => {});
-    return res.status(401).json({ error: "암호 불일치" });
+    // 403 — 인증은 됐지만(슈퍼관리자 세션) 이 step-up 암호가 틀림. 401 로 주면 클라 api() 가
+    // '세션 만료' 로 오인해 전역 로그아웃시킨다(버그). 암호 오류는 forbidden 으로 분리.
+    return res.status(403).json({ code: "BAD_STEPUP_PW", error: "암호 불일치" });
   }
   const a = Buffer.from(got);
   const b = Buffer.from(expected);
   const ok = crypto.timingSafeEqual(a, b);
   if (!ok) {
     await writeLog(u.id, "CHAT_AUDIT_UNLOCK_FAIL", undefined, undefined, req.ip).catch(() => {});
-    return res.status(401).json({ error: "암호 불일치" });
+    // 403 — 인증은 됐지만(슈퍼관리자 세션) 이 step-up 암호가 틀림. 401 로 주면 클라 api() 가
+    // '세션 만료' 로 오인해 전역 로그아웃시킨다(버그). 암호 오류는 forbidden 으로 분리.
+    return res.status(403).json({ code: "BAD_STEPUP_PW", error: "암호 불일치" });
   }
   await writeLog(u.id, "CHAT_AUDIT_UNLOCK_OK", undefined, undefined, req.ip).catch(() => {});
   res.json({ ok: true, ttlMs: 30 * 60 * 1000 });

@@ -6,6 +6,7 @@ import { prisma } from "../lib/db.js";
 import { runUnscoped } from "../lib/tenant.js";
 import {
   requireAdmin, requireAuth, requireSuperAdminStepUp, verifySuperToken,
+  signSuper, setSuperCookie, SUPER_TTL_SEC,
   writeLog, evictUserCache, evictSessionCache,
   signImpersonate, setImpCookie, clearImpCookie,
 } from "../lib/auth.js";
@@ -1336,7 +1337,12 @@ ops.post("/chat-audit/unlock", requireSuperAdminStepUp, async (req, res) => {
     return res.status(403).json({ code: "BAD_STEPUP_PW", error: "암호 불일치" });
   }
   await writeLog(u.id, "CHAT_AUDIT_UNLOCK_OK", undefined, undefined, req.ip).catch(() => {});
-  res.json({ ok: true, ttlMs: 30 * 60 * 1000 });
+  // 채팅 감사 API(/api/chat/rooms?scope=audit, .../messages)는 super step-up 쿠키(hinest_super)를
+  // verifySuperToken 으로 요구한다. CHAT_AUDIT_PW 가 맞았으니 여기서 그 쿠키를 함께 발급해야
+  // 패널 진입 시 401 이 나지 않는다. (예전엔 쿠키를 안 줘서 패널이 401 → api() 가 세션 만료로
+  // 오인하고 전역 로그아웃시키는 버그가 있었음.)
+  setSuperCookie(res, signSuper(u.id), req);
+  res.json({ ok: true, ttlMs: SUPER_TTL_SEC * 1000 });
 });
 
 /** 사이드바 메뉴 가시성 관리 (총관리자 전용).

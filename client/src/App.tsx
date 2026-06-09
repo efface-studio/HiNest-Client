@@ -4,6 +4,7 @@ import { useAuth } from "./auth";
 import { isDesktopApp } from "./lib/platform";
 import UpdateBanner from "./components/UpdateBanner";
 import DesktopUpdateBanner from "./components/DesktopUpdateBanner";
+import AppStoreUpdatePrompt from "./components/AppStoreUpdatePrompt";
 import ConfirmHost from "./components/ConfirmHost";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import LoginPage from "./pages/LoginPage";
@@ -125,6 +126,7 @@ export default function App() {
     <>
     <UpdateBanner />
     <DesktopUpdateBanner />
+    <AppStoreUpdatePrompt />
     <ConfirmHost />
     <ErrorBoundary resetKey={pathname}>
     <Suspense fallback={<RouteFallback />}>

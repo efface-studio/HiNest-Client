@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import Portal from "../components/Portal";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
@@ -46,6 +47,7 @@ export default function SnippetsPage() {
   const [list, setList] = useState<Snippet[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [editing, setEditing] = useState<Snippet | null>(null);
   const [creating, setCreating] = useState(false);
   const aliveRef = useRef(true);
@@ -68,6 +70,12 @@ export default function SnippetsPage() {
     }
   }
 
+  // 데스크탑 새로고침 버튼 — load() 재호출(전체 reload 아님). 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
+  }
+
   // 검색어 디바운스 — 빠르게 타이핑할 때 매 키마다 GET 안 치도록.
   useEffect(() => {
     const t = setTimeout(load, q ? 200 : 0);
@@ -84,6 +92,8 @@ export default function SnippetsPage() {
         eyebrow="라이브러리"
         title="스니펫"
         description="자주 쓰는 명령·쿼리·코드 조각을 저장하고 채팅에서 / 로 호출하세요."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <button className="btn-primary" onClick={() => setCreating(true)}>
             + 새 스니펫
@@ -104,7 +114,15 @@ export default function SnippetsPage() {
       </div>
 
       {loading && list.length === 0 ? (
-        <div className="panel p-8 text-center text-ink-500 text-[13px]">불러오는 중…</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="panel p-4 flex flex-col gap-2.5">
+              <Skeleton w="45%" h={14} />
+              <Skeleton w="100%" h={11} />
+              <Skeleton w="75%" h={11} />
+            </div>
+          ))}
+        </div>
       ) : list.length === 0 ? (
         <div className="panel p-12 text-center text-ink-500">
           <div className="text-[14px] font-semibold">{q ? "검색 결과가 없어요" : "아직 스니펫이 없어요"}</div>

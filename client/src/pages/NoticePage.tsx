@@ -4,6 +4,7 @@ import { api, apiSWR, invalidateCache } from "../api";
 import { useAuth } from "../auth";
 import { useNotifications } from "../notifications";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import PinButton from "../components/PinButton";
 import ShareButton from "../components/ShareButton";
@@ -38,6 +39,10 @@ export default function NoticePage() {
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [reactingEmoji, setReactingEmoji] = useState<string | null>(null);
+  // 첫 로드 완료 여부 — Skeleton↔실데이터 전환 분기. (apiSWR 라 loading 플래그가 없음)
+  const [loaded, setLoaded] = useState(false);
+  // 데스크탑 새로고침 버튼 진행 표시.
+  const [refreshing, setRefreshing] = useState(false);
 
   const canPost = user?.role === "ADMIN" || user?.role === "MANAGER";
 
@@ -55,6 +60,7 @@ export default function NoticePage() {
   async function load() {
     const res = await api<{ notices: Notice[] }>("/api/notice");
     setList(res.notices);
+    setLoaded(true);
   }
 
   // 첫 진입은 SWR — 이전 캐시가 있으면 즉시 렌더하고, 네트워크로 최신값 병합.
@@ -64,11 +70,24 @@ export default function NoticePage() {
     // 일관성 유지·메모리 참조 즉시 해제).
     let alive = true;
     apiSWR<{ notices: Notice[] }>("/api/notice", {
-      onCached: (d) => { if (alive) setList(d.notices); },
-      onFresh: (d) => { if (alive) setList(d.notices); },
+      onCached: (d) => { if (alive) { setList(d.notices); setLoaded(true); } },
+      onFresh: (d) => { if (alive) { setList(d.notices); setLoaded(true); } },
     });
     return () => { alive = false; };
   }, []);
+
+  // 데스크탑 새로고침 — 캐시 무효화 후 fresh 재요청. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      invalidateCache("/api/notice");
+      await load();
+    } catch {
+      // 무음 — 기존 목록 유지.
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   // 알림 등에서 ?id=... 로 들어왔을 때 자동 선택
   useEffect(() => {
@@ -191,6 +210,8 @@ export default function NoticePage() {
       <PageHeader
         title="사내공지"
         description="회사 전체 공지사항입니다."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={canPost && <button className="btn-primary" onClick={() => setOpen(true)}>+ 공지 작성</button>}
       />
 
@@ -198,6 +219,14 @@ export default function NoticePage() {
         <div className="card p-0 overflow-hidden">
           <div className="p-4 border-b border-slate-100 text-sm font-bold">공지 목록 ({list.length})</div>
           <div className="divide-y divide-slate-100 max-h-[70vh] overflow-auto">
+            {!loaded && list.length === 0 &&
+              // 첫 로드 중(캐시 미스) — 공지 행 형태의 Skeleton.
+              Array.from({ length: 5 }).map((_, i) => (
+                <div key={`sk-${i}`} className="px-4 py-3 flex flex-col gap-2">
+                  <Skeleton w="70%" h={14} />
+                  <Skeleton w="45%" h={11} />
+                </div>
+              ))}
             {list.map((n) => (
               <button
                 key={n.id}
@@ -234,7 +263,7 @@ export default function NoticePage() {
                 </div>
               </button>
             ))}
-            {list.length === 0 && <div className="px-4 py-10 text-center text-sm text-slate-400">공지가 없습니다.</div>}
+            {loaded && list.length === 0 && <div className="px-4 py-10 text-center text-sm text-slate-400">공지가 없습니다.</div>}
           </div>
         </div>
 

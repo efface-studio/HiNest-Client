@@ -114,6 +114,11 @@ html:has(.modal-safe) .app-bottomnav { display: none !important; }
    하단바가 입력을 가로채 '건너뛰기' 버튼이 안 눌리던 문제를 함께 해결. */
 html:has(.hinest-onb-overlay) .app-bottomnav { display: none !important; }
 
+/* 새로고침 버튼 회전 — refreshing 동안 부드럽게 회전 반복(데스크탑 PageHeader 새로고침 아이콘). */
+@keyframes hinest-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.hinest-spin { animation: hinest-spin 0.8s linear infinite; transform-origin: center; }
+@media (prefers-reduced-motion: reduce) { .hinest-spin { animation-duration: 1.6s; } }
+
 /* ───── Skeleton UI — 데이터 로딩 중 깜빡임 방지 ─────
    - 기본 배경: --c-surface-3 (다크/라이트 자동)
    - 시머: 좌→우로 흐르는 부드러운 글라스 wave(transform translateX 만 → GPU 합성, 끊김 없음)

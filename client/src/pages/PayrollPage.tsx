@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import PayslipComposer from "../components/PayslipComposer";
 import PayslipPreview from "../components/PayslipPreview";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
@@ -23,6 +24,7 @@ export default function PayrollPage() {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [list, setList] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [year, setYear] = useState(NOW.getFullYear());
   const [month, setMonth] = useState<number | 0>(0); // 0 = 전체
   const [employeeId, setEmployeeId] = useState("");
@@ -63,9 +65,15 @@ export default function PayrollPage() {
     q.set("year", String(year));
     if (month) q.set("month", String(month));
     if (employeeId) q.set("employeeId", employeeId);
-    api<{ payslips: Payslip[] }>(`/api/payslip?${q.toString()}`)
+    return api<{ payslips: Payslip[] }>(`/api/payslip?${q.toString()}`)
       .then((r) => setList(Array.isArray(r?.payslips) ? r.payslips : []))
       .catch(() => {});
+  }
+
+  // 데스크탑 새로고침 버튼 — 현재 필터 그대로 목록을 다시 불러온다. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await reload(); } finally { setRefreshing(false); }
   }
 
   function onSaved(p: Payslip) {
@@ -212,6 +220,8 @@ export default function PayrollPage() {
         description={isAdmin
           ? "직원별 임금명세서를 작성·발송하고 보관합니다."
           : "발급된 임금명세서를 확인하고 PDF로 저장할 수 있어요."}
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={isAdmin ? (
           <button className="btn-primary" onClick={() => { setEditTarget(null); setComposing(true); }}>
             + 새 명세서
@@ -280,15 +290,31 @@ export default function PayrollPage() {
             </tr>
           </thead>
           <tbody>
-            {loading && (
-              <tr><td colSpan={isAdmin ? 8 : 7} className="cell-full px-4 py-10 text-center text-slate-400">불러오는 중…</td></tr>
+            {loading && list.length === 0 && (
+              Array.from({ length: 5 }).map((_, i) => (
+                <tr key={`sk-${i}`} className="border-t border-slate-100">
+                  {isAdmin && (
+                    <td className="px-4 py-3"><Skeleton w={16} h={16} radius={4} /></td>
+                  )}
+                  <td className="px-4 py-3">
+                    <Skeleton w="55%" h={13} />
+                    <div className="mt-1"><Skeleton w="35%" h={10} /></div>
+                  </td>
+                  <td className="px-4 py-3"><Skeleton w={52} h={12} /></td>
+                  <td className="px-4 py-3 text-right"><Skeleton w="70%" h={12} /></td>
+                  <td className="px-4 py-3 text-right"><Skeleton w="70%" h={12} /></td>
+                  <td className="px-4 py-3 text-right"><Skeleton w="80%" h={12} /></td>
+                  <td className="px-4 py-3 text-center"><Skeleton w={48} h={20} radius={999} /></td>
+                  <td className="px-4 py-3 text-right"><Skeleton w={40} h={12} /></td>
+                </tr>
+              ))
             )}
             {!loading && list.length === 0 && (
               <tr><td colSpan={isAdmin ? 8 : 7} className="cell-full px-4 py-10 text-center text-slate-400">
                 {isAdmin ? "명세서가 없습니다. “+ 새 명세서”로 작성하세요." : "아직 발급된 급여명세서가 없어요."}
               </td></tr>
             )}
-            {!loading && list.map((p) => (
+            {list.map((p) => (
               <tr key={p.id} className={`border-t border-slate-100 hover:bg-slate-50/50 ${isAdmin && selected.has(p.id) ? "bg-brand-50/40" : ""}`}>
                 {isAdmin && (
                   <td data-label="선택" className="px-4 py-3">

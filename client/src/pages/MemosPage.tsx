@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import type { MemoDoc } from "../components/DocMemoModal";
 
 // DocMemoModal 은 TipTap(무거운 번들)을 포함 → 실제 열릴 때만 로드.
@@ -161,14 +162,14 @@ function EmptyState({ onNew }: { onNew: () => void }) {
 // ===== 스켈레톤 카드 =====
 function SkeletonCard() {
   return (
-    <div className="rounded-2xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900 p-5 flex flex-col gap-3 animate-pulse">
-      <div className="h-3.5 bg-ink-100 dark:bg-ink-800 rounded w-3/4" />
-      <div className="h-3 bg-ink-100 dark:bg-ink-800 rounded w-full" />
-      <div className="h-3 bg-ink-100 dark:bg-ink-800 rounded w-5/6" />
-      <div className="h-3 bg-ink-100 dark:bg-ink-800 rounded w-2/3" />
+    <div className="rounded-2xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900 p-5 flex flex-col gap-3">
+      <Skeleton w="75%" h={14} radius={6} />
+      <Skeleton w="100%" h={12} radius={6} />
+      <Skeleton w="83%" h={12} radius={6} />
+      <Skeleton w="66%" h={12} radius={6} />
       <div className="flex items-center gap-2 pt-2">
-        <div className="w-5 h-5 rounded-full bg-ink-100 dark:bg-ink-800" />
-        <div className="h-3 bg-ink-100 dark:bg-ink-800 rounded w-16" />
+        <Skeleton circle w={20} h={20} />
+        <Skeleton w={64} h={12} radius={6} />
       </div>
     </div>
   );
@@ -179,6 +180,7 @@ export default function MemosPage() {
   const { user } = useAuth();
   const [memos, setMemos] = useState<Memo[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [scopeTab, setScopeTab] = useState<ScopeTab>("all");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -211,7 +213,7 @@ export default function MemosPage() {
     if (scopeTab === "team") params.set("scope", "team");
     else if (scopeTab === "private") params.set("scope", "private");
     if (debouncedQ) params.set("q", debouncedQ);
-    api<{ documents: Memo[] }>(`/api/document?${params}`)
+    return api<{ documents: Memo[] }>(`/api/document?${params}`)
       .then((r) => setMemos(r.documents))
       .catch(() => setMemos([]))
       .finally(() => setLoading(false));
@@ -220,6 +222,12 @@ export default function MemosPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
+  }
 
   // Cmd/Ctrl+K → 검색 포커스
   useEffect(() => {
@@ -260,6 +268,8 @@ export default function MemosPage() {
         eyebrow="자료"
         title="메모"
         description="생각과 아이디어를 자유롭게 기록합니다."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <button type="button" className="btn-primary" onClick={() => setMemoTarget("new")}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"

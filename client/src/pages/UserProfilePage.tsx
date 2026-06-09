@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { api, apiSWR , imgSrc} from "../api";
+import { api, apiSWR , imgSrc, invalidateCache } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton, SkeletonText } from "../components/Skeleton";
 import { alertAsync } from "../components/ConfirmHost";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { resolvePresence, type PresenceStatus, type WorkStatus } from "../lib/presence";
@@ -33,6 +34,7 @@ export default function UserProfilePage() {
   const { user: me } = useAuth();
   const [u, setU] = useState<ProfileUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [openingDM, setOpeningDM] = useState(false);
 
@@ -43,16 +45,33 @@ export default function UserProfilePage() {
     }
   }, [me, id, nav]);
 
+  // aliveRef 로 cleanup 후 setState 를 막는다(언마운트·id 변경 시).
+  const load = useCallback(
+    (aliveRef: { current: boolean }) => {
+      if (!id) return Promise.resolve();
+      return apiSWR<{ user: ProfileUser }>(`/api/users/${id}`, {
+        onCached: (r) => { if (aliveRef.current) { setU(r.user); setLoading(false); } },
+        onFresh: (r) => { if (aliveRef.current) { setU(r.user); setLoading(false); } },
+        onError: () => { if (aliveRef.current) { setErr("불러오기 실패"); setLoading(false); } },
+      });
+    },
+    [id],
+  );
+
   useEffect(() => {
+    const aliveRef = { current: true };
+    load(aliveRef);
+    return () => { aliveRef.current = false; };
+  }, [load]);
+
+  // 데스크탑 새로고침 버튼 — 캐시를 버리고 최신값을 다시 받는다. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
     if (!id) return;
-    let alive = true;
-    apiSWR<{ user: ProfileUser }>(`/api/users/${id}`, {
-      onCached: (r) => { if (alive) { setU(r.user); setLoading(false); } },
-      onFresh: (r) => { if (alive) { setU(r.user); setLoading(false); } },
-      onError: () => { if (alive) { setErr("불러오기 실패"); setLoading(false); } },
-    });
-    return () => { alive = false; };
-  }, [id]);
+    setRefreshing(true);
+    invalidateCache(`/api/users/${id}`);
+    const aliveRef = { current: true };
+    try { await load(aliveRef); } finally { setRefreshing(false); }
+  }
 
   async function startDM() {
     if (!u || openingDM) return;
@@ -71,11 +90,29 @@ export default function UserProfilePage() {
     }
   }
 
-  if (loading) {
+  if (loading && !u) {
     return (
       <div>
-        <PageHeader eyebrow="팀원" title="프로필" />
-        <div className="panel p-12 text-center text-ink-500 text-[13px]">불러오는 중…</div>
+        <PageHeader eyebrow="팀원" title="프로필" onRefresh={refresh} refreshing={refreshing} />
+        {/* 히어로 카드 형태 Skeleton — 큰 아바타 + 이름·부서 + 본문 단락 */}
+        <div className="panel p-6 mb-4 flex items-center gap-5">
+          <Skeleton circle w={96} h={96} />
+          <div className="flex-1 min-w-0 flex flex-col gap-2.5">
+            <Skeleton w="45%" h={26} />
+            <Skeleton w="30%" h={13} />
+            <Skeleton w="22%" h={11} />
+          </div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="panel p-5 flex flex-col gap-3">
+            <Skeleton w="30%" h={11} />
+            <SkeletonText lines={4} />
+          </div>
+          <div className="panel p-5 flex flex-col gap-3">
+            <Skeleton w="30%" h={11} />
+            <SkeletonText lines={4} />
+          </div>
+        </div>
       </div>
     );
   }
@@ -101,6 +138,8 @@ export default function UserProfilePage() {
       <PageHeader
         eyebrow="팀원"
         title="프로필"
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <button className="btn-ghost" onClick={() => nav(-1)}>
             ← 돌아가기

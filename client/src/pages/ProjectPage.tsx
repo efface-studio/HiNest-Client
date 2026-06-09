@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
-import { apiSWR , imgSrc} from "../api";
+import { apiSWR , imgSrc, invalidateCache } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton, SkeletonText } from "../components/Skeleton";
 import ProjectCalendar from "../components/ProjectCalendar";
 import ProjectWebhooks from "../components/ProjectWebhooks";
 import ProjectQaList from "../components/ProjectQaList";
@@ -36,39 +37,57 @@ export default function ProjectPage() {
   const { user } = useAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
 
+  // stale-while-revalidate — 이전에 방문했던 프로젝트라면 캐시된 응답으로 즉시 렌더.
+  // 동시에 백그라운드로 네트워크 호출이 돌아 최신값이 오면 교체.
+  // aliveRef 로 cleanup 후 setState 를 막는다(언마운트·id 변경 시).
+  const load = useCallback(
+    (aliveRef: { current: boolean }) => {
+      if (!id) return Promise.resolve();
+      setLoading(true);
+      return apiSWR<{ project: Project }>(`/api/project/${id}`, {
+        onCached: (r) => {
+          if (!aliveRef.current) return;
+          setProject(r.project);
+          setErr(null);
+          // 캐시 히트면 "불러오는 중" 타이틀 바로 내린다. 네트워크는 계속 돌고 있음.
+          setLoading(false);
+        },
+        onFresh: (r) => {
+          if (!aliveRef.current) return;
+          setProject(r.project);
+          setErr(null);
+          setLoading(false);
+        },
+        onError: (e) => {
+          if (!aliveRef.current) return;
+          setErr(e?.message ?? "불러오지 못했습니다.");
+          setLoading(false);
+        },
+      });
+    },
+    [id],
+  );
+
   useEffect(() => {
-    if (!id) return;
-    let alive = true;
-    setLoading(true);
-    // stale-while-revalidate — 이전에 방문했던 프로젝트라면 캐시된 응답으로 즉시 렌더.
-    // 동시에 백그라운드로 네트워크 호출이 돌아 최신값이 오면 교체.
-    apiSWR<{ project: Project }>(`/api/project/${id}`, {
-      onCached: (r) => {
-        if (!alive) return;
-        setProject(r.project);
-        setErr(null);
-        // 캐시 히트면 "불러오는 중" 타이틀 바로 내린다. 네트워크는 계속 돌고 있음.
-        setLoading(false);
-      },
-      onFresh: (r) => {
-        if (!alive) return;
-        setProject(r.project);
-        setErr(null);
-        setLoading(false);
-      },
-      onError: (e) => {
-        if (!alive) return;
-        setErr(e?.message ?? "불러오지 못했습니다.");
-        setLoading(false);
-      },
-    });
+    const aliveRef = { current: true };
+    load(aliveRef);
     return () => {
-      alive = false;
+      aliveRef.current = false;
     };
-  }, [id]);
+  }, [load]);
+
+  // 데스크탑 새로고침 버튼 — 캐시를 버리고 최신값을 다시 받는다. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    if (!id) return;
+    setRefreshing(true);
+    invalidateCache(`/api/project/${id}`);
+    const aliveRef = { current: true };
+    try { await load(aliveRef); } finally { setRefreshing(false); }
+  }
 
   // project 로딩이 끝나기 전에도 id 만 있으면 자식들이 fetch 를 시작하도록
   // 껍데기를 먼저 렌더한다. 이렇게 해야 /api/project/:id + events + webhook 3개가
@@ -103,6 +122,8 @@ export default function ProjectPage() {
                   : "프로젝트"
             }
             description={project?.description || (loading ? "" : "아직 설명이 없습니다.")}
+            onRefresh={refresh}
+            refreshing={refreshing}
           />
         </div>
         {project && canOpenSettings && (
@@ -120,6 +141,15 @@ export default function ProjectPage() {
           </button>
         )}
       </div>
+
+      {/* 프로젝트 메타가 아직 안 온 첫 로딩 — 헤더 형태의 Skeleton 으로 빈 화면 대체.
+          자식 카드들은 id 만으로 자체 fetch 를 시작하므로 그대로 둔다. */}
+      {loading && !project && (
+        <div className="panel p-5 mb-6 flex flex-col gap-3">
+          <Skeleton w="40%" h={22} />
+          <SkeletonText lines={2} />
+        </div>
+      )}
 
       {/* 캘린더를 전체 폭으로 사용하고, 멤버 리스트는 아래로. */}
       <div className="space-y-6">

@@ -103,7 +103,8 @@ router.get("/rooms", async (req, res) => {
         return !!last && new Date(last.createdAt) > new Date(me.hiddenAt);
       });
 
-  if (auditMode) await writeLog(u.id, "CHAT_AUDIT_LIST", undefined, `count=${rooms.length}`);
+  // 사내 감사(scope=audit) 조회 자체는 감사 로그에 남기지 않는다 — 허가된 인원만 접근하는
+  // 내부 감사 도구라, 조회 행위는 회사 정책상 기록 대상에서 제외(회사 결정).
   res.json({ rooms: visible, auditMode });
 });
 
@@ -389,8 +390,7 @@ router.get("/rooms/:id/messages", async (req, res) => {
         code: "SUPER_STEPUP_REQUIRED",
       });
     }
-    // 감사 로그는 반드시 content 를 내리기 전에 persist — compliance 요건.
-    await writeLog(u.id, "CHAT_AUDIT_READ", room.id, `type=${room.type}`);
+    // 사내 감사 조회(메시지 열람)는 감사 로그에 남기지 않는다 — 위 목록 조회와 동일 정책.
   }
 
   const now = new Date();

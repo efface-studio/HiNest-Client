@@ -2404,7 +2404,7 @@ function RoomView({
                         title="프로필 보기"
                       >
                         <span style={{ textDecoration: "none" }}>{m.sender.name}</span>
-                        {isDevAccount(m.sender) && <DevBadge />}
+                        {isDevAccount(m.sender) && <DevBadge iconOnly />}
                       </button>
                     )}
                     <div

@@ -325,7 +325,7 @@ function GridCard({
           <Link to={`/users/${u.id}`} className="min-w-0 flex-1 hover:opacity-80 transition">
             <div className="text-[15px] font-extrabold text-ink-900 tracking-tight flex items-center gap-1.5 min-w-0">
               <span className="truncate">{u.name}</span>
-              {isDevAccount(u) && <DevBadge />}
+              {isDevAccount(u) && <DevBadge iconOnly />}
             </div>
             <div className="text-[12px] text-ink-600 truncate mt-0.5">
               {u.position ?? "—"}
@@ -406,7 +406,7 @@ function ListRow({ u, onDM, divider, dmBusy }: { u: DirectoryUser; onDM: () => v
         <div className="flex items-center gap-1.5 min-w-0">
           <div className="text-[14px] font-extrabold text-ink-900 tracking-tight flex items-center gap-1.5 min-w-0">
             <span className="truncate">{u.name}</span>
-            {isDevAccount(u) && <DevBadge />}
+            {isDevAccount(u) && <DevBadge iconOnly />}
           </div>
           <PresenceBadge u={u} />
         </div>

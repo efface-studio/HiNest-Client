@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import { alertAsync } from "./ConfirmHost";
 import Portal from "./Portal";
+import TimePicker from "./TimePicker";
 
 type Prefs = Record<string, boolean>;
 type Loaded = { prefs: Prefs; dndStart: string | null; dndEnd: string | null; emailOn: boolean };
@@ -93,19 +94,13 @@ export default function NotificationPrefsModal({ open, onClose }: { open: boolea
             <div className="border-t border-ink-150 pt-3">
               <div className="text-[12px] font-bold text-ink-800 mb-2">방해금지 시간</div>
               <div className="flex items-center gap-2">
-                <input
-                  type="time"
-                  value={data.dndStart ?? ""}
-                  onChange={(e) => setData({ ...data, dndStart: e.target.value || null })}
-                  className="input w-[120px]"
-                />
+                <div className="w-[120px]">
+                  <TimePicker value={data.dndStart ?? ""} onChange={(v) => setData({ ...data, dndStart: v || null })} />
+                </div>
                 <span className="text-[12px] text-ink-500">부터</span>
-                <input
-                  type="time"
-                  value={data.dndEnd ?? ""}
-                  onChange={(e) => setData({ ...data, dndEnd: e.target.value || null })}
-                  className="input w-[120px]"
-                />
+                <div className="w-[120px]">
+                  <TimePicker value={data.dndEnd ?? ""} onChange={(v) => setData({ ...data, dndEnd: v || null })} />
+                </div>
                 <span className="text-[12px] text-ink-500">까지</span>
               </div>
               <div className="text-[11px] text-ink-500 mt-1.5">이 시간엔 알림 기록은 남고 팝업/사운드만 끕니다.</div>

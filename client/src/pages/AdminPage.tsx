@@ -242,7 +242,7 @@ function PdfLogo() {
 export default function AdminPage() {
   // 새로고침해도 현재 탭 유지되도록 URL 쿼리로 동기화.
   const [sp, setSp] = useSearchParams();
-  const tab = (["users", "invites", "teams", "positions", "ip"].includes(sp.get("tab") ?? "")
+  const tab = (["users", "invites", "teams", "positions", "ip", "attendance"].includes(sp.get("tab") ?? "")
     ? (sp.get("tab") as Tab)
     : "users") as Tab;
   const setTab = (t: Tab) => {

@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">HiNest</string>
+    <string name="title_activity_main">HiNest</string>
+    <string name="package_name">com.hivits.hinest</string>
+    <string name="custom_url_scheme">com.hivits.hinest</string>
+</resources>

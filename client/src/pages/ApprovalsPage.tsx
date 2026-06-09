@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 import DateTimePicker from "../components/DateTimePicker";
-import { alertAsync } from "../components/ConfirmHost";
+import { alertAsync, promptAsync } from "../components/ConfirmHost";
 import Portal from "../components/Portal";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { useApprovalCounts, refreshApprovalCounts } from "../lib/useApprovalCounts";
@@ -804,9 +804,9 @@ function CreateModal({
   }
 
   async function saveAsTemplate() {
-    const name = window.prompt("템플릿 이름", form.title || "내 결재 템플릿");
+    const name = await promptAsync({ title: "템플릿 이름", defaultValue: form.title || "내 결재 템플릿" });
     if (!name) return;
-    const scope = window.prompt("공유 범위: ALL(전사) / TEAM(팀) / ME(개인)", "ME");
+    const scope = await promptAsync({ title: "공유 범위: ALL(전사) / TEAM(팀) / ME(개인)", defaultValue: "ME" });
     if (!scope || !["ALL", "TEAM", "ME"].includes(scope)) return;
     try {
       const body: ApprovalTemplate["body"] = {
@@ -837,7 +837,7 @@ function CreateModal({
 
   async function saveAsLine() {
     if (form.reviewerIds.length === 0) return;
-    const name = window.prompt("결재라인 이름", `내 결재선 (${form.reviewerIds.length}명)`);
+    const name = await promptAsync({ title: "결재라인 이름", defaultValue: `내 결재선 (${form.reviewerIds.length}명)` });
     if (!name) return;
     try {
       const r = await api<{ line: ApprovalLineFav }>("/api/approval-extras/lines", {

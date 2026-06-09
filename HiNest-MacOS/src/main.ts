@@ -83,11 +83,18 @@ function createWindow() {
   mainWindow.webContents.session.on("will-download", (_e, item) => {
     try {
       let name = "";
-      try {
-        const u = new URL(item.getURL());
-        const q = u.searchParams.get("name");
-        if (q) name = decodeURIComponent(q);
-      } catch {}
+      // ?name= 을 리다이렉트 체인 전체에서 찾는다 — /uploads 는 S3 presigned URL 로 302 되는데
+      // getURL() 은 리다이렉트 후 S3 URL(name 없음)을 줄 수 있어 원본 요청 URL(getURLChain)을 훑는다.
+      const chain: string[] =
+        typeof item.getURLChain === "function" && item.getURLChain().length
+          ? item.getURLChain()
+          : [item.getURL()];
+      for (const link of chain) {
+        try {
+          const q = new URL(link).searchParams.get("name");
+          if (q) { name = decodeURIComponent(q); break; }
+        } catch {}
+      }
       if (!name) {
         const cd = item.getContentDisposition?.() || "";
         const star = /filename\*=UTF-8''([^;]+)/i.exec(cd);
@@ -270,6 +277,21 @@ ipcMain.handle("hinest:flashFrame", () => {
   try {
     mainWindow?.flashFrame(true);
   } catch {}
+});
+
+// 파일 다운로드 — 메인 webContents 가 직접 받아 will-download 가 ?name= 으로 원본명 저장.
+ipcMain.handle("hinest:downloadFile", (_e, url: unknown) => {
+  try {
+    if (typeof url !== "string") return { ok: false, error: "invalid url" };
+    const lower = url.trim().toLowerCase();
+    if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+      return { ok: false, error: "disallowed scheme" };
+    }
+    mainWindow?.webContents.downloadURL(url);
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: String(e?.message ?? e) };
+  }
 });
 
 ipcMain.handle("hinest:showNotification", (_e, opts: { title: string; body?: string; silent?: boolean; icon?: string }) => {

@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.1.5](https://github.com/efface-studio/HiNest-Client/compare/v0.1.4...v0.1.5) (2026-06-09)
+
+
+### 🐛 Bug Fixes
+
+* **admin:** 근태 탭 화면 전체 덮는 파란 애니메이션 제거 ([c0487b5](https://github.com/efface-studio/HiNest-Client/commit/c0487b52bf5660d6c8168bceaa6830b60140b389))
+* **admin:** 근태 탭 화면 전체 덮는 파란 애니메이션 제거 ([00357d7](https://github.com/efface-studio/HiNest-Client/commit/00357d73e99bc0e61fca40749bf8d5173fb3ac9a)), closes [#904](https://github.com/efface-studio/HiNest-Client/issues/904)
+* **desktop:** 다운로드 안됨·느림·파일명 깨짐 — IPC 직접 다운로드 + getURLChain ([ac82e10](https://github.com/efface-studio/HiNest-Client/commit/ac82e10fd5c6a0718de9a1de1c3d192a46d3769a))
+* **desktop:** 다운로드 안됨·느림·파일명 깨짐 — IPC 직접 다운로드 + getURLChain ([e389183](https://github.com/efface-studio/HiNest-Client/commit/e3891833713d0470645239cfe7db0f744f0c11af)), closes [#907](https://github.com/efface-studio/HiNest-Client/issues/907)
+
 ## [0.1.4](https://github.com/efface-studio/HiNest-Client/compare/v0.1.3...v0.1.4) (2026-06-09)
 
 

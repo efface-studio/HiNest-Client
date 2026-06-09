@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useNotifications, type Notif } from "../notifications";
 import { NotifRow, navigateToNotif } from "../components/notifShared";
 import NotificationPrefsModal from "../components/NotificationPrefsModal";
+import { Skeleton } from "../components/Skeleton";
 
 /**
  * 전용 알림 페이지 — 주로 모바일에서 진입한다(벨을 누르면 드롭다운 대신 이 페이지로 이동).
@@ -14,11 +15,23 @@ export default function NotificationsPage() {
   const { bellItems, unread, reload, markRead } = useNotifications();
   const [tab, setTab] = useState<"all" | "unread">("all");
   const [prefsOpen, setPrefsOpen] = useState(false);
+  // 첫 reload 완료 여부 — useNotifications 훅이 loading 을 노출하지 않으므로 로컬로 추적.
+  // false 동안엔 빈 영역 대신 Skeleton 행을 띄워 깜빡임 제거.
+  const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   // 페이지 진입 시 최신 알림으로 한 번 갱신(프로바이더의 주기 폴링과 별개로 즉시 동기화).
   useEffect(() => {
-    reload();
+    let alive = true;
+    Promise.resolve(reload()).finally(() => { if (alive) setLoaded(true); });
+    return () => { alive = false; };
   }, [reload]);
+
+  // 데스크탑 새로고침 버튼 — 알림 목록만 다시 불러온다(전체 reload 아님). 모바일은 PTR 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await reload(); } finally { setRefreshing(false); }
+  }
 
   const visible = tab === "unread" ? bellItems.filter((n) => !n.readAt) : bellItems;
 
@@ -46,6 +59,20 @@ export default function NotificationsPage() {
               모두 읽음
             </button>
           )}
+          {/* 데스크탑 전용 새로고침 — 모바일은 PTR 이 담당하므로 hidden md:inline-flex. */}
+          <button
+            className="btn-icon !w-8 !h-8 hidden md:inline-flex disabled:opacity-50"
+            title="새로고침"
+            aria-label="새로고침"
+            onClick={refresh}
+            disabled={refreshing}
+            data-haptic="selection"
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" className={refreshing ? "hinest-spin" : ""} aria-hidden>
+              <path d="M3 12a9 9 0 0 1 9-9c2.39 0 4.68.94 6.4 2.6L21 8" /><path d="M21 3v5h-5" />
+              <path d="M21 12a9 9 0 0 1-9 9c-2.39 0-4.68-.94-6.4-2.6L3 16" /><path d="M3 21v-5h5" />
+            </svg>
+          </button>
           <button
             className="btn-icon !w-8 !h-8"
             title="알림 설정"
@@ -70,7 +97,20 @@ export default function NotificationsPage() {
 
       {/* 리스트 */}
       <div className="panel overflow-hidden">
-        {visible.length === 0 ? (
+        {!loaded && visible.length === 0 ? (
+          // 첫 로드 동안 — 알림 행 형태의 Skeleton(아바타 + 제목·시간 두 줄).
+          <div className="divide-y divide-[color:var(--c-border)]">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-3">
+                <Skeleton circle w={36} h={36} />
+                <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                  <Skeleton w="70%" h={12} />
+                  <Skeleton w="40%" h={10} />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
           <div className="py-16 text-center">
             <div className="mx-auto w-11 h-11 rounded-xl bg-ink-100 grid place-items-center mb-2.5">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8E959E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

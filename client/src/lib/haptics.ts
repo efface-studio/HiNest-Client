@@ -52,14 +52,32 @@ export function attachGlobalHaptics(): () => void {
     // 비활성 요소·data-no-haptic 은 제외.
     if (el.hasAttribute("disabled") || el.getAttribute("aria-disabled") === "true") return;
     if (el.closest("[data-no-haptic]")) return;
-    // 스위치/체크박스/탭은 selection, 나머지는 light.
+
+    // 강도 차등화(사용자 요구):
+    //  - selection : 가장 약함. 토글·자주 누르는 작은 버튼(btn-ghost / btn-icon / btn-xs).
+    //                네비바 탭 전환도 selection — "딱 적당함" 보존.
+    //  - light     : 일반 액션 버튼·링크·CTA(btn-primary 등). 기존 기본값 그대로.
+    //  - medium    : 명시적 [data-haptic="medium"] 만 사용(파괴적 액션·중요 확정).
+    // 명시 [data-haptic="<style>"] 가 있으면 그걸 우선.
+    const explicit = el.getAttribute("data-haptic") as
+      | "light" | "medium" | "heavy" | "selection" | "success" | "warning" | "error" | null;
+    if (explicit) { haptic(explicit); return; }
+
     const role = el.getAttribute("role");
     const isToggle =
       role === "switch" ||
       role === "tab" ||
       (el as HTMLInputElement).type === "checkbox" ||
       (el as HTMLInputElement).type === "radio";
-    haptic(isToggle ? "selection" : "light");
+    if (isToggle) { haptic("selection"); return; }
+
+    // 작고 자주 누르는 보조 버튼(btn-ghost / btn-icon / btn-xs) — 강도 한 단계 낮춤.
+    const cls = el.className || "";
+    if (typeof cls === "string" && /\b(btn-ghost|btn-icon|btn-xs)\b/.test(cls)) {
+      haptic("selection");
+      return;
+    }
+    haptic("light");
   };
   // passive — 스크롤 성능 영향 없음. capture 로 자식이 stopPropagation 해도 잡음.
   document.addEventListener("pointerdown", handler, { passive: true, capture: true });

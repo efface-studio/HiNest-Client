@@ -9,26 +9,45 @@
 export type WorkSession = { s: string; e: string | null; src?: string };
 
 type AttendanceLike = {
+  date?: string | null; // YYYY-MM-DD (KST). 닫히지 않은 과거 세션 캡에 사용.
   sessions?: unknown;
   checkIn?: Date | string | null;
   checkOut?: Date | string | null;
 };
 
-/** 레코드 → 정규화된 세션 배열. sessions 없으면 checkIn/checkOut 으로 단일 세션 구성. */
+/** 오늘 KST(YYYY-MM-DD). dates.ts 의 todayStr 과 동일 로직(순환 import 회피용 인라인). */
+function kstToday(): string {
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date()).replaceAll("/", "-");
+}
+
+/** 닫히지 않은 과거 세션은 그날 KST 자정(23:59:59)으로 캡 — 옛날 자동퇴근 누락 데이터로 인해
+ *  workedMinutes 가 now 까지 누적돼 비정상 큰 값(예: 수백~수천 시간)이 나오는 걸 막는다. */
+function clampOpenEnd(s: WorkSession, rowDate: string | null | undefined): WorkSession {
+  if (s.e) return s;
+  if (!rowDate) return s;
+  if (rowDate < kstToday()) {
+    return { ...s, e: `${rowDate}T23:59:59+09:00` };
+  }
+  return s;
+}
+
+/** 레코드 → 정규화된 세션 배열. sessions 없으면 checkIn/checkOut 으로 단일 세션 구성.
+ *  과거 행에서 닫히지 않은 세션은 그날 자정으로 자동 캡(데이터 손상 방어). */
 export function normalizeSessions(rec: AttendanceLike | null | undefined): WorkSession[] {
   if (!rec) return [];
   const raw = rec.sessions;
   if (Array.isArray(raw)) {
     return raw
       .filter((x): x is WorkSession => !!x && typeof (x as any).s === "string")
-      .map((x) => ({ s: x.s, e: x.e ?? null, src: x.src }));
+      .map((x) => clampOpenEnd({ s: x.s, e: x.e ?? null, src: x.src }, rec.date));
   }
   if (rec.checkIn) {
-    return [{
+    return [clampOpenEnd({
       s: new Date(rec.checkIn).toISOString(),
       e: rec.checkOut ? new Date(rec.checkOut).toISOString() : null,
       src: "manual",
-    }];
+    }, rec.date)];
   }
   return [];
 }

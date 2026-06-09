@@ -17,15 +17,24 @@ type Attendance = {
   sessions?: WorkSession[] | null;
 };
 
-/** 하루 근무 ms — 다중 세션 합산(갭 제외). sessions 없으면 checkIn/checkOut 단일(하위호환). */
+/** 하루 근무 ms — 다중 세션 합산(갭 제외). sessions 없으면 checkIn/checkOut 단일(하위호환).
+ *  닫히지 않은 과거 세션은 그날 자정으로 캡(옛날 데이터 손상 방어 — 1100시간+ 누적 버그 방지). */
 function attWorkedMs(r: Attendance): number {
   const sessions: WorkSession[] = Array.isArray(r.sessions)
     ? r.sessions
     : r.checkIn ? [{ s: r.checkIn, e: r.checkOut ?? null }] : [];
+  const today = new Date().toISOString().slice(0, 10); // UTC 라 KST 와 ±1 차이 가능하나 보수적
   let ms = 0;
   for (const s of sessions) {
     const start = new Date(s.s).getTime();
-    const end = s.e ? new Date(s.e).getTime() : Date.now();
+    let end: number;
+    if (s.e) {
+      end = new Date(s.e).getTime();
+    } else if (r.date && r.date < today) {
+      end = new Date(`${r.date}T23:59:59+09:00`).getTime();
+    } else {
+      end = Date.now();
+    }
     if (end > start) ms += end - start;
   }
   return ms;

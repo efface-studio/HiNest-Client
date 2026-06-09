@@ -186,27 +186,9 @@ function maskEmail(email: string): string {
   return `${head}***@${domain}`;
 }
 
-// 팀 목록 — 60초 in-process 캐시. 팀 목록은 관리자가 유저를 편집할 때만 바뀜.
-let _teamsCache: { teams: string[]; exp: number } | null = null;
-
-router.get("/teams", async (_req, res) => {
-  if (_teamsCache && _teamsCache.exp > Date.now()) {
-    res.setHeader("Cache-Control", "private, max-age=60");
-    return res.json({ teams: _teamsCache.teams });
-  }
-  const rows = await prisma.user.findMany({
-    where: { team: { not: null }, active: true },
-    select: { team: true },
-    distinct: ["team"],
-  });
-  const teams = rows.map((r) => r.team).filter(Boolean) as string[];
-  _teamsCache = { teams, exp: Date.now() + 60_000 };
-  res.setHeader("Cache-Control", "private, max-age=60");
-  res.json({ teams });
-});
-
-export function invalidateTeamsCache() {
-  _teamsCache = null;
-}
+// (GET /users/teams 제거 — router.get("/:id") 가 먼저 등록돼 "/teams" 가 id="teams" 로
+//  매칭되는 도달 불가(dead) 라우트였고, 모듈 전역 _teamsCache 는 companyId 키가 없어
+//  살아날 경우 회사 간 팀명 누수 위험이 있었다. 클라이언트는 팀 목록을 users 배열에서
+//  파생하므로 이 엔드포인트를 호출하지 않는다(OrgChartPage 주석 참고). 캐시·무효화 함수 함께 제거.)
 
 export default router;

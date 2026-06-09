@@ -125,6 +125,12 @@ router.patch("/:id", async (req, res) => {
   }
 
   if (exist.userId !== u.id) return res.status(403).json({ error: "forbidden" });
+  // 승인·반려가 끝난 경비는 작성자라도 내용 수정 불가 — 승인 이력과 실제 값이 어긋나는
+  // 워크플로 무결성 훼손을 막는다(금액·상호·날짜 등을 사후 변경하는 행위 차단).
+  // 수정이 필요하면 관리자가 PENDING 으로 되돌린 뒤(위 status 분기) 다시 편집.
+  if (exist.status !== "PENDING") {
+    return res.status(409).json({ error: "이미 처리된 경비는 수정할 수 없어요. 관리자에게 상태 변경을 요청하세요." });
+  }
   const parsed = schema.partial().safeParse(body);
   if (!parsed.success) return res.status(400).json({ error: "invalid input" });
   const d = parsed.data;

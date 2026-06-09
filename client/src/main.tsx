@@ -4,13 +4,10 @@ import { BrowserRouter } from "react-router-dom";
 import App from "./App";
 import { AuthProvider } from "./auth";
 import { FeatureFlagsProvider } from "./lib/featureFlags";
-import { isPreviewMode } from "./lib/previewMock";
+import { isPreviewMode, ensurePreviewPatched } from "./lib/previewFlag";
 import { notifyLiveUpdateReady } from "./lib/liveUpdates";
 import { ThemeProvider } from "./theme";
 import "./styles.css";
-
-// 미리보기 모드 부트스트랩 — 새로고침 후 fetch/EventSource 가 실제 서버로 새지 않게 가장 먼저 패치.
-isPreviewMode();
 
 // Capacitor Live Updates — 새 OTA 번들이 로드된 직후 10초 안에 호출돼야 '정상 시작' 으로 간주.
 // 안 호출되면 직전 정상 번들로 자동 롤백(벽돌 앱 방지). 네이티브가 아니면 no-op.
@@ -164,16 +161,24 @@ if (typeof window !== "undefined") {
   }
 }
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <ThemeProvider>
-      <BrowserRouter>
-        <AuthProvider>
-          <FeatureFlagsProvider>
-            <App />
-          </FeatureFlagsProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </ThemeProvider>
-  </React.StrictMode>
-);
+function renderApp() {
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <ThemeProvider>
+        <BrowserRouter>
+          <AuthProvider>
+            <FeatureFlagsProvider>
+              <App />
+            </FeatureFlagsProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </ThemeProvider>
+    </React.StrictMode>
+  );
+}
+
+// 미리보기 모드 부트스트랩 — 새로고침 후 fetch/EventSource 가 실제 서버로 새지 않게, 무거운
+// 목 데이터 모듈(previewMock)을 지연 로드해 네트워크 패치를 적용한 "뒤에" 렌더한다.
+// 일반 사용자(미리보기 아님)는 ensurePreviewPatched 가 즉시 resolve → previewMock 을 아예
+// 로드하지 않아 메인 번들에서 목 데이터(~25KB gzip)가 빠진다. preview 일 때만 짧게 await.
+ensurePreviewPatched().finally(renderApp);

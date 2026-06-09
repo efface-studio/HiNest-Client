@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import InstallAppBanner from "../components/InstallAppBanner";
 import { alertAsync } from "../components/ConfirmHost";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
-import { isPreviewMode } from "../lib/previewMock";
+import { isPreviewMode } from "../lib/previewFlag";
 import { Skeleton } from "../components/Skeleton";
 
 type Notice = { id: string; title: string; content: string; createdAt: string; author: { name: string; isDeveloper?: boolean }; pinned: boolean };

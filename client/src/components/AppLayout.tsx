@@ -17,7 +17,7 @@ import { PinsProvider, usePins, pinLinkUrl } from "../pins";
 import { ROUTE_PREFETCH, loadProject } from "../routes";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
-import { isPreviewMode, disablePreview } from "../lib/previewMock";
+import { isPreviewMode, disablePreview } from "../lib/previewFlag";
 import { isInstalledApp, isDesktopApp, nativePlatform, isCapacitorNative } from "../lib/platform";
 import { LiquidGlassTabBar, setNativeTabBarHidden, syncNativeTabBarVisibility } from "../lib/liquidGlassTabBar";
 import { attachGlobalHaptics } from "../lib/haptics";

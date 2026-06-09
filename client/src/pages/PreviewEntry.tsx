@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "../auth";
 import { clearApiCache } from "../api";
-import { enablePreview } from "../lib/previewMock";
+import { enablePreview } from "../lib/previewFlag";
 import AppLayout from "../components/AppLayout";
 import DashboardPage from "./DashboardPage";
 

@@ -1,4 +1,4 @@
-import { isPreviewMode, disablePreview } from "../lib/previewMock";
+import { isPreviewMode, disablePreview } from "../lib/previewFlag";
 import { isCapacitorNative } from "../lib/platform";
 
 /**

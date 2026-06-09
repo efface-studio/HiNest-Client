@@ -673,7 +673,7 @@ function LogsPanel() {
           <button className="btn-ghost btn-xs" onClick={load}>새로고침</button>
         </div>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto hinest-x-scroll">
       <table className="pro pro-cards" style={{ minWidth: 820 }}>
         <thead>
           <tr>
@@ -688,7 +688,13 @@ function LogsPanel() {
         <tbody>
           {filtered.map((l) => (
             <tr key={l.id}>
-              <td className="cell-primary tabular text-[12px] font-semibold text-ink-800 sm:text-[11px] sm:font-normal sm:text-ink-600">{new Date(l.createdAt).toLocaleString("ko-KR")}</td>
+              <td className="cell-primary tabular whitespace-nowrap text-[12px] font-semibold text-ink-800 sm:text-[11px] sm:font-normal sm:text-ink-600">{(() => {
+                // 컴팩트 포맷 — 좁은 화면에서 "2026. 6. 9. 오전 10:29:51" 같은 한국어 로케일이
+                // 줄바꿈을 강제해 행 높이가 깨지던 문제. MM-DD HH:mm:ss 로 통일해 한 줄에 들어가게.
+                const d = new Date(l.createdAt);
+                const pad = (n: number) => String(n).padStart(2, "0");
+                return `${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+              })()}</td>
               <td data-label="사용자">{l.user?.name ?? "—"}</td>
               <td data-label="액션"><span className="chip-gray tabular">{l.action}</span></td>
               <td data-label="대상" className="tabular text-[11px] text-ink-600 sm:max-w-[180px] sm:truncate" title={l.target ?? ""}>{l.target ?? "—"}</td>

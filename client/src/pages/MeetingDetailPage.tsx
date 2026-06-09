@@ -333,7 +333,7 @@ export default function MeetingDetailPage() {
             )}
           </span>
           {meeting.author.name}
-          {isDevAccount(meeting.author) && <DevBadge />}
+          {isDevAccount(meeting.author) && <DevBadge iconOnly />}
         </span>
         <span>·</span>
         <span>{new Date(meeting.createdAt).toLocaleString("ko-KR", { year: "numeric", month: "short", day: "numeric" })}</span>
@@ -507,7 +507,7 @@ function ViewerPicker({
                 )}
               </span>
               <span>{u.name}</span>
-              {isDevAccount(u) && <DevBadge />}
+              {isDevAccount(u) && <DevBadge iconOnly />}
               <span className="text-[10px] text-slate-400">{u.team ?? ""}</span>
             </button>
           );

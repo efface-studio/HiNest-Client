@@ -126,7 +126,7 @@ export default function DashboardPage() {
             <h1 className="text-[26px] sm:text-[28px] font-extrabold text-ink-900 tracking-tight flex items-center gap-2 flex-wrap">
               <span>{user?.name ?? ""}님,</span>
               <span className="text-ink-500 font-bold">{greetingFor(now)}</span>
-              {isDevAccount(user) && <DevBadge size="sm" />}
+              {isDevAccount(user) && <DevBadge size="sm" iconOnly />}
             </h1>
           </div>
           <StatusPill status={status} />
@@ -366,7 +366,7 @@ function NoticeCard({ notices, loaded = true }: { notices: Notice[]; loaded?: bo
                 </div>
                 <div className="text-[11px] text-ink-500 flex items-center gap-1.5 flex-wrap">
                   <span>{n.author?.name}</span>
-                  {isDevAccount(n.author) && <DevBadge size="sm" />}
+                  {isDevAccount(n.author) && <DevBadge size="sm" iconOnly />}
                   <span className="text-ink-300">·</span>
                   <span className="tabular-nums">{relTime(n.createdAt)}</span>
                 </div>
@@ -396,7 +396,7 @@ function ProfileCard(p: { name: string; email?: string; team: string | null; pos
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5 flex-wrap">
             <span className="text-[15px] font-extrabold text-ink-900 truncate">{p.name}</span>
-            {p.isDeveloper && <DevBadge size="sm" />}
+            {p.isDeveloper && <DevBadge size="sm" iconOnly />}
           </div>
           <div className="text-[12px] text-ink-500 truncate">{p.email}</div>
         </div>

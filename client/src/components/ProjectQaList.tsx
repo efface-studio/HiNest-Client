@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR, apiFetch , imgSrc} from "../api";
+import Select, { type SelectOption } from "./Select";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import DatePicker from "./DatePicker";
 import { safeAttachmentUrl } from "../lib/safeUrl";
@@ -109,6 +110,16 @@ const PLATFORM_ICON: Record<Platform, string> = {
   WINDOWS_APP: "🪟",
   OTHER: "📦",
 };
+
+// 플랫폼 드롭다운 옵션 — 전부 모듈 상수라 컴포넌트 밖에서 1회 구성.
+const PLATFORM_OPTIONS: SelectOption[] = [
+  { value: "", label: "미지정" },
+  ...PLATFORM_ORDER.map((p) => ({
+    value: p,
+    label: `${PLATFORM_ICON[p]} ${PLATFORM_LABEL[p]}`,
+    searchText: PLATFORM_LABEL[p],
+  })),
+];
 
 type Filter = "ALL" | Status;
 
@@ -1049,20 +1060,15 @@ function QaRow({
               <StatusSelect value={item.status} onChange={(v) => onPatch({ status: v })} />
             </PropertyRow>
             <PropertyRow label="플랫폼">
-              <select
+              <Select
                 className="input w-full text-[13px] py-1"
                 value={item.platform ?? ""}
-                onChange={(e) =>
-                  onPatch({ platform: (e.target.value || null) as Platform | null })
+                onChange={(v) =>
+                  onPatch({ platform: (v || null) as Platform | null })
                 }
-              >
-                <option value="">미지정</option>
-                {PLATFORM_ORDER.map((p) => (
-                  <option key={p} value={p}>
-                    {PLATFORM_ICON[p]} {PLATFORM_LABEL[p]}
-                  </option>
-                ))}
-              </select>
+                options={PLATFORM_OPTIONS}
+                placeholder="미지정"
+              />
             </PropertyRow>
             <PropertyRow label="담당자">
               <AssigneeSelect
@@ -1207,6 +1213,30 @@ function PropertyRow({
   );
 }
 
+// 상태 칩 안에 들어갈 라벨 — 상태 점 + 텍스트. 드롭다운 옵션·트리거 공용.
+function statusLabelNode(s: Status) {
+  return (
+    <span className="inline-flex items-center gap-1">
+      <span
+        style={{
+          width: 7,
+          height: 7,
+          borderRadius: 999,
+          background: STATUS_DOT[s],
+          display: "inline-block",
+        }}
+      />
+      {STATUS_LABEL[s]}
+    </span>
+  );
+}
+
+const STATUS_OPTIONS: SelectOption[] = STATUS_ORDER.map((s) => ({
+  value: s,
+  label: statusLabelNode(s),
+  searchText: STATUS_LABEL[s],
+}));
+
 function StatusSelect({
   value,
   onChange,
@@ -1215,33 +1245,21 @@ function StatusSelect({
   onChange: (v: Status) => void;
 }) {
   return (
-    <label className={[STATUS_CHIP[value], "cursor-pointer relative"].join(" ")}>
-      <span className="inline-flex items-center gap-1">
-        <span
-          style={{
-            width: 7,
-            height: 7,
-            borderRadius: 999,
-            background: STATUS_DOT[value],
-            display: "inline-block",
-          }}
-        />
-        {STATUS_LABEL[value]}
-      </span>
-      <select
-        className="absolute inset-0 opacity-0 cursor-pointer"
-        value={value}
-        onChange={(e) => onChange(e.target.value as Status)}
-      >
-        {STATUS_ORDER.map((s) => (
-          <option key={s} value={s}>
-            {STATUS_LABEL[s]}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Select
+      className={[STATUS_CHIP[value], "cursor-pointer"].join(" ")}
+      value={value}
+      onChange={(v) => onChange(v as Status)}
+      options={STATUS_OPTIONS}
+      ariaLabel="상태"
+    />
   );
 }
+
+const PRIORITY_OPTIONS: SelectOption[] = PRIORITY_ORDER.map((p) => ({
+  value: p,
+  label: PRIORITY_LABEL[p],
+  searchText: PRIORITY_LABEL[p],
+}));
 
 function PrioritySelect({
   value,
@@ -1251,20 +1269,35 @@ function PrioritySelect({
   onChange: (v: Priority) => void;
 }) {
   return (
-    <label className={[PRIORITY_CHIP[value], "cursor-pointer relative"].join(" ")}>
-      <span>{PRIORITY_LABEL[value]}</span>
-      <select
-        className="absolute inset-0 opacity-0 cursor-pointer"
-        value={value}
-        onChange={(e) => onChange(e.target.value as Priority)}
+    <Select
+      className={[PRIORITY_CHIP[value], "cursor-pointer"].join(" ")}
+      value={value}
+      onChange={(v) => onChange(v as Priority)}
+      options={PRIORITY_OPTIONS}
+      ariaLabel="우선순위"
+    />
+  );
+}
+
+// 담당자 칩 안의 라벨 — 아바타 + 이름. 드롭다운 옵션·트리거 공용.
+function assigneeLabelNode(m: Member) {
+  return (
+    <span className="inline-flex items-center gap-1.5 min-w-0">
+      <span
+        className="inline-flex items-center justify-center rounded-full text-white shrink-0 overflow-hidden"
+        style={{
+          background: m.avatarUrl ? "transparent" : m.avatarColor,
+          width: 14, height: 14, fontSize: 9,
+        }}
       >
-        {PRIORITY_ORDER.map((p) => (
-          <option key={p} value={p}>
-            {PRIORITY_LABEL[p]}
-          </option>
-        ))}
-      </select>
-    </label>
+        {m.avatarUrl ? (
+          <img src={imgSrc(m.avatarUrl)} alt={m.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
+        ) : (
+          m.name[0]
+        )}
+      </span>
+      <span className="truncate">{m.name}</span>
+    </span>
   );
 }
 
@@ -1277,42 +1310,21 @@ function AssigneeSelect({
   members: Member[];
   onChange: (v: string | null) => void;
 }) {
-  const current = value ? members.find((m) => m.id === value) : null;
+  const options: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: <span className="text-ink-500">담당자 없음</span>, searchText: "담당자 없음" },
+      ...members.map((m) => ({ value: m.id, label: assigneeLabelNode(m), searchText: m.name })),
+    ],
+    [members],
+  );
   return (
-    <label className="chip chip-gray cursor-pointer relative inline-flex items-center gap-1.5 min-w-0">
-      {current ? (
-        <>
-          <span
-            className="inline-flex items-center justify-center rounded-full text-white shrink-0 overflow-hidden"
-            style={{
-              background: current.avatarUrl ? "transparent" : current.avatarColor,
-              width: 14, height: 14, fontSize: 9,
-            }}
-          >
-            {current.avatarUrl ? (
-              <img src={imgSrc(current.avatarUrl)} alt={current.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} loading="lazy" decoding="async"/>
-            ) : (
-              current.name[0]
-            )}
-          </span>
-          <span className="truncate">{current.name}</span>
-        </>
-      ) : (
-        <span className="text-ink-500">담당자 없음</span>
-      )}
-      <select
-        className="absolute inset-0 opacity-0 cursor-pointer"
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || null)}
-      >
-        <option value="">담당자 없음</option>
-        {members.map((m) => (
-          <option key={m.id} value={m.id}>
-            {m.name}
-          </option>
-        ))}
-      </select>
-    </label>
+    <Select
+      className="chip chip-gray cursor-pointer min-w-0"
+      value={value ?? ""}
+      onChange={(v) => onChange(v || null)}
+      options={options}
+      ariaLabel="담당자"
+    />
   );
 }
 

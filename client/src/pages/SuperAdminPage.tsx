@@ -302,8 +302,10 @@ function LogsChrome({ tabs, tab, setTab, chat, meta }: ChromeProps) {
           <p className="text-[12.5px] text-ink-500 mt-1">{meta.description}</p>
         </div>
         <div className="flex flex-col items-end gap-2 flex-shrink-0">
+          {/* 회사 필터 드롭다운만. 예전엔 그 아래 LogsGlyph(장식용 문서 아이콘)가 세로로 쌓여
+              드롭다운 밑에 정체불명으로 떠 보였다(사용자 지적) → 제거. 헤더 좌측의 펄스 점 +
+              'system / logs · audit' eyebrow 가 이미 충분히 장식 역할을 한다. */}
           {isCompanyScoped(tab) && <CompanyFilterDropdown accent={LOGS_ACCENT} />}
-          <LogsGlyph />
         </div>
       </div>
       <div className="flex items-center gap-1 mb-4 border-b border-ink-150 overflow-x-auto whitespace-nowrap" style={{ scrollbarWidth: "thin" }}>
@@ -448,14 +450,6 @@ function DevtoolsChrome({ tabs, tab, setTab, meta }: ChromeProps) {
 }
 
 /* ---- 그룹 헤더용 글리프 (운영 콘솔 사이드바 아이콘과 통일) ---- */
-function LogsGlyph() {
-  return (
-    <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke={LOGS_ACCENT} strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" className="flex-shrink-0 hidden sm:block" style={{ opacity: 0.25 }}>
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
-      <line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" />
-    </svg>
-  );
-}
 function SystemGlyph() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

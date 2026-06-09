@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import Select, { type SelectOption } from "../components/Select";
 import { Skeleton } from "../components/Skeleton";
 import PayslipComposer from "../components/PayslipComposer";
 import PayslipPreview from "../components/PayslipPreview";
@@ -209,6 +210,28 @@ export default function PayrollPage() {
   }
 
   const years = Array.from({ length: 6 }, (_, i) => NOW.getFullYear() - i + 1);
+  const yearOptions: SelectOption[] = useMemo(
+    () => years.map((y) => ({ value: String(y), label: `${y}년` })),
+    [years],
+  );
+  const monthOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "0", label: "전체 월" },
+      ...Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({ value: String(m), label: `${m}월` })),
+    ],
+    [],
+  );
+  const employeeOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "전체 직원" },
+      ...employees.map((e) => ({
+        value: e.id,
+        label: `${e.name}${e.team ? ` · ${e.team}` : ""}`,
+        searchText: `${e.name} ${e.team ?? ""}`,
+      })),
+    ],
+    [employees],
+  );
   const sentCount = list.filter((p) => p.sentAt).length;
   const unsentCount = list.length - sentCount;
   const allSelected = list.length > 0 && selected.size === list.length;
@@ -231,18 +254,10 @@ export default function PayrollPage() {
 
       {/* 필터 */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
-        <select className="input w-auto" value={year} disabled={bulk !== null} onChange={(e) => setYear(Number(e.target.value))}>
-          {years.map((y) => <option key={y} value={y}>{y}년</option>)}
-        </select>
-        <select className="input w-auto" value={month} disabled={bulk !== null} onChange={(e) => setMonth(Number(e.target.value))}>
-          <option value={0}>전체 월</option>
-          {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
-        </select>
+        <Select className="input w-auto" value={String(year)} disabled={bulk !== null} onChange={(v) => setYear(Number(v))} options={yearOptions} ariaLabel="연도" />
+        <Select className="input w-auto" value={String(month)} disabled={bulk !== null} onChange={(v) => setMonth(Number(v))} options={monthOptions} ariaLabel="월" />
         {isAdmin && (
-          <select className="input w-auto" value={employeeId} disabled={bulk !== null} onChange={(e) => setEmployeeId(e.target.value)}>
-            <option value="">전체 직원</option>
-            {employees.map((e) => <option key={e.id} value={e.id}>{e.name}{e.team ? ` · ${e.team}` : ""}</option>)}
-          </select>
+          <Select className="input w-auto" value={employeeId} disabled={bulk !== null} onChange={(v) => setEmployeeId(v)} options={employeeOptions} ariaLabel="직원" />
         )}
       </div>
 

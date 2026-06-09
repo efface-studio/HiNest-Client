@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import Select, { type SelectOption } from "../components/Select";
 import { Skeleton } from "../components/Skeleton";
 import Portal from "../components/Portal";
 import MonthPicker from "../components/MonthPicker";
@@ -24,6 +25,11 @@ type Expense = {
 };
 
 const CATEGORIES = ["식비", "교통", "업무", "접대", "비품", "기타"];
+const CATEGORY_OPTIONS: SelectOption[] = CATEGORIES.map((c) => ({ value: c, label: c }));
+const SCOPE_OPTIONS: SelectOption[] = [
+  { value: "mine", label: "내 사용내역" },
+  { value: "all", label: "전체" },
+];
 
 function ymNow() {
   const d = new Date();
@@ -210,10 +216,7 @@ export default function ExpensePage() {
             {isReviewer && (
               // w-auto: .input { width:100% } 기본값 때문에 flex-wrap 컨테이너 안에서
               // select 가 100% 를 차지하며 홀로 줄을 먹어 MonthPicker/버튼이 세로로 쌓이던 문제.
-              <select className="input w-auto" value={scope} onChange={(e) => setScope(e.target.value as any)}>
-                <option value="mine">내 사용내역</option>
-                <option value="all">전체</option>
-              </select>
+              <Select className="input w-auto" value={scope} onChange={(v) => setScope(v as "mine" | "all")} options={SCOPE_OPTIONS} ariaLabel="범위" />
             )}
             <button className="btn-primary" onClick={() => setOpen(true)}>
               + 사용내역 등록
@@ -395,11 +398,7 @@ export default function ExpensePage() {
                 </div>
                 <div>
                   <label className="label">분류</label>
-                  <select className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>
-                    {CATEGORIES.map((c) => (
-                      <option key={c}>{c}</option>
-                    ))}
-                  </select>
+                  <Select className="input" value={form.category} onChange={(v) => setForm({ ...form, category: v })} options={CATEGORY_OPTIONS} ariaLabel="분류" />
                 </div>
               </div>
               <div>

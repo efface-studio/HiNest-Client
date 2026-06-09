@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api, apiSWR, invalidateCache , imgSrc} from "../api";
+import { Skeleton } from "../components/Skeleton";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { alertAsync } from "../components/ConfirmHost";
@@ -422,10 +423,11 @@ function StatCard({
 }
 
 function SkeletonRow() {
+  // 공용 Skeleton 컴포넌트로 통일 — 시머 wave 가 깜빡임 대신 부드러운 진행감을 준다.
   return (
-    <div className="panel p-4 animate-pulse">
-      <div className="h-4 rounded w-2/3 mb-3" style={{ background: "var(--c-surface-3)" }} />
-      <div className="h-3 rounded w-1/3" style={{ background: "var(--c-surface-3)" }} />
+    <div className="panel p-4">
+      <div className="mb-3"><Skeleton w="65%" h={16} radius={6} /></div>
+      <Skeleton w="35%" h={12} radius={6} />
     </div>
   );
 }

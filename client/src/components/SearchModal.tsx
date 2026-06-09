@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { alertAsync } from "./ConfirmHost";
+import { SkeletonList } from "./Skeleton";
 
 type Results = {
   people?: any[];
@@ -198,7 +199,7 @@ export default function SearchModal({ open, onClose }: { open: boolean; onClose:
               <div className="text-[11px] text-ink-500 mt-1">다시 입력하면 자동으로 재시도돼요.</div>
             </div>
           ) : loading && totalCount === 0 ? (
-            <div className="py-12 text-center t-caption">검색 중…</div>
+            <div className="py-3 px-1"><SkeletonList rows={5} /></div>
           ) : totalCount === 0 ? (
             <div className="py-12 text-center">
               <div className="text-[13px] font-bold text-ink-800">결과가 없어요</div>

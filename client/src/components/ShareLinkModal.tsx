@@ -3,6 +3,7 @@ import { api } from "../api";
 import { alertAsync, promptAsync } from "./ConfirmHost";
 import DateTimePicker from "./DateTimePicker";
 import Portal from "./Portal";
+import { SkeletonList } from "./Skeleton";
 
 /**
  * 외부 공유 링크 관리 모달.
@@ -144,7 +145,7 @@ export default function ShareLinkModal({ documentId, folderId, documentTitle, on
           <div>
             <div className="text-[12px] font-bold text-ink-700 mb-2">발급된 링크</div>
             {loading ? (
-              <div className="text-[12px] text-ink-400 py-6 text-center">불러오는 중…</div>
+              <div className="py-2"><SkeletonList rows={3} /></div>
             ) : links.length === 0 ? (
               <div className="text-[12px] text-ink-400 py-6 text-center">아직 없어요.</div>
             ) : (

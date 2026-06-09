@@ -3,6 +3,7 @@ import { api , imgSrc} from "../api";
 import { confirmAsync, alertAsync } from "./ConfirmHost";
 import { fmtSize } from "../lib/fmt";
 import Portal from "./Portal";
+import { SkeletonList } from "./Skeleton";
 
 /**
  * 문서/회의록 공용 히스토리 모달. API 경로만 prefix 로 갈아끼우면 됨.
@@ -82,7 +83,7 @@ export default function RevisionHistoryModal({
         </div>
         <div className="p-5 max-h-[70vh] overflow-auto">
           {loading ? (
-            <div className="text-[12px] text-ink-400 py-6 text-center">불러오는 중…</div>
+            <div className="py-2"><SkeletonList rows={4} /></div>
           ) : revs.length === 0 ? (
             <div className="text-[12px] text-ink-400 py-6 text-center">아직 기록이 없어요. 내용이 변경되면 자동으로 저장됩니다.</div>
           ) : (

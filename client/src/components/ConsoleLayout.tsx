@@ -106,6 +106,11 @@ export default function ConsoleLayout() {
   // 튕겨 돌아옴) companyId 가 있어도 복귀 링크를 숨긴다.
   const hasCompany = !!user?.companyId && !user?.consoleOnly;
 
+  // iOS(아이폰)는 화면 하단에 떠 있는 애플 글래스 알약 바, 그 외(안드로이드·웹)는 회사
+  // 앱과 동일한 평면 부착형 바를 쓴다. 안드로이드에서 iOS용 플로팅 필이 떠 어색했던 것을
+  // 회사 앱(AppLayout)과 같은 분기로 맞춤 — 안드로이드는 네이티브 머티리얼 느낌의 솔리드 바.
+  const ios = nativePlatform() === "ios";
+
   // 콘솔도 메인 앱과 동일한 실제 네이티브 리퀴드 글래스 탭바를 쓴다 — 콘솔 전용 탭으로
   // 재설정한다. 성공하면 .hinest-native-tabbar 가 붙어 아래 CSS 글래스 nav 는 숨고 네이티브
   // 바가 대체한다. 콘솔을 떠나면(언마운트) 숨기고, AppLayout 이 다시 마운트되며 앱 탭으로
@@ -276,8 +281,9 @@ export default function ConsoleLayout() {
           className="flex-1 overflow-y-auto"
           style={{ overscrollBehaviorY: "contain", WebkitOverflowScrolling: "touch" }}
         >
-          {/* 모바일은 하단 글래스 바 높이만큼 본문 바닥 여백 확보(데스크톱은 사이드바라 불필요). */}
-          <div className="max-w-[1400px] mx-auto px-4 md:px-8 pt-4 pb-[calc(84px+env(safe-area-inset-bottom))] md:py-6">
+          {/* iOS 는 플로팅 바가 본문 위에 떠 있어 84px 클리어런스가 필요. 안드로이드·웹은
+              부착형 바가 본문 아래 in-flow 로 자리하므로 일반 여백(pb-4)만 — 이중 간격 방지. */}
+          <div className={"max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:py-6 " + (ios ? "pb-[calc(84px+env(safe-area-inset-bottom))]" : "pb-4")}>
             <Outlet />
           </div>
         </main>
@@ -290,24 +296,37 @@ export default function ConsoleLayout() {
           // md:hidden: 데스크톱(≥1024px, 사이드바 md:flex 와 동일 분기)에선 JS 클래스와 무관하게
           //            순수 CSS 로 숨긴다 — hinest-desktop 클래스가 안 붙는 경로(콘솔 전용 계정 등)
           //            에서도 확실히 사라지도록. 좁은 데스크톱 창은 html.hinest-desktop 규칙이 보강.
-          className="console-bottomnav flex md:hidden"
-          style={{
-            position: "fixed",
-            left: "50%",
-            transform: "translateX(-50%)",
-            bottom: "max(10px, env(safe-area-inset-bottom))",
-            width: "calc(100% - 24px)",
-            maxWidth: 480,
-            zIndex: 30,
-            borderRadius: 24,
-            background: "var(--c-glass)",
-            backdropFilter: "blur(22px) saturate(180%)",
-            WebkitBackdropFilter: "blur(22px) saturate(180%)",
-            border: "1px solid var(--c-glass-border)",
-            boxShadow: "0 10px 30px rgba(16,18,27,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
-            padding: "6px 4px",
-            alignItems: "stretch",
-          }}
+          // iOS=플로팅 글래스 알약(fixed), 그 외(안드로이드·웹)=평면 부착형 바(in-flow flex child).
+          className={"console-bottomnav flex md:hidden" + (ios ? "" : " flex-shrink-0")}
+          style={
+            ios
+              ? {
+                  position: "fixed",
+                  left: "50%",
+                  transform: "translateX(-50%)",
+                  bottom: "max(10px, env(safe-area-inset-bottom))",
+                  width: "calc(100% - 24px)",
+                  maxWidth: 480,
+                  zIndex: 30,
+                  borderRadius: 24,
+                  background: "var(--c-glass)",
+                  backdropFilter: "blur(22px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(22px) saturate(180%)",
+                  border: "1px solid var(--c-glass-border)",
+                  boxShadow: "0 10px 30px rgba(16,18,27,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
+                  padding: "6px 4px",
+                  alignItems: "stretch",
+                }
+              : {
+                  // 회사 앱 AppLayout 의 비-iOS 평면 바와 동일: 테마 표면색 + 상단 보더 + 홈
+                  // 인디케이터 회피용 하단 safe-area. 부착형이라 본문이 바 위로 겹치지 않는다.
+                  background: "var(--c-surface)",
+                  borderTop: "1px solid var(--c-border)",
+                  paddingBottom: "max(env(safe-area-inset-bottom) - 10px, 0px)",
+                  boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
+                  alignItems: "stretch",
+                }
+          }
           aria-label="운영 콘솔 메뉴"
         >
           {links.map((l) => (

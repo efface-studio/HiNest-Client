@@ -212,8 +212,16 @@ export default function ShareSheet({
       role="dialog"
       aria-modal="true"
       aria-label={`${label} 공유`}
-      className="modal-safe fixed inset-0 z-[1000] flex items-end justify-center"
-      style={{ background: `rgba(15,18,28,${shown ? 0.45 : 0})`, transition: "background 280ms ease" }}
+      className="fixed inset-0 z-[1000] flex items-end justify-center"
+      style={{
+        background: `rgba(15,18,28,${shown ? 0.45 : 0})`,
+        transition: "background 280ms ease",
+        // 시트는 화면 바닥에 딱 붙어야 자연스럽다(.modal-safe 의 좌우·하단 패딩이 적용되면
+        // 좌우/아래로 떠 보여 분리감이 생기는 문제). 상단만 노치 회피로 패딩 두고, 시트
+        // 자체는 가장자리까지 차게 한다. 키보드 인셋은 ShareSheet 내부가 자체 관리(보내기
+        // 버튼이 safe-area-inset-bottom 흡수).
+        paddingTop: "max(1rem, env(safe-area-inset-top))",
+      }}
       onClick={onClose}
     >
       <div
@@ -405,7 +413,7 @@ export default function ShareSheet({
 
         {/* 보내기 버튼 — safe-area inset bottom 흡수 */}
         <div
-          className="px-5 pt-2 pb-3 border-t border-ink-100 bg-white rounded-b-[20px] md:rounded-b-[18px]"
+          className="px-5 pt-2 pb-3 border-t border-ink-100 bg-white"
           style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
         >
           <button

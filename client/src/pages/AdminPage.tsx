@@ -2245,9 +2245,28 @@ function fmtTime(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
+type AttStatus = "working" | "off" | "absent";
+function rowStatus(r: OverviewRow): AttStatus {
+  if (r.today?.checkIn && !r.today?.checkOut) return "working";
+  if (r.today?.checkIn && r.today?.checkOut) return "off";
+  return "absent";
+}
+const STATUS_META: Record<AttStatus, { label: string; bg: string; fg: string }> = {
+  working: { label: "근무 중", bg: "#DCFCE7", fg: "#15803D" },
+  off:     { label: "퇴근",    bg: "#F1F5F9", fg: "#475569" },
+  absent:  { label: "미출근",  bg: "#FEF3C7", fg: "#92400E" },
+};
+type SortKey = "name" | "week" | "month" | "total" | "today";
+const SORT_LABEL: Record<SortKey, string> = { name: "이름", today: "오늘", week: "이번 주", month: "이번 달", total: "총 근무" };
+
 function AttendanceOverviewTab() {
   const [rows, setRows] = useState<OverviewRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [q, setQ] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | AttStatus>("all");
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDesc, setSortDesc] = useState(false);
+
   useEffect(() => {
     let alive = true;
     api<{ rows: OverviewRow[] }>("/api/admin/attendance/overview")
@@ -2256,72 +2275,226 @@ function AttendanceOverviewTab() {
       .finally(() => { if (alive) setLoading(false); });
     return () => { alive = false; };
   }, []);
-  const workingNow = rows.filter((r) => r.today?.checkIn && !r.today?.checkOut).length;
+
+  // 통계는 전체 기준(필터 무관) — 회사 전반 상태를 보여주는 게 더 유용.
+  const workingNow = rows.filter((r) => rowStatus(r) === "working").length;
+  const offNow = rows.filter((r) => rowStatus(r) === "off").length;
+  const absentNow = rows.filter((r) => rowStatus(r) === "absent").length;
   const weekTotal = rows.reduce((a, r) => a + r.weekMinutes, 0);
   const monthTotal = rows.reduce((a, r) => a + r.monthMinutes, 0);
 
+  // 필터 + 정렬
+  const filtered = useMemo(() => {
+    const kw = q.trim().toLowerCase();
+    let arr = rows.filter((r) => {
+      if (statusFilter !== "all" && rowStatus(r) !== statusFilter) return false;
+      if (kw && !`${r.name} ${r.team ?? ""} ${r.position ?? ""}`.toLowerCase().includes(kw)) return false;
+      return true;
+    });
+    const key = (r: OverviewRow): number | string => {
+      switch (sortKey) {
+        case "today": return r.today?.worked ?? -1;
+        case "week": return r.weekMinutes;
+        case "month": return r.monthMinutes;
+        case "total": return r.totalMinutes;
+        default: return r.name;
+      }
+    };
+    arr = [...arr].sort((a, b) => {
+      const ka = key(a), kb = key(b);
+      if (typeof ka === "number" && typeof kb === "number") return sortDesc ? kb - ka : ka - kb;
+      return sortDesc ? String(kb).localeCompare(String(ka), "ko") : String(ka).localeCompare(String(kb), "ko");
+    });
+    return arr;
+  }, [rows, q, statusFilter, sortKey, sortDesc]);
+
+  const toggleSort = (k: SortKey) => {
+    if (sortKey === k) setSortDesc((d) => !d);
+    else { setSortKey(k); setSortDesc(k !== "name"); } // 숫자 컬럼은 기본 내림차순
+  };
+  const sortArrow = (k: SortKey) => sortKey === k ? (sortDesc ? " ↓" : " ↑") : "";
+
   return (
     <div className="space-y-4">
+      {/* 핵심 통계 — 오늘 상태 분포 + 합계 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <StatCard label="구성원" value={rows.length} sub={`근무 중 ${workingNow}명`} />
-        <StatCard label="이번 주 합계" value={`${Math.floor(weekTotal / 60)}h`} sub={`${rows.length}명 합산`} />
-        <StatCard label="이번 달 합계" value={`${Math.floor(monthTotal / 60)}h`} sub={`${rows.length}명 합산`} />
-        <StatCard label="평균(이번 달)" value={rows.length ? `${Math.floor(monthTotal / rows.length / 60)}h` : "0h"} sub="1인당" />
+        <StatCard label="근무 중" value={workingNow} sub={`전체 ${rows.length}명`} />
+        <StatCard label="퇴근" value={offNow} sub={`미출근 ${absentNow}명`} />
+        <StatCard label="이번 주 합계" value={`${Math.round(weekTotal / 60)}h`} sub="회사 전체" />
+        <StatCard label="이번 달 합계" value={`${Math.round(monthTotal / 60)}h`} sub={rows.length ? `1인 평균 ${Math.round(monthTotal / rows.length / 60)}h` : "-"} />
       </div>
-      <div className="panel p-0 overflow-hidden">
-        <div className="px-5 py-3.5 border-b border-ink-100 flex items-center justify-between">
-          <span className="font-bold text-ink-900">직원별 근태 <span className="text-ink-400 font-medium ml-1">{rows.length}</span></span>
-          {loading && <span className="text-[12px] text-ink-400">불러오는 중…</span>}
+
+      {/* 필터 바 — 검색 + 상태칩 + 정렬(모바일) */}
+      <div className="panel p-3 sm:p-4 flex flex-col gap-2.5">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            className="input flex-1 min-w-[160px]"
+            placeholder="이름·팀·직급 검색"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            maxLength={80}
+          />
+          {/* 모바일 정렬 셀렉트 — 데스크톱은 헤더 클릭 */}
+          <div className="md:hidden flex items-center gap-1.5">
+            <select className="input !py-1.5 !h-[36px] !text-[12.5px]" value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
+              {(["name", "today", "week", "month", "total"] as SortKey[]).map((k) =>
+                <option key={k} value={k}>{SORT_LABEL[k]}</option>
+              )}
+            </select>
+            <button className="btn-ghost btn-xs" onClick={() => setSortDesc((d) => !d)} title={sortDesc ? "내림차순" : "오름차순"}>
+              {sortDesc ? "↓" : "↑"}
+            </button>
+          </div>
         </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {([
+            { k: "all", label: `전체 ${rows.length}`, color: undefined as string | undefined },
+            { k: "working", label: `근무 중 ${workingNow}`, color: STATUS_META.working.fg },
+            { k: "off", label: `퇴근 ${offNow}`, color: STATUS_META.off.fg },
+            { k: "absent", label: `미출근 ${absentNow}`, color: STATUS_META.absent.fg },
+          ]).map((f) => {
+            const active = statusFilter === f.k;
+            return (
+              <button
+                key={f.k}
+                onClick={() => setStatusFilter(f.k as any)}
+                className="px-3 h-[28px] rounded-full text-[12px] font-bold transition"
+                style={{
+                  background: active ? (f.color ?? "var(--c-brand)") : "var(--c-surface-3)",
+                  color: active ? "#fff" : "var(--c-text-2)",
+                }}
+              >
+                {f.label}
+              </button>
+            );
+          })}
+          <span className="ml-auto text-[11.5px] text-ink-400">표시 {filtered.length} / {rows.length}</span>
+        </div>
+      </div>
+
+      {/* 데스크톱: 정렬 가능한 표 */}
+      <div className="panel p-0 overflow-hidden hidden md:block">
         <div className="overflow-x-auto hinest-x-scroll">
           <table className="w-full text-[13px] whitespace-nowrap">
             <thead>
-              <tr className="text-ink-500 border-b border-ink-100 text-[11.5px] uppercase tracking-wide">
-                <th className="text-left font-bold px-5 py-2.5 sticky left-0 bg-[var(--c-surface-1)]">구성원</th>
-                <th className="text-center font-bold px-3 py-2.5">오늘 출근</th>
-                <th className="text-center font-bold px-3 py-2.5">오늘 퇴근</th>
-                <th className="text-right font-bold px-3 py-2.5">오늘 근무</th>
-                <th className="text-right font-bold px-3 py-2.5">이번 주</th>
-                <th className="text-right font-bold px-3 py-2.5">이번 달</th>
-                <th className="text-right font-bold px-5 py-2.5">총 근무</th>
+              <tr className="text-ink-500 border-b border-ink-100 text-[11.5px] uppercase tracking-wide select-none">
+                <th onClick={() => toggleSort("name")} className="text-left font-bold px-5 py-3 cursor-pointer hover:text-ink-800 sticky left-0 bg-[var(--c-surface-1)]">구성원{sortArrow("name")}</th>
+                <th className="text-center font-bold px-3 py-3">상태</th>
+                <th className="text-center font-bold px-3 py-3">오늘 출/퇴근</th>
+                <th onClick={() => toggleSort("today")} className="text-right font-bold px-3 py-3 cursor-pointer hover:text-ink-800">오늘 근무{sortArrow("today")}</th>
+                <th onClick={() => toggleSort("week")} className="text-right font-bold px-3 py-3 cursor-pointer hover:text-ink-800 min-w-[180px]">이번 주{sortArrow("week")}</th>
+                <th onClick={() => toggleSort("month")} className="text-right font-bold px-3 py-3 cursor-pointer hover:text-ink-800">이번 달{sortArrow("month")}</th>
+                <th onClick={() => toggleSort("total")} className="text-right font-bold px-5 py-3 cursor-pointer hover:text-ink-800">총 근무{sortArrow("total")}</th>
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
-                const working = !!r.today?.checkIn && !r.today?.checkOut;
+              {filtered.map((r) => {
+                const st = rowStatus(r);
+                const meta = STATUS_META[st];
+                const weekPct = Math.min(1, r.weekMinutes / (40 * 60));
                 return (
-                  <tr key={r.id} className="border-b border-ink-100">
+                  <tr key={r.id} className="border-b border-ink-100 hover:bg-[var(--c-surface-2)] transition">
                     <td className="px-5 py-3 sticky left-0 bg-[var(--c-surface-1)]">
                       <div className="flex items-center gap-2.5">
                         <span className="grid place-items-center rounded-full text-white text-[11px] font-bold flex-shrink-0"
-                          style={{ width: 30, height: 30, background: r.avatarColor || "#64748B" }}>
+                          style={{ width: 32, height: 32, background: r.avatarColor || "#64748B" }}>
                           {r.name.slice(0, 1)}
                         </span>
                         <div className="min-w-0">
-                          <div className="font-bold text-ink-900 flex items-center gap-1.5">
-                            {r.name}
-                            {working && <span className="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500" title="근무 중" />}
-                          </div>
+                          <div className="font-bold text-ink-900">{r.name}</div>
                           <div className="text-[11px] text-ink-400">{[r.team, r.position].filter(Boolean).join(" · ") || "—"}</div>
                         </div>
                       </div>
                     </td>
-                    <td className="text-center px-3 py-3 tabular-nums text-ink-700">{fmtTime(r.today?.checkIn ?? null)}</td>
-                    <td className="text-center px-3 py-3 tabular-nums text-ink-700">{fmtTime(r.today?.checkOut ?? null)}</td>
+                    <td className="text-center px-3 py-3">
+                      <span className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full text-[11px] font-bold" style={{ background: meta.bg, color: meta.fg }}>
+                        {st === "working" && <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.fg }} />}
+                        {meta.label}
+                      </span>
+                    </td>
+                    <td className="text-center px-3 py-3 tabular-nums text-ink-700">
+                      <span className="text-ink-900 font-semibold">{fmtTime(r.today?.checkIn ?? null)}</span>
+                      <span className="text-ink-300 mx-1">·</span>
+                      <span>{fmtTime(r.today?.checkOut ?? null)}</span>
+                    </td>
                     <td className="text-right px-3 py-3 tabular-nums font-semibold text-ink-900">{r.today ? fmtMin(r.today.worked) : "—"}</td>
-                    <td className="text-right px-3 py-3 tabular-nums text-ink-700">{fmtMin(r.weekMinutes)}</td>
+                    <td className="px-3 py-3 min-w-[180px]">
+                      <div className="flex items-center justify-end gap-2.5">
+                        <span className="tabular-nums text-ink-700">{fmtMin(r.weekMinutes)}</span>
+                        <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-surface-3)" }} title="주 40시간 기준">
+                          <div className="h-full rounded-full" style={{ width: `${weekPct * 100}%`, background: weekPct >= 1 ? "#16A34A" : "var(--c-brand)" }} />
+                        </div>
+                      </div>
+                    </td>
                     <td className="text-right px-3 py-3 tabular-nums text-ink-700">{fmtMin(r.monthMinutes)}</td>
                     <td className="text-right px-5 py-3 tabular-nums font-bold text-ink-900">{fmtMin(r.totalMinutes)}</td>
                   </tr>
                 );
               })}
-              {!loading && rows.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-10 text-ink-400">표시할 구성원이 없어요.</td></tr>
+              {!loading && filtered.length === 0 && (
+                <tr><td colSpan={7} className="text-center py-12 text-ink-400">조건에 맞는 구성원이 없어요.</td></tr>
               )}
             </tbody>
           </table>
         </div>
       </div>
+
+      {/* 모바일: 카드 그리드 */}
+      <div className="md:hidden grid grid-cols-1 gap-2.5">
+        {filtered.map((r) => {
+          const st = rowStatus(r);
+          const meta = STATUS_META[st];
+          const weekPct = Math.min(1, r.weekMinutes / (40 * 60));
+          return (
+            <div key={r.id} className="panel p-3.5">
+              <div className="flex items-start justify-between gap-3 mb-2.5">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="grid place-items-center rounded-full text-white text-[12px] font-bold flex-shrink-0"
+                    style={{ width: 36, height: 36, background: r.avatarColor || "#64748B" }}>
+                    {r.name.slice(0, 1)}
+                  </span>
+                  <div className="min-w-0">
+                    <div className="font-bold text-ink-900 truncate">{r.name}</div>
+                    <div className="text-[11px] text-ink-400 truncate">{[r.team, r.position].filter(Boolean).join(" · ") || "—"}</div>
+                  </div>
+                </div>
+                <span className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full text-[11px] font-bold flex-shrink-0" style={{ background: meta.bg, color: meta.fg }}>
+                  {st === "working" && <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.fg }} />}
+                  {meta.label}
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-2.5 text-[12px]">
+                <KV2 label="오늘 출근" value={fmtTime(r.today?.checkIn ?? null)} />
+                <KV2 label="오늘 퇴근" value={fmtTime(r.today?.checkOut ?? null)} />
+                <KV2 label="오늘 근무" value={r.today ? fmtMin(r.today.worked) : "—"} bold />
+                <KV2 label="이번 주" value={fmtMin(r.weekMinutes)} />
+              </div>
+              <div className="mt-2">
+                <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-surface-3)" }}>
+                  <div className="h-full rounded-full" style={{ width: `${weekPct * 100}%`, background: weekPct >= 1 ? "#16A34A" : "var(--c-brand)" }} />
+                </div>
+                <div className="text-[10.5px] text-ink-400 mt-1">주 40시간 기준 · 이번 달 {fmtMin(r.monthMinutes)} · 총 {fmtMin(r.totalMinutes)}</div>
+              </div>
+            </div>
+          );
+        })}
+        {!loading && filtered.length === 0 && (
+          <div className="panel p-8 text-center text-ink-400 text-[13px]">조건에 맞는 구성원이 없어요.</div>
+        )}
+      </div>
+
+      {loading && rows.length === 0 && (
+        <div className="text-center text-ink-400 text-[12px] py-4">불러오는 중…</div>
+      )}
+    </div>
+  );
+}
+
+function KV2({ label, value, bold }: { label: string; value: string; bold?: boolean }) {
+  return (
+    <div>
+      <div className="text-[10.5px] text-ink-400 mb-0.5">{label}</div>
+      <div className={`tabular-nums ${bold ? "text-ink-900 font-bold" : "text-ink-700"}`}>{value}</div>
     </div>
   );
 }

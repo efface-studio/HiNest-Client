@@ -96,6 +96,10 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   const [modalErr, setModalErr] = useState<string | null>(null);
   const [busyFolderId, setBusyFolderId] = useState<string | null>(null);
   const [busyDocId, setBusyDocId] = useState<string | null>(null);
+  // 다운로드 진행 표시 — 폴더 ZIP 은 서버가 압축해 스트리밍하느라 시간이 걸려서, 누른 뒤
+  // 아무 표시 없이 기다리면 멈춘 줄 안다(사용자 신고). 진행 중인 폴더/문서 id 를 표시.
+  const [downloadingFolderId, setDownloadingFolderId] = useState<string | null>(null);
+  const [downloadingDocId, setDownloadingDocId] = useState<string | null>(null);
   // 새로고침/링크 공유 대비해 탭·프로젝트·현재 폴더를 URL 쿼리로 동기화.
   // embed 모드에선 상위 페이지(예: 프로젝트 상세)의 쿼리와 충돌할 수 있어 scope/project 는 비활성화.
   const [sp, setSp] = useSearchParams();
@@ -735,6 +739,10 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     const hint = d.fileName || d.title || "";
     if (hint) url.searchParams.set("name", hint);
     downloadFromUrl(url.toString(), hint);
+    // 개별 파일은 브라우저·OS 다운로드 매니저가 진행을 표시하므로(앱이 blob 을 들고 있지 않음)
+    // 짧게 "다운로드 시작" 피드백만 준다 — 누르고 반응 없는 느낌 제거. 1.2초 후 자동 해제.
+    setDownloadingDocId(d.id);
+    window.setTimeout(() => setDownloadingDocId((cur) => (cur === d.id ? null : cur)), 1200);
   }
 
   // 미리보기 가능한 타입(이미지·PDF·영상)인가. 그 외(.docx·.pptx·.zip 등)는 미리보기 의미가 없어 다운로드.
@@ -764,11 +772,13 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     // 예전엔 fetch→blob→Browser.open(blob:) 라 폴더 ZIP 다운로드가 조용히 실패했다.
     // 인증된 절대 URL(imgSrc 가 ?token= 부여)을 직접 열어 iOS 가 ZIP 다운로드/공유 시트를 띄우게 한다.
     // (서버 /folders/:id/download 는 이 GET 한정으로 ?token= 인증을 허용하도록 했다.)
+    if (downloadingFolderId) return; // 중복 클릭 가드
     if (isCapacitorNative()) {
       const u = imgSrc(`/api/document/folders/${f.id}/download`);
       if (u) void Browser.open({ url: u }).catch(() => {});
       return;
     }
+    setDownloadingFolderId(f.id);
     try {
       const res = await apiFetch(`/api/document/folders/${f.id}/download`);
       if (!res.ok) {
@@ -791,6 +801,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       downloadBlob(blob, fname);
     } catch (err: any) {
       await alertAsync({ title: "폴더 다운로드 실패", description: err?.message ?? String(err) });
+    } finally {
+      setDownloadingFolderId(null);
     }
   }
 
@@ -1256,8 +1268,12 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                 <svg className="md:hidden text-ink-300 flex-shrink-0" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6" /></svg>
                 {/* 호버 액션은 absolute 오버레이 — 평소엔 레이아웃을 먹지 않아 이름·날짜 영역이 잘리지 않음. */}
                 <div className="touch-reveal-flex absolute top-2 right-2 hidden group-hover:flex items-center gap-0.5 bg-[color:var(--c-surface)]/95 backdrop-blur-sm rounded-lg px-1 py-0.5 shadow-sm border border-ink-100">
-                  <button className="btn-icon" onClick={(e) => { e.stopPropagation(); downloadFolder(f); }} title="폴더 전체 다운로드 (ZIP)">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+                  <button className="btn-icon disabled:opacity-60" disabled={downloadingFolderId === f.id} onClick={(e) => { e.stopPropagation(); downloadFolder(f); }} title={downloadingFolderId === f.id ? "압축 중…" : "폴더 전체 다운로드 (ZIP)"}>
+                    {downloadingFolderId === f.id ? (
+                      <svg className="hinest-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+                    )}
                   </button>
                   <button className="btn-icon" onClick={async (e) => { e.stopPropagation(); const p = { kind: "DOCUMENT" as const, title: f.name, href: `/documents?folder=${f.id}` }; if (!(await presentShareNative(p))) setSharePayload(p); }} title="동료에게 공유">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><path d="m8.6 13.5 6.8 4M15.4 6.5l-6.8 4" /></svg>
@@ -1463,8 +1479,12 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                         /* 파일 문서 타입 */
                         <>
                           {d.fileUrl && (
-                            <button className="btn-icon" onClick={() => downloadDoc(d)} title="다운로드">
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+                            <button className="btn-icon" onClick={() => downloadDoc(d)} title={downloadingDocId === d.id ? "다운로드 시작됨" : "다운로드"}>
+                              {downloadingDocId === d.id ? (
+                                <svg className="hinest-spin" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M21 12a9 9 0 1 1-6.2-8.5" /></svg>
+                              ) : (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><path d="M7 10l5 5 5-5" /><path d="M12 15V3" /></svg>
+                              )}
                             </button>
                           )}
                           {d.fileUrl && (

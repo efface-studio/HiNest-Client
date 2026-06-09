@@ -862,25 +862,41 @@ router.get("/folders/:id/download", async (req, res) => {
   });
   archive.pipe(res);
 
+  // 엔트리명을 "먼저" 결정적으로 계산(문자열 연산이라 즉시) — 이후 fetch 를 병렬화해도
+  // safeUniqueZipEntry 의 "(2)" 중복 꼬리 번호가 순서에 흔들리지 않게.
+  const planned: { key: string; name: string }[] = [];
+  for (const d of collected) {
+    if (!d.fileUrl.startsWith("/uploads/")) continue;
+    const key = d.fileUrl.slice("/uploads/".length);
+    if (!key) continue;
+    const name = safeUniqueZipEntry(usedEntries, d.relPath || "", d.fileName || d.title || key);
+    planned.push({ key, name });
+  }
+
+  // ★ 속도 개선 — 예전엔 파일을 "순차" 로 S3 에서 받아(왕복 latency 가 직렬 합산) 폴더가 크면
+  //   매우 느렸다. 동시성 제한(워커 3개)으로 S3 fetch 를 겹쳐 체감 속도를 크게 줄인다.
+  //   cap=3 은 메모리 상한(최대 3개 파일 버퍼 동시 보유)과 속도의 절충 — 대용량 파일 다수에서도
+  //   Fargate 메모리를 과하게 먹지 않게. (완전한 무버퍼 스트리밍은 storage 스트림 API 후속 과제.)
+  const CONCURRENCY = 3;
   let added = 0;
-  try {
-    for (const d of collected) {
-      // 업로드 경로 파싱 — 기존 regex 가 너무 빡빡해 파일명에 허용되지 않는 글자가 하나라도
-      // 들어있으면 통째로 스킵됐음. key 추출은 마지막 슬래시 이후의 원시 문자열로.
-      if (!d.fileUrl.startsWith("/uploads/")) continue;
-      const key = d.fileUrl.slice("/uploads/".length);
-      if (!key) continue;
+  let idx = 0;
+  async function worker() {
+    while (idx < planned.length) {
+      const e = planned[idx++];
       let buf: Buffer | null = null;
       try {
-        buf = await fetchFileBuffer(key);
+        buf = await fetchFileBuffer(e.key);
       } catch (err) {
-        console.error("[doc:zip] fetch failed", key, err);
+        console.error("[doc:zip] fetch failed", e.key, err);
       }
-      if (!buf) continue;
-      const entryName = safeUniqueZipEntry(usedEntries, d.relPath || "", d.fileName || d.title || key);
-      archive.append(buf, { name: entryName });
-      added++;
+      if (buf) {
+        archive.append(buf, { name: e.name }); // archiver 가 내부 큐로 직렬화 — 동시 append 안전
+        added++;
+      }
     }
+  }
+  try {
+    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, planned.length) }, () => worker()));
   } catch (err) {
     console.error("[doc:zip] collect loop failed", err);
   }

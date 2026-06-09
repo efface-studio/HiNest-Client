@@ -909,7 +909,13 @@ router.get("/folders/:id/download", async (req, res) => {
     // 되던 것을 방지). 실제 원인은 폴더 id 와 함께 로깅 → CloudWatch 에서 추적 가능.
     console.error("[doc:zip] folder download failed", req.params.id, err);
     if (!res.headersSent) {
-      res.status(500).json({ error: "폴더 다운로드 중 오류가 발생했어요. 잠시 후 다시 시도하거나 개별 파일로 받아주세요." });
+      // 진단용 힌트 — Prisma 코드(P20xx) 또는 에러명만 노출(스택·시크릿 아님). 원인 파악 후 제거 예정.
+      const e: any = err;
+      const hint = e?.code || e?.name || "unknown";
+      res.status(500).json({
+        error: `폴더 다운로드 중 오류가 발생했어요. (${hint}) 개별 파일로 받아주세요.`,
+        _debug: { code: e?.code ?? null, name: e?.name ?? null, message: typeof e?.message === "string" ? e.message.slice(0, 200) : null },
+      });
     } else {
       try { res.end(); } catch {}
     }

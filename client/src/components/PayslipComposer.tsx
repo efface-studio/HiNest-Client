@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { api } from "../api";
 import { useModalDismiss } from "../lib/useModalDismiss";
 import Portal from "./Portal";
+import Select, { type SelectOption } from "./Select";
 import {
   type Payslip,
   type LineItem,
@@ -167,6 +168,25 @@ export default function PayslipComposer({
   }
 
   const years = Array.from({ length: 6 }, (_, i) => defaultYear - i + 1);
+  const employeeOptions: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "선택…" },
+      ...employees.map((e) => ({
+        value: e.id,
+        label: `${e.name}${e.team ? ` · ${e.team}` : ""}`,
+        searchText: `${e.name} ${e.team ?? ""}`,
+      })),
+    ],
+    [employees],
+  );
+  const yearOptions: SelectOption[] = useMemo(
+    () => years.map((y) => ({ value: String(y), label: `${y}년` })),
+    [years],
+  );
+  const monthOptions: SelectOption[] = useMemo(
+    () => Array.from({ length: 12 }, (_, i) => i + 1).map((m) => ({ value: String(m), label: `${m}월` })),
+    [],
+  );
 
   return (
     <Portal>
@@ -184,32 +204,24 @@ export default function PayslipComposer({
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-1">
             <label className="label">직원</label>
-            <select
+            <Select
               className="input"
               value={employeeId}
-              onChange={(e) => onPickEmployee(e.target.value)}
+              onChange={(v) => onPickEmployee(v)}
               disabled={editing}
-            >
-              <option value="">선택…</option>
-              {employees.map((e) => (
-                <option key={e.id} value={e.id}>
-                  {e.name}{e.team ? ` · ${e.team}` : ""}
-                </option>
-              ))}
-            </select>
+              options={employeeOptions}
+              placeholder="선택…"
+              ariaLabel="직원"
+            />
             {editing && <p className="t-caption mt-1">직원·연월은 수정할 수 없어요</p>}
           </div>
           <div>
             <label className="label">연도</label>
-            <select className="input" value={year} onChange={(e) => setYear(Number(e.target.value))} disabled={editing}>
-              {years.map((y) => <option key={y} value={y}>{y}년</option>)}
-            </select>
+            <Select className="input" value={String(year)} onChange={(v) => setYear(Number(v))} disabled={editing} options={yearOptions} ariaLabel="연도" />
           </div>
           <div>
             <label className="label">월</label>
-            <select className="input" value={month} onChange={(e) => setMonth(Number(e.target.value))} disabled={editing}>
-              {Array.from({ length: 12 }, (_, i) => i + 1).map((m) => <option key={m} value={m}>{m}월</option>)}
-            </select>
+            <Select className="input" value={String(month)} onChange={(v) => setMonth(Number(v))} disabled={editing} options={monthOptions} ariaLabel="월" />
           </div>
         </div>
 

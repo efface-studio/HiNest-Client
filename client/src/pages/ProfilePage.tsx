@@ -5,6 +5,7 @@ import { isCapacitorNative } from "../lib/platform";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import Portal from "../components/Portal";
+import { alertAsync } from "../components/ConfirmHost";
 import { useTheme, type ThemeMode } from "../theme";
 import { PRESENCE_CHOICES, resolvePresence, type PresenceStatus } from "../lib/presence";
 import {
@@ -702,7 +703,7 @@ function AutoLaunchToggle() {
     try {
       const res = await window.hinest!.setAutoLaunch!(next);
       if (res?.ok) setEnabled(!!res.enabled);
-      else if (!res?.ok && res?.error) window.alert(`자동 시작 변경 실패: ${res.error}`);
+      else if (!res?.ok && res?.error) await alertAsync({ description: `자동 시작 변경 실패: ${res.error}` });
     } finally {
       setPending(false);
     }

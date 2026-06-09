@@ -4,6 +4,7 @@ import { api, apiSWR, imgSrc, invalidateCache } from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
+import Select, { type SelectOption } from "../components/Select";
 import PinButton from "../components/PinButton";
 import ShareButton from "../components/ShareButton";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
@@ -140,6 +141,14 @@ export default function MeetingDetailPage() {
     if (!meeting || !user) return false;
     return meeting.authorId === user.id || user.role === "ADMIN";
   }, [meeting, user]);
+
+  const projectOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "프로젝트 선택…" },
+      ...myProjects.map((p) => ({ value: p.id, label: p.name, searchText: p.name })),
+    ],
+    [myProjects],
+  );
 
   // 자동 저장 — 1.5초 디바운스 (저장 중이면 타이머만 다시 걸어서 race 방지)
   const saveTimerRef = useRef<number | null>(null);
@@ -380,16 +389,12 @@ export default function MeetingDetailPage() {
           {visibility === "PROJECT" && (
             <div>
               <label className="label">프로젝트 선택</label>
-              <select
+              <Select
                 className="input"
                 value={projectId ?? ""}
-                onChange={(e) => setProjectId(e.target.value || null)}
-              >
-                <option value="">프로젝트 선택…</option>
-                {myProjects.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+                onChange={(v) => setProjectId(v || null)}
+                options={projectOptions}
+              />
               {!projectId && <div className="text-[11px] text-danger mt-1">프로젝트를 선택해야 저장됩니다.</div>}
             </div>
           )}

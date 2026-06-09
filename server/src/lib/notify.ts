@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { prisma } from "./db.js";
 import { publish } from "./sse.js";
 import { sendApnsToUser, sendApnsToUsers } from "./apns.js";
+import { sendFcmToUser, sendFcmToUsers } from "./fcm.js";
 
 export type NotifyType =
   | "NOTICE"
@@ -124,8 +125,13 @@ export async function notify(input: NotifyInput) {
         });
         muted = !!mem?.muted;
       }
-      // 원격 푸시(iOS APNs) — fire-and-forget. 미설정/토큰없음이면 내부 no-op.
-      if (!muted) void sendApnsToUser(input.userId, { title: input.title, body: input.body, linkUrl: input.linkUrl, groupId: rid ?? undefined });
+      // 원격 푸시 — fire-and-forget. iOS=APNs, Android=FCM. 각 함수가 자기 platform 토큰만
+      // 조회하므로 둘 다 호출해도 안전(미설정/토큰없음이면 내부 no-op).
+      if (!muted) {
+        const p = { title: input.title, body: input.body, linkUrl: input.linkUrl, groupId: rid ?? undefined };
+        void sendApnsToUser(input.userId, p);
+        void sendFcmToUser(input.userId, p);
+      }
     }
   } catch (e) {
     console.error("notify failed", e);
@@ -193,8 +199,11 @@ export async function notifyMany(inputs: NotifyInput[]) {
         });
       }
     }
-    // 원격 푸시(iOS APNs) — fire-and-forget. pushToken 조회를 1회로 묶어 일괄 발송. 미설정/토큰없음이면 내부 no-op.
+    // 원격 푸시 — fire-and-forget. pushToken 조회를 1회로 묶어 일괄 발송. iOS=APNs, Android=FCM.
+    // 각 함수가 자기 platform 토큰만 조회하므로 동일 타깃 목록을 둘 다 넘겨도 안전(미설정/토큰없음이면 no-op).
+    // FCM 은 senderName/avatar(통신알림) 미지원이라 공통 필드(title/body/linkUrl/groupId)만 사용.
     void sendApnsToUsers(apnsTargets);
+    void sendFcmToUsers(apnsTargets);
   } catch (e) {
     console.error("notifyMany failed", e);
   }

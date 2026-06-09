@@ -59,7 +59,12 @@ async function main() {
   zip.writeZip(zipPath);
 
   const buf = readFileSync(zipPath);
-  const checksum = "sha256-" + createHash("sha256").update(buf).digest("hex");
+  // ⚠️ Capgo(@capgo/capacitor-updater)는 다운로드한 zip 의 SHA-256 을 "접두사 없는 64자
+  //    소문자 hex" 로 계산해 manifest 의 checksum 과 비교한다. 예전엔 "sha256-" 접두사를
+  //    붙였는데(SRI 스타일), Capgo 는 길이로 알고리즘을 판별(64=SHA-256, 8=CRC32)하므로
+  //    71자가 되어 "Unknown checksum algorithm" → checksum mismatch → 다운로드 폐기로
+  //    OTA 가 조용히 전혀 적용되지 않았다(iOS·Android 공통). 반드시 raw hex 로 보낸다.
+  const checksum = createHash("sha256").update(buf).digest("hex");
 
   const manifest = {
     version,

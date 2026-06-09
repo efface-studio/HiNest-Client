@@ -7,7 +7,7 @@
  *
  * 웹/데스크톱은 플러그인이 없어 reject 되거나 no-op — try/catch 로 안전하게 무시한다.
  */
-import { isCapacitorNative } from "./platform";
+import { isCapacitorNative, nativePlatform } from "./platform";
 
 let _last: "light" | "dark" | null = null;
 
@@ -15,10 +15,14 @@ export async function applyNativeTheme(resolved: "light" | "dark"): Promise<void
   if (!isCapacitorNative()) return;
   if (_last === resolved) return; // 같은 값 중복 호출 방지(불필요한 IPC 절약)
   _last = resolved;
-  try {
-    const { Keyboard, KeyboardStyle } = await import("@capacitor/keyboard");
-    await Keyboard.setStyle({ style: resolved === "dark" ? KeyboardStyle.Dark : KeyboardStyle.Light });
-  } catch { /* no-op on web/desktop */ }
+  // Keyboard.setStyle 은 iOS 전용 — Android 에선 UNIMPLEMENTED 로 reject 돼
+  // (try/catch 로 무해하지만) logcat 에 에러가 찍힌다. iOS 에서만 호출.
+  if (nativePlatform() === "ios") {
+    try {
+      const { Keyboard, KeyboardStyle } = await import("@capacitor/keyboard");
+      await Keyboard.setStyle({ style: resolved === "dark" ? KeyboardStyle.Dark : KeyboardStyle.Light });
+    } catch { /* no-op on web/desktop */ }
+  }
   try {
     const { StatusBar, Style } = await import("@capacitor/status-bar");
     // 다크 배경 위 → 흰 글자(Light), 라이트 배경 위 → 어두운 글자(Dark).

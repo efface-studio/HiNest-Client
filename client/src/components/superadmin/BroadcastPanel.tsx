@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync, alertAsync } from "../ConfirmHost";
+import Select, { type SelectOption } from "../Select";
 
 /**
  * 알림 발송(브로드캐스트) — 전체 / 특정 회사 / 특정 사람에게 제목·설명을 넣어 즉시 알림.
@@ -61,6 +62,18 @@ export default function BroadcastPanel() {
     (target === "all" ||
       (target === "company" && !!companyId) ||
       (target === "user" && !!picked));
+
+  const companyOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "회사를 선택하세요" },
+      ...companies.map((c) => ({
+        value: c.id,
+        label: `${c.name} (${c._count?.users ?? 0}명)`,
+        searchText: c.name,
+      })),
+    ],
+    [companies],
+  );
 
   function scopeText() {
     if (target === "all") return "전체 사용자";
@@ -133,14 +146,7 @@ export default function BroadcastPanel() {
       {target === "company" && (
         <div className="mb-3">
           <label className="field-label">회사</label>
-          <select className="input" value={companyId} onChange={(e) => setCompanyId(e.target.value)}>
-            <option value="">회사를 선택하세요</option>
-            {companies.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name} ({c._count?.users ?? 0}명)
-              </option>
-            ))}
-          </select>
+          <Select className="input" value={companyId} onChange={(v) => setCompanyId(v)} options={companyOptions} placeholder="회사를 선택하세요" />
         </div>
       )}
 

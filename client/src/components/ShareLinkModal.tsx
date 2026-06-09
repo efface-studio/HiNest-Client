@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { alertAsync } from "./ConfirmHost";
+import { alertAsync, promptAsync } from "./ConfirmHost";
 import DateTimePicker from "./DateTimePicker";
 import Portal from "./Portal";
 
@@ -87,7 +87,7 @@ export default function ShareLinkModal({ documentId, folderId, documentTitle, on
       await navigator.clipboard.writeText(linkUrl(token));
       alertAsync({ title: "복사됨", description: "링크가 클립보드에 복사됐어요." });
     } catch {
-      window.prompt("링크를 복사하세요", linkUrl(token));
+      await promptAsync({ title: "링크를 복사하세요", defaultValue: linkUrl(token) });
     }
   }
 

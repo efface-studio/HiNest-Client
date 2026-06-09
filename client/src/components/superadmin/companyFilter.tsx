@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../../api";
+import Select, { type SelectOption } from "../Select";
 
 /**
  * 개발자 콘솔 — 회사 선택 드롭다운 공유 상태.
@@ -85,27 +86,33 @@ export function CompanyFilterDropdown({ accent = "#64748B" }: { accent?: string 
   const { companyId, setCompanyId, companies, loading } = useConsoleCompany();
   const selected = companies.find((c) => c.id === companyId) || null;
 
+  const options: SelectOption[] = useMemo(
+    () => [
+      { value: "", label: "전체 회사" },
+      ...companies.map((c) => {
+        const text = `${c.name}${c.slug ? ` @${c.slug}` : ""}${c.status !== "ACTIVE" ? ` · ${c.status}` : ""}`;
+        return { value: c.id, label: text, searchText: `${c.name} ${c.slug ?? ""} ${c.status}` };
+      }),
+    ],
+    [companies],
+  );
+
   return (
     <label className="inline-flex items-center gap-1.5 flex-shrink-0" title="회사별로 좁혀 보기">
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={accent} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
         <path d="M3 21h18" /><path d="M5 21V7l8-4v18" /><path d="M19 21V11l-6-4" />
         <path d="M9 9v.01M9 12v.01M9 15v.01M9 18v.01" />
       </svg>
-      <select
+      <Select
         value={companyId ?? ""}
-        onChange={(e) => setCompanyId(e.target.value || null)}
+        onChange={(v) => setCompanyId(v || null)}
+        options={options}
         disabled={loading && companies.length === 0}
         className="input !py-1 !h-[30px] !text-[12px] max-w-[190px] font-semibold"
         style={{ borderColor: companyId ? accent : undefined, color: companyId ? accent : undefined }}
-        aria-label="회사 선택"
-      >
-        <option value="">전체 회사</option>
-        {companies.map((c) => (
-          <option key={c.id} value={c.id}>
-            {c.name}{c.slug ? ` @${c.slug}` : ""}{c.status !== "ACTIVE" ? ` · ${c.status}` : ""}
-          </option>
-        ))}
-      </select>
+        ariaLabel="회사 선택"
+        searchPlaceholder="회사 검색…"
+      />
       {selected && (
         <button
           type="button"

@@ -19,6 +19,7 @@ import TwoFAPanel from "../components/superadmin/TwoFAPanel";
 import RolePermissionsPanel from "../components/superadmin/RolePermissionsPanel";
 import { CompanyFilterProvider, CompanyFilterDropdown, isCompanyScoped, useConsoleCompany } from "../components/superadmin/companyFilter";
 import Portal from "../components/Portal";
+import Select, { type SelectOption } from "../components/Select";
 
 type Log = {
   id: string;
@@ -631,6 +632,10 @@ function LogsPanel() {
   }, [companyId]);
 
   const uniqueActions = useMemo(() => Array.from(new Set(logs.map((l) => l.action))).sort(), [logs]);
+  const actionOptions = useMemo<SelectOption[]>(
+    () => [{ value: "", label: "모든 액션" }, ...uniqueActions.map((a) => ({ value: a, label: a, searchText: a }))],
+    [uniqueActions],
+  );
 
   const filtered = useMemo(() => {
     let arr = logs;
@@ -653,10 +658,8 @@ function LogsPanel() {
           활동 로그 <span className="text-ink-400 font-medium ml-1 tabular">{filtered.length}</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <select className="input text-[12px] h-[30px] w-full sm:w-[160px]" value={actionFilter} onChange={(e) => setActionFilter(e.target.value)}>
-            <option value="">모든 액션</option>
-            {uniqueActions.map((a) => <option key={a} value={a}>{a}</option>)}
-          </select>
+          <Select className="input text-[12px] h-[30px] w-full sm:w-[160px]" value={actionFilter} onChange={(v) => setActionFilter(v)} options={actionOptions} />
+
           <input
             className="input text-[12px] h-[30px] w-full sm:w-[200px]"
             placeholder="검색 (이름·대상·상세)"
@@ -1007,17 +1010,16 @@ function ApiSpecPanel() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select className="input !w-auto" value={methodFilter} onChange={(e) => setMethodFilter(e.target.value)}>
-          <option value="">메소드 전체</option>
-          {["GET", "POST", "PATCH", "PUT", "DELETE"].map((m) => <option key={m} value={m}>{m}</option>)}
-        </select>
-        <select className="input !w-auto" value={authFilter} onChange={(e) => setAuthFilter(e.target.value as any)}>
-          <option value="">권한 전체</option>
-          <option value="PUBLIC">PUBLIC</option>
-          <option value="AUTH">AUTH</option>
-          <option value="ADMIN">ADMIN</option>
-          <option value="SUPER">SUPER</option>
-        </select>
+        <Select className="input !w-auto" value={methodFilter} onChange={(v) => setMethodFilter(v)}
+          options={[{ value: "", label: "메소드 전체" }, ...["GET", "POST", "PATCH", "PUT", "DELETE"].map((m) => ({ value: m, label: m }))]} />
+        <Select className="input !w-auto" value={authFilter} onChange={(v) => setAuthFilter(v as any)}
+          options={[
+            { value: "", label: "권한 전체" },
+            { value: "PUBLIC", label: "PUBLIC" },
+            { value: "AUTH", label: "AUTH" },
+            { value: "ADMIN", label: "ADMIN" },
+            { value: "SUPER", label: "SUPER" },
+          ]} />
         <div className="text-[11px] text-ink-500">
           총 <b className="text-ink-800">{routes.length}</b> 개 · 표시 <b className="text-ink-800">{totalShown}</b>
         </div>
@@ -2067,13 +2069,14 @@ function ServerLogsPanel() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
         />
-        <select className="input !w-auto" value={level} onChange={(e) => setLevel(e.target.value as any)}>
-          <option value="">레벨 전체</option>
-          <option value="http">HTTP</option>
-          <option value="info">INFO</option>
-          <option value="warn">WARN</option>
-          <option value="error">ERROR</option>
-        </select>
+        <Select className="input !w-auto" value={level} onChange={(v) => setLevel(v as any)}
+          options={[
+            { value: "", label: "레벨 전체" },
+            { value: "http", label: "HTTP" },
+            { value: "info", label: "INFO" },
+            { value: "warn", label: "WARN" },
+            { value: "error", label: "ERROR" },
+          ]} />
         <label className="flex items-center gap-1.5 text-[12px] text-ink-700 cursor-pointer">
           <input
             type="checkbox"

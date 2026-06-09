@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../../api";
 import { useConsoleCompany } from "./companyFilter";
+import Select, { type SelectOption } from "../Select";
 
 type Log = {
   id: string;
@@ -71,15 +72,22 @@ export default function AuditPanel() {
     return Array.from(map.entries());
   }, [logs]);
 
+  const actionOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "모든 액션" },
+      ...actions.map((a) => ({
+        value: a.action,
+        label: `${a.action} (${a.count})`,
+        searchText: a.action,
+      })),
+    ],
+    [actions],
+  );
+
   return (
     <div className="panel p-4">
       <div className="flex items-center gap-2 mb-3 flex-wrap">
-        <select className="input !py-1.5 max-w-[240px]" value={filterAction} onChange={(e) => setFilterAction(e.target.value)}>
-          <option value="">모든 액션</option>
-          {actions.map((a) => (
-            <option key={a.action} value={a.action}>{a.action} ({a.count})</option>
-          ))}
-        </select>
+        <Select className="input !py-1.5 max-w-[240px]" value={filterAction} onChange={(v) => setFilterAction(v)} options={actionOptions} placeholder="모든 액션" />
         <input className="input flex-1 min-w-[160px]" placeholder="사용자 ID" value={filterUserId} onChange={(e) => setFilterUserId(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") load(); }} />
         <input className="input flex-1 min-w-[160px]" placeholder="target/detail/IP 검색" value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") load(); }} />
         <button className="btn-ghost btn-xs" onClick={load} disabled={loading}>적용</button>

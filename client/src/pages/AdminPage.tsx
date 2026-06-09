@@ -6,6 +6,7 @@ import Portal from "../components/Portal";
 import { downloadCSV, downloadXLSX, openPrintable, parseSheet, type TableColumn } from "../lib/exportTable";
 import DatePicker from "../components/DatePicker";
 import TimePicker from "../components/TimePicker";
+import Select, { type SelectOption } from "../components/Select";
 import { haptic } from "../lib/haptics";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import { useAuth } from "../auth";
@@ -451,6 +452,13 @@ function UsersTab({
     return arr;
   }, [users, q, roleFilter, activeFilter]);
 
+  const roleFilterOptions: SelectOption[] = [
+    { value: "", label: "모든 권한" },
+    { value: "ADMIN", label: "ADMIN" },
+    { value: "MANAGER", label: "MANAGER" },
+    { value: "MEMBER", label: "MEMBER" },
+  ];
+
   return (
     <div className="panel p-0 overflow-hidden">
       {updateErr && (
@@ -537,12 +545,7 @@ function UsersTab({
           </button>
           <span className="mx-1 h-4 w-px bg-ink-200 hidden sm:block" />
           <input className="input text-[12px] h-[32px] w-full sm:w-[200px]" placeholder="이름·이메일·팀 검색" value={q} onChange={(e) => setQ(e.target.value)} />
-          <select className="input text-[12px] h-[32px] w-full sm:w-[120px]" value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-            <option value="">모든 권한</option>
-            <option value="ADMIN">ADMIN</option>
-            <option value="MANAGER">MANAGER</option>
-            <option value="MEMBER">MEMBER</option>
-          </select>
+          <Select className="input text-[12px] h-[32px] w-full sm:w-[120px]" value={roleFilter} onChange={(v) => setRoleFilter(v)} options={roleFilterOptions} />
           <div className="tabs">
             {(["active", "inactive", "resigned"] as const).map((v) => (
               <button key={v} onClick={() => setActiveFilter(v)} className={`tab ${activeFilter === v ? "tab-active" : ""}`}>
@@ -590,45 +593,42 @@ function UsersTab({
                   </div>
                 </td>
                 <td data-label="직급">
-                  <select
+                  <Select
                     className={`ghost-select ${!u.position ? "placeholder" : ""}`}
                     value={u.position ?? ""}
-                    onChange={(e) => update(u.id, { position: e.target.value || null })}
-                    title={!positionInList ? "현재 직급은 목록에서 제거된 항목입니다" : undefined}
+                    onChange={(v) => update(u.id, { position: v || null })}
                     style={!positionInList ? { fontStyle: "italic", opacity: 0.7 } : undefined}
-                  >
-                    <option value="">직급 없음</option>
-                    {positions.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-                    {u.position && !positionInList && (
-                      <option value={u.position}>{u.position} · 사용안함</option>
-                    )}
-                  </select>
+                    options={[
+                      { value: "", label: "직급 없음" },
+                      ...positions.map((p) => ({ value: p.name, label: p.name })),
+                      ...(u.position && !positionInList ? [{ value: u.position, label: `${u.position} · 사용안함` }] : []),
+                    ]}
+                  />
                 </td>
                 <td data-label="팀">
-                  <select
+                  <Select
                     className={`ghost-select ${!u.team ? "placeholder" : ""}`}
                     value={u.team ?? ""}
-                    onChange={(e) => update(u.id, { team: e.target.value || null })}
-                    title={!teamInList ? "현재 팀은 목록에서 제거된 항목입니다" : undefined}
+                    onChange={(v) => update(u.id, { team: v || null })}
                     style={!teamInList ? { fontStyle: "italic", opacity: 0.7 } : undefined}
-                  >
-                    <option value="">팀 없음</option>
-                    {teams.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
-                    {u.team && !teamInList && (
-                      <option value={u.team}>{u.team} · 사용안함</option>
-                    )}
-                  </select>
+                    options={[
+                      { value: "", label: "팀 없음" },
+                      ...teams.map((t) => ({ value: t.name, label: t.name })),
+                      ...(u.team && !teamInList ? [{ value: u.team, label: `${u.team} · 사용안함` }] : []),
+                    ]}
+                  />
                 </td>
                 <td data-label="권한">
-                  <select
+                  <Select
                     className={`ghost-select role-select ${roleClass}`}
                     value={u.role}
-                    onChange={(e) => update(u.id, { role: e.target.value })}
-                  >
-                    <option value="MEMBER">MEMBER</option>
-                    <option value="MANAGER">MANAGER</option>
-                    <option value="ADMIN">ADMIN</option>
-                  </select>
+                    onChange={(v) => update(u.id, { role: v })}
+                    options={[
+                      { value: "MEMBER", label: "MEMBER" },
+                      { value: "MANAGER", label: "MANAGER" },
+                      { value: "ADMIN", label: "ADMIN" },
+                    ]}
+                  />
                 </td>
                 <td data-label="상태">
                   {u.resignedAt ? (
@@ -747,16 +747,17 @@ function UsersTab({
               <div className="flex items-end justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-[10.5px] font-bold text-ink-400 mb-1">권한</div>
-                  <select
+                  <Select
                     className={`ghost-select role-select ${roleClass}`}
                     value={u.role}
-                    onChange={(e) => update(u.id, { role: e.target.value })}
+                    onChange={(v) => update(u.id, { role: v })}
                     disabled={!!u.resignedAt}
-                  >
-                    <option value="MEMBER">MEMBER</option>
-                    <option value="MANAGER">MANAGER</option>
-                    <option value="ADMIN">ADMIN</option>
-                  </select>
+                    options={[
+                      { value: "MEMBER", label: "MEMBER" },
+                      { value: "MANAGER", label: "MANAGER" },
+                      { value: "ADMIN", label: "ADMIN" },
+                    ]}
+                  />
                 </div>
                 <div className="flex items-center gap-0.5 flex-shrink-0">
                   <button className="btn-icon" title="상세 정보 편집" onClick={() => setEditTarget(u)}>
@@ -995,6 +996,17 @@ function UserDetailEditModal({
     setForm((f) => ({ ...f, [k]: v }));
   }
 
+  const teamOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "(없음)" },
+    ...teams.map((t) => ({ value: t.name, label: t.name, searchText: t.name })),
+    ...(form.team && !teams.some((t) => t.name === form.team) ? [{ value: form.team, label: `${form.team} · 사용안함`, searchText: form.team }] : []),
+  ], [teams, form.team]);
+  const positionOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "(없음)" },
+    ...positions.map((p) => ({ value: p.name, label: p.name, searchText: p.name })),
+    ...(form.position && !positions.some((p) => p.name === form.position) ? [{ value: form.position, label: `${form.position} · 사용안함`, searchText: form.position }] : []),
+  ], [positions, form.position]);
+
   async function save() {
     setSaving(true);
     try {
@@ -1035,11 +1047,11 @@ function UserDetailEditModal({
         <div className="overflow-auto py-4 space-y-5 flex-1">
           <Section title="권한 · 상태">
             <Field label="권한">
-              <select className="input" value={form.role} onChange={(e) => set("role", e.target.value)}>
-                <option value="MEMBER">MEMBER</option>
-                <option value="MANAGER">MANAGER</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
+              <Select className="input" value={form.role} onChange={(v) => set("role", v)} options={[
+                { value: "MEMBER", label: "MEMBER" },
+                { value: "MANAGER", label: "MANAGER" },
+                { value: "ADMIN", label: "ADMIN" },
+              ]} />
             </Field>
             <Field label="상태">
               {user.resignedAt ? (
@@ -1060,22 +1072,10 @@ function UserDetailEditModal({
             <Field label="근무지"><input className="input" value={form.workplace} onChange={(e) => set("workplace", e.target.value)} placeholder="본사" maxLength={500} /></Field>
             <Field label="부서"><input className="input" value={form.department} onChange={(e) => set("department", e.target.value)} placeholder="서비스지원" maxLength={500} /></Field>
             <Field label="팀">
-              <select className="input" value={form.team} onChange={(e) => set("team", e.target.value)}>
-                <option value="">(없음)</option>
-                {teams.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
-                {form.team && !teams.some((t) => t.name === form.team) && (
-                  <option value={form.team}>{form.team} · 사용안함</option>
-                )}
-              </select>
+              <Select className="input" value={form.team} onChange={(v) => set("team", v)} options={teamOptions} />
             </Field>
             <Field label="직급">
-              <select className="input" value={form.position} onChange={(e) => set("position", e.target.value)}>
-                <option value="">(없음)</option>
-                {positions.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-                {form.position && !positions.some((p) => p.name === form.position) && (
-                  <option value={form.position}>{form.position} · 사용안함</option>
-                )}
-              </select>
+              <Select className="input" value={form.position} onChange={(v) => set("position", v)} options={positionOptions} />
             </Field>
             <Field label="직무"><input className="input" value={form.jobDuty} onChange={(e) => set("jobDuty", e.target.value)} placeholder="예: QA" maxLength={500} /></Field>
           </Section>
@@ -1143,20 +1143,20 @@ function UserDetailEditModal({
             <Field label="이름"><input className="input" value={form.name} onChange={(e) => set("name", e.target.value)} maxLength={200} /></Field>
             <Field label="생년월일"><DatePicker variant="input" value={form.birthDate} onChange={(v) => set("birthDate", v)} /></Field>
             <Field label="성별">
-              <select className="input" value={form.gender} onChange={(e) => set("gender", e.target.value)}>
-                <option value="">(없음)</option>
-                <option>남</option>
-                <option>여</option>
-              </select>
+              <Select className="input" value={form.gender} onChange={(v) => set("gender", v)} options={[
+                { value: "", label: "(없음)" },
+                { value: "남", label: "남" },
+                { value: "여", label: "여" },
+              ]} />
             </Field>
             <Field label="전화번호"><input className="input" value={form.phone} onChange={(e) => set("phone", e.target.value)} placeholder="010-0000-0000" maxLength={40} /></Field>
             <Field label="장애유형"><input className="input" value={form.disabilityType} onChange={(e) => set("disabilityType", e.target.value)} placeholder="예: 청각장애" maxLength={500} /></Field>
             <Field label="장애정도">
-              <select className="input" value={form.disabilityLevel} onChange={(e) => set("disabilityLevel", e.target.value)}>
-                <option value="">(없음)</option>
-                <option>중증</option>
-                <option>경증</option>
-              </select>
+              <Select className="input" value={form.disabilityLevel} onChange={(v) => set("disabilityLevel", v)} options={[
+                { value: "", label: "(없음)" },
+                { value: "중증", label: "중증" },
+                { value: "경증", label: "경증" },
+              ]} />
             </Field>
           </Section>
 
@@ -1233,11 +1233,10 @@ function SelectOrEtc({
 
   return (
     <div className="space-y-1.5">
-      <select
+      <Select
         className="input"
         value={etc ? "__etc__" : (value || "")}
-        onChange={(e) => {
-          const v = e.target.value;
+        onChange={(v) => {
           if (v === "__etc__") {
             setEtc(true);
             onChange("");
@@ -1246,13 +1245,12 @@ function SelectOrEtc({
             onChange(v);
           }
         }}
-      >
-        <option value="">{placeholder ?? "(선택)"}</option>
-        {options.map((o) => (
-          <option key={o} value={o}>{o}</option>
-        ))}
-        <option value="__etc__">기타 (직접 입력)</option>
-      </select>
+        options={[
+          { value: "", label: placeholder ?? "(선택)" },
+          ...options.map((o) => ({ value: o, label: o })),
+          { value: "__etc__", label: "기타 (직접 입력)" },
+        ]}
+      />
       {etc && (
         <input
           className="input"
@@ -1474,15 +1472,16 @@ function SelectCell({
   }
   return (
     <td className="p-0" title={raw || undefined}>
-      <select
+      <Select
         className="w-full min-w-0 bg-transparent border-0 focus:bg-[color:var(--c-surface)] text-[color:var(--c-text)] focus:outline-none focus:ring-1 focus:ring-brand-400 rounded text-[12px] px-1 py-1.5 truncate"
         value={raw}
-        onChange={(e) => onSelectChange(e.target.value)}
-      >
-        <option value="">(없음)</option>
-        {options.map((o) => <option key={o} value={o}>{o}</option>)}
-        <option value="__OTHER__">기타…</option>
-      </select>
+        onChange={(v) => onSelectChange(v)}
+        options={[
+          { value: "", label: "(없음)" },
+          ...options.map((o) => ({ value: o, label: o })),
+          { value: "__OTHER__", label: "기타…" },
+        ]}
+      />
     </td>
   );
 }
@@ -1776,6 +1775,15 @@ function InvitesTab({
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const teamOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "—" },
+    ...teams.map((t) => ({ value: t.name, label: t.name, searchText: t.name })),
+  ], [teams]);
+  const positionOptions: SelectOption[] = useMemo(() => [
+    { value: "", label: "—" },
+    ...positions.map((p) => ({ value: p.name, label: p.name, searchText: p.name })),
+  ], [positions]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
       {/* 발급 폼 */}
@@ -1798,11 +1806,11 @@ function InvitesTab({
             </div>
             <div>
               <label className="field-label">권한</label>
-              <select className="input" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
-                <option value="MEMBER">MEMBER</option>
-                <option value="MANAGER">MANAGER</option>
-                <option value="ADMIN">ADMIN</option>
-              </select>
+              <Select className="input" value={form.role} onChange={(v) => setForm({ ...form, role: v })} options={[
+                { value: "MEMBER", label: "MEMBER" },
+                { value: "MANAGER", label: "MANAGER" },
+                { value: "ADMIN", label: "ADMIN" },
+              ]} />
             </div>
           </div>
           <div>
@@ -1812,17 +1820,11 @@ function InvitesTab({
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="field-label">팀</label>
-              <select className="input" value={form.team} onChange={(e) => setForm({ ...form, team: e.target.value })}>
-                <option value="">—</option>
-                {teams.map((t) => <option key={t.id} value={t.name}>{t.name}</option>)}
-              </select>
+              <Select className="input" value={form.team} onChange={(v) => setForm({ ...form, team: v })} options={teamOptions} />
             </div>
             <div>
               <label className="field-label">직급</label>
-              <select className="input" value={form.position} onChange={(e) => setForm({ ...form, position: e.target.value })}>
-                <option value="">—</option>
-                {positions.map((p) => <option key={p.id} value={p.name}>{p.name}</option>)}
-              </select>
+              <Select className="input" value={form.position} onChange={(v) => setForm({ ...form, position: v })} options={positionOptions} />
             </div>
           </div>
           <div>
@@ -2376,11 +2378,9 @@ function AttendanceOverviewTab() {
           />
           {/* 모바일 정렬 셀렉트 — 데스크톱은 헤더 클릭 */}
           <div className="md:hidden flex items-center gap-1.5">
-            <select className="input !py-1.5 !h-[36px] !text-[12.5px]" value={sortKey} onChange={(e) => setSortKey(e.target.value as SortKey)}>
-              {(["name", "today", "week", "month", "total"] as SortKey[]).map((k) =>
-                <option key={k} value={k}>{SORT_LABEL[k]}</option>
-              )}
-            </select>
+            <Select className="input !py-1.5 !h-[36px] !text-[12.5px]" value={sortKey} onChange={(v) => setSortKey(v as SortKey)}
+              options={(["name", "today", "week", "month", "total"] as SortKey[]).map((k) => ({ value: k, label: SORT_LABEL[k] }))}
+            />
             <button className="btn-ghost btn-xs" onClick={() => setSortDesc((d) => !d)} title={sortDesc ? "내림차순" : "오름차순"}>
               {sortDesc ? "↓" : "↑"}
             </button>

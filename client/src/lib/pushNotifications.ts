@@ -18,8 +18,20 @@ import { isCapacitorNative, nativePlatform } from "./platform";
 let listenersReady = false;
 let lastToken: string | null = null;
 
-function isIos(): boolean {
-  return isCapacitorNative() && nativePlatform() === "ios";
+// iOS(APNs)·Android(FCM) 모두 동일한 @capacitor/push-notifications 플로우를 쓴다.
+// 토큰 종류만 OS 가 다르게 발급(iOS=APNs hex, Android=FCM) → 서버는 platform 으로 라우팅.
+//
+// ⚠️ Android 주의: register() 는 FirebaseMessaging.getInstance() 를 호출하는데, google-services.json
+//    이 없어 FirebaseApp 이 초기화 안 됐으면 IllegalStateException 으로 **네이티브 크래시**가 난다
+//    (JS try/catch 로 못 잡음). 그래서 Android 는 Firebase 가 실제로 번들된 빌드에서만 켠다 —
+//    VITE_ANDROID_FCM=1 로 빌드할 때만(=google-services.json 추가 + 서버 FCM 설정 완료 시).
+//    그 전까지 Android 는 푸시 미등록(앱은 정상, 알림만 없음). iOS 는 APNs 라 추가 설정 없이 동작.
+function isNativePush(): boolean {
+  const p = nativePlatform();
+  if (!isCapacitorNative()) return false;
+  if (p === "ios") return true;
+  if (p === "android") return (import.meta as any).env?.VITE_ANDROID_FCM === "1";
+  return false;
 }
 
 /**
@@ -55,7 +67,7 @@ async function ensureListeners() {
     lastToken = token.value;
     void api("/api/push/register", {
       method: "POST",
-      json: { token: token.value, platform: "ios" },
+      json: { token: token.value, platform: nativePlatform() },
     }).catch(() => {});
   });
 
@@ -77,7 +89,7 @@ async function ensureListeners() {
  * 권한이 이미 결정됐으면 프롬프트 없이 통과하고, 허용 상태면 register() 로 토큰 발급을 유도한다.
  */
 export async function setupIosPush(): Promise<void> {
-  if (!isIos()) return;
+  if (!isNativePush()) return;
   try {
     const { PushNotifications } = await import("@capacitor/push-notifications");
     await ensureListeners();
@@ -97,7 +109,7 @@ export async function setupIosPush(): Promise<void> {
 
 /** 로그아웃 시 — 이 기기 토큰을 서버에서 제거해 더 이상 푸시가 가지 않게 한다. */
 export async function unregisterIosPush(): Promise<void> {
-  if (!isIos()) return;
+  if (!isNativePush()) return;
   try {
     // 세션이 살아있을 때(=로그아웃 API 호출 전) 불려야 401 이 나지 않는다.
     if (lastToken) {

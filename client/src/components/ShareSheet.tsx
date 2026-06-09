@@ -10,6 +10,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR, imgSrc } from "../api";
 import Portal from "./Portal";
+import { alertAsync } from "./ConfirmHost";
 import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
 
 export type ShareKind = "ANNOUNCEMENT" | "MEMO" | "MEETING" | "DOCUMENT" | "JOURNAL";
@@ -198,7 +199,7 @@ export default function ShareSheet({
         setTimeout(() => onClose(), 700);
       }
     } catch (e: any) {
-      window.alert(e?.message ?? "공유에 실패했어요");
+      await alertAsync({ description: e?.message ?? "공유에 실패했어요" });
       setSending(false);
     }
   }

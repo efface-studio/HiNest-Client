@@ -4,6 +4,7 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 import Portal from "../components/Portal";
+import Select, { type SelectOption } from "../components/Select";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import { safeExternalUrl } from "../lib/safeUrl";
 import { openExternal } from "../lib/openExternal";
@@ -388,7 +389,7 @@ export default function ServiceAccountsPage() {
       await navigator.clipboard.writeText(text);
       alertAsync({ title: "복사됨", description: "로그인 ID 를 클립보드에 복사했어요." });
     } catch {
-      window.prompt("복사하세요", text);
+      await promptAsync({ title: "복사하세요", defaultValue: text });
     }
   }
 
@@ -476,16 +477,19 @@ export default function ServiceAccountsPage() {
           onChange={(e) => setQ(e.target.value)}
           maxLength={80}
         />
-        <select
+        <Select
           className="input sm:w-40"
           value={filterCat}
-          onChange={(e) => setFilterCat(e.target.value as Category | "ALL")}
-        >
-          <option value="ALL">전체 카테고리</option>
-          {CATEGORY_ORDER.map((c) => (
-            <option key={c} value={c}>{CATEGORY_META[c].emoji} {CATEGORY_META[c].label}</option>
-          ))}
-        </select>
+          onChange={(v) => setFilterCat(v as Category | "ALL")}
+          options={[
+            { value: "ALL", label: "전체 카테고리" },
+            ...CATEGORY_ORDER.map((c) => ({
+              value: c,
+              label: `${CATEGORY_META[c].emoji} ${CATEGORY_META[c].label}`,
+              searchText: CATEGORY_META[c].label,
+            })),
+          ]}
+        />
       </div>
 
       {loadErr && (
@@ -576,7 +580,7 @@ export default function ServiceAccountsPage() {
                             await navigator.clipboard.writeText(r.password);
                             alertAsync({ title: "복사됨", description: "비밀번호를 클립보드에 복사했어요. 사용 후 다른 내용을 복사해 지우세요." });
                           } catch {
-                            window.prompt("비밀번호", r.password);
+                            await promptAsync({ title: "비밀번호", defaultValue: r.password, inputType: "password" });
                           }
                         } catch (e: any) {
                           alertAsync({ title: "열람 실패", description: e?.message ?? "권한이 없거나 비밀번호가 일치하지 않아요." });
@@ -880,6 +884,13 @@ function MultiProjectEditor({
   onChange: (next: string[]) => void;
 }) {
   const available = projects.filter((p) => !selected.includes(p.id));
+  const addOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "+ 프로젝트 추가…" },
+      ...available.map((p) => ({ value: p.id, label: p.name, searchText: p.name })),
+    ],
+    [available],
+  );
   function add(id: string) {
     if (!id || selected.includes(id)) return;
     onChange([...selected, id]);
@@ -903,16 +914,12 @@ function MultiProjectEditor({
         {selectedChips.length === 0 && <span className="text-[11px] text-ink-400">아직 선택된 프로젝트가 없어요.</span>}
       </div>
       {available.length > 0 && (
-        <select
+        <Select
           className="input"
           value=""
-          onChange={(e) => { add(e.target.value); e.currentTarget.value = ""; }}
-        >
-          <option value="">+ 프로젝트 추가…</option>
-          {available.map((p) => (
-            <option key={p.id} value={p.id}>{p.name}</option>
-          ))}
-        </select>
+          onChange={(v) => add(v)}
+          options={addOptions}
+        />
       )}
     </div>
   );
@@ -949,6 +956,17 @@ function AccountModal({
   );
   const previewSrc = form.iconUrl
     || (previewHost ? `https://www.google.com/s2/favicons?domain=${previewHost}&sz=64` : null);
+
+  const ownerOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "선택 안 함" },
+      ...users.map((u) => {
+        const label = `${u.name}${u.team ? ` · ${u.team}` : ""}${u.position ? ` · ${u.position}` : ""}`;
+        return { value: u.id, label, searchText: `${label} ${u.email}` };
+      }),
+    ],
+    [users],
+  );
 
   async function onPickIcon(file: File) {
     if (!file.type.startsWith("image/")) {
@@ -1007,15 +1025,16 @@ function AccountModal({
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-ink-500">카테고리</span>
-              <select
+              <Select
                 className="input"
                 value={form.category}
-                onChange={(e) => setForm({ ...form, category: e.target.value as Category })}
-              >
-                {CATEGORY_ORDER.map((c) => (
-                  <option key={c} value={c}>{CATEGORY_META[c].emoji} {CATEGORY_META[c].label}</option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, category: v as Category })}
+                options={CATEGORY_ORDER.map((c) => ({
+                  value: c,
+                  label: `${CATEGORY_META[c].emoji} ${CATEGORY_META[c].label}`,
+                  searchText: CATEGORY_META[c].label,
+                }))}
+              />
             </label>
           </div>
 
@@ -1205,18 +1224,12 @@ function AccountModal({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-ink-500">담당자 (사내)</span>
-              <select
+              <Select
                 className="input"
                 value={form.ownerUserId}
-                onChange={(e) => setForm({ ...form, ownerUserId: e.target.value, ownerName: e.target.value ? "" : form.ownerName })}
-              >
-                <option value="">선택 안 함</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.name}{u.team ? ` · ${u.team}` : ""}{u.position ? ` · ${u.position}` : ""}
-                  </option>
-                ))}
-              </select>
+                onChange={(v) => setForm({ ...form, ownerUserId: v, ownerName: v ? "" : form.ownerName })}
+                options={ownerOptions}
+              />
             </label>
             <label className="flex flex-col gap-1">
               <span className="text-[11px] font-bold text-ink-500">담당자 (외부)</span>

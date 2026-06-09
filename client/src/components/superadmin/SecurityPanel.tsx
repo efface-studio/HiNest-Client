@@ -3,9 +3,24 @@ import { api } from "../../api";
 import { confirmAsync } from "../ConfirmHost";
 import DateTimePicker from "../DateTimePicker";
 import Portal from "../Portal";
+import Select, { type SelectOption } from "../Select";
 
 type Rate = { id: string; routeGlob: string; perMin: number; perHour: number; scope: string; enabled: boolean; note: string | null; createdAt: string };
 type Block = { id: string; cidr: string; country: string | null; reason: string | null; enabled: boolean; expiresAt: string | null; createdAt: string };
+
+const SCOPE_OPTIONS: SelectOption[] = [
+  { value: "ip", label: "IP 단위" },
+  { value: "user", label: "사용자 단위" },
+  { value: "global", label: "전역" },
+];
+const RATE_ENABLED_OPTIONS: SelectOption[] = [
+  { value: "1", label: "ON" },
+  { value: "0", label: "OFF" },
+];
+const BLOCK_ENABLED_OPTIONS: SelectOption[] = [
+  { value: "1", label: "차단 중" },
+  { value: "0", label: "OFF" },
+];
 
 export default function SecurityPanel() {
   const [tab, setTab] = useState<"rate" | "ip">("rate");
@@ -89,16 +104,10 @@ function RateRules() {
           <Field label="/분"><input className="input" type="number" min={1} value={editing.perMin ?? 60} onChange={(e) => setEditing({ ...editing, perMin: +e.target.value })} /></Field>
           <Field label="/시간"><input className="input" type="number" min={1} value={editing.perHour ?? 600} onChange={(e) => setEditing({ ...editing, perHour: +e.target.value })} /></Field>
           <Field label="스코프">
-            <select className="input" value={editing.scope ?? "ip"} onChange={(e) => setEditing({ ...editing, scope: e.target.value })}>
-              <option value="ip">IP 단위</option>
-              <option value="user">사용자 단위</option>
-              <option value="global">전역</option>
-            </select>
+            <Select className="input" value={editing.scope ?? "ip"} onChange={(v) => setEditing({ ...editing, scope: v })} options={SCOPE_OPTIONS} />
           </Field>
           <Field label="활성">
-            <select className="input" value={editing.enabled ? "1" : "0"} onChange={(e) => setEditing({ ...editing, enabled: e.target.value === "1" })}>
-              <option value="1">ON</option><option value="0">OFF</option>
-            </select>
+            <Select className="input" value={editing.enabled ? "1" : "0"} onChange={(v) => setEditing({ ...editing, enabled: v === "1" })} options={RATE_ENABLED_OPTIONS} />
           </Field>
         </Modal>
       )}
@@ -164,9 +173,7 @@ function IpBlocks() {
           <Field label="사유"><input className="input" value={editing.reason ?? ""} onChange={(e) => setEditing({ ...editing, reason: e.target.value })} /></Field>
           <Field label="만료 (선택)"><DateTimePicker value={editing.expiresAt ?? ""} onChange={(v) => setEditing({ ...editing, expiresAt: v })} /></Field>
           <Field label="활성">
-            <select className="input" value={editing.enabled ? "1" : "0"} onChange={(e) => setEditing({ ...editing, enabled: e.target.value === "1" })}>
-              <option value="1">차단 중</option><option value="0">OFF</option>
-            </select>
+            <Select className="input" value={editing.enabled ? "1" : "0"} onChange={(v) => setEditing({ ...editing, enabled: v === "1" })} options={BLOCK_ENABLED_OPTIONS} />
           </Field>
         </Modal>
       )}

@@ -16,6 +16,7 @@ import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
 import { markdownToHtml, looksLikeMarkdown } from "../lib/markdownToHtml";
 import { useEffect, useMemo } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import Select, { type SelectOption } from "./Select";
 import "./MeetingEditor.css";
 import { promptAsync } from "./ConfirmHost";
 import MentionList, { type MentionUser } from "./MentionList";
@@ -44,6 +45,8 @@ const FONT_SIZES = [
   { label: "제목", value: "24px" },
   { label: "대제목", value: "32px" },
 ];
+
+const fontSizeOptions: SelectOption[] = FONT_SIZES.map((f) => ({ value: f.value, label: f.label }));
 
 const TEXT_COLORS = [
   { label: "기본", value: "" },
@@ -221,21 +224,16 @@ function Toolbar({ editor }: { editor: Editor }) {
   return (
     <div className="meeting-toolbar">
       {/* 글씨 크기 */}
-      <select
+      <Select
         className="meeting-toolbar-select"
         value={editor.getAttributes("textStyle").fontSize ?? ""}
-        onChange={(e) => (editor.chain().focus() as any).setFontSize(e.target.value).run()}
-        title="글씨 크기"
-      >
-        {FONT_SIZES.map((f) => (
-          <option key={f.value} value={f.value}>
-            {f.label}
-          </option>
-        ))}
-      </select>
+        onChange={(v) => (editor.chain().focus() as any).setFontSize(v).run()}
+        ariaLabel="글씨 크기"
+        options={fontSizeOptions}
+      />
 
       {/* 제목 레벨 */}
-      <select
+      <Select
         className="meeting-toolbar-select"
         value={
           editor.isActive("heading", { level: 1 })
@@ -246,18 +244,18 @@ function Toolbar({ editor }: { editor: Editor }) {
                 ? "h3"
                 : "p"
         }
-        onChange={(e) => {
-          const v = e.target.value;
+        onChange={(v) => {
           if (v === "p") editor.chain().focus().setParagraph().run();
           else editor.chain().focus().toggleHeading({ level: (parseInt(v.slice(1)) as 1 | 2 | 3) }).run();
         }}
-        title="단락/제목"
-      >
-        <option value="p">본문</option>
-        <option value="h1">제목 1</option>
-        <option value="h2">제목 2</option>
-        <option value="h3">제목 3</option>
-      </select>
+        ariaLabel="단락/제목"
+        options={[
+          { value: "p", label: "본문" },
+          { value: "h1", label: "제목 1" },
+          { value: "h2", label: "제목 2" },
+          { value: "h3", label: "제목 3" },
+        ]}
+      />
 
       <Divider />
 

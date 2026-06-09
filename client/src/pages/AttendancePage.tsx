@@ -5,6 +5,8 @@ import { Skeleton } from "../components/Skeleton";
 import { useAuth } from "../auth";
 import MonthPicker from "../components/MonthPicker";
 import DateTimePicker from "../components/DateTimePicker";
+import DatePicker from "../components/DatePicker";
+import TimePicker from "../components/TimePicker";
 import Portal from "../components/Portal";
 import { alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
@@ -706,10 +708,10 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
         <div className="text-[15px] font-extrabold text-ink-900 mb-3">야근(추가근무) 신청</div>
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
           <label className="text-[12px] text-ink-500 block">날짜
-            <input type="date" className="input mt-1" value={date} onChange={(e) => setDate(e.target.value)} />
+            <div className="mt-1"><DatePicker variant="input" value={date} onChange={setDate} /></div>
           </label>
           <label className="text-[12px] text-ink-500 block">연장 종료시각
-            <input type="time" className="input mt-1" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+            <div className="mt-1"><TimePicker value={endTime} onChange={setEndTime} /></div>
           </label>
           <label className="text-[12px] text-ink-500 block sm:col-span-2">사유 (선택)
             <input className="input mt-1" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 배포 대응" maxLength={1000} />

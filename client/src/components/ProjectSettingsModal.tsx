@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, invalidateCache , imgSrc} from "../api";
 import { confirmAsync } from "./ConfirmHost";
 import Portal from "./Portal";
+import Select, { type SelectOption } from "./Select";
 
 type Role = "OWNER" | "MANAGER" | "MEMBER";
 
@@ -262,15 +263,17 @@ function InfoTab({
       </div>
       <div>
         <label className="label">상태</label>
-        <select
+        <Select
           className="input"
           value={status}
-          onChange={(e) => setStatus(e.target.value as any)}
+          onChange={(v) => setStatus(v as any)}
           disabled={!canEdit}
-        >
-          <option value="ACTIVE">활성</option>
-          <option value="ARCHIVED">보관</option>
-        </select>
+          ariaLabel="상태"
+          options={[
+            { value: "ACTIVE", label: "활성" },
+            { value: "ARCHIVED", label: "보관" },
+          ]}
+        />
         <div className="text-[11px] text-slate-500 mt-1">
           보관 상태로 전환하면 사이드바에서 숨겨집니다.
         </div>
@@ -445,16 +448,18 @@ function MembersTab({
                 </div>
               </div>
               {canManage ? (
-                <select
+                <Select
                   className="ghost-select text-[12px]"
                   value={m.role}
                   disabled={busy}
-                  onChange={(e) => changeRole(m.userId, e.target.value as Role)}
-                >
-                  <option value="OWNER">오너</option>
-                  <option value="MANAGER">매니저</option>
-                  <option value="MEMBER">멤버</option>
-                </select>
+                  onChange={(v) => changeRole(m.userId, v as Role)}
+                  ariaLabel="역할"
+                  options={[
+                    { value: "OWNER", label: "오너" },
+                    { value: "MANAGER", label: "매니저" },
+                    { value: "MEMBER", label: "멤버" },
+                  ]}
+                />
               ) : (
                 <span className="chip bg-brand-50 text-brand-600 text-[10px]">
                   {m.role === "OWNER" ? "오너" : m.role === "MANAGER" ? "매니저" : "멤버"}

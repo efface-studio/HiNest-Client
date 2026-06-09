@@ -1,3 +1,8 @@
+// ★ 반드시 다른 import 보다 먼저 — Express 4 는 async 라우트 핸들러가 reject 하면 에러
+//   미들웨어로 흘려보내지 못해(동기 throw·next(err)만 처리) 응답이 안 가고 요청이 행(hang)한다.
+//   이 패키지가 Router 를 패치해 async 핸들러의 reject 를 자동으로 next(err) 로 전달 → 아래
+//   글로벌 에러 미들웨어가 500 JSON 을 응답하게 한다. (DB 순단·예외 시 30초 타임아웃 대신 즉시 에러)
+import "express-async-errors";
 import express from "express";
 import cors from "cors";
 import cookieParser from "cookie-parser";
@@ -247,7 +252,9 @@ app.use((req, res, next) => {
     if (res.statusCode >= 400 || originalUrl.startsWith("/api/auth/")) {
       const u = (req as any).user;
       const who = u ? `user=${u.email}(super=${u.superAdmin})` : "user=-";
-      console.log(`[${new Date().toISOString().slice(11, 19)}] ${req.method} ${originalUrl} → ${res.statusCode} ${who} (${Date.now() - started}ms)`);
+      // scrubUrl — ?token=/?password= 등 민감 쿼리값을 ●●● 로 마스킹(이 로그는 stdout→CloudWatch 로
+      // 흘러가므로 위 access 로거와 동일하게 스크럽해 토큰 평문 노출을 막는다).
+      console.log(`[${new Date().toISOString().slice(11, 19)}] ${req.method} ${scrubUrl(originalUrl)} → ${res.statusCode} ${who} (${Date.now() - started}ms)`);
     }
   });
   next();

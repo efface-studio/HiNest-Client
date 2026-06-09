@@ -62,7 +62,17 @@ export default function LoginPage() {
       </header>
 
       {/* 본문 — 중앙 정렬, 한 단 */}
-      <main className="flex-1 flex items-center justify-center px-6 pb-32">
+      <main
+        className="flex-1 flex items-center justify-center px-6"
+        style={{
+          // 키보드가 열리면 폼이 키보드 바로 위까지 자연스럽게 따라 올라온다(WebView resize
+          // 만으로는 폼이 화면 가운데 정렬돼서 키보드와 사이에 큰 빈 공간이 생겨 '웹스러운'
+          // 느낌이 났다). --hinest-keyboard-h 는 nativeKeyboard 가 keyboardWillShow 에서
+          // 실제 키보드 높이로 갱신, 닫힐 때 0 으로 리셋.
+          paddingBottom: "calc(8rem + var(--hinest-keyboard-h, 0px))",
+          transition: "padding-bottom 220ms cubic-bezier(.4, 0, .2, 1)",
+        }}
+      >
         <div className="w-full max-w-[360px]">
           {/* 인사말 */}
           <div className="mb-9">

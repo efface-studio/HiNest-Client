@@ -1,22 +1,51 @@
 /**
- * 햅틱 피드백 헬퍼 — iOS/iPadOS 네이티브에서만 동작, 그 외(웹/데스크톱/안드로이드)는 no-op.
+ * 햅틱 피드백 헬퍼 — iOS/iPadOS·안드로이드 네이티브에서 동작, 웹/데스크톱은 no-op.
  *
- * 네이티브 LiquidGlassTabBar.haptic 을 호출(추가 Capacitor 플러그인 의존성 없음).
- * 탭바 전환은 Swift 쪽 UITabBarDelegate 가 직접 selection 햅틱을 주고, 웹 DOM 의 버튼·토글
- * 탭은 AppLayout 의 전역 pointerdown 리스너가 light 햅틱을 준다(아래 attachGlobalHaptics).
+ * iOS: 네이티브 LiquidGlassTabBar.haptic(기존 경로 — 느낌 그대로 유지). 탭바 전환은 Swift
+ *      UITabBarDelegate 가 직접 selection 햅틱.
+ * 안드로이드: @capacitor/haptics(Vibrator) — iOS 와 동일 지점(attachGlobalHaptics 의 버튼·토글·탭,
+ *      data-haptic, AdminPage 드래그 등)에서 같은 강도로 진동. 하단 탭은 CSS 바라 [role=tab]
+ *      분기가 selection 햅틱을 준다.
  */
-import { nativePlatform } from "./platform";
+import { isCapacitorNative, nativePlatform } from "./platform";
 
 type HapticStyle = "light" | "medium" | "heavy" | "selection" | "success" | "warning" | "error";
 
 let _plugin: typeof import("./liquidGlassTabBar").LiquidGlassTabBar | null = null;
 
 function isNative(): boolean {
-  return nativePlatform() === "ios"; // iPad 도 Capacitor 에선 "ios"
+  return isCapacitorNative(); // iOS + Android (웹/데스크톱 제외)
+}
+
+/** 안드로이드 햅틱 — @capacitor/haptics 로 매핑(impact/notification). */
+function androidHaptic(style: HapticStyle): void {
+  void import("@capacitor/haptics")
+    .then(({ Haptics, ImpactStyle, NotificationType }) => {
+      try {
+        if (style === "success" || style === "warning" || style === "error") {
+          const type =
+            style === "success" ? NotificationType.Success : style === "warning" ? NotificationType.Warning : NotificationType.Error;
+          void Haptics.notification({ type }).catch(() => {});
+        } else {
+          // selection/light → Light, medium → Medium, heavy → Heavy (iOS 강도 차등과 동일 결).
+          const impact =
+            style === "heavy" ? ImpactStyle.Heavy : style === "medium" ? ImpactStyle.Medium : ImpactStyle.Light;
+          void Haptics.impact({ style: impact }).catch(() => {});
+        }
+      } catch {
+        /* no-op */
+      }
+    })
+    .catch(() => {});
 }
 
 export function haptic(style: HapticStyle = "light"): void {
   if (!isNative()) return;
+  if (nativePlatform() === "android") {
+    androidHaptic(style);
+    return;
+  }
+  // iOS — 기존 네이티브 경로(느낌 유지).
   try {
     if (!_plugin) {
       // 동기 import 캐시 — 첫 호출 시 모듈 로드.

@@ -769,6 +769,7 @@ async function fetchFileBuffer(key: string): Promise<Buffer | null> {
 
 router.get("/folders/:id/download", async (req, res) => {
   const u = (req as any).user;
+  try {
   const folder = await prisma.folder.findUnique({ where: { id: req.params.id } });
   if (!folder) return res.status(404).json({ error: "not found" });
 
@@ -805,12 +806,14 @@ router.get("/folders/:id/download", async (req, res) => {
 
   // 폴더 경로(prefix) 를 메모리에서 계산 — 루트는 빈 문자열.
   const folderMap = new Map(subtree.map((f) => [f.id, f]));
-  function folderPath(id: string | null): string {
+  function folderPath(id: string | null, seen: Set<string> = new Set()): string {
     if (!id || id === rootId) return "";
+    if (seen.has(id)) return ""; // 데이터 손상으로 parentId 사이클이 생겨도 무한 재귀(스택오버플로) 방지
+    seen.add(id);
     const f = folderMap.get(id);
     if (!f) return "";
     const safe = f.name.replace(/[\\/:*?"<>|]/g, "_");
-    const parent = folderPath(f.parentId);
+    const parent = folderPath(f.parentId, seen);
     return parent ? `${parent}/${safe}` : safe;
   }
 
@@ -883,8 +886,34 @@ router.get("/folders/:id/download", async (req, res) => {
     console.warn("[doc:zip] no readable files", folder.id);
   }
 
-  await archive.finalize();
-  await writeLog(u.id, "FOLDER_DOWNLOAD", folder.id, `${folder.name} (${added} files)`);
+  // ★ 감사 로그는 다운로드 "전에" + 비차단으로 — 예전엔 finalize 뒤 await writeLog 였는데,
+  //   writeLog 가 던지면(compression 버퍼링으로 헤더가 아직 안 나간 사이) 글로벌 에러 핸들러가
+  //   500 JSON("서버 오류가 발생했습니다")을 내보내 다운로드가 통째로 실패했다(사용자 신고).
+  //   로깅 실패가 다운로드를 깨뜨리면 안 되므로 fire-and-forget + catch.
+  void writeLog(u.id, "FOLDER_DOWNLOAD", folder.id, `${folder.name} (${added} files)`).catch((e) =>
+    console.error("[doc:zip] writeLog failed (non-fatal)", e),
+  );
+
+  // finalize 실패도 다운로드 스트림 한정 처리 — 글로벌 핸들러로 새어 500 JSON 이 되지 않게.
+  // (헤더가 이미 나갔으면 어차피 JSON 으로 못 바꾸고, 안 나갔으면 stream 을 깔끔히 끝낸다.)
+  try {
+    await archive.finalize();
+  } catch (err) {
+    console.error("[doc:zip] finalize failed", folder.id, err);
+    if (!res.headersSent) res.status(500).json({ error: "압축 파일을 만들지 못했어요. 잠시 후 다시 시도해주세요." });
+    else { try { res.end(); } catch {} }
+  }
+  } catch (err) {
+    // 핸들러 전체 안전망 — 권한·BFS·쿼리·folderPath 등 헤더 전송 전 어떤 예외든 여기서 잡아
+    // 깔끔한 500 으로 응답한다(express-async-errors 로 새어 글로벌 "서버 오류가 발생했습니다"가
+    // 되던 것을 방지). 실제 원인은 폴더 id 와 함께 로깅 → CloudWatch 에서 추적 가능.
+    console.error("[doc:zip] folder download failed", req.params.id, err);
+    if (!res.headersSent) {
+      res.status(500).json({ error: "폴더 다운로드 중 오류가 발생했어요. 잠시 후 다시 시도하거나 개별 파일로 받아주세요." });
+    } else {
+      try { res.end(); } catch {}
+    }
+  }
 });
 
 export default router;

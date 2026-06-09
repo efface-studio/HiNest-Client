@@ -3,7 +3,7 @@ import { z } from "zod";
 import archiver from "archiver";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db.js";
-import { requireAuth, writeLog } from "../lib/auth.js";
+import { requireAuth, writeLog, queryTokenAuth } from "../lib/auth.js";
 import { downloadFile, isStorageEnabled } from "../lib/storage.js";
 import { UPLOAD_DIR } from "./upload.js";
 import { safeUniqueZipEntry } from "../lib/zipSafe.js";
@@ -11,6 +11,16 @@ import path from "node:path";
 import fs from "node:fs";
 
 const router = Router();
+// 폴더 ZIP 다운로드(GET)만 ?token= 쿼리 인증을 허용한다 — 네이티브 앱(Capacitor WKWebView)은
+// 인앱 브라우저로 URL 을 직접 열어 받는데, 그땐 Authorization 헤더·쿠키를 못 싣기 때문.
+// requireAuth 보다 먼저 ?token= → Bearer 로 승격해야 인증이 통과한다. 다른 라우트(특히 변경
+// 요청)엔 적용하지 않아 토큰이 URL/로그에 남는 노출 면을 다운로드 GET 하나로 한정한다.
+router.use((req, res, next) => {
+  if (req.method === "GET" && /\/folders\/[^/]+\/download\/?$/.test(req.path)) {
+    return queryTokenAuth(req, res, next);
+  }
+  next();
+});
 router.use(requireAuth);
 
 /* ===== 프로젝트 멤버십 검사 =====

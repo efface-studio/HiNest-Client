@@ -730,8 +730,11 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     if (!d.fileUrl) return;
     const url = new URL(d.fileUrl, window.location.origin);
     url.searchParams.set("download", "1");
-    if (d.fileName) url.searchParams.set("name", d.fileName);
-    downloadFromUrl(url.toString(), d.fileName ?? "");
+    // 파일명 힌트 — fileName 우선, 없으면 title 로 폴백(레거시 문서엔 fileName 이 비어 키 해시가
+    // 파일명이 되던 문제 방지). 둘 다 없으면 서버 Content-Disposition 으로 폴백.
+    const hint = d.fileName || d.title || "";
+    if (hint) url.searchParams.set("name", hint);
+    downloadFromUrl(url.toString(), hint);
   }
 
   // 미리보기 가능한 타입(이미지·PDF·영상)인가. 그 외(.docx·.pptx·.zip 등)는 미리보기 의미가 없어 다운로드.
@@ -757,6 +760,15 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   // 서버가 404/500 을 내면 새 탭에 JSON/빈페이지가 뜨고 사용자는 왜 안되는지 알 수 없었음.
   // fetch 로 받아 Blob 으로 내려받으면: 에러 시 JSON 본문을 파싱해 alertAsync 로 안내 가능.
   async function downloadFolder(f: Folder) {
+    // 네이티브(iOS/iPadOS): blob URL 은 인앱 브라우저(SFSafariViewController)가 못 연다 —
+    // 예전엔 fetch→blob→Browser.open(blob:) 라 폴더 ZIP 다운로드가 조용히 실패했다.
+    // 인증된 절대 URL(imgSrc 가 ?token= 부여)을 직접 열어 iOS 가 ZIP 다운로드/공유 시트를 띄우게 한다.
+    // (서버 /folders/:id/download 는 이 GET 한정으로 ?token= 인증을 허용하도록 했다.)
+    if (isCapacitorNative()) {
+      const u = imgSrc(`/api/document/folders/${f.id}/download`);
+      if (u) void Browser.open({ url: u }).catch(() => {});
+      return;
+    }
     try {
       const res = await apiFetch(`/api/document/folders/${f.id}/download`);
       if (!res.ok) {

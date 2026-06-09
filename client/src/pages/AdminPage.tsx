@@ -185,7 +185,7 @@ type Invite = {
   createdAt: string;
 };
 type Team = { id: string; name: string; createdAt: string };
-type Position = { id: string; name: string; rank: number; createdAt: string };
+type Position = { id: string; name: string; rank: number; hidden?: boolean; createdAt: string };
 
 type Tab = "users" | "invites" | "teams" | "positions" | "ip" | "attendance";
 
@@ -2037,6 +2037,15 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
     invalidateCache("/api/admin/positions");
     reload();
   }
+  async function toggleHidden(p: Position) {
+    try {
+      await api(`/api/admin/positions/${p.id}`, { method: "PATCH", json: { hidden: !p.hidden } });
+      invalidateCache("/api/admin/positions");
+      // 디렉터리/조직도가 보는 캐시도 무효화 — 즉시 반영.
+      invalidateCache("/api/user");
+      reload();
+    } catch (e: any) { alertAsync({ title: "변경 실패", description: e.message }); }
+  }
   async function remove(p: Position) {
     const ok = await confirmAsync({
       title: "직급 삭제",
@@ -2159,6 +2168,16 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
                     if (v && v !== p.name) rename(p, v);
                   }}
                 />
+                <button
+                  type="button"
+                  onClick={() => toggleHidden(p)}
+                  className="flex items-center gap-1.5 text-[11.5px] font-bold transition"
+                  style={{ color: p.hidden ? "#F59E0B" : "var(--c-text-3)" }}
+                  title={p.hidden ? "이 직급의 구성원이 디렉터리·조직도 등에서 숨겨집니다 (클릭해 표시로 전환)" : "이 직급을 숨김으로 전환 — 소속 구성원이 디렉터리·조직도 등에서 사라집니다 (본인은 계속 사용 가능)"}
+                >
+                  <span className="inline-block w-1.5 h-1.5 rounded-full" style={{ background: p.hidden ? "#F59E0B" : "#94A3B8" }} />
+                  {p.hidden ? "숨김 직급" : "표시 직급"}
+                </button>
                 <div className="text-[11px] text-ink-500 tabular w-[88px] text-right hidden sm:block">
                   {new Date(p.createdAt).toLocaleDateString("ko-KR")}
                 </div>

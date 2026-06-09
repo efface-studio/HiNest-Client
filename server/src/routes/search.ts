@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/db.js";
 import { requireAuth } from "../lib/auth.js";
+import { getHiddenPositions, excludeHidden } from "../lib/hiddenPositions.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -77,6 +78,8 @@ router.get("/", async (req, res) => {
         ],
       };
 
+  // 숨김 직급(테스트 계정 등) 사용자는 검색 결과에서 제외(본인은 항상 포함).
+  const hidden = await getHiddenPositions(u.companyId);
   const [people, notices, events, documents, messages, meetings, approvals, projects] = await Promise.all([
     prisma.user.findMany({
       where: {
@@ -92,6 +95,7 @@ router.get("/", async (req, res) => {
             ],
           },
         ],
+        ...excludeHidden(hidden, { exceptId: u.id }),
       },
       take: 8,
       select: { id: true, name: true, email: true, team: true, position: true, avatarColor: true, isDeveloper: true, avatarUrl: true },

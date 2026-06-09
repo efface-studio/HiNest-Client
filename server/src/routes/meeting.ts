@@ -4,6 +4,7 @@ import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { notifyMany } from "../lib/notify.js";
 import { allSameCompanyUsers } from "../lib/tenantValidate.js";
+import { getHiddenPositions, excludeHidden } from "../lib/hiddenPositions.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -144,8 +145,14 @@ router.get("/mentionable", async (req, res) => {
     if (authorId) allowedIds.add(authorId);
   }
 
+  // 숨김 직급(테스트 계정 등)은 멘션 후보에서 제외(본인은 항상 포함).
+  // allowedIds 가 있어도(특정 회의 viewer 픽커) 동일하게 — 회사 정책상 사용자 목록에 안 보임.
+  const hiddenP = await getHiddenPositions(u.companyId);
   const users = await prisma.user.findMany({
-    where: allowedIds ? { id: { in: Array.from(allowedIds) } } : {},
+    where: {
+      ...(allowedIds ? { id: { in: Array.from(allowedIds) } } : {}),
+      ...excludeHidden(hiddenP, { exceptId: u.id }),
+    },
     select: {
       id: true,
       name: true,

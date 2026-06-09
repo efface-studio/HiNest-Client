@@ -2,6 +2,7 @@ import { Router } from "express";
 import { prisma } from "../lib/db.js";
 import { requireAuth } from "../lib/auth.js";
 import { todayStr } from "../lib/dates.js";
+import { getHiddenPositions, excludeHidden } from "../lib/hiddenPositions.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -13,9 +14,10 @@ router.get("/", async (req, res) => {
   const u = (req as any).user;
   // 종전엔 superAdmin 계정을 다른 사람에게 숨겼지만, \"HiNest 개발자\" 딱지가 별도 정체성으로 자리잡아
   // 더 이상 숨길 이유가 없음. 모든 활성 사용자를 노출하고 권한 표시는 칩으로.
-  void u;
+  // 숨김 직급(Position.hidden=true) 사용자는 디렉터리에서 제외(본인은 예외 — 자기 자신 보기 OK).
+  const hidden = await getHiddenPositions(u.companyId);
   const users = await prisma.user.findMany({
-    where: { active: true },
+    where: { active: true, ...excludeHidden(hidden, { exceptId: u.id }) },
     orderBy: { name: "asc" },
     take: 5000,
     select: {
@@ -81,14 +83,17 @@ router.get("/", async (req, res) => {
  * 경량 Presence 전용 엔드포인트 — ChatMiniApp 이 30초마다 폴링할 때 사용.
  * 전체 유저 목록 대신 id + presenceStatus + workStatus 만 반환 → 응답 크기 ~8x 감소.
  */
-router.get("/presence", async (_req, res) => {
+router.get("/presence", async (req, res) => {
+  const u = (req as any).user;
   const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const endOfToday = new Date(startOfToday); endOfToday.setDate(endOfToday.getDate() + 1);
   const date = todayStr();
 
+  // 숨김 직급 사용자는 presence 폴링 결과에서도 제외(디렉터리 ↔ presence 일관).
+  const hidden = await getHiddenPositions(u.companyId);
   const [users, attendances, leaves] = await Promise.all([
     prisma.user.findMany({
-      where: { active: true, superAdmin: false },
+      where: { active: true, superAdmin: false, ...excludeHidden(hidden, { exceptId: u.id }) },
       select: { id: true, presenceStatus: true, presenceMessage: true },
       take: 5000,
     }),

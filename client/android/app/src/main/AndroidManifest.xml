@@ -44,4 +44,7 @@
     <!-- Android 13+(API 33) 푸시 알림 표시 권한 — @capacitor/push-notifications 가 런타임에 요청.
          없으면 알림이 조용히 무시된다. iOS 의 알림 권한 요청과 동일 흐름. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 햅틱(@capacitor/haptics)이 Vibrator 로 진동을 주려면 필요. iOS 와 동일 지점의 탭/토글/
+         버튼 햅틱을 안드로이드에서도 동작시킨다. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

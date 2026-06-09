@@ -6,6 +6,7 @@ import InstallAppBanner from "../components/InstallAppBanner";
 import { alertAsync } from "../components/ConfirmHost";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 import { isPreviewMode } from "../lib/previewMock";
+import { Skeleton } from "../components/Skeleton";
 
 type Notice = { id: string; title: string; content: string; createdAt: string; author: { name: string; isDeveloper?: boolean }; pinned: boolean };
 type Event = { id: string; title: string; startAt: string; endAt: string; scope: string; color: string };
@@ -26,6 +27,9 @@ export default function DashboardPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [att, setAtt] = useState<Attendance>(null);
   const [now, setNow] = useState(new Date());
+  // 첫 로드 완료 여부 — false 동안 빈 영역 대신 Skeleton 을 띄워 깜빡임 제거.
+  // 새로고침(load 재호출) 시엔 기존 데이터 유지하면서 백그라운드로 갱신.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 30_000);
@@ -50,6 +54,7 @@ export default function DashboardPage() {
     setNotices(n.notices.slice(0, 5));
     setEvents(s.events.slice(0, 6));
     setAtt(a.attendance);
+    setLoaded(true);
   }
   useEffect(() => { load(); }, []);
 
@@ -199,8 +204,8 @@ export default function DashboardPage() {
       {/* 본문 2열 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
-          <ScheduleCard events={events} />
-          <NoticeCard notices={notices} />
+          <ScheduleCard events={events} loaded={loaded} />
+          <NoticeCard notices={notices} loaded={loaded} />
         </div>
         <div className="space-y-4">
           <ProfileCard
@@ -281,12 +286,26 @@ function QuickItem({ to, label, tint, Icon }: { to: string; label: string; tint:
 /* ============================================================
  *  ScheduleCard
  * ============================================================ */
-function ScheduleCard({ events }: { events: Event[] }) {
+function ScheduleCard({ events, loaded = true }: { events: Event[]; loaded?: boolean }) {
   const grouped = useMemo(() => groupByDay(events), [events]);
   return (
     <TossCard className="px-5 sm:px-6 py-5">
       <CardHeader title="이번 주 일정" count={events.length} href="/schedule" />
-      {events.length === 0 ? (
+      {!loaded && events.length === 0 ? (
+        // 첫 로드 동안 EmptyState 대신 Skeleton — '없어요'가 잠깐 떴다 사라지는 깜빡임 제거
+        <div className="mt-3 space-y-2">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 py-2">
+              <Skeleton w={4} h={32} radius={4} />
+              <div className="flex-1 min-w-0 flex flex-col gap-1.5">
+                <Skeleton w="70%" h={14} />
+                <Skeleton w="40%" h={10} />
+              </div>
+              <Skeleton w={42} h={20} radius={999} />
+            </div>
+          ))}
+        </div>
+      ) : events.length === 0 ? (
         <Empty>등록된 일정이 없어요</Empty>
       ) : (
         <div className="mt-1">
@@ -318,11 +337,21 @@ function ScheduleCard({ events }: { events: Event[] }) {
 /* ============================================================
  *  NoticeCard
  * ============================================================ */
-function NoticeCard({ notices }: { notices: Notice[] }) {
+function NoticeCard({ notices, loaded = true }: { notices: Notice[]; loaded?: boolean }) {
   return (
     <TossCard className="px-5 sm:px-6 py-5">
       <CardHeader title="공지" count={notices.length} href="/notice" />
-      {notices.length === 0 ? (
+      {!loaded && notices.length === 0 ? (
+        // 첫 로드 동안 Skeleton — 깜빡임 제거
+        <div className="mt-3 space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="flex flex-col gap-1.5 py-2">
+              <Skeleton w="70%" h={14} />
+              <Skeleton w="40%" h={10} />
+            </div>
+          ))}
+        </div>
+      ) : notices.length === 0 ? (
         <Empty>아직 공지가 없어요</Empty>
       ) : (
         <ul className="mt-1 divide-y divide-[color:var(--c-border)]">

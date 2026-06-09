@@ -7,6 +7,7 @@ import { getHoliday } from "../lib/holidays";
 import DateTimePicker from "../components/DateTimePicker";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
 import Portal from "../components/Portal";
+import BottomSheet from "../components/BottomSheet";
 
 export type Category =
   | "MEETING" | "DEADLINE" | "OUT" | "HOLIDAY" | "EVENT"
@@ -895,33 +896,8 @@ type EventForm = {
 
 type DirUser = { id: string; name: string; email: string; team?: string | null; avatarColor?: string; avatarUrl?: string | null; position?: string | null };
 
-/**
- * iOS 키보드가 올라오면 visualViewport 만 키보드 높이만큼 줄어든다(레이아웃 뷰포트·100vh·100dvh 는 그대로).
- * 그래서 화면 중앙 정렬 모달은 키보드가 뜨면 아래쪽(카테고리 칩·푸터의 저장 버튼)이 키보드와 iOS 입력
- * 보조바에 가려진다. 오버레이를 visualViewport 영역(top/height)에 맞추고 패널을 그 안으로 캡(max-h-full)하면,
- * 모달이 항상 키보드 위에 들어와 내부 스크롤만으로 모든 필드·푸터에 접근된다.
- * visualViewport 미지원(구형) 환경에서는 전체 화면으로 폴백하므로 기존 동작과 동일.
- */
-function useViewportInset(): { top: number; height: number | string } {
-  const read = (): { top: number; height: number | string } => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : null;
-    return vv ? { top: vv.offsetTop, height: vv.height } : { top: 0, height: "100%" };
-  };
-  const [inset, setInset] = useState<{ top: number; height: number | string }>(read);
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const apply = () => setInset({ top: vv.offsetTop, height: vv.height });
-    apply();
-    vv.addEventListener("resize", apply);
-    vv.addEventListener("scroll", apply);
-    return () => {
-      vv.removeEventListener("resize", apply);
-      vv.removeEventListener("scroll", apply);
-    };
-  }, []);
-  return inset;
-}
+// (useViewportInset 제거 — EventModal 이 공용 BottomSheet 로 이관되며 키보드 인셋·safe-area 를
+//  BottomSheet 가 직접 관리한다. visualViewport 수동 추적이 더 이상 필요 없음.)
 
 function EventModal({
   onClose,
@@ -976,46 +952,34 @@ function EventModal({
     );
   }, [directory, deferredSearch]);
 
-  // 키보드가 떠도 모달(카테고리 칩·저장 버튼)이 가려지지 않도록 오버레이를 visualViewport 영역에 맞춘다.
-  const viewport = useViewportInset();
-
+  // iOS 에선 BottomSheet 가 하단 네이티브 시트(드래그·스프링·키보드 인셋)를, 데스크탑은
+  // 가운데 모달을 자동 처리한다. 폼 제출 버튼은 시트 푸터에 두고 form="event-form" 으로 연결.
   return (
-    <Portal>
-    <div
-      className="fixed inset-x-0 bg-ink-900/40 grid place-items-center modal-safe z-50"
-      style={{ top: viewport.top, height: viewport.height }}
-      onClick={onClose}
-    >
-      <div
-        className="panel w-full max-w-[640px] shadow-pop overflow-hidden max-h-full flex flex-col"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {/* 헤더 */}
-        <div className="flex items-center justify-between px-6 pt-6 pb-4 flex-shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div
-              className="w-9 h-9 rounded-lg grid place-items-center"
-              style={{ background: form.color + "22", color: form.color }}
-            >
-              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="3" y="5" width="18" height="16" rx="2.5" />
-                <path d="M3 10h18M8 3v4M16 3v4" />
-              </svg>
-            </div>
-            <div>
-              <div className="h-title">일정 추가</div>
-              <div className="text-[11.5px] text-ink-500">팀과 공유할 일정을 만들어보세요</div>
-            </div>
-          </div>
-          <button type="button" className="btn-icon" onClick={onClose} aria-label="닫기">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 6 6 18M6 6l12 12" />
-            </svg>
-          </button>
+    <BottomSheet
+      open
+      onClose={onClose}
+      maxWidth={640}
+      title="일정 추가"
+      subtitle="팀과 공유할 일정을 만들어보세요"
+      icon={
+        <div
+          className="w-9 h-9 rounded-lg grid place-items-center flex-shrink-0"
+          style={{ background: form.color + "22", color: form.color }}
+        >
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="5" width="18" height="16" rx="2.5" />
+            <path d="M3 10h18M8 3v4M16 3v4" />
+          </svg>
         </div>
-
-        <form onSubmit={onSubmit} className="flex-1 min-h-0 flex flex-col">
-          <div className="px-6 pb-5 space-y-5 flex-1 min-h-0 overflow-y-auto">
+      }
+      footer={
+        <div className="flex items-center justify-end gap-2">
+          <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>취소</button>
+          <button type="submit" form="event-form" className="btn-primary" disabled={saving}>{saving ? "추가 중…" : "일정 추가"}</button>
+        </div>
+      }
+    >
+        <form id="event-form" onSubmit={onSubmit} className="space-y-5 py-1">
             {/* 제목 */}
             <div>
               <label className="field-label">제목</label>
@@ -1298,16 +1262,7 @@ function EventModal({
                 maxLength={5_000}
               />
             </div>
-          </div>
-
-          {/* 푸터 */}
-          <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-ink-150 bg-ink-25 flex-shrink-0">
-            <button type="button" className="btn-ghost" onClick={onClose} disabled={saving}>취소</button>
-            <button className="btn-primary" disabled={saving}>{saving ? "추가 중…" : "일정 추가"}</button>
-          </div>
         </form>
-      </div>
-    </div>
-    </Portal>
+    </BottomSheet>
   );
 }

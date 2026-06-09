@@ -36,6 +36,13 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- FCM 백그라운드 notification 메시지가 채널을 명시하지 않은 첫 실행 전 엣지케이스에서도
+             고중요도 'default' 채널(MainActivity 가 생성)로 라우팅되게 하는 폴백. 서버 fcm.ts 는
+             channelId="default" 를 항상 명시하므로 평시엔 이 메타데이터 없이도 동작. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default" />
     </application>
 
     <!-- Permissions -->

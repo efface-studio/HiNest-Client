@@ -47,6 +47,9 @@ export async function showNativeNotifications(items: NotifItem[]): Promise<void>
         id: (Date.now() + _seq++) % 2_147_483_000,
         title: it.title,
         body: it.body ?? "",
+        // 안드로이드: MainActivity 가 만든 고중요도 'default' 채널을 써서 포그라운드 로컬
+        // 배너도 헤드업으로 뜨게 한다(미지정 시 IMPORTANCE_DEFAULT 폴백 → 조용함). iOS 는 무시.
+        channelId: "default",
         extra: { linkUrl: it.linkUrl ?? null },
       })),
     });

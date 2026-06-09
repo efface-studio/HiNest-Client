@@ -34,6 +34,9 @@ type Ctx = {
   markRead: (ids?: string[], all?: boolean) => Promise<void>;
   /** 특정 채팅방에 들어갔을 때 해당 방의 DM/MENTION 알림 일괄 읽음 처리 */
   markRoomRead: (roomId: string) => Promise<void>;
+  /** SSE 스트림이 살아있는지(연결됨/연결중) — 폴링 소비자가 안전망 폴링을 건너뛰는 데 쓴다.
+   *  ref 기반 안정 콜백이라 호출해도 리렌더를 유발하지 않음. */
+  isSseAlive: () => boolean;
 };
 
 const NotificationCtx = createContext<Ctx>({
@@ -45,6 +48,7 @@ const NotificationCtx = createContext<Ctx>({
   reload: async () => {},
   markRead: async () => {},
   markRoomRead: async () => {},
+  isSseAlive: () => false,
 });
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
@@ -278,9 +282,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   // (AppLayout·ChatFab·NotificationBell) 가 값이 안 바뀌어도 전부 리렌더된다.
   // reload/markRead/markRoomRead 는 useCallback 으로 고정이고 bellItems/unread/chatUnread
   // 는 items 파생이라, 실제로 items·ready 가 바뀔 때만 새 객체가 만들어진다.
+  // SSE 생존 여부 — esRef readyState 로 판정(CONNECTING/OPEN 이면 살아있음). ref 읽기라
+  // deps 불필요한 안정 콜백 → value 가 이것 때문에 재생성되지 않음.
+  const isSseAlive = useCallback(
+    () => !!esRef.current && esRef.current.readyState !== EventSource.CLOSED,
+    [],
+  );
+
   const value = useMemo<Ctx>(
-    () => ({ items, bellItems, unread, chatUnread, ready, reload, markRead, markRoomRead }),
-    [items, bellItems, unread, chatUnread, ready, reload, markRead, markRoomRead]
+    () => ({ items, bellItems, unread, chatUnread, ready, reload, markRead, markRoomRead, isSseAlive }),
+    [items, bellItems, unread, chatUnread, ready, reload, markRead, markRoomRead, isSseAlive]
   );
 
   return (

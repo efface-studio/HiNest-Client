@@ -78,7 +78,7 @@ export default function ChatMiniApp({
   openRoomRequest?: { id: number; roomId: string } | null;
 }) {
   const { user } = useAuth();
-  const { items: notifItems, markRoomRead } = useNotifications();
+  const { items: notifItems, markRoomRead, isSseAlive } = useNotifications();
 
   const [rooms, setRooms] = useState<Room[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -286,7 +286,9 @@ export default function ChatMiniApp({
     if (!isPanelOpen) return;
     // SSE (chat:sse-message / chat:sse-room) 가 primary path — 방 목록은
     // 상태 확인용 안전망으로 60초만 돈다 (기존 5~10s 는 SSE 와 충돌해 느림의 원인).
-    const t = setInterval(loadRooms, 60_000);
+    // ★ SSE 가 살아있으면(주로 네이티브) onRoom 이벤트가 이미 loadRooms 를 트리거하므로
+    //   이 60초 폴링(모든 방×멤버 아바타 재전송)은 순수 중복 → 스킵. 끊겼을 때만 안전망 가동.
+    const t = setInterval(() => { if (!isSseAlive()) loadRooms(); }, 60_000);
     return () => clearInterval(t);
   }, [isPanelOpen, activeId]);
   useEffect(() => {
@@ -305,7 +307,10 @@ export default function ChatMiniApp({
     let tick = 0;
     const t = setInterval(() => {
       tick++;
-      const full = tick % 3 === 0; // 90초마다 full
+      // 90초마다 full 동기화(수정/삭제/리액션 반영). 단 SSE 가 살아있으면 chat:sse-update 가
+      // 그것들을 이미 실시간 푸시하므로 300건 full 재전송은 불필요 → 증분(after=)만.
+      // SSE 끊김 시에만 full 로 떨어져 정합성 안전망 유지. (서버 egress 절감, 성능 무영향)
+      const full = tick % 3 === 0 && !isSseAlive();
       loadMessages(activeId, { full });
       if (isChatVisible()) {
         markRead(activeId);

@@ -182,7 +182,9 @@ export default function AttendancePage() {
     const avgMs = completed.length ? totalMs / completed.length : 0;
     const usedDays = leaves
       .filter((l) => l.status === "APPROVED")
-      .reduce((acc, l) => acc + dayDiff(l.startDate, l.endDate), 0);
+      // 반차(HALF)는 0.5일로 집계 — dayDiff 는 같은 날이면 1을 반환하므로 type 으로 보정.
+      // (이전엔 모든 휴가를 종일로 세어 반차가 쌓일수록 '사용한 휴가'가 부풀려졌음)
+      .reduce((acc, l) => acc + (l.type === "HALF" ? 0.5 : dayDiff(l.startDate, l.endDate)), 0);
     const pending = leaves.filter((l) => l.status === "PENDING").length;
     return {
       workDays: completed.length,

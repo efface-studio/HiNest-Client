@@ -58,7 +58,13 @@ export default function DashboardPage() {
   }
   useEffect(() => { load(); }, []);
 
+  // 출퇴근 버튼 더블탭 가드 — 빠르게 두 번 누르면 POST 가 2번 나가던 문제 방지(서버는 멱등이라
+  // 데이터 손상은 없지만 불필요한 요청·깜빡임 제거). 처리 중엔 버튼 비활성.
+  const [attBusy, setAttBusy] = useState(false);
+
   async function checkIn() {
+    if (attBusy) return;
+    setAttBusy(true);
     // 다중 세션 — "다시 출근" 은 이전 기록을 보존하고 새 세션을 추가하므로 강제확인 불필요.
     try {
       await api("/api/attendance/check-in", { method: "POST" });
@@ -66,10 +72,14 @@ export default function DashboardPage() {
       const title = err?.code === "IP_NOT_ALLOWED" ? "출근 불가" : "출근 실패";
       alertAsync({ title, description: err?.message ?? "출근 처리에 실패했어요" });
       return;
+    } finally {
+      setAttBusy(false);
     }
     load();
   }
   async function checkOut() {
+    if (attBusy) return;
+    setAttBusy(true);
     try {
       await api("/api/attendance/check-out", { method: "POST" });
     } catch (err: any) {
@@ -149,7 +159,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={checkIn}
-              disabled={working}
+              disabled={working || attBusy}
               className="px-5 py-2.5 rounded-xl text-[13.5px] font-extrabold transition disabled:opacity-40"
               style={{ background: "var(--c-brand)", color: "#fff" }}
             >
@@ -158,7 +168,7 @@ export default function DashboardPage() {
             <button
               type="button"
               onClick={checkOut}
-              disabled={!working}
+              disabled={!working || attBusy}
               className="px-5 py-2.5 rounded-xl text-[13.5px] font-extrabold transition disabled:opacity-40"
               style={{ background: "var(--c-surface-3)", color: "var(--c-text-1)" }}
             >

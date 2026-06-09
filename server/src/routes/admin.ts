@@ -12,6 +12,7 @@ import {
 } from "../lib/auth.js";
 import { todayStr } from "../lib/dates.js";
 import { normalizeSessions, workedMinutes } from "../lib/attendanceSessions.js";
+import { evictHiddenPositions } from "../lib/hiddenPositions.js";
 import { getLogs, type LogLevel, getErrorGroups, getErrorGroup, clearErrorGroups } from "../lib/logBuffer.js";
 import { evictNavVisibilityCache } from "./nav.js";
 
@@ -661,17 +662,24 @@ router.post("/positions/reorder", async (req, res) => {
 router.patch("/positions/:id", async (req, res) => {
   const name = req.body?.name !== undefined ? capName(req.body.name) : undefined;
   const rank = req.body?.rank !== undefined ? Number(req.body.rank) : undefined;
+  const hidden = req.body?.hidden !== undefined ? !!req.body.hidden : undefined;
   const u = (req as any).user;
   const prev = await prisma.position.findUnique({ where: { id: req.params.id } });
   if (!prev) return res.status(404).json({ error: "not found" });
   const position = await prisma.position.update({
     where: { id: prev.id },
-    data: { ...(name !== undefined && { name }), ...(rank !== undefined && { rank }) },
+    data: {
+      ...(name !== undefined && { name }),
+      ...(rank !== undefined && { rank }),
+      ...(hidden !== undefined && { hidden }),
+    },
   });
   if (name && prev.name !== name) {
     await prisma.user.updateMany({ where: { position: prev.name }, data: { position: name } });
   }
-  await writeLog(u.id, "POSITION_UPDATE", position.id, `${prev.name} -> ${name ?? prev.name}`);
+  // hidden 토글되면 30초 캐시 즉시 무효화 — 다음 요청부터 반영.
+  if (hidden !== undefined && hidden !== prev.hidden) evictHiddenPositions(prev.companyId);
+  await writeLog(u.id, "POSITION_UPDATE", position.id, `${prev.name} -> ${name ?? prev.name}${hidden !== undefined ? ` hidden:${hidden}` : ""}`);
   res.json({ position });
 });
 

@@ -20,9 +20,18 @@ let lastToken: string | null = null;
 
 // iOS(APNs)·Android(FCM) 모두 동일한 @capacitor/push-notifications 플로우를 쓴다.
 // 토큰 종류만 OS 가 다르게 발급(iOS=APNs hex, Android=FCM) → 서버는 platform 으로 라우팅.
+//
+// ⚠️ Android 주의: register() 는 FirebaseMessaging.getInstance() 를 호출하는데, google-services.json
+//    이 없어 FirebaseApp 이 초기화 안 됐으면 IllegalStateException 으로 **네이티브 크래시**가 난다
+//    (JS try/catch 로 못 잡음). 그래서 Android 는 Firebase 가 실제로 번들된 빌드에서만 켠다 —
+//    VITE_ANDROID_FCM=1 로 빌드할 때만(=google-services.json 추가 + 서버 FCM 설정 완료 시).
+//    그 전까지 Android 는 푸시 미등록(앱은 정상, 알림만 없음). iOS 는 APNs 라 추가 설정 없이 동작.
 function isNativePush(): boolean {
   const p = nativePlatform();
-  return isCapacitorNative() && (p === "ios" || p === "android");
+  if (!isCapacitorNative()) return false;
+  if (p === "ios") return true;
+  if (p === "android") return (import.meta as any).env?.VITE_ANDROID_FCM === "1";
+  return false;
 }
 
 /**

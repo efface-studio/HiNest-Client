@@ -39,6 +39,16 @@ keytool -genkey -v -keystore hinest-upload.jks -keyalg RSA -keysize 2048 -validi
    - `FCM_SERVICE_ACCOUNT_JSON` = (그 JSON 전체 문자열), 또는
    - `FCM_PROJECT_ID` / `FCM_CLIENT_EMAIL` / `FCM_PRIVATE_KEY`(PEM, `\n` 이스케이프 가능)
    → 서버 재배포하면 `fcmEnabled()`=true 가 되어 안드로이드 토큰으로 자동 발송.
+4. **클라 빌드 플래그 `VITE_ANDROID_FCM=1`** (필수): 안드로이드 푸시 등록은 이 플래그가
+   `1` 일 때만 켜진다.
+   ```bash
+   cd client && VITE_ANDROID_FCM=1 npm run cap:android   # 또는 bundleRelease 전 sync
+   ```
+   > ⚠️ 왜 플래그로 가두나: `PushNotifications.register()` 는 내부적으로
+   > `FirebaseMessaging.getInstance()` 를 호출하는데, `google-services.json` 이 없어
+   > FirebaseApp 이 초기화 안 된 빌드에선 **네이티브 크래시(IllegalStateException)** 가 난다
+   > (JS try/catch 로 못 잡음). 그래서 google-services.json 을 실제로 넣은 빌드에서만
+   > `VITE_ANDROID_FCM=1` 로 푸시를 켠다. 플래그 없이 빌드하면 앱은 정상, 안드로이드 알림만 안 옴.
 
 ## 3. 릴리스 AAB 빌드
 ```bash
@@ -70,6 +80,7 @@ keystore.properties(또는 env)가 있으면 서명된 AAB 가 나온다.
 - `.gitignore` — keystore·google-services.json 등 시크릿 제외.
 - `server/src/lib/fcm.ts` + `notify.ts` — FCM 발송(env-gated, APNs 와 병행, platform 라우팅).
 - `client/src/lib/pushNotifications.ts` — iOS·Android 공용 푸시 등록(platform 자동 전송).
+  안드로이드는 `VITE_ANDROID_FCM=1` 빌드에서만 register() 호출(Firebase 미설정 크래시 방지).
 
 ## 남은 수동 단계 체크리스트
 - [ ] JDK 17/21 + Android Studio + ANDROID_HOME

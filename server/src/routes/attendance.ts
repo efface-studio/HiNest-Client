@@ -239,4 +239,112 @@ router.patch("/leave/:id", async (req, res) => {
   res.json({ leave });
 });
 
+/* ===== 야근(추가근무) 신청 =====
+ * 연장 종료시각 지정. 승인되면:
+ *  - (사전, 오늘+근무중) Attendance.overtimeUntil = 연장시각 → 자동퇴근을 그 시각까지 보류.
+ *  - (사후, 퇴근했거나 과거날짜) 연장 블록을 세션으로 추가해 그 날짜 근무시간에 가산.
+ */
+const overtimeSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
+  extendedEnd: z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), "유효한 일시가 아닙니다"),
+  reason: z.string().max(1000).optional(),
+});
+
+router.post("/overtime", async (req, res) => {
+  const parsed = overtimeSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "invalid input" });
+  const u = (req as any).user;
+  const d = parsed.data;
+  const ot = await prisma.overtimeRequest.create({
+    data: {
+      userId: u.id,
+      companyId: u.companyId ?? null,
+      date: d.date,
+      extendedEnd: new Date(d.extendedEnd),
+      reason: d.reason,
+    },
+  });
+  await writeLog(u.id, "OVERTIME_REQUEST", ot.id, `${d.date} → ${d.extendedEnd}`);
+  res.json({ overtime: ot });
+});
+
+router.get("/overtime", async (req, res) => {
+  const u = (req as any).user;
+  const all = req.query.all === "1" && (u.role === "ADMIN" || u.role === "MANAGER");
+  const where: any = all ? {} : { userId: u.id };
+  if (all && u.role === "MANAGER") {
+    const me = await prisma.user.findUnique({ where: { id: u.id }, select: { team: true } });
+    where.user = me?.team ? { team: me.team } : { id: "__none__" };
+  }
+  if (all) where.companyId = u.companyId ?? null; // 같은 회사로 한정
+  const list = await prisma.overtimeRequest.findMany({
+    where,
+    orderBy: { createdAt: "desc" },
+    take: 500,
+    include: { user: { select: { name: true, team: true } } },
+  });
+  res.json({ overtimes: list });
+});
+
+router.patch("/overtime/:id", async (req, res) => {
+  const u = (req as any).user;
+  if (u.role !== "ADMIN" && u.role !== "MANAGER") return res.status(403).json({ error: "forbidden" });
+  const status = req.body?.status;
+  if (!["APPROVED", "REJECTED", "PENDING"].includes(status)) return res.status(400).json({ error: "invalid status" });
+  const ot = await prisma.overtimeRequest.findUnique({
+    where: { id: req.params.id },
+    include: { user: { select: { team: true, workEndTime: true } } },
+  });
+  if (!ot) return res.status(404).json({ error: "not found" });
+  if (ot.userId === u.id) return res.status(403).json({ error: "본인 신청은 직접 심사할 수 없어요" });
+  if (u.role === "MANAGER") {
+    const me = await prisma.user.findUnique({ where: { id: u.id }, select: { team: true } });
+    if (!me?.team || ot.user?.team !== me.team) return res.status(403).json({ error: "다른 팀 신청을 심사할 수 없어요" });
+  }
+
+  const updated = await prisma.overtimeRequest.update({
+    where: { id: ot.id }, data: { status, reviewer: u.id },
+  });
+
+  if (status === "APPROVED") {
+    const ext = new Date(ot.extendedEnd);
+    const wEnd = ot.user?.workEndTime || "18:00";
+    const base = new Date(`${ot.date}T${wEnd}:00+09:00`); // 해당 날짜 근무종료시각(KST)
+    const att = await prisma.attendance.findUnique({ where: { userId_date: { userId: ot.userId, date: ot.date } } });
+    const sessions = normalizeSessions(att);
+    const stillWorking = ot.date === todayStr() && hasOpenSession(sessions);
+    if (stillWorking && att) {
+      // 사전 승인 — 자동퇴근을 연장시각까지 미룬다(라이브 세션이 시간 계산).
+      await prisma.attendance.update({ where: { id: att.id }, data: { overtimeUntil: ext } });
+    } else {
+      // 사후 승인 — 연장 블록 세션 추가(기존 기록과 겹치지 않게 시작 보정).
+      const lastEnd = sessions.reduce((mx, s) => Math.max(mx, s.e ? new Date(s.e).getTime() : 0), 0);
+      const startMs = Math.max(base.getTime(), lastEnd);
+      if (ext.getTime() > startMs) {
+        sessions.push({ s: new Date(startMs).toISOString(), e: ext.toISOString(), src: "overtime" });
+        await prisma.attendance.upsert({
+          where: { userId_date: { userId: ot.userId, date: ot.date } },
+          update: { sessions: sessions as unknown as object, checkOut: ext },
+          create: {
+            userId: ot.userId, companyId: ot.companyId ?? null, date: ot.date, checkOut: ext,
+            sessions: [{ s: new Date(startMs).toISOString(), e: ext.toISOString(), src: "overtime" }] as unknown as object,
+          },
+        });
+      }
+    }
+  }
+
+  await writeLog(u.id, "OVERTIME_REVIEW", ot.id, status);
+  if ((status === "APPROVED" || status === "REJECTED") && ot.userId !== u.id) {
+    await notify({
+      userId: ot.userId,
+      type: "APPROVAL_REVIEW",
+      title: status === "APPROVED" ? "야근 신청이 승인됐어요" : "야근 신청이 반려됐어요",
+      linkUrl: "/attendance",
+      actorName: u.name,
+    });
+  }
+  res.json({ overtime: updated });
+});
+
 export default router;

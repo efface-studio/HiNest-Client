@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR } from "../api";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import DateTimePicker from "../components/DateTimePicker";
 import Portal from "../components/Portal";
 import { alertAsync } from "../components/ConfirmHost";
@@ -32,6 +33,7 @@ type Mode = "view" | "create" | "edit";
 export default function JournalPage() {
   const [list, setList] = useState<Journal[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selected, setSelected] = useState<Journal | null>(null);
   const [form, setForm] = useState({ date: today(), title: "", content: "" });
   const [mode, setMode] = useState<Mode>("view");
@@ -69,6 +71,23 @@ export default function JournalPage() {
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 데스크탑 새로고침 버튼 — 최신 목록을 강제로 다시 가져온다(현재 선택은 유지).
+  // 모바일은 PTR 이 전역으로 담당.
+  async function load() {
+    try {
+      const d = await api<{ journals: Journal[] }>("/api/journal");
+      if (!aliveRef.current) return;
+      setList(d.journals);
+      if (d.journals.length && !selected) setSelected(d.journals[0]);
+    } finally {
+      if (aliveRef.current) setLoading(false);
+    }
+  }
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
+  }
 
   function openCreate() {
     setMode("create");
@@ -157,6 +176,8 @@ export default function JournalPage() {
       <PageHeader
         title="업무일지"
         description="하루의 업무를 기록하고 회고하세요."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <button className="btn-primary btn-lg" onClick={openCreate}>
             + 새 일지
@@ -204,7 +225,7 @@ export default function JournalPage() {
             {loading && filtered.length === 0 ? (
               <div className="px-4 py-4 space-y-2">
                 {[0, 1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-14 rounded-lg bg-ink-100 dark:bg-ink-800 animate-pulse" />
+                  <Skeleton key={i} w="100%" h={56} radius={8} className="block" />
                 ))}
               </div>
             ) : filtered.length === 0 ? (

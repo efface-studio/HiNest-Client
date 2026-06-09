@@ -1,7 +1,8 @@
-import { useDeferredValue, useEffect, useMemo, useState } from "react";
-import { api, apiSWR , imgSrc} from "../api";
+import { useCallback, useDeferredValue, useEffect, useMemo, useState } from "react";
+import { api, apiSWR, invalidateCache, imgSrc } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import { resolvePresence, type PresenceStatus, type WorkStatus } from "../lib/presence";
 import { alertAsync } from "../components/ConfirmHost";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
@@ -33,19 +34,39 @@ export default function DirectoryPage() {
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
   // 복사 버튼 피드백 — 클릭 후 1.2초 간 "복사됨" 표시.
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  // 첫 로드 완료 여부 — Skeleton↔실데이터 전환 분기. (apiSWR 라 loading 플래그가 없음)
+  const [loaded, setLoaded] = useState(false);
+  // 데스크탑 새로고침 버튼 진행 표시.
+  const [refreshing, setRefreshing] = useState(false);
   // 대량 인원 + 그룹핑 필터가 IME 입력을 지연시키지 않도록 deferred.
   const deferredQ = useDeferredValue(q);
 
   // SWR — 팀원 목록은 변동이 느리므로 캐시 히트 효과가 크다.
+  // 데스크탑 새로고침에서도 재사용하도록 콜백으로 추출. alive 가드는 호출부에서 주입.
+  const loadUsers = useCallback((isAlive: () => boolean) => {
+    return apiSWR<{ users: DirectoryUser[] }>("/api/users", {
+      onCached: (d) => { if (isAlive()) { setUsers(d.users); setLoaded(true); } },
+      onFresh: (d) => { if (isAlive()) { setUsers(d.users); setLoaded(true); } },
+    });
+  }, []);
+
   useEffect(() => {
     // 다른 SWR 페이지들과 동일한 alive 가드 — 언마운트 후 setState 방지.
     let alive = true;
-    apiSWR<{ users: DirectoryUser[] }>("/api/users", {
-      onCached: (d) => { if (alive) setUsers(d.users); },
-      onFresh: (d) => { if (alive) setUsers(d.users); },
-    });
+    loadUsers(() => alive);
     return () => { alive = false; };
-  }, []);
+  }, [loadUsers]);
+
+  // 데스크탑 새로고침 — 캐시 무효화 후 fresh 재요청. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try {
+      invalidateCache("/api/users");
+      await loadUsers(() => true);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   const teams = useMemo(
     () => Array.from(new Set(users.map((u) => u.team).filter(Boolean))) as string[],
@@ -115,6 +136,8 @@ export default function DirectoryPage() {
         eyebrow="커뮤니케이션"
         title="팀원"
         description="사내 구성원을 조회하고 바로 1:1 대화를 시작할 수 있어요."
+        onRefresh={refresh}
+        refreshing={refreshing}
       />
 
       {/* My profile hero */}
@@ -171,7 +194,26 @@ export default function DirectoryPage() {
         </div>
       </div>
 
-      {grouped.length === 0 ? (
+      {!loaded && grouped.length === 0 ? (
+        // 첫 로드 중(캐시 미스) — 그리드 카드 형태의 Skeleton. 아바타 원 + 이름·부서 줄.
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={i} className="panel p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <Skeleton circle w={48} h={48} />
+                <div className="flex-1 min-w-0 flex flex-col gap-2">
+                  <Skeleton w="60%" h={14} />
+                  <Skeleton w="40%" h={11} />
+                </div>
+              </div>
+              <Skeleton w="80%" h={11} />
+              <div className="mt-3">
+                <Skeleton w="100%" h={28} radius={8} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : grouped.length === 0 ? (
         <div className="panel py-20 text-center">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-ink-100 grid place-items-center mb-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E959E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, apiSWR } from "../api";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import { useAuth } from "../auth";
 import MonthPicker from "../components/MonthPicker";
 import DateTimePicker from "../components/DateTimePicker";
@@ -71,6 +72,7 @@ export default function AttendancePage() {
   const [month, setMonth] = useState(ymNow());
   const [records, setRecords] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [allLeaves, setAllLeaves] = useState<Leave[]>([]);
   const [open, setOpen] = useState(false);
@@ -105,6 +107,12 @@ export default function AttendancePage() {
       if (!aliveRef.current || myToken !== loadTokenRef.current) return;
       setAllLeaves(all.leaves);
     }
+  }
+
+  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
   }
 
   // SWR — 월별 출퇴근과 휴가 목록은 탭 재진입 시 캐시로 즉시 채움.
@@ -198,6 +206,8 @@ export default function AttendancePage() {
       <PageHeader
         title="근태 · 월차"
         description="월별 출퇴근 기록과 휴가 신청을 관리합니다."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <div className="flex gap-2 flex-wrap items-center">
             <MonthPicker value={month} onChange={setMonth} />
@@ -267,7 +277,7 @@ export default function AttendancePage() {
           {loading && records.length === 0 ? (
             <div className="p-4 space-y-2">
               {[0, 1, 2, 3, 4].map((i) => (
-                <div key={i} className="h-10 rounded-lg bg-ink-100 dark:bg-ink-800 animate-pulse" />
+                <Skeleton key={i} w="100%" h={40} radius={8} className="block" />
               ))}
             </div>
           ) : records.length === 0 ? (

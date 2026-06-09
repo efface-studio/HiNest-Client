@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import Portal from "../components/Portal";
 import MonthPicker from "../components/MonthPicker";
 import DateTimePicker from "../components/DateTimePicker";
@@ -50,6 +51,8 @@ export default function ExpensePage() {
   const [month, setMonth] = useState(ymNow());
   const [list, setList] = useState<Expense[]>([]);
   const [total, setTotal] = useState(0);
+  const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     usedAt: todayDT(),
@@ -76,6 +79,13 @@ export default function ExpensePage() {
     if (aliveRef && !aliveRef.current) return;
     setList(res.expenses);
     setTotal(res.totalAmount);
+    setLoaded(true);
+  }
+
+  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
   }
 
   useEffect(() => {
@@ -192,6 +202,8 @@ export default function ExpensePage() {
       <PageHeader
         title="법인카드 사용내역"
         description="법인카드 사용건을 등록하고 영수증을 첨부합니다."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <div className="flex gap-2 items-center flex-wrap">
             <MonthPicker value={month} onChange={setMonth} />
@@ -261,13 +273,27 @@ export default function ExpensePage() {
             </tr>
           </thead>
           <tbody>
-            {list.length === 0 && (
-              <tr>
-                <td colSpan={9} className="cell-full px-4 py-10 text-center text-ink-400">
-                  등록된 사용내역이 없습니다.
-                </td>
-              </tr>
-            )}
+            {!loaded && list.length === 0
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <tr key={`sk-${i}`} className="border-t border-[color:var(--c-border)]">
+                    <td className="px-4 py-3"><Skeleton w={100} h={12} /></td>
+                    {scope === "all" && <td className="px-4 py-3"><Skeleton w={56} h={12} /></td>}
+                    <td className="px-4 py-3"><Skeleton w="70%" h={12} /></td>
+                    <td className="px-4 py-3"><Skeleton w={44} h={18} radius={999} /></td>
+                    <td className="px-4 py-3 text-right"><Skeleton w={72} h={12} /></td>
+                    <td className="px-4 py-3"><Skeleton w="60%" h={12} /></td>
+                    <td className="px-4 py-3 text-center"><Skeleton w={28} h={12} /></td>
+                    <td className="px-4 py-3 text-center"><Skeleton w={36} h={18} radius={999} /></td>
+                    <td className="px-4 py-3" />
+                  </tr>
+                ))
+              : list.length === 0 && (
+                  <tr>
+                    <td colSpan={9} className="cell-full px-4 py-10 text-center text-ink-400">
+                      등록된 사용내역이 없습니다.
+                    </td>
+                  </tr>
+                )}
             {list.map((e) => (
               <tr key={e.id} className="border-t border-[color:var(--c-border)] hover:bg-[color:var(--c-surface-2)]">
                 <td data-label="사용일시" className="px-4 py-3">

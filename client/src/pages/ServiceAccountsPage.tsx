@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, apiFetch , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import Portal from "../components/Portal";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import { safeExternalUrl } from "../lib/safeUrl";
@@ -190,6 +191,7 @@ export default function ServiceAccountsPage() {
   const [users, setUsers] = useState<DirUser[]>([]);
   const [projects, setProjects] = useState<ProjectChip[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [filterCat, setFilterCat] = useState<Category | "ALL">("ALL");
@@ -219,6 +221,12 @@ export default function ServiceAccountsPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
   }
 
   useEffect(() => {
@@ -397,6 +405,8 @@ export default function ServiceAccountsPage() {
         eyebrow="팀 리소스"
         title="계정 관리"
         description="AWS · Vercel · 테스트 계정 등 팀이 쓰는 서비스 계정을 한 곳에서 관리해요. ⚠️ 비밀번호는 저장하지 마세요."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <button className="btn-primary" onClick={openCreate}>+ 계정 추가</button>
         }
@@ -486,7 +496,19 @@ export default function ServiceAccountsPage() {
       )}
 
       {loading ? (
-        <div className="panel py-14 text-center t-caption">불러오는 중…</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="panel p-4 flex items-start gap-3">
+              <Skeleton w={40} h={40} radius="22%" />
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <Skeleton w="50%" h={14} />
+                <Skeleton w="35%" h={11} />
+                <Skeleton w="80%" h={11} />
+                <Skeleton w="65%" h={11} />
+              </div>
+            </div>
+          ))}
+        </div>
       ) : accounts.length === 0 ? (
         <div className="panel py-14 text-center">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-ink-100 grid place-items-center mb-3 text-xl">🔑</div>

@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import DateTimePicker from "../components/DateTimePicker";
 import { alertAsync } from "../components/ConfirmHost";
 import Portal from "../components/Portal";
@@ -116,6 +117,8 @@ export default function ApprovalsPage() {
     setSp(next, { replace: true });
   };
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [loadErr, setLoadErr] = useState(false);
   const [selected, setSelected] = useState<Approval | null>(null);
   const [creating, setCreating] = useState(false);
@@ -149,6 +152,7 @@ export default function ApprovalsPage() {
       const res = await api<{ approvals: Approval[] }>(`/api/approval?scope=${scope}`);
       if (!aliveRef.current || myToken !== loadTokenRef.current) return;
       setApprovals(res.approvals);
+      setLoaded(true);
       setLoadErr(false);
       if (selected) {
         const fresh = res.approvals.find((a) => a.id === selected.id);
@@ -159,6 +163,11 @@ export default function ApprovalsPage() {
       if (!aliveRef.current || myToken !== loadTokenRef.current) return;
       setLoadErr(true);
     }
+  }
+  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await load(); } finally { setRefreshing(false); }
   }
   async function loadDirectory() {
     try {
@@ -257,6 +266,8 @@ export default function ApprovalsPage() {
         eyebrow="업무"
         title="전자결재"
         description="출장·외근·지출·구매 등 사내 결재를 한 곳에서 관리합니다."
+        onRefresh={refresh}
+        refreshing={refreshing}
         right={
           <>
             <div className="tabs flex-shrink-0">
@@ -286,9 +297,20 @@ export default function ApprovalsPage() {
             <span className="text-[11px] text-ink-400 tabular">{approvals.length}건</span>
           </div>
           <div className="divide-y divide-ink-100 max-h-[70vh] overflow-auto">
-            {approvals.length === 0 && (
+            {!loaded && approvals.length === 0 ? (
+              Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="px-4 py-3 flex items-start gap-3">
+                  <Skeleton w={36} h={36} radius={8} />
+                  <div className="flex-1 min-w-0 flex flex-col gap-2">
+                    <Skeleton w="40%" h={11} />
+                    <Skeleton w="70%" h={13} />
+                    <Skeleton w="50%" h={11} />
+                  </div>
+                </div>
+              ))
+            ) : approvals.length === 0 ? (
               <div className="py-14 text-center t-caption">해당 항목이 없습니다.</div>
-            )}
+            ) : null}
             {approvals.map((a) => {
               const meta = TYPE_META[a.type];
               const smeta = STATUS_META[a.status];

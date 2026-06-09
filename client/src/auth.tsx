@@ -120,7 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     // 미리보기 모드는 서버 호출 없이 플래그만 끄고 빠져나옴.
     if (typeof window !== "undefined" && (window as any).__HINEST_PREVIEW__) {
-      const m = await import("./lib/previewMock");
+      const m = await import("./lib/previewFlag");
       m.disablePreview();
       clearAuthToken();
       setUser(null);

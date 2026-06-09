@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { isPreviewMode } from "../lib/previewMock";
+import { isPreviewMode } from "../lib/previewFlag";
 import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
 
 /**

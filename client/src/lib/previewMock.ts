@@ -1322,66 +1322,19 @@ function jsonResponse(status: number, body: any): Response {
   });
 }
 
-/** 미리보기 활성 여부 — api.ts / 여러 hook 에서 동일하게 검사. */
-export function isPreviewMode(): boolean {
-  if (typeof window === "undefined") return false;
-  if ((window as any).__HINEST_PREVIEW__ === true) return true;
-  try {
-    if (sessionStorage.getItem(PREVIEW_KEY) === "1") {
-      (window as any).__HINEST_PREVIEW__ = true; // 다음 호출 빠르게.
-      installNetworkPatches();                    // 새로고침 직후에도 fetch/SSE 패치 재적용.
-      return true;
-    }
-  } catch {}
-  return false;
-}
-
-const PREVIEW_KEY = "hinest:preview";
+// 미리보기 플래그·활성화/비활성화 API 는 경량 모듈 previewFlag.ts 로 이동했다(번들 분리).
+// 이 모듈(목 데이터 ~95KB)은 미리보기가 실제 활성일 때만 동적 로드된다.
+// 아래 installNetworkPatches/uninstallNetworkPatches 는 previewFlag 가 지연 호출한다.
 
 let _origFetch: typeof fetch | null = null;
 let _origEventSource: typeof EventSource | null = null;
-
-export function enablePreview() {
-  if (typeof window === "undefined") return;
-  (window as any).__HINEST_PREVIEW__ = true;
-  try { sessionStorage.setItem(PREVIEW_KEY, "1"); } catch {}
-  installNetworkPatches();
-}
-
-export function disablePreview() {
-  if (typeof window === "undefined") return;
-  (window as any).__HINEST_PREVIEW__ = false;
-  try { sessionStorage.removeItem(PREVIEW_KEY); } catch {}
-  uninstallNetworkPatches();
-  // 이전 가짜 응답이 sessionStorage 에 캐시돼있을 수 있어 비움 — 진짜 서버 호출 시 stale 데이터 방지.
-  try {
-    const PREFIX = "hinest.swr:";
-    const keys: string[] = [];
-    for (let i = 0; i < sessionStorage.length; i++) {
-      const k = sessionStorage.key(i);
-      if (k && k.startsWith(PREFIX)) keys.push(k);
-    }
-    for (const k of keys) sessionStorage.removeItem(k);
-  } catch {}
-  // 미리보기 동안 localStorage 에 누적될 수 있는 데모-결정 키들도 정리 — 실 가입 후 데모 ID 가 잔존해 색/상태가 어긋나는 일 방지.
-  try {
-    const PREFIXES = ["chat:theme:", "chat:lastSeen:", "hinest:lastSeenNoticeUnread", "emoji-recent", "desktop-notify-seen", "hinest:notif-prefs"];
-    const toRemove: string[] = [];
-    for (let i = 0; i < localStorage.length; i++) {
-      const k = localStorage.key(i);
-      if (!k) continue;
-      if (PREFIXES.some((p) => k === p || k.startsWith(p))) toRemove.push(k);
-    }
-    for (const k of toRemove) localStorage.removeItem(k);
-  } catch {}
-}
 
 /* ---- 보안 ----
  *  api() 만 미리보기로 단락하면 직접 fetch / EventSource 를 쓰는 코드(파일 업로드, SSE 등) 가
  *  실제 서버로 노출된다. enablePreview() 시점에 window 레벨에서 monkey-patch 해 /api/* 진출을 막는다.
  *  - fetch: /api/* 면 mock 응답, 외부 URL(이미지 등) 은 그대로 통과
  *  - EventSource: /api/* 라면 즉시 close 되는 더미 객체, 외부는 통과 */
-function installNetworkPatches() {
+export function installNetworkPatches() {
   if (typeof window === "undefined") return;
   if (!_origFetch) {
     _origFetch = window.fetch.bind(window);
@@ -1421,7 +1374,7 @@ function installNetworkPatches() {
   }
 }
 
-function uninstallNetworkPatches() {
+export function uninstallNetworkPatches() {
   if (typeof window === "undefined") return;
   if (_origFetch) { window.fetch = _origFetch; _origFetch = null; }
   if (_origEventSource) { (window as any).EventSource = _origEventSource; _origEventSource = null; }

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, invalidateCache, clearApiCache, apiFetch , imgSrc} from "../api";
-import { isCapacitorNative } from "../lib/platform";
+import { isCapacitorNative, nativePlatform } from "../lib/platform";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import Portal from "../components/Portal";
@@ -525,20 +525,21 @@ function NativePushPanel() {
     setBusy(true);
     setResult(null);
     try {
-      const d = await api<{
-        enabled: boolean;
-        tokens: number;
-        results: { status: number; reason?: string }[];
-      }>("/api/push/diag");
+      type Diag = { enabled: boolean; tokens: number; results: { status: number; reason?: string }[]; note?: string };
+      // 서버는 iOS(APNs)·Android(FCM) 진단을 { ios, android } 로 함께 준다. 내 플랫폼 결과만 본다.
+      const d = await api<{ ios: Diag; android: Diag }>("/api/push/diag");
+      const android = nativePlatform() === "android";
+      const r: Diag = (android ? d.android : d.ios) ?? d.ios;
+      const svc = android ? "FCM" : "APNs";
       let msg: string;
-      if (!d.enabled) {
-        msg = "❌ 서버에 APNs 키가 설정되지 않았어요 (관리자: APNS_KEY/KEY_ID/TEAM_ID 환경변수 확인).";
-      } else if (!d.tokens) {
-        msg = "⚠️ 이 기기의 푸시 토큰이 등록되지 않았어요. 아래 안내대로 알림 권한을 켠 뒤 앱을 다시 실행해 주세요.";
-      } else if (d.results.some((r) => r.status === 200)) {
+      if (!r.enabled) {
+        msg = `❌ 서버에 ${svc} 설정이 안 돼 있어요 (관리자: ${android ? "FCM_SERVICE_ACCOUNT_JSON" : "APNS_KEY/KEY_ID/TEAM_ID"} 환경변수 확인).`;
+      } else if (!r.tokens) {
+        msg = "⚠️ 이 기기의 푸시 토큰이 등록되지 않았어요. 아래 안내대로 알림 권한을 켠 뒤 앱을 다시 실행해 주세요." + (r.note ? `\n(${r.note})` : "");
+      } else if (r.results.some((x) => x.status === 200)) {
         msg = "✅ 발송 성공! 잠시 후 이 기기에 테스트 알림이 도착합니다.";
       } else {
-        msg = "❌ 발송 실패: " + d.results.map((r) => `${r.status} ${r.reason ?? ""}`).join(", ");
+        msg = "❌ 발송 실패: " + r.results.map((x) => `${x.status} ${x.reason ?? ""}`).join(", ");
       }
       setResult(msg);
     } catch (e: any) {
@@ -552,7 +553,7 @@ function NativePushPanel() {
     <div className="panel p-6">
       <div className="h-sub">푸시 알림</div>
       <div className="t-caption mt-0.5">
-        앱이 백그라운드이거나 꺼져 있을 때도 새 메시지·결재·공지 등을 iOS 푸시로 받아요.
+        앱이 백그라운드이거나 꺼져 있을 때도 새 메시지·결재·공지 등을 푸시 알림으로 받아요.
       </div>
       <button type="button" className="btn-primary mt-4" onClick={test} disabled={busy}>
         {busy ? "테스트 중…" : "테스트 알림 보내기"}
@@ -563,7 +564,7 @@ function NativePushPanel() {
         </div>
       )}
       <div className="t-caption mt-3 text-ink-500">
-        알림이 안 오면 — iOS 설정 → HiNest → 알림에서 "알림 허용"이 켜져 있는지 확인하세요.
+        알림이 안 오면 — 기기 설정 → HiNest → 알림에서 "알림 허용"이 켜져 있는지 확인하세요.
       </div>
     </div>
   );

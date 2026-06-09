@@ -3,9 +3,10 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <application
-        android:allowBackup="true"
+        android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
@@ -37,6 +38,13 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
+        <!-- FCM 백그라운드 notification 메시지가 채널을 명시하지 않은 첫 실행 전 엣지케이스에서도
+             고중요도 'default' 채널(MainActivity 가 생성)로 라우팅되게 하는 폴백. 서버 fcm.ts 는
+             channelId="default" 를 항상 명시하므로 평시엔 이 메타데이터 없이도 동작. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="default" />
+
         <!-- 채팅 푸시 발신자 아바타(MessagingStyle) — iOS NSE 통신알림 미러.
              @capacitor/push-notifications 의 MessagingService 를 제거하고, 그것을 확장한
              HiNestMessagingService 하나만 등록한다(MESSAGING_EVENT 핸들러는 하나여야 함).
@@ -59,4 +67,7 @@
     <!-- Android 13+(API 33) 푸시 알림 표시 권한 — @capacitor/push-notifications 가 런타임에 요청.
          없으면 알림이 조용히 무시된다. iOS 의 알림 권한 요청과 동일 흐름. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <!-- 햅틱(@capacitor/haptics)이 Vibrator 로 진동을 주려면 필요. iOS 와 동일 지점의 탭/토글/
+         버튼 햅틱을 안드로이드에서도 동작시킨다. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
 </manifest>

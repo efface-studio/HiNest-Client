@@ -3,11 +3,13 @@ import { prisma } from "../lib/db.js";
 import { requireAuth } from "../lib/auth.js";
 
 /**
- * 사이드바 뱃지용 카운트 엔드포인트.
- * 클라이언트가 각 키 별 "마지막으로 본 시각(since)" 을 localStorage 에 보관 후
- * 쿼리스트링으로 넘기면, 해당 시각 이후 새로 생긴 항목 수를 반환.
+ * 사이드바 메뉴 노출 상태 엔드포인트.
  *
- *   GET /api/nav/counts?since_schedule=ISO&since_notice=ISO&...
+ *   GET /api/nav/visibility — { disabled: string[], dev: string[] }
+ *
+ * (예전의 GET /api/nav/counts 뱃지 카운트 엔드포인트는 클라이언트 호출처가 사라져
+ *  죽은 코드였으므로 제거했다 — 결재 카운트는 /api/approval/counts, 그 외 신규 알림은
+ *  알림 SSE 가 담당.)
  */
 const router = Router();
 router.use(requireAuth);
@@ -46,99 +48,6 @@ router.get("/visibility", async (_req, res) => {
   // 어드민이 변경 시 evictNavVisibilityCache() 로 즉시 무효화되므로 1분 이상 지연 없음.
   res.setHeader("Cache-Control", "private, max-age=60, stale-while-revalidate=30");
   res.json(data);
-});
-
-function parseSince(v: unknown): Date | null {
-  if (typeof v !== "string" || !v) return null;
-  const d = new Date(v);
-  if (isNaN(d.getTime())) return null;
-  return d;
-}
-
-router.get("/counts", async (req, res) => {
-  const u = (req as any).user;
-  const q = req.query as Record<string, string | undefined>;
-
-  const sinceSchedule  = parseSince(q.since_schedule);
-  const sinceNotice    = parseSince(q.since_notice);
-  const sinceDirectory = parseSince(q.since_directory);
-  const sinceDocuments = parseSince(q.since_documents);
-  const sinceExpense   = parseSince(q.since_expense);
-  const sinceAttendance = parseSince(q.since_attendance);
-
-  const isReviewer = u.role === "ADMIN" || u.role === "MANAGER";
-
-  const [
-    scheduleCount,
-    noticeCount,
-    directoryCount,
-    documentsCount,
-    approvalPendingCount,
-    expenseCount,
-    leaveCount,
-    inviteCount,
-  ] = await Promise.all([
-    sinceSchedule
-      ? prisma.event.count({ where: { createdAt: { gt: sinceSchedule } } })
-      : Promise.resolve(0),
-
-    sinceNotice
-      ? prisma.notice.count({ where: { createdAt: { gt: sinceNotice } } })
-      : Promise.resolve(0),
-
-    sinceDirectory
-      ? prisma.user.count({ where: { createdAt: { gt: sinceDirectory }, active: true } })
-      : Promise.resolve(0),
-
-    sinceDocuments
-      ? prisma.document.count({ where: { createdAt: { gt: sinceDocuments } } })
-      : Promise.resolve(0),
-
-    // 전자결재 — 내가 검토해야 하는 대기중 step 수
-    prisma.approvalStep.count({
-      where: {
-        reviewerId: u.id,
-        status: "PENDING",
-      },
-    }),
-
-    // 법인카드 — 리뷰어면 대기중 지출, 아니면 최근 등록 수
-    isReviewer
-      ? prisma.cardExpense.count({ where: { status: "PENDING" } })
-      : sinceExpense
-        ? prisma.cardExpense.count({ where: { userId: u.id, createdAt: { gt: sinceExpense } } })
-        : Promise.resolve(0),
-
-    // 근태·월차 — 리뷰어면 대기중 휴가 신청, 아니면 내 대기/변경
-    isReviewer
-      ? prisma.leave.count({ where: { status: "PENDING" } })
-      : sinceAttendance
-        ? prisma.leave.count({
-            where: { userId: u.id, status: { in: ["APPROVED", "REJECTED"] }, createdAt: { gt: sinceAttendance } },
-          })
-        : Promise.resolve(0),
-
-    // 관리자 — ADMIN 만, 사용 안 된 초대키 수
-    u.role === "ADMIN"
-      ? prisma.inviteKey.count({ where: { used: false } })
-      : Promise.resolve(0),
-  ]);
-
-  // 30초 캐시 — 뱃지 숫자가 30초 늦게 반영돼도 사용성 영향 없음.
-  // SSE 로 실시간 알림은 이미 처리됨.
-  res.setHeader("Cache-Control", "private, max-age=30, stale-while-revalidate=60");
-  res.json({
-    counts: {
-      schedule: scheduleCount,
-      attendance: leaveCount,
-      approvals: approvalPendingCount,
-      notice: noticeCount,
-      directory: directoryCount,
-      documents: documentsCount,
-      expense: expenseCount,
-      admin: inviteCount,
-    },
-  });
 });
 
 export default router;

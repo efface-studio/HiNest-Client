@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  네트워크 보안 정책.
+  - 기본: 모든 도메인의 cleartext(HTTP) 트래픽 차단 → 운영 API(nest.hi-vits.com 등)는 HTTPS 강제.
+    Capacitor WebView 는 https://localhost 로 로드(HTTPS)라 무관.
+  - 예외: 에뮬레이터 호스트(10.0.2.2)·localhost 의 개발 hot-reload(http://...:1000)만 허용.
+    릴리스 빌드는 이 주소를 사용하지 않으므로 운영 보안에 영향 없음(개발 편의만 유지).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

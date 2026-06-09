@@ -193,7 +193,9 @@ function createWindow() {
       const u = new URL(url);
       const origin = new URL(DEFAULT_URL).origin;
       if (u.origin !== origin) {
-        shell.openExternal(url);
+        // 보안: http/https 만 외부 브라우저로 연다. file:/javascript:/커스텀 스킴은
+        // 사용자 렌더 콘텐츠(채팅 등)에 끼어들 수 있으므로 openExternal 에 넘기지 않음.
+        if (u.protocol === "http:" || u.protocol === "https:") shell.openExternal(url);
         return { action: "deny" };
       }
     } catch {}

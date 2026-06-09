@@ -2251,11 +2251,27 @@ function rowStatus(r: OverviewRow): AttStatus {
   if (r.today?.checkIn && r.today?.checkOut) return "off";
   return "absent";
 }
-const STATUS_META: Record<AttStatus, { label: string; bg: string; fg: string }> = {
-  working: { label: "근무 중", bg: "#DCFCE7", fg: "#15803D" },
-  off:     { label: "퇴근",    bg: "#F1F5F9", fg: "#475569" },
-  absent:  { label: "미출근",  bg: "#FEF3C7", fg: "#92400E" },
+/** 상태 표시 — 배경 박스 없이 컬러 점 + 색 텍스트 (토스/리니어 미니멀 스타일).
+ *  라이트/다크 모두 가독성 좋게 채도 충분한 단일 색만 사용. 칩이 둥둥 떠 보이지 않게.
+ *  fg(글자/점 색)만으로 표현 — 미출근/퇴근은 회색 톤이라 행에 자연스럽게 녹는다. */
+const STATUS_META: Record<AttStatus, { label: string; fg: string }> = {
+  working: { label: "근무 중", fg: "#22C55E" },
+  off:     { label: "퇴근",    fg: "#94A3B8" },
+  absent:  { label: "미출근",  fg: "#F59E0B" },
 };
+function StatusDot({ status }: { status: AttStatus }) {
+  const m = STATUS_META[status];
+  return (
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold whitespace-nowrap" style={{ color: m.fg }}>
+      <span
+        className={`inline-block rounded-full ${status === "working" ? "siri-pulse" : ""}`}
+        style={{ width: 6, height: 6, background: m.fg }}
+        aria-hidden
+      />
+      {m.label}
+    </span>
+  );
+}
 type SortKey = "name" | "week" | "month" | "total" | "today";
 const SORT_LABEL: Record<SortKey, string> = { name: "이름", today: "오늘", week: "이번 주", month: "이번 달", total: "총 근무" };
 
@@ -2390,7 +2406,6 @@ function AttendanceOverviewTab() {
             <tbody>
               {filtered.map((r) => {
                 const st = rowStatus(r);
-                const meta = STATUS_META[st];
                 const weekPct = Math.min(1, r.weekMinutes / (40 * 60));
                 return (
                   <tr key={r.id} className="border-b border-ink-100 hover:bg-[var(--c-surface-2)] transition">
@@ -2407,10 +2422,7 @@ function AttendanceOverviewTab() {
                       </div>
                     </td>
                     <td className="text-center px-3 py-3">
-                      <span className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full text-[11px] font-bold" style={{ background: meta.bg, color: meta.fg }}>
-                        {st === "working" && <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.fg }} />}
-                        {meta.label}
-                      </span>
+                      <StatusDot status={st} />
                     </td>
                     <td className="text-center px-3 py-3 tabular-nums text-ink-700">
                       <span className="text-ink-900 font-semibold">{fmtTime(r.today?.checkIn ?? null)}</span>
@@ -2443,7 +2455,6 @@ function AttendanceOverviewTab() {
       <div className="md:hidden grid grid-cols-1 gap-2.5">
         {filtered.map((r) => {
           const st = rowStatus(r);
-          const meta = STATUS_META[st];
           const weekPct = Math.min(1, r.weekMinutes / (40 * 60));
           return (
             <div key={r.id} className="panel p-3.5">
@@ -2458,10 +2469,7 @@ function AttendanceOverviewTab() {
                     <div className="text-[11px] text-ink-400 truncate">{[r.team, r.position].filter(Boolean).join(" · ") || "—"}</div>
                   </div>
                 </div>
-                <span className="inline-flex items-center gap-1 px-2 h-[22px] rounded-full text-[11px] font-bold flex-shrink-0" style={{ background: meta.bg, color: meta.fg }}>
-                  {st === "working" && <span className="w-1.5 h-1.5 rounded-full" style={{ background: meta.fg }} />}
-                  {meta.label}
-                </span>
+                <StatusDot status={st} />
               </div>
               <div className="grid grid-cols-2 gap-2.5 text-[12px]">
                 <KV2 label="오늘 출근" value={fmtTime(r.today?.checkIn ?? null)} />

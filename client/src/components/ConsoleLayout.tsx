@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { imgSrc } from "../api";
 import AdminLockup from "./AdminLockup";
 import { LiquidGlassTabBar } from "../lib/liquidGlassTabBar";
 import { nativePlatform } from "../lib/platform";
@@ -215,12 +216,24 @@ export default function ConsoleLayout() {
           style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
         >
           <div className="flex items-center gap-2 px-3 py-2">
-            <div
-              className="avatar avatar-sm flex-shrink-0"
-              style={{ background: user?.avatarColor ?? "#3B5CF0" }}
-            >
-              {user?.name?.[0] ?? "?"}
-            </div>
+            {/* 회사 앱 상단바와 동일하게 — 프로필 사진(avatarUrl)이 있으면 사진을, 없으면 색+이니셜 폴백.
+                예전엔 색+이니셜만 렌더해 같은 계정인데도 콘솔 아바타가 회사 앱과 달라 보였다. */}
+            {user?.avatarUrl ? (
+              <img
+                src={imgSrc(user.avatarUrl)}
+                alt={user.name ?? "프로필"}
+                className="avatar avatar-sm flex-shrink-0 object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <div
+                className="avatar avatar-sm flex-shrink-0"
+                style={{ background: user?.avatarColor ?? "#3B5CF0" }}
+              >
+                {user?.name?.[0] ?? "?"}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <div className="text-[12.5px] font-semibold truncate">{user?.name}</div>
               <div className="text-[10.5px] text-white/45 truncate">{user?.email}</div>

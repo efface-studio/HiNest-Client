@@ -3,6 +3,7 @@ import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth } from "../lib/auth.js";
 import { apnsDiag } from "../lib/apns.js";
+import { fcmDiag } from "../lib/fcm.js";
 
 /**
  * 원격 푸시(APNs/FCM) 기기 토큰 등록·해제.
@@ -56,13 +57,15 @@ router.post("/unregister", async (req, res) => {
 });
 
 /**
- * 진단 — 본인 iOS 토큰으로 테스트 푸시를 실제 발송하고 APNs 응답을 그대로 돌려준다.
- * 브라우저에서 로그인된 채로 /api/push/diag 를 열면 결과 JSON 을 볼 수 있고,
- * 정상이면 등록된 기기에 "테스트 알림" 푸시가 도착한다. 본인 토큰만 대상이라 안전.
+ * 진단 — 본인 기기 토큰으로 테스트 푸시를 실제 발송하고 결과를 돌려준다.
+ * iOS(APNs)·Android(FCM) 양쪽을 한 번에 진단해 `{ ios, android }` 로 반환 →
+ * 클라가 자기 플랫폼 결과만 골라 보여준다. 본인 토큰만 대상이라 안전.
+ * 하위호환: 기존 클라가 기대하던 top-level enabled/tokens/results 는 iOS 값을 그대로 펼쳐 둔다.
  */
 router.get("/diag", async (req, res) => {
   const u = (req as any).user;
-  res.json(await apnsDiag(u.id));
+  const [ios, android] = await Promise.all([apnsDiag(u.id), fcmDiag(u.id)]);
+  res.json({ ...ios, ios, android });
 });
 
 export default router;

@@ -173,3 +173,38 @@ export async function sendFcmToUsers(items: { userId: string; payload: FcmPayloa
   if (dead.length) await prisma.pushToken.deleteMany({ where: { token: { in: dead } } });
   if (ok.length) await prisma.pushToken.updateMany({ where: { token: { in: ok } }, data: { lastUsedAt: new Date() } });
 }
+
+/**
+ * 진단 — 본인 안드로이드 토큰으로 테스트 FCM 을 실제 발송하고 결과를 돌려준다.
+ * apns.ts 의 apnsDiag 와 동일 계약(enabled/tokens/results)으로, /api/push/diag 가
+ * iOS(APNs)·Android(FCM) 양쪽을 한 번에 진단할 수 있게 한다. 본인 토큰만 대상이라 안전.
+ */
+export async function fcmDiag(userId: string): Promise<{
+  enabled: boolean;
+  projectId: string | null;
+  tokens: number;
+  results: { token: string; status: number; reason?: string }[];
+  note?: string;
+}> {
+  const base = { enabled: SA != null, projectId: SA?.projectId ?? null };
+  if (!SA) {
+    return { ...base, tokens: 0, results: [], note: "FCM 미설정 — 서버 env FCM_SERVICE_ACCOUNT_JSON(또는 FCM_PROJECT_ID/CLIENT_EMAIL/PRIVATE_KEY) 확인" };
+  }
+  const access = await accessToken();
+  if (!access) {
+    return { ...base, tokens: 0, results: [], note: "FCM OAuth 액세스 토큰 발급 실패 — 서비스 계정 키 값 확인" };
+  }
+  const tokens = await prisma.pushToken.findMany({ where: { userId, platform: "android" }, select: { token: true } });
+  if (!tokens.length) {
+    return { ...base, tokens: 0, results: [], note: "등록된 Android 토큰 없음 — 알림 권한 허용 + 앱 재실행(또는 google-services.json/VITE_ANDROID_FCM 미포함 빌드)" };
+  }
+  const payload: FcmPayload = { title: "테스트 알림", body: "푸시 진단 테스트입니다.", linkUrl: "/" };
+  const results = await Promise.all(
+    tokens.map(async (t) => {
+      const r = await sendOne(t.token, payload, access);
+      const status = r === "ok" ? 200 : r === "dead" ? 410 : 500;
+      return { token: t.token.slice(0, 10) + "…", status, reason: r };
+    }),
+  );
+  return { ...base, tokens: tokens.length, results };
+}

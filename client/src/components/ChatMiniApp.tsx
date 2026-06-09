@@ -6,6 +6,7 @@ import { useNotifications } from "../notifications";
 import { resolvePresence } from "../lib/presence";
 import { downloadFromUrl } from "../lib/download";
 import { isCapacitorNative } from "../lib/platform";
+import { setActiveChatRoom } from "../lib/desktopNotify";
 import { Browser } from "@capacitor/browser";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import { SnippetSlashMenu, type SnippetSlashHandle } from "./chat/SnippetSlashMenu";
@@ -324,6 +325,27 @@ export default function ChatMiniApp({
     const ping = () => { if (isChatVisible()) void markRead(activeId); };
     const t = setInterval(ping, 15_000);
     return () => clearInterval(t);
+  }, [activeId, isPanelOpen]);
+
+  // 디바이스 로컬 active 방 추적 — desktopNotify 가 시스템 알림 띄우기 전에 참조해, 지금 보고
+  // 있는 방으로 향하는 알림은 OS 시스템 알림을 띄우지 않게 한다. 서버 active-viewer 게이트는
+  // APNs 만 막아주지만, 데스크탑/웹 시스템 알림은 디바이스 로컬 판단이 더 정확하다.
+  // (visibility 변경 / 패널 닫힘 시 즉시 해제.)
+  useEffect(() => {
+    const apply = () => {
+      const visible = typeof document !== "undefined" && document.visibilityState === "visible";
+      setActiveChatRoom(activeId && isPanelOpen && visible ? activeId : null);
+    };
+    apply();
+    if (typeof document !== "undefined") {
+      document.addEventListener("visibilitychange", apply);
+    }
+    return () => {
+      setActiveChatRoom(null);
+      if (typeof document !== "undefined") {
+        document.removeEventListener("visibilitychange", apply);
+      }
+    };
   }, [activeId, isPanelOpen]);
 
   // SSE 수신 — NotificationProvider 의 EventSource 가 여기로 재방송한 chat:* 이벤트.

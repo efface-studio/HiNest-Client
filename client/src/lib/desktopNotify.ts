@@ -115,6 +115,24 @@ function avatarDataUrl(name?: string, color?: string): string | undefined {
   }
 }
 
+/** 지금 사용자가 보고 있는 채팅방 id. ChatMiniApp 이 활성 방을 setActiveChatRoom 으로
+ *  설정하면, 그 방으로 향하는 알림은 OS 시스템 알림을 띄우지 않는다(화면에 이미 떠 있으니
+ *  불필요). 전역 모듈 변수로 두는 이유: showDesktopNotification 이 React 트리 밖에서도 호출돼
+ *  React state 로는 동기적으로 못 읽음. */
+let __activeChatRoomId: string | null = null;
+export function setActiveChatRoom(roomId: string | null) {
+  __activeChatRoomId = roomId;
+}
+export function getActiveChatRoom(): string | null {
+  return __activeChatRoomId;
+}
+/** opts.url 이 채팅 룸 링크면 roomId 추출. /chat?room=X 또는 #room=X 둘 다 지원. */
+function chatRoomIdFromUrl(url: string | undefined): string | null {
+  if (!url) return null;
+  const m = /[?#&]room=([^&]+)/.exec(url);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
 export function showDesktopNotification(opts: {
   id: string;
   title: string;
@@ -127,6 +145,14 @@ export function showDesktopNotification(opts: {
 }) {
   if (!isDesktopEnabled()) return;
   if (alreadySeen(opts.id)) return;
+
+  // 사용자가 지금 보고 있는 채팅방으로 향하는 알림은 시스템 알림 스킵 — 화면에 이미 떠 있음.
+  // (서버 active-viewer 게이트가 APNs 만 막아 데스크탑/웹 알림이 새던 문제 보완.)
+  const rid = chatRoomIdFromUrl(opts.url);
+  if (rid && rid === __activeChatRoomId) {
+    markSeen([opts.id]);
+    return;
+  }
 
   // ── Electron(데스크톱 앱): 검증된 메인 프로세스 경로로 보낸다 ───────────────────
   // 렌더러의 Web Notification API 는 Mac App Store(샌드박스)+원격 URL 빌드에서

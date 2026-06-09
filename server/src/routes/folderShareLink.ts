@@ -169,9 +169,12 @@ export async function streamFolderZip(
 
   const zipName = `${folderName.replace(/[\\/:*?"<>|]/g, "_")}.zip`;
   res.setHeader("Content-Type", "application/zip");
+  // plain filename 은 ASCII 만 — 한글 폴더명이 그대로 들어가면 Node setHeader 가 ERR_INVALID_CHAR
+  // 를 던져 공유 링크 폴더 다운로드가 실패한다. 유니코드 원본명은 filename*=UTF-8'' 가 담당.
+  const asciiZip = zipName.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="${zipName.replace(/"/g, "")}"; filename*=UTF-8''${encodeURIComponent(zipName)}`,
+    `attachment; filename="${asciiZip}"; filename*=UTF-8''${encodeURIComponent(zipName)}`,
   );
 
   const archive = archiver("zip", { zlib: { level: 5 } });

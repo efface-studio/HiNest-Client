@@ -1,9 +1,13 @@
 import { useEffect, useState } from "react";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
+import { imgSrc } from "../api";
 import AdminLockup from "./AdminLockup";
 import { LiquidGlassTabBar } from "../lib/liquidGlassTabBar";
 import { nativePlatform } from "../lib/platform";
+import { isDevAccount, DevBadge } from "../lib/devBadge";
+import { confirmLogout } from "../lib/confirmLogout";
+import DevQuickToggle from "./DevQuickToggle";
 
 // 콘솔 탭 라우트 → 네이티브 탭바용 아이콘 에셋(Assets.xcassets) 이름.
 const CONSOLE_TAB_ICON: Record<string, string> = {
@@ -71,7 +75,7 @@ function ShieldIcon() {
 }
 
 export default function ConsoleLayout() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const nav = useNavigate();
   const loc = useLocation();
 
@@ -220,19 +224,49 @@ export default function ConsoleLayout() {
           style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
         >
           <div className="flex items-center gap-2 px-3 py-2">
-            <div
-              className="avatar avatar-sm flex-shrink-0"
-              style={{ background: user?.avatarColor ?? "#3B5CF0" }}
-            >
-              {user?.name?.[0] ?? "?"}
-            </div>
+            {/* 회사 앱 상단바와 동일하게 — 프로필 사진(avatarUrl)이 있으면 사진을, 없으면 색+이니셜 폴백.
+                예전엔 색+이니셜만 렌더해 같은 계정인데도 콘솔 아바타가 회사 앱과 달라 보였다. */}
+            {user?.avatarUrl ? (
+              <img
+                src={imgSrc(user.avatarUrl)}
+                alt={user.name ?? "프로필"}
+                className="avatar avatar-sm flex-shrink-0 object-cover"
+                loading="lazy"
+                decoding="async"
+              />
+            ) : (
+              <div
+                className="avatar avatar-sm flex-shrink-0"
+                style={{ background: user?.avatarColor ?? "#3B5CF0" }}
+              >
+                {user?.name?.[0] ?? "?"}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <div className="text-[12.5px] font-semibold truncate">{user?.name}</div>
+              {/* 회사 앱 사이드바 프로필과 동일하게 — 이름 옆 개발자 뱃지(<>). */}
+              <div className="text-[12.5px] font-semibold truncate flex items-center gap-1.5 min-w-0">
+                <span className="truncate min-w-0">{user?.name}</span>
+                {isDevAccount(user) && <DevBadge iconOnly />}
+              </div>
               <div className="text-[10.5px] text-white/45 truncate">{user?.email}</div>
             </div>
-            {/* 데스크탑 사이드바 user profile — 로그아웃 버튼 제거(사용자 요구).
-                콘솔은 회사 앱 안의 운영 도구라 로그아웃은 회사 페이지에서 처리.
-                "서비스로 돌아가기"는 사이드바 상단의 큰 버튼이 이미 담당. */}
+            {/* 회사 앱과 동일한 프로필 액션 — 개발자모드 토글(<> 주황점) + 로그아웃.
+                (이전엔 콘솔에서 로그아웃을 뺐으나, 회사 앱 프로필과 통일해 달라는 요청으로 복원.) */}
+            {isDevAccount(user) && <DevQuickToggle />}
+            <button
+              onClick={async () => {
+                if (!(await confirmLogout())) return;
+                await logout();
+                nav("/login");
+              }}
+              className="btn-icon text-white/60 hover:text-white"
+              title="로그아웃"
+              aria-label="로그아웃"
+            >
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h4" /><path d="m16 17 5-5-5-5" /><path d="M21 12H9" />
+              </svg>
+            </button>
           </div>
         </div>
       </aside>

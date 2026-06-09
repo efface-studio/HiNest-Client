@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import { alertAsync } from "../components/ConfirmHost";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
 
@@ -29,6 +30,8 @@ export default function OrgChartPage() {
   const navigate = useNavigate();
   const [users, setUsers] = useState<DirUser[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     try {
@@ -55,6 +58,13 @@ export default function OrgChartPage() {
     const u = await api<{ users: DirUser[] }>("/api/users");
     if (!aliveRef.current) return;
     setUsers(u.users);
+    setLoaded(true);
+  }
+
+  // 데스크탑 새로고침 — 구성원 + 직급을 다시 불러온다(전체 reload 아님). 모바일은 PTR 담당.
+  async function refresh() {
+    setRefreshing(true);
+    try { await Promise.all([load(), loadPositions()]); } finally { setRefreshing(false); }
   }
 
   async function loadPositions() {
@@ -169,6 +179,8 @@ export default function OrgChartPage() {
         eyebrow="조직"
         title="조직도"
         description={totalDesc}
+        onRefresh={refresh}
+        refreshing={refreshing}
       />
 
       {/* 뷰 전환 탭 */}
@@ -178,14 +190,32 @@ export default function OrgChartPage() {
         <ViewTab active={view === "list"} onClick={() => setView("list")} label="팀 카드" hint="팀별 카드 리스트" />
       </div>
 
-      {view === "list" && (
-        <ListView grouped={grouped} meId={user?.id ?? null} dmBusyId={dmBusyId} onDM={startDM} onSchedule={scheduleWith} />
-      )}
-      {view === "tree" && (
-        <TeamTreeView grouped={grouped} rank={rank} meId={user?.id ?? null} dmBusyId={dmBusyId} onDM={startDM} onSchedule={scheduleWith} totalCount={orgUsers.length} />
-      )}
-      {view === "rank" && (
-        <RankTreeView byRank={byRank} meId={user?.id ?? null} dmBusyId={dmBusyId} onDM={startDM} onSchedule={scheduleWith} />
+      {!loaded && users.length === 0 ? (
+        // 첫 로드 동안 — 뷰 모드와 무관하게 구성원 카드 형태의 Skeleton 그리드.
+        // 데이터 도착하면 선택된 뷰(list/tree/rank)로 전환.
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="panel p-4 flex items-center gap-3">
+              <Skeleton circle w={40} h={40} />
+              <div className="flex-1 min-w-0 flex flex-col gap-2">
+                <Skeleton w="55%" h={13} />
+                <Skeleton w="35%" h={10} />
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {view === "list" && (
+            <ListView grouped={grouped} meId={user?.id ?? null} dmBusyId={dmBusyId} onDM={startDM} onSchedule={scheduleWith} />
+          )}
+          {view === "tree" && (
+            <TeamTreeView grouped={grouped} rank={rank} meId={user?.id ?? null} dmBusyId={dmBusyId} onDM={startDM} onSchedule={scheduleWith} totalCount={orgUsers.length} />
+          )}
+          {view === "rank" && (
+            <RankTreeView byRank={byRank} meId={user?.id ?? null} dmBusyId={dmBusyId} onDM={startDM} onSchedule={scheduleWith} />
+          )}
+        </>
       )}
     </div>
   );

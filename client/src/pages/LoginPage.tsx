@@ -23,8 +23,10 @@ export default function LoginPage() {
   const [errCode, setErrCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // 총관리자(superAdmin)는 운영 콘솔로, 그 외 사용자는 회사 앱 홈으로.
-  if (user) return <Navigate to={user.superAdmin ? "/super-admin" : "/"} replace />;
+  // 콘솔 전용 계정(consoleOnly)만 운영 콘솔로 직행. 일반 총관리자(superAdmin) 는 회사 앱
+  // 홈으로 보낸 뒤, 사이드바의 '운영 콘솔' 링크로 왕복하게 한다. (총관리자도 평상시엔 회사
+  // 페이지를 쓰니, 로그인마다 강제로 콘솔에 던지지 않는 게 맞다.)
+  if (user) return <Navigate to={user.consoleOnly ? "/super-admin" : "/"} replace />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -33,7 +35,7 @@ export default function LoginPage() {
     setLoading(true);
     try {
       const u = await login(email, password);
-      nav(u.superAdmin ? "/super-admin" : "/");
+      nav(u.consoleOnly ? "/super-admin" : "/");
     } catch (e: any) {
       setErr(e.message);
       // 서버가 ACCOUNT_LOCKED 같은 코드를 message JSON 에 포함하는 경우를 위해

@@ -201,7 +201,8 @@ export async function notifyMany(inputs: NotifyInput[]) {
     }
     // 원격 푸시 — fire-and-forget. pushToken 조회를 1회로 묶어 일괄 발송. iOS=APNs, Android=FCM.
     // 각 함수가 자기 platform 토큰만 조회하므로 동일 타깃 목록을 둘 다 넘겨도 안전(미설정/토큰없음이면 no-op).
-    // FCM 은 senderName/avatar(통신알림) 미지원이라 공통 필드(title/body/linkUrl/groupId)만 사용.
+    // 채팅(DM/MENTION)은 senderName/avatar 가 실려 양쪽 모두 발신자 아바타 알림을 그린다
+    // (iOS=NSE 통신알림, Android=HiNestMessagingService MessagingStyle). 공통 필드는 그대로 사용.
     void sendApnsToUsers(apnsTargets);
     void sendFcmToUsers(apnsTargets);
   } catch (e) {

@@ -91,20 +91,53 @@ export interface FcmPayload {
   linkUrl?: string;
   /** 동일 스레드 묶음(예: 채팅방 id) — Android collapseKey 로 사용. */
   groupId?: string;
+  // ─ 통신알림(발신자 아바타) 용 — iOS APNs(NSE)와 동일 필드. 채팅(DM/MENTION)만 채워진다.
+  /** 발신자 표시명. 있으면 "채팅"으로 간주 → data-only 로 보내 커스텀 서비스가 아바타 알림을 그린다. */
+  senderName?: string;
+  /** 발신자 아바타 /uploads 상대경로. 안드로이드 서비스가 ?token= 로 받아 원형 비트맵으로 사용. */
+  senderAvatarPath?: string;
+  /** 발신자 아바타 색(#RRGGBB) — 사진 미등록/다운로드 실패 시 기본 아바타(이니셜+색) 폴백용. */
+  senderAvatarColor?: string;
 }
 
 /** 단일 FCM 토큰으로 1건 발송. 반환: "ok" | "dead"(토큰 무효 → 정리 대상) | "err". */
 async function sendOne(token: string, payload: FcmPayload, access: string): Promise<"ok" | "dead" | "err"> {
-  const message: any = {
-    token,
-    notification: { title: payload.title, ...(payload.body ? { body: payload.body } : {}) },
-    data: { ...(payload.linkUrl ? { linkUrl: payload.linkUrl } : {}) },
-    android: {
-      priority: "HIGH",
-      notification: { channelId: "default", ...(payload.groupId ? { tag: payload.groupId } : {}) },
-      ...(payload.groupId ? { collapseKey: payload.groupId } : {}),
-    },
-  };
+  // 채팅(senderName 있음)은 **data-only** 고우선 메시지로 보낸다.
+  //   · notification 블록이 있으면 백그라운드에서 시스템이 직접 표시 → 커스텀 서비스의 onMessageReceived 가
+  //     호출되지 않아 발신자 아바타(MessagingStyle)를 그릴 수 없다.
+  //   · data-only + priority HIGH 면 백그라운드에서도 HiNestMessagingService.onMessageReceived 가 깨어나
+  //     아바타 알림을 그린다(인스타/왓츠앱·카톡 방식 = iOS NSE 미러링).
+  // 채팅이 아니면(공지·결재 등) 기존처럼 notification 블록 — 앱 프로세스가 죽어 있어도 시스템이 표시.
+  const isChat = !!payload.senderName;
+  const message: any = isChat
+    ? {
+        token,
+        // 문자열만 허용(FCM data 제약) — 빈 값은 키 자체를 생략.
+        data: {
+          kind: "chat",
+          title: payload.title,
+          ...(payload.body ? { body: payload.body } : {}),
+          ...(payload.linkUrl ? { linkUrl: payload.linkUrl } : {}),
+          ...(payload.groupId ? { groupId: payload.groupId } : {}),
+          ...(payload.senderName ? { senderName: payload.senderName } : {}),
+          ...(payload.senderAvatarPath ? { senderAvatarPath: payload.senderAvatarPath } : {}),
+          ...(payload.senderAvatarColor ? { senderAvatarColor: payload.senderAvatarColor } : {}),
+        },
+        android: {
+          priority: "HIGH",
+          ...(payload.groupId ? { collapseKey: payload.groupId } : {}),
+        },
+      }
+    : {
+        token,
+        notification: { title: payload.title, ...(payload.body ? { body: payload.body } : {}) },
+        data: { ...(payload.linkUrl ? { linkUrl: payload.linkUrl } : {}) },
+        android: {
+          priority: "HIGH",
+          notification: { channelId: "default", ...(payload.groupId ? { tag: payload.groupId } : {}) },
+          ...(payload.groupId ? { collapseKey: payload.groupId } : {}),
+        },
+      };
   try {
     const res = await fetch(`https://fcm.googleapis.com/v1/projects/${SA!.projectId}/messages:send`, {
       method: "POST",

@@ -13,6 +13,15 @@ import { prisma } from "./db.js";
  * - 만료/취소 체크
  * - lastUsedAt 갱신 (블로킹 X — fire and forget)
  * - 스코프 체크
+ *
+ * ⚠️ 멀티테넌트 주의 (현재 미마운트 — 라우트 0개): requireAuth 와 달리 이 미들웨어는
+ *   runWithTenant 컨텍스트를 깔지 않는다. lib/db.ts 의 테넌트 확장은 "컨텍스트 없음"을
+ *   "스코프 없음"(fail-open) 으로 처리하므로, 이 미들웨어만으로 보호되는 라우트가
+ *   TENANT_MODELS(회사 소유 테이블)를 조회/수정하면 **전 회사 데이터가 새는** 크로스테넌트
+ *   취약점이 된다. ApiToken 모델엔 아직 companyId 가 없다.
+ *   → 테넌트 데이터 라우트에 마운트하기 전에 반드시: (1) ApiToken 에 companyId 추가,
+ *     (2) 핸들러를 runWithTenant({ companyId: tok.companyId, bypass:false }, ...) 로 감싸기.
+ *   그 전까지는 회사 비종속(전역) 데이터 라우트에만 쓸 것.
  */
 
 export function requireApiToken(scope?: string) {

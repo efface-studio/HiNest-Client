@@ -665,9 +665,6 @@ function DesktopNotifyPanel() {
             />
           </label>
 
-          {/* 데스크탑 앱(Electron) 자동 시작 — 종료된 상태에서도 알람 받기 위해 OS 로그인 시 트레이 상주. */}
-          <AutoLaunchToggle />
-
           <NotifCategoryToggles disabled={!enabled} />
 
           <button type="button" className="btn-ghost" onClick={onTest}>
@@ -675,6 +672,13 @@ function DesktopNotifyPanel() {
           </button>
         </div>
       )}
+
+      {/* 데스크탑 앱(Electron) 자동 시작 — 알림 권한과 무관(트레이 상주만 토글). 권한이 default
+       *  /denied 라도 토글이 보이도록 perm 블록 밖에 둔다. 컴포넌트 자체가 Electron 환경이
+       *  아니면 null 을 반환해 웹/모바일에선 무영향. */}
+      <div className="mt-4">
+        <AutoLaunchToggle />
+      </div>
     </div>
   );
 }

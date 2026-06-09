@@ -51,6 +51,7 @@ import serviceAccountRouter from "./routes/serviceAccount.js";
 import payslipRouter from "./routes/payslip.js";
 import desktopDownloadRouter from "./routes/desktopDownload.js";
 import platformRouter from "./routes/platform.js";
+import clientErrorRouter from "./routes/clientError.js";
 import path from "node:path";
 import mime from "mime-types";
 import { installConsoleHook, pushHttpLog, pushErrorEvent } from "./lib/logBuffer.js";
@@ -312,6 +313,8 @@ app.use("/api/push", pushRouter);
 // Capacitor Live Updates (Capgo self-hosted) — 네이티브 셸이 OTA 새 번들 여부 확인.
 // Phase 1: 항상 'no_new_version_available' 응답(placeholder). Phase 2 에서 진짜 OTA 활성화.
 app.use("/api/updates", updatesRouter);
+// 클라이언트 런타임 에러 수집(운영 콘솔 에러 탭) — 인증 불요(로그인 전 에러도 수집).
+app.use("/api/client-error", clientErrorRouter);
 app.use("/api/search", searchRouter);
 app.use("/api/document", documentRouter);
 // extras(templates/lines) 를 approval 보다 먼저 마운트 — approval 의 /:id 와 경로가 겹치는

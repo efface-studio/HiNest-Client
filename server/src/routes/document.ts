@@ -841,9 +841,14 @@ router.get("/folders/:id/download", async (req, res) => {
   const zipName = `${folder.name.replace(/[\\/:*?"<>|]/g, "_")}.zip`;
   res.setHeader("Content-Type", "application/zip");
   const encodedZip = encodeURIComponent(zipName);
+  // ★ plain filename="..." 은 ASCII 만 허용 — Node res.setHeader 는 헤더 값에 비-ASCII(한글 등)가
+  //   있으면 ERR_INVALID_CHAR 를 던진다. 한글 폴더명("회사 정보")이 그대로 들어가 모든 한글 폴더
+  //   다운로드가 500 으로 실패했음. 유니코드 원본명은 filename*=UTF-8'' 가 담당하고, plain 은
+  //   ASCII 폴백(비-ASCII → "_")으로 둔다(구형 클라 호환).
+  const asciiZip = zipName.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "");
   res.setHeader(
     "Content-Disposition",
-    `attachment; filename="${zipName.replace(/"/g, "")}"; filename*=UTF-8''${encodedZip}`,
+    `attachment; filename="${asciiZip}"; filename*=UTF-8''${encodedZip}`,
   );
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Cache-Control", "no-store");
@@ -909,13 +914,7 @@ router.get("/folders/:id/download", async (req, res) => {
     // 되던 것을 방지). 실제 원인은 폴더 id 와 함께 로깅 → CloudWatch 에서 추적 가능.
     console.error("[doc:zip] folder download failed", req.params.id, err);
     if (!res.headersSent) {
-      // 진단용 힌트 — Prisma 코드(P20xx) 또는 에러명만 노출(스택·시크릿 아님). 원인 파악 후 제거 예정.
-      const e: any = err;
-      const hint = e?.code || e?.name || "unknown";
-      res.status(500).json({
-        error: `폴더 다운로드 중 오류가 발생했어요. (${hint}) 개별 파일로 받아주세요.`,
-        _debug: { code: e?.code ?? null, name: e?.name ?? null, message: typeof e?.message === "string" ? e.message.slice(0, 200) : null },
-      });
+      res.status(500).json({ error: "폴더 다운로드 중 오류가 발생했어요. 잠시 후 다시 시도하거나 개별 파일로 받아주세요." });
     } else {
       try { res.end(); } catch {}
     }

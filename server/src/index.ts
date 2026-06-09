@@ -358,9 +358,13 @@ function applyUploadSecurityHeaders(
     const fn = downloadName || name;
     // RFC 5987 로 UTF-8 파일명 인코딩 — 한글/공백 파일명도 깨지지 않게.
     const encoded = encodeURIComponent(fn).replace(/['()]/g, escape).replace(/\*/g, "%2A");
+    // plain filename="..." 은 ASCII 만 — Node res.setHeader 가 비-ASCII(한글) 헤더 값에
+    // ERR_INVALID_CHAR 를 던지므로 ASCII 폴백으로 둔다(유니코드 원본명은 filename*= 가 담당).
+    // presigned 302 경로(getSignedDownloadUrl)는 이 함수를 안 타지만, 버퍼-폴백 시 안전하게.
+    const asciiFn = fn.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "");
     res.setHeader(
       "Content-Disposition",
-      `attachment; filename="${fn.replace(/"/g, "")}"; filename*=UTF-8''${encoded}`,
+      `attachment; filename="${asciiFn}"; filename*=UTF-8''${encoded}`,
     );
   }
 }

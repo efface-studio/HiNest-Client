@@ -77,6 +77,7 @@ model User {
   inviteKey               InviteKey?             @relation("UsedKey")
   events                  Event[]
   leaves                  Leave[]
+  overtimeRequests        OvertimeRequest[]
   attendances             Attendance[]
   journals                Journal[]
   notices                 Notice[]
@@ -453,6 +454,24 @@ model Leave {
   // nav.ts 에서 status="PENDING" 전체 카운트 — leading userId 없이 status 단독 스캔 가능하게.
   @@index([status])
   @@index([companyId])
+}
+
+/// 야근(추가근무) 신청 — 연장 종료시각까지 자동퇴근을 미루거나, 사후 승인 시 근태에 가산.
+model OvertimeRequest {
+  id          String    @id @default(cuid())
+  companyId   String?
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date        String // YYYY-MM-DD (KST) — 야근한/할 날짜
+  extendedEnd DateTime // 연장 종료시각
+  reason      String?
+  status      String    @default("PENDING") // PENDING | APPROVED | REJECTED
+  reviewer    String? // 심사한 관리자 userId
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, status])
+  @@index([status])
+  @@index([companyId, status])
 }
 
 model Attendance {

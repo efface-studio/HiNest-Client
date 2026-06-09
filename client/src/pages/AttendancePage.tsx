@@ -431,6 +431,9 @@ export default function AttendancePage() {
         </div>
       )}
 
+      {/* 야근(추가근무) 신청 */}
+      <OvertimeSection isReviewer={isReviewer} />
+
       {/* 신청 모달 */}
       {open && (
         <Portal>
@@ -629,4 +632,123 @@ function dayDiff(a: string, b: string) {
 function formatRange(a: string, b: string) {
   if (a === b) return a;
   return `${a} ~ ${b}`;
+}
+
+/* ===== 야근(추가근무) 신청 ===== */
+type Overtime = {
+  id: string; date: string; extendedEnd: string; reason?: string | null;
+  status: string; user?: { name: string; team: string | null } | null;
+};
+function otTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
+  const [mine, setMine] = useState<Overtime[]>([]);
+  const [all, setAll] = useState<Overtime[]>([]);
+  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [endTime, setEndTime] = useState("21:00");
+  const [reason, setReason] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function load() {
+    try {
+      const m = await api<{ overtimes: Overtime[] }>("/api/attendance/overtime");
+      setMine(m.overtimes);
+      if (isReviewer) {
+        const a = await api<{ overtimes: Overtime[] }>("/api/attendance/overtime?all=1");
+        setAll(a.overtimes);
+      }
+    } catch { /* ignore */ }
+  }
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+
+  async function submit() {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const extendedEnd = `${date}T${endTime}:00+09:00`;
+      await api("/api/attendance/overtime", { method: "POST", json: { date, extendedEnd, reason: reason || undefined } });
+      setReason("");
+      await load();
+    } catch (e: any) {
+      alertAsync({ title: "신청 실패", description: e?.message ?? "야근 신청에 실패했어요" });
+    } finally { setSaving(false); }
+  }
+  async function review(id: string, status: string) {
+    try { await api(`/api/attendance/overtime/${id}`, { method: "PATCH", json: { status } }); await load(); }
+    catch (e: any) { alertAsync({ title: "처리 실패", description: e?.message ?? "처리에 실패했어요" }); }
+  }
+
+  return (
+    <div className="space-y-4 mt-4">
+      <div className="panel p-5">
+        <div className="text-[15px] font-extrabold text-ink-900 mb-3">야근(추가근무) 신청</div>
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
+          <label className="text-[12px] text-ink-500 block">날짜
+            <input type="date" className="input mt-1" value={date} onChange={(e) => setDate(e.target.value)} />
+          </label>
+          <label className="text-[12px] text-ink-500 block">연장 종료시각
+            <input type="time" className="input mt-1" value={endTime} onChange={(e) => setEndTime(e.target.value)} />
+          </label>
+          <label className="text-[12px] text-ink-500 block sm:col-span-2">사유 (선택)
+            <input className="input mt-1" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 배포 대응" maxLength={1000} />
+          </label>
+        </div>
+        <div className="flex justify-end mt-3">
+          <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "신청 중…" : "야근 신청"}</button>
+        </div>
+        <p className="text-[11.5px] text-ink-400 mt-2">승인되면 연장 종료시각까지 자동 퇴근이 미뤄지고, 사후 신청은 승인 시 그 날짜 근무시간에 가산돼요.</p>
+      </div>
+
+      <div className="panel p-0 overflow-hidden">
+        <div className="px-5 py-3.5 border-b border-ink-100 font-extrabold text-ink-900">내 야근 신청</div>
+        {mine.length === 0 ? (
+          <div className="px-5 py-8 text-center text-ink-400 text-[13px]">신청 내역이 없어요.</div>
+        ) : (
+          <div className="divide-y divide-ink-100">
+            {mine.map((o) => (
+              <div key={o.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="font-bold text-ink-900">{o.date} <span className="text-ink-400 font-medium text-[12px]">→ {otTime(o.extendedEnd)}</span></div>
+                  {o.reason && <div className="text-[12px] text-ink-500 truncate">{o.reason}</div>}
+                </div>
+                <StatusChip status={o.status} />
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {isReviewer && (
+        <div className="panel p-0 overflow-hidden">
+          <div className="px-5 py-3.5 border-b border-ink-100 font-extrabold text-ink-900">
+            전체 야근 신청 <span className="text-ink-400 font-medium ml-1">대기 {all.filter((o) => o.status === "PENDING").length}</span>
+          </div>
+          {all.length === 0 ? (
+            <div className="px-5 py-8 text-center text-ink-400 text-[13px]">신청이 없어요.</div>
+          ) : (
+            <div className="divide-y divide-ink-100">
+              {all.map((o) => (
+                <div key={o.id} className="px-5 py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-bold text-ink-900">{o.user?.name} <span className="text-ink-400 font-medium text-[12px]">{o.date}</span></div>
+                    <div className="text-[12px] text-ink-500 truncate">→ {otTime(o.extendedEnd)}{o.reason ? ` · ${o.reason}` : ""}</div>
+                  </div>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <StatusChip status={o.status} />
+                    {o.status === "PENDING" && (
+                      <>
+                        <button className="btn-ghost btn-xs" onClick={() => review(o.id, "APPROVED")}>승인</button>
+                        <button className="btn-ghost btn-xs text-red-600" onClick={() => review(o.id, "REJECTED")}>반려</button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }

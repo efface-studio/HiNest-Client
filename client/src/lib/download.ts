@@ -28,6 +28,19 @@ import { imgSrc } from "../api";
  *   이 경우 브라우저가 서버의 Content-Disposition 파일명으로 폴백한다.
  */
 export function downloadFromUrl(href: string, filename = ""): void {
+  // 데스크탑(Electron): 메인 프로세스가 webContents.downloadURL 로 직접 받게 한다.
+  //   <a download> 는 cross-origin 302(/uploads → S3 presigned) 에서 download 속성·파일명이
+  //   무시되고, 리다이렉트 추적 중 창 네비게이션 edge case 로 "안 받아지거나 느린" 현상이 있었다.
+  //   IPC 로 넘기면 will-download 가 단번에 떠 ?name= 으로 원본 파일명을 강제하고 즉시 저장된다.
+  //   (will-download 핸들러는 getURLChain 으로 리다이렉트 전 ?name= 까지 읽는다.)
+  const hinest = (window as any).hinest;
+  if (hinest?.downloadFile) {
+    try {
+      const abs = new URL(href, window.location.origin).toString();
+      hinest.downloadFile(abs);
+      return;
+    } catch { /* IPC 실패 시 아래 <a download> 폴백 */ }
+  }
   // 네이티브 앱(Capacitor WKWebView)은 <a download> 로 파일을 저장하지 못한다.
   // 인증된 절대 URL 을 인앱 브라우저(SFSafariViewController)로 열어 iOS 가 미리보기 +
   // 공유/저장 시트를 제공하게 한다. imgSrc 가 /uploads 상대경로를 절대화하고 ?token= 을 붙인다.

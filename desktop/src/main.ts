@@ -80,12 +80,20 @@ function createWindow() {
   mainWindow.webContents.session.on("will-download", (_e, item) => {
     try {
       let name = "";
-      // 1) ?name= 쿼리 (클라가 다운로드 URL 에 항상 붙임)
-      try {
-        const u = new URL(item.getURL());
-        const q = u.searchParams.get("name");
-        if (q) name = decodeURIComponent(q);
-      } catch {}
+      // 1) ?name= 쿼리 — 리다이렉트 체인 전체를 훑는다.
+      //    /uploads/<key>?download=1&name=<원본명> 은 서버에서 S3 presigned URL 로 302 되는데,
+      //    item.getURL() 은 리다이렉트 "후" 의 S3 URL(=name 없음)을 줄 수 있다. getURLChain() 은
+      //    원본 요청 URL 부터 담으므로 거기서 name= 을 찾아야 파일명이 키 해시로 깨지지 않는다.
+      const chain: string[] =
+        typeof item.getURLChain === "function" && item.getURLChain().length
+          ? item.getURLChain()
+          : [item.getURL()];
+      for (const link of chain) {
+        try {
+          const q = new URL(link).searchParams.get("name");
+          if (q) { name = decodeURIComponent(q); break; }
+        } catch {}
+      }
       // 2) Content-Disposition (RFC5987 filename*=UTF-8'' 우선, 그다음 filename=)
       if (!name) {
         const cd = item.getContentDisposition?.() || "";
@@ -328,6 +336,23 @@ ipcMain.handle("hinest:flashFrame", () => {
   try {
     mainWindow?.flashFrame(true);
   } catch {}
+});
+
+// 파일 다운로드 — 렌더러가 넘긴 (절대) URL 을 메인 webContents 가 직접 받는다.
+// <a download> 의 cross-origin 302·창 네비게이션 불안정을 피해 will-download 가 단번에 떠
+// 원본 파일명(?name=)으로 저장된다. http/https 만 허용(스킴 화이트리스트).
+ipcMain.handle("hinest:downloadFile", (_e, url: unknown) => {
+  try {
+    if (typeof url !== "string") return { ok: false, error: "invalid url" };
+    const lower = url.trim().toLowerCase();
+    if (!lower.startsWith("http://") && !lower.startsWith("https://")) {
+      return { ok: false, error: "disallowed scheme" };
+    }
+    mainWindow?.webContents.downloadURL(url);
+    return { ok: true };
+  } catch (e: any) {
+    return { ok: false, error: String(e?.message ?? e) };
+  }
 });
 
 ipcMain.handle("hinest:showNotification", (_e, opts: { title: string; body?: string; silent?: boolean; icon?: string }) => {

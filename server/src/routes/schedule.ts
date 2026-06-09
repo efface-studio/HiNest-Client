@@ -4,6 +4,7 @@ import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
 import { notifyMany } from "../lib/notify.js";
 import { allSameCompanyUsers } from "../lib/tenantValidate.js";
+import { getHiddenPositions, excludeHidden } from "../lib/hiddenPositions.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -187,9 +188,12 @@ router.post("/", async (req, res) => {
   //  - TARGETED: 지정된 유저 + (선택) 본인 제외
   //  - PERSONAL: 없음
   let recipientIds: string[] = [];
+  // 숨김 직급(테스트 계정 등) 사용자는 회사 공지/팀 일정 수신자에서 제외 — 디렉터리에서
+  // 안 보이는 계정이 알림만 받는 모순을 막는다.
+  const hidden = await getHiddenPositions(u.companyId);
   if (d.scope === "COMPANY") {
     const users = await prisma.user.findMany({
-      where: { active: true, id: { not: u.id }, superAdmin: false },
+      where: { active: true, id: { not: u.id }, superAdmin: false, ...excludeHidden(hidden) },
       select: { id: true },
     });
     recipientIds = users.map((x) => x.id);
@@ -197,7 +201,7 @@ router.post("/", async (req, res) => {
     const team = d.team ?? me?.team;
     if (team) {
       const users = await prisma.user.findMany({
-        where: { active: true, team, id: { not: u.id } },
+        where: { active: true, team, id: { not: u.id }, ...excludeHidden(hidden) },
         select: { id: true },
       });
       recipientIds = users.map((x) => x.id);

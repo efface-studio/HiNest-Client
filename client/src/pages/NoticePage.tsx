@@ -229,7 +229,7 @@ export default function NoticePage() {
                 </div>
                 <div className="text-xs text-slate-500 mt-0.5 inline-flex items-center gap-1.5">
                   <span>{n.author?.name}</span>
-                  {isDevAccount(n.author) && <DevBadge />}
+                  {isDevAccount(n.author) && <DevBadge iconOnly />}
                   <span>· {new Date(n.createdAt).toLocaleDateString("ko-KR")}</span>
                 </div>
               </button>
@@ -253,7 +253,7 @@ export default function NoticePage() {
                       </span>
                     )}
                     <span>{selected.author?.name}</span>
-                    {isDevAccount(selected.author) && <DevBadge />}
+                    {isDevAccount(selected.author) && <DevBadge iconOnly />}
                     <span>·</span>
                     <span>{new Date(selected.createdAt).toLocaleString("ko-KR")}</span>
                   </div>

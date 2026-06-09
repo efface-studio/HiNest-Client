@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom"
 import { api, apiSWR, imgSrc, invalidateCache } from "../api";
 import { useAuth } from "../auth";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
+import { Skeleton, SkeletonText } from "../components/Skeleton";
 import PinButton from "../components/PinButton";
 import ShareButton from "../components/ShareButton";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
@@ -227,7 +228,25 @@ export default function MeetingDetailPage() {
       </div>
     );
   }
-  if (!meeting && loading) return <div className="text-center py-20 text-slate-400">불러오는 중…</div>;
+  if (!meeting && loading) {
+    // 회의록 상세 첫 로딩 — '불러오는 중…' 텍스트 대신 형태가 비슷한 Skeleton.
+    // 사용자 입장에서 다음에 나타날 컨텐츠(헤더·작성자·본문 단락)의 형태가 미리 보여 깜빡임이 줄어든다.
+    return (
+      <div className="max-w-[860px] mx-auto px-5 py-8 flex flex-col gap-5">
+        <Skeleton w="60%" h={32} radius={8} />
+        <div className="flex items-center gap-2">
+          <Skeleton circle w={22} h={22} />
+          <Skeleton w={120} h={12} />
+          <Skeleton w={80} h={12} />
+        </div>
+        <div className="panel p-5 flex flex-col gap-3 mt-2">
+          <SkeletonText lines={4} />
+          <SkeletonText lines={5} />
+          <SkeletonText lines={3} />
+        </div>
+      </div>
+    );
+  }
   if (!meeting) return null;
 
   return (

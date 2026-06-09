@@ -45,12 +45,32 @@ export function attachNativeKeyboard(): () => void {
   };
 
   // 키보드 플러그인 이벤트로도 보정 — 기기/버전별 키보드 높이 확정 시점에 한 번 더.
-  let removeKbListener: (() => void) | null = null;
+  // + 키보드 표시/숨김에 따라 html 에 `hinest-keyboard-open` 클래스 + CSS 변수
+  //   `--hinest-keyboard-h` 를 노출해, 하단 네비바를 숨기거나 로그인 폼을 키보드 위로
+  //   끌어올리는 등 네이티브 같은 동작이 CSS 만으로 가능하게 한다.
+  const removeKbListeners: Array<() => void> = [];
+  const setKbOpen = (h: number) => {
+    document.documentElement.classList.add("hinest-keyboard-open");
+    document.documentElement.style.setProperty("--hinest-keyboard-h", `${Math.max(0, Math.round(h))}px`);
+  };
+  const setKbClosed = () => {
+    document.documentElement.classList.remove("hinest-keyboard-open");
+    document.documentElement.style.setProperty("--hinest-keyboard-h", "0px");
+  };
+  setKbClosed();
   void import("@capacitor/keyboard")
     .then(({ Keyboard }) => {
-      Keyboard.addListener("keyboardDidShow", scrollFocusedIntoView).then((h) => {
-        removeKbListener = () => { try { void h.remove(); } catch {} };
-      });
+      const reg = (ev: string, fn: (info?: { keyboardHeight: number }) => void) => {
+        Keyboard.addListener(ev as never, fn as never).then((h) => {
+          removeKbListeners.push(() => { try { void h.remove(); } catch {} });
+        });
+      };
+      // willShow 가 더 빠름(애니메이션 시작 직전) — 네비바 숨김·인셋 적용을 미리 시작해
+      // 키보드가 올라오는 동안 jank 가 없다. didShow 에선 정확한 높이로 확정.
+      reg("keyboardWillShow", (info) => setKbOpen(info?.keyboardHeight ?? 0));
+      reg("keyboardDidShow", (info) => { setKbOpen(info?.keyboardHeight ?? 0); scrollFocusedIntoView(); });
+      reg("keyboardWillHide", () => setKbClosed());
+      reg("keyboardDidHide", () => setKbClosed());
     })
     .catch(() => {});
 
@@ -59,6 +79,7 @@ export function attachNativeKeyboard(): () => void {
   return () => {
     document.removeEventListener("focusin", onFocusIn);
     if (pendingTimer) clearTimeout(pendingTimer);
-    removeKbListener?.();
+    removeKbListeners.forEach((fn) => fn());
+    setKbClosed();
   };
 }

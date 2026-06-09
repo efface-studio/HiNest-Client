@@ -114,6 +114,13 @@ html:has(.modal-safe) .app-bottomnav { display: none !important; }
    하단바가 입력을 가로채 '건너뛰기' 버튼이 안 눌리던 문제를 함께 해결. */
 html:has(.hinest-onb-overlay) .app-bottomnav { display: none !important; }
 
+/* 키보드가 열려 있는 동안 하단 네비게이션 바를 숨긴다. 이전엔 iOS Keyboard resize='native'
+   가 WebView 만 줄여 하단 바가 키보드와 같이 위로 끌려 올라오는 현상이 있었다(사용자 신고).
+   keyboardWillShow 이벤트에서 html 에 .hinest-keyboard-open 이 붙으면, 같은 :has 패턴으로
+   탭 바·콘솔 바를 함께 숨겨 입력 화면이 깨끗하게 보이도록 한다. (iOS / 안드로이드 공통) */
+html.hinest-keyboard-open .app-bottomnav,
+html.hinest-keyboard-open .console-bottomnav { display: none !important; }
+
 /* iOS 앱 — 상단바를 애플 리퀴드 글래스로. TopBar 를 본문 스크롤러(<main>) 위에 떠 있는
    반투명+blur 헤더(absolute)로 만들고, 본문은 그만큼 위쪽 패딩을 줘 헤더 아래에서 시작한다.
    스크롤하면 본문이 헤더 뒤로 지나가며 글래스 질감이 드러난다(스크롤 할 때만). TopBar 는

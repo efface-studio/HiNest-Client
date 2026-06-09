@@ -114,6 +114,46 @@ html:has(.modal-safe) .app-bottomnav { display: none !important; }
    하단바가 입력을 가로채 '건너뛰기' 버튼이 안 눌리던 문제를 함께 해결. */
 html:has(.hinest-onb-overlay) .app-bottomnav { display: none !important; }
 
+/* ───── Skeleton UI — 데이터 로딩 중 깜빡임 방지 ─────
+   - 기본 배경: --c-surface-3 (다크/라이트 자동)
+   - 시머: 좌→우로 흐르는 부드러운 글라스 wave(transform translateX 만 → GPU 합성, 끊김 없음)
+   - prefers-reduced-motion 사용자에겐 wave 없이 정적 표시
+*/
+.hinest-skeleton {
+  position: relative;
+  background: var(--c-surface-3);
+  overflow: hidden;
+  isolation: isolate;
+}
+.hinest-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.15) 50%,
+    transparent 100%
+  );
+  animation: hinest-skeleton-shimmer 1.4s ease-in-out infinite;
+}
+.dark .hinest-skeleton::after {
+  background-image: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.06) 50%,
+    transparent 100%
+  );
+}
+@keyframes hinest-skeleton-shimmer {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hinest-skeleton::after { animation: none; }
+}
+
 /* 키보드가 열려 있는 동안 하단 네비게이션 바를 숨긴다. 이전엔 iOS Keyboard resize='native'
    가 WebView 만 줄여 하단 바가 키보드와 같이 위로 끌려 올라오는 현상이 있었다(사용자 신고).
    keyboardWillShow 이벤트에서 html 에 .hinest-keyboard-open 이 붙으면, 같은 :has 패턴으로

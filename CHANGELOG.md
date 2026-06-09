@@ -1,5 +1,27 @@
 # Changelog
 
+## [0.1.4](https://github.com/efface-studio/HiNest-Client/compare/v0.1.3...v0.1.4) (2026-06-09)
+
+
+### 🐛 Bug Fixes
+
+* **attendance:** 반차 0.5일 집계 + 출퇴근 더블탭 가드 ([61b406c](https://github.com/efface-studio/HiNest-Client/commit/61b406cadd8a3e0471f08821bd934c1791a737ef)), closes [#898](https://github.com/efface-studio/HiNest-Client/issues/898)
+* **attendance:** 반차 0.5일 집계 + 출퇴근 버튼 더블탭 가드 ([434616c](https://github.com/efface-studio/HiNest-Client/commit/434616cdd5f23457150bd3bcfe013390e9d8fcbc))
+* **console:** 로그 헤더에 떠있는 LogsGlyph 제거 ([0441c0d](https://github.com/efface-studio/HiNest-Client/commit/0441c0d0d8eec37f6692804f408ab92de6fee049))
+* **console:** 로그 헤더의 떠있는 LogsGlyph 제거 ([ba9ac32](https://github.com/efface-studio/HiNest-Client/commit/ba9ac326a76a9d5a8960c23c09c324619640b904)), closes [#894](https://github.com/efface-studio/HiNest-Client/issues/894)
+* **documents:** iOS 폴더 ZIP 다운로드 실패 + 레거시 파일명 폴백 ([0564d5a](https://github.com/efface-studio/HiNest-Client/commit/0564d5a82df9da65f5f77348e81d686ea84eb5a3))
+* **documents:** iOS 폴더 ZIP 다운로드 실패 + 레거시 파일명 폴백 ([c72a10e](https://github.com/efface-studio/HiNest-Client/commit/c72a10e70b03a41964b8b40c5f9934ace1cb0c8b))
+* **server:** async hang + 경비 수정 잠금 + 토큰 로그 스크럽 + dead 라우트 제거 ([30fa9ea](https://github.com/efface-studio/HiNest-Client/commit/30fa9eaff2c1a0342d0c7d044e2c6b8a7d6f1f5e))
+* **server:** async hang + 경비 수정 잠금 + 토큰 로그 스크럽 + dead 라우트 제거 ([7d2d1e5](https://github.com/efface-studio/HiNest-Client/commit/7d2d1e5e544fc8e14c4345297b92beaa56a3bf43)), closes [#896](https://github.com/efface-studio/HiNest-Client/issues/896)
+
+
+### ⚡ Performance
+
+* **bundle:** previewMock 목 데이터 메인 번들에서 분리 ([de8c6dd](https://github.com/efface-studio/HiNest-Client/commit/de8c6dd819dc9f63d283bccea63fe0ec61418646)), closes [#902](https://github.com/efface-studio/HiNest-Client/issues/902)
+* **bundle:** previewMock 목 데이터 메인 번들에서 분리 — ~23KB gzip 절감 ([5545ab2](https://github.com/efface-studio/HiNest-Client/commit/5545ab2891e38057c35420f6a3cefb94aa1827d1))
+* **chat:** SSE 살아있으면 안전망 폴링 스킵 — egress 절감 ([d2852c8](https://github.com/efface-studio/HiNest-Client/commit/d2852c8c35c0ae91d943da82c423be2cf7e7688d)), closes [#900](https://github.com/efface-studio/HiNest-Client/issues/900)
+* **chat:** SSE 살아있으면 안전망 폴링 스킵 — Fargate egress 절감 ([ff4951c](https://github.com/efface-studio/HiNest-Client/commit/ff4951c1b49190e1f285ddbef87e3ed02a7b2370))
+
 ## [0.1.3](https://github.com/efface-studio/HiNest-Client/compare/v0.1.2...v0.1.3) (2026-06-09)
 
 

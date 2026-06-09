@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.3](https://github.com/efface-studio/HiNest-Client/compare/v0.1.2...v0.1.3) (2026-06-09)
+
+
+### 🚀 Features
+
+* **ui:** 공용 BottomSheet + 일정 추가 모달 iOS 네이티브 시트화 ([5c8558e](https://github.com/efface-studio/HiNest-Client/commit/5c8558e5ba4f5890aeab6938b35ec95e29f00527))
+* **ui:** 공용 BottomSheet + 일정 추가 모달 iOS 네이티브 시트화 ([18f08d1](https://github.com/efface-studio/HiNest-Client/commit/18f08d1d5867fe32a017dfe23f3fb8aecefe4d84))
+
 ## [0.1.2](https://github.com/efface-studio/HiNest-Client/compare/v0.1.1...v0.1.2) (2026-06-09)
 
 

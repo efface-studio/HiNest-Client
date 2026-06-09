@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync } from "../ConfirmHost";
 import Portal from "../Portal";
+import Select, { type SelectOption } from "../Select";
 
 type Flag = {
   key: string;
@@ -14,6 +15,11 @@ type Flag = {
 };
 
 const SCOPES: Flag["scope"][] = ["GLOBAL", "ROLE", "USER", "TEAM"];
+const SCOPE_OPTIONS: SelectOption[] = SCOPES.map((s) => ({ value: s, label: s }));
+const ENABLED_OPTIONS: SelectOption[] = [
+  { value: "0", label: "OFF" },
+  { value: "1", label: "ON" },
+];
 
 export default function FlagsPanel() {
   const [rows, setRows] = useState<Flag[]>([]);
@@ -121,16 +127,11 @@ export default function FlagsPanel() {
               </div>
               <div>
                 <label className="field-label">활성</label>
-                <select className="input" value={editing.enabled ? "1" : "0"} onChange={(e) => setEditing({ ...editing, enabled: e.target.value === "1" })}>
-                  <option value="0">OFF</option>
-                  <option value="1">ON</option>
-                </select>
+                <Select className="input" value={editing.enabled ? "1" : "0"} onChange={(v) => setEditing({ ...editing, enabled: v === "1" })} options={ENABLED_OPTIONS} />
               </div>
               <div>
                 <label className="field-label">범위</label>
-                <select className="input" value={editing.scope ?? "GLOBAL"} onChange={(e) => setEditing({ ...editing, scope: e.target.value as Flag["scope"] })}>
-                  {SCOPES.map((s) => <option key={s} value={s}>{s}</option>)}
-                </select>
+                <Select className="input" value={editing.scope ?? "GLOBAL"} onChange={(v) => setEditing({ ...editing, scope: v as Flag["scope"] })} options={SCOPE_OPTIONS} />
               </div>
               {(editing.scope ?? "GLOBAL") !== "GLOBAL" && (
                 <div>

@@ -6,6 +6,7 @@ import Portal from "../components/Portal";
 import { downloadCSV, downloadXLSX, openPrintable, parseSheet, type TableColumn } from "../lib/exportTable";
 import DatePicker from "../components/DatePicker";
 import TimePicker from "../components/TimePicker";
+import { haptic } from "../lib/haptics";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
 import { useAuth } from "../auth";
 
@@ -2130,6 +2131,8 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
                   e.dataTransfer.effectAllowed = "move";
                   // Firefox 는 setData 가 없으면 드래그가 아예 시작 안 됨.
                   e.dataTransfer.setData("text/plain", p.id);
+                  // 드래그 시작은 큰 액션 — medium 으로 "잡았다" 감 명확히.
+                  haptic("medium");
                 }}
                 onDragOver={(e) => {
                   if (!dragId || dragId === p.id) return;
@@ -2145,6 +2148,8 @@ function PositionsTab({ positions, reload }: { positions: Position[]; reload: ()
                   onDrop(p.id);
                   setDragId(null);
                   setOverId(null);
+                  // 드롭 성공 — light 로 부드러운 확정 감.
+                  haptic("light");
                 }}
                 onDragEnd={() => {
                   setDragId(null);

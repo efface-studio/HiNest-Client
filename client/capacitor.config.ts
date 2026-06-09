@@ -74,8 +74,15 @@ const config: CapacitorConfig = {
     //                서버가 Vercel manifest.json 를 읽어 응답을 만든다(routes/updates.ts).
     //   appReadyTimeout: 새 번들 부팅 후 notifyAppReady() 가 이 시간(ms) 안에 안 불리면 직전
     //                정상 번들로 자동 롤백 → 빌드가 깨져도 사용자가 벽돌 앱을 만나지 않음.
+    //   directUpdate (★ 2026-06-09 추가): true 면 SDK 가 새 번들을 다운로드한 직후 곧바로
+    //                set+reload 한다. 기본값(false) 은 "다음 콜드 스타트에야 새 번들 적용"
+    //                이라 사용자가 새로고침으로는 옛 번들을 못 벗어났음 — directUpdate 로
+    //                "앱 켜면 즉시 최신" 에 가까운 UX 제공. 첫 진입 시 1초 내외의 가벼운
+    //                리로드 깜빡임은 SplashScreen(launchShowDuration:1500) 안에서 대부분
+    //                흡수된다. App Store 정책 4.7 OTA 허용 범위에 그대로 머물러 안전.
     CapacitorUpdater: {
       autoUpdate: true,
+      directUpdate: true,
       updateUrl: "https://nest.hi-vits.com/api/updates/check",
       appReadyTimeout: 10000,
       responseTimeout: 20,

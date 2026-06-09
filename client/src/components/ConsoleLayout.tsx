@@ -368,13 +368,16 @@ export default function ConsoleLayout() {
               key={l.to}
               to={l.to}
               className="flex-1 min-w-0 flex flex-col items-center justify-center gap-1 select-none text-[10px] font-bold tracking-tight leading-none"
-              style={({ isActive }) => ({ color: isActive ? "var(--c-brand)" : "var(--c-text-3)" })}
+              // 안드로이드 평면 바는 회사 앱(AppLayout BottomNavTab)과 동일하게 탭 높이 49px 로
+              // 키운다(부착형이라 콘텐츠에 딱 붙어 너무 낮아 보이던 것 보정). iOS 플로팅 알약은
+              // nav 자체 padding(6px) 으로 높이를 확보하므로 그대로 둔다.
+              style={({ isActive }) => ({ color: isActive ? "var(--c-brand)" : "var(--c-text-3)", ...(ios ? {} : { height: 49 }) })}
             >
               {({ isActive }) => (
                 <>
                   <span
                     className="inline-flex items-center justify-center"
-                    style={{ width: 44, height: 26, borderRadius: 999, background: isActive ? "var(--c-brand-soft)" : "transparent" }}
+                    style={{ width: 44, height: 28, borderRadius: 999, background: isActive ? "var(--c-brand-soft)" : "transparent" }}
                   >
                     <l.icon active={isActive} />
                   </span>

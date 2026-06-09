@@ -1,5 +1,41 @@
 # Changelog
 
+## [0.1.2](https://github.com/efface-studio/HiNest-Client/compare/v0.1.1...v0.1.2) (2026-06-09)
+
+
+### 🚀 Features
+
+* **ios:** Capacitor Live Updates directUpdate=true ([fb188bc](https://github.com/efface-studio/HiNest-Client/commit/fb188bc0f975c64d3d7a257a6c492857b70a7bba)), closes [#880](https://github.com/efface-studio/HiNest-Client/issues/880)
+* **ios:** Live Updates directUpdate=true — '앱 켜면 즉시 최신' ([22a0d5e](https://github.com/efface-studio/HiNest-Client/commit/22a0d5e434b9ac5654ef4960b2196d92f5a85771))
+* **ui:** Skeleton 적용 — DashboardPage ([3840571](https://github.com/efface-studio/HiNest-Client/commit/38405718784bef63d27a668c2a260641e655e604))
+* **ui:** Skeleton 적용 — DashboardPage 깜빡임 제거 ([49b2b4c](https://github.com/efface-studio/HiNest-Client/commit/49b2b4c6b1d1a2e9bb4ab60d26b8696794747445)), closes [#874](https://github.com/efface-studio/HiNest-Client/issues/874)
+* **ui:** Skeleton 적용 확장 — Schedule·Documents·MeetingDetail ([b5ad7cc](https://github.com/efface-studio/HiNest-Client/commit/b5ad7cc2767decc40d3bfe1e23280c15c9e50888))
+* **ui:** Skeleton 적용 확장 — Schedule·Documents·MeetingDetail ([fc597bf](https://github.com/efface-studio/HiNest-Client/commit/fc597bf6f9a93de028847178557b2475634ee434)), closes [#882](https://github.com/efface-studio/HiNest-Client/issues/882)
+* **ui:** Skeleton 컴포넌트 인프라 + MeetingsPage 통일 ([b515297](https://github.com/efface-studio/HiNest-Client/commit/b5152976f1459da13698cd8cc83c860f6c9d32e1))
+* **ui:** Skeleton 컴포넌트 인프라 + MeetingsPage 통일 ([ac0e4ad](https://github.com/efface-studio/HiNest-Client/commit/ac0e4adec490fec23469645daff487e7117d5552)), closes [#870](https://github.com/efface-studio/HiNest-Client/issues/870)
+* **ui:** 데이터 페이지 12종 Skeleton + 데스크탑 새로고침 버튼 ([9e81610](https://github.com/efface-studio/HiNest-Client/commit/9e816107039370f434ed7d2b47f4b2e6ef7ae470))
+* **ui:** 데이터 페이지 12종 Skeleton + 데스크탑 새로고침 버튼 ([0e112e6](https://github.com/efface-studio/HiNest-Client/commit/0e112e6ebe7f3767c0243e069bf5c7adb82a1600))
+* **update:** iOS App Store 자동 감지 + 업데이트 권장 모달 ([1735875](https://github.com/efface-studio/HiNest-Client/commit/1735875c7ca12a1f3722be8838bcf5e0266a5eae))
+* **update:** iOS App Store 자동 감지 + 업데이트 권장 모달 ([7e9f44b](https://github.com/efface-studio/HiNest-Client/commit/7e9f44bb91432f8322d4d042a2fbc1ab9d429fde)), closes [#878](https://github.com/efface-studio/HiNest-Client/issues/878)
+
+
+### 🐛 Bug Fixes
+
+* **admin:** 직급 드래그·드롭에 햅틱 추가 ([c5d94c1](https://github.com/efface-studio/HiNest-Client/commit/c5d94c1821d09f100dedd8fe04c92851a6313a78))
+* **admin:** 직급 드래그·드롭에 햅틱 추가 ([9d64a12](https://github.com/efface-studio/HiNest-Client/commit/9d64a12e670fa53935d4052edc204ce44d9b7b87)), closes [#864](https://github.com/efface-studio/HiNest-Client/issues/864)
+* **console:** 로그아웃 제거 + 모바일 '서비스로 돌아가기' 통합 ([a744ad7](https://github.com/efface-studio/HiNest-Client/commit/a744ad735d5e06218cec58eb077c871231aaf52e))
+* **console:** 콘솔 로그아웃 제거 + 모바일 상단 '서비스로 돌아가기' 통합 ([098b3fe](https://github.com/efface-studio/HiNest-Client/commit/098b3fe4a7ca88cfd205e1d66db0a8ec68e319ea)), closes [#866](https://github.com/efface-studio/HiNest-Client/issues/866)
+* **haptics:** 강도 차등화 — 자주 누르는 작은 버튼은 selection ([4b11aa5](https://github.com/efface-studio/HiNest-Client/commit/4b11aa534d0ec0cf13b63928741073ff2b44481c))
+* **haptics:** 강도 차등화 — 자주 누르는 작은 버튼은 selection ([a7e9288](https://github.com/efface-studio/HiNest-Client/commit/a7e9288f68bc4ad207efbce5bc67bf44cebbdfcd)), closes [#862](https://github.com/efface-studio/HiNest-Client/issues/862)
+* **ios:** 키보드 분리감·네비바 따라옴 해결 ([4004b52](https://github.com/efface-studio/HiNest-Client/commit/4004b5215b60475a14637033b704f187ce4451fc))
+* **ios:** 키보드 표시 시 네비바 숨김 + 로그인 폼 키보드 위로 ([11c5676](https://github.com/efface-studio/HiNest-Client/commit/11c5676bc1e60d8722d5851c105d287b403f1249)), closes [#859](https://github.com/efface-studio/HiNest-Client/issues/859)
+* **share-sheet:** 좌우·하단 갭 제거 ([e72c9d8](https://github.com/efface-studio/HiNest-Client/commit/e72c9d8999439105d7695b9c8fae3d5346a53fbd))
+* **share-sheet:** 좌우·하단 갭 제거 — 화면 바닥까지 붙는 시트 ([0298c53](https://github.com/efface-studio/HiNest-Client/commit/0298c530be53d2d9f724d324f3eea460010e2901)), closes [#868](https://github.com/efface-studio/HiNest-Client/issues/868)
+* **ui:** DevBadge 사내톡·디렉터리에서도 iconOnly ([c2f9756](https://github.com/efface-studio/HiNest-Client/commit/c2f9756c8c1e23cf8c8bd432adf7d17030b7a9aa))
+* **ui:** DevBadge 사내톡·디렉터리에서도 iconOnly ([ee682b5](https://github.com/efface-studio/HiNest-Client/commit/ee682b564f9b6ece714112b89a8cc03f6df9a104)), closes [#872](https://github.com/efface-studio/HiNest-Client/issues/872)
+* **ui:** DevBadge 풀 라벨 → iconOnly 전체 통일 ([f080446](https://github.com/efface-studio/HiNest-Client/commit/f0804466abe889e4a9c103ec5033546d094d86f9))
+* **ui:** DevBadge 풀 라벨 → iconOnly 전체 통일 ([d6d94ff](https://github.com/efface-studio/HiNest-Client/commit/d6d94ff68896c05d611243f486e0e08ae7cb9d9a)), closes [#876](https://github.com/efface-studio/HiNest-Client/issues/876)
+
 ## [0.1.1](https://github.com/efface-studio/HiNest-Client/compare/v0.1.0...v0.1.1) (2026-06-09)
 
 

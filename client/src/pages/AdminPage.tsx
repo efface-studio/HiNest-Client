@@ -2288,7 +2288,7 @@ function StatusDot({ status }: { status: AttStatus }) {
   return (
     <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold whitespace-nowrap" style={{ color: m.fg }}>
       <span
-        className={`inline-block rounded-full ${status === "working" ? "siri-pulse" : ""}`}
+        className={`inline-block rounded-full ${status === "working" ? "live-dot" : ""}`}
         style={{ width: 6, height: 6, background: m.fg }}
         aria-hidden
       />

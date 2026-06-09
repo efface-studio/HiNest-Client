@@ -1305,6 +1305,29 @@ html.dark .nav-active {
 }
 html.dark .nav-active svg { stroke: var(--c-brand-soft-fg); }
 
+/* 근무중 라이브 점 — 점 크기에 정확히 스코프된 잔잔한 파동.
+   ⚠️ .siri-pulse 를 작은 점에 쓰면 안 됨: .siri-pulse 는 position 을 안 주는데(FAB 는 fixed 라 OK)
+      inline 점은 static 이라 ::after(inset:-14px 방사형 글로우)가 "가장 가까운 positioned 조상"
+      (큰 컨테이너/페이지) 기준으로 퍼져 화면 전체가 파랗게 덮이는 버그가 났음(근태탭 신고).
+   → 여기서는 position:relative 로 점에 스코프 + currentColor(점 색) 기반의 작은 ring 만 반복. */
+.live-dot { position: relative; }
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  background: currentColor;     /* 부모 span 의 color(상태색)를 그대로 사용 */
+  opacity: 0.55;
+  z-index: -1;
+  animation: live-dot-ring 2s ease-out infinite;
+}
+@keyframes live-dot-ring {
+  0%   { transform: scale(1);   opacity: .55; }
+  70%  { transform: scale(2.6); opacity: 0; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .live-dot::after { animation: none; opacity: 0; } }
+
 /* ===== Notification pulse — 파란 계열, 강한 강조 ===== */
 /* 새 알림이 올 때 2.8초 동안 파랑 글로우로 강하게 반짝이고 부드럽게 사라짐.
    .siri-pulse — 원형/사각 버튼 테두리 + 외부 halo (FAB 용)

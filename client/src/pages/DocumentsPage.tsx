@@ -6,6 +6,7 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import Portal from "../components/Portal";
 import { confirmAsync, alertAsync, promptAsync } from "../components/ConfirmHost";
+import { showDownloadToast, hideDownloadToast } from "../components/DownloadToast";
 import ShareSheet, { type SharePayload } from "../components/ShareSheet";
 import { presentShareNative } from "../lib/share";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
@@ -740,9 +741,11 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     if (hint) url.searchParams.set("name", hint);
     downloadFromUrl(url.toString(), hint);
     // 개별 파일은 브라우저·OS 다운로드 매니저가 진행을 표시하므로(앱이 blob 을 들고 있지 않음)
-    // 짧게 "다운로드 시작" 피드백만 준다 — 누르고 반응 없는 느낌 제거. 1.2초 후 자동 해제.
+    // 짧게 "다운로드 시작" 피드백만 준다 — 누르고 반응 없는 느낌 제거.
+    // 데스크탑 버튼 스피너(1.2초) + 모바일·네이티브에선 토스트(문서 카드엔 버튼이 없어 토스트가 유일한 신호).
     setDownloadingDocId(d.id);
     window.setTimeout(() => setDownloadingDocId((cur) => (cur === d.id ? null : cur)), 1200);
+    showDownloadToast("⬇ 다운로드를 시작했어요", { autoHideMs: 1800 });
   }
 
   // 미리보기 가능한 타입(이미지·PDF·영상)인가. 그 외(.docx·.pptx·.zip 등)는 미리보기 의미가 없어 다운로드.
@@ -774,11 +777,15 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     // (서버 /folders/:id/download 는 이 GET 한정으로 ?token= 인증을 허용하도록 했다.)
     if (downloadingFolderId) return; // 중복 클릭 가드
     if (isCapacitorNative()) {
+      // 네이티브: 인앱 브라우저로 빠지므로 앱 내 버튼 스피너가 안 보인다 → 토스트로 시작 알림.
+      showDownloadToast("📦 폴더 다운로드를 시작했어요", { autoHideMs: 2500 });
       const u = imgSrc(`/api/document/folders/${f.id}/download`);
       if (u) void Browser.open({ url: u }).catch(() => {});
       return;
     }
     setDownloadingFolderId(f.id);
+    // 폴더 ZIP 은 서버 압축·스트리밍에 시간이 걸려 모바일·데스크탑 모두 진행 표시가 필요.
+    const toastId = showDownloadToast("📦 압축 파일 준비 중…", { spinner: true });
     try {
       const res = await apiFetch(`/api/document/folders/${f.id}/download`);
       if (!res.ok) {
@@ -799,10 +806,12 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       const mName = /filename\*=UTF-8''([^;]+)/i.exec(cd) || /filename="?([^";]+)"?/i.exec(cd);
       const fname = mName ? decodeURIComponent(mName[1]) : `${f.name}.zip`;
       downloadBlob(blob, fname);
+      showDownloadToast("✓ 다운로드를 시작했어요", { autoHideMs: 1800 });
     } catch (err: any) {
       await alertAsync({ title: "폴더 다운로드 실패", description: err?.message ?? String(err) });
     } finally {
       setDownloadingFolderId(null);
+      hideDownloadToast(toastId);
     }
   }
 

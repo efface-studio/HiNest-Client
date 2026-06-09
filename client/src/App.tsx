@@ -5,6 +5,7 @@ import { isDesktopApp } from "./lib/platform";
 import UpdateBanner from "./components/UpdateBanner";
 import DesktopUpdateBanner from "./components/DesktopUpdateBanner";
 import AppStoreUpdatePrompt from "./components/AppStoreUpdatePrompt";
+import DownloadToastHost from "./components/DownloadToast";
 import ConfirmHost from "./components/ConfirmHost";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import LoginPage from "./pages/LoginPage";
@@ -127,6 +128,7 @@ export default function App() {
     <UpdateBanner />
     <DesktopUpdateBanner />
     <AppStoreUpdatePrompt />
+    <DownloadToastHost />
     <ConfirmHost />
     <ErrorBoundary resetKey={pathname}>
     <Suspense fallback={<RouteFallback />}>

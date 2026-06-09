@@ -6,6 +6,7 @@ import { AuthProvider } from "./auth";
 import { FeatureFlagsProvider } from "./lib/featureFlags";
 import { isPreviewMode, ensurePreviewPatched } from "./lib/previewFlag";
 import { notifyLiveUpdateReady } from "./lib/liveUpdates";
+import { reportClientError } from "./lib/errorReporter";
 import { ThemeProvider } from "./theme";
 import "./styles.css";
 
@@ -84,6 +85,17 @@ if (typeof window !== "undefined") {
       // 10초 내 재발이면 reload 생략 → 기본 동작으로 ErrorBoundary 표시.
     });
   }
+
+  // 전역 클라이언트 에러 → 운영 콘솔 "에러" 탭으로 보고(지금까진 클라 에러가 서버로 안 갔음).
+  // 폭주 방지(10초/5건)는 reportClientError 내부. chunk reload(vite:preloadError)와는 별개.
+  window.addEventListener("error", (e) => {
+    const err = (e as ErrorEvent).error;
+    reportClientError(err?.message || (e as ErrorEvent).message || "window error", err?.stack);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const r = (e as PromiseRejectionEvent).reason as { message?: string; stack?: string } | undefined;
+    reportClientError(r?.message || String(r ?? "unhandledrejection"), r?.stack);
+  });
 
   // 핀치 줌 (iOS)
   document.addEventListener("gesturestart", (e) => e.preventDefault());

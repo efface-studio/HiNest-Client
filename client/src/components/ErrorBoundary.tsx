@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportClientError } from "../lib/errorReporter";
 
 /**
  * Route-level Error Boundary — 한 페이지의 렌더 에러가 앱 전체를 흰 화면으로
@@ -35,13 +36,15 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    // 운영 환경에서 외부 리포터(Sentry/Datadog 등) 가 있다면 여기서 호출.
-    // 사내툴 규모에선 console.error 로도 superadmin 콘솔의 인메모리 버퍼에 잡힘.
-    console.error("[ErrorBoundary] render failure", {
-      message: error.message,
-      stack: error.stack?.split("\n").slice(0, 6).join("\n"),
-      component: info.componentStack?.split("\n").slice(0, 5).join("\n"),
-    });
+    // 운영 콘솔 "에러" 탭으로 보고. (예전 주석은 "console.error 가 콘솔 인메모리 버퍼에
+    // 잡힌다" 였지만 그건 서버 프로세스의 console 훅 — 브라우저 console.error 는 서버로
+    // 안 간다. 그래서 reportClientError 로 명시 전송한다.)
+    const componentStack = info.componentStack?.split("\n").slice(0, 5).join("\n") ?? "";
+    reportClientError(
+      "[render] " + error.message,
+      (error.stack ?? "") + (componentStack ? "\n--- component ---\n" + componentStack : ""),
+    );
+    console.error("[ErrorBoundary] render failure", error);
   }
 
   componentDidUpdate(prev: Props) {

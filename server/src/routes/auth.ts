@@ -375,6 +375,9 @@ router.post("/logout", requireAuth, async (req, res) => {
   // 컨텍스트가 의도치 않게 되살아나는 걸 막는다. 이전엔 clearImpCookie 호출이 빠져서
   // 1시간 동안 잔류하다 같은 super-admin 로그인 시 자동 재활성화됐었다.
   clearImpCookie(res, req);
+  // 활동 로그 — LOGIN 은 기록되는데 LOGOUT 이 빠져 세션 종료가 감사에 안 남았음(비대칭 해소).
+  const lu = (req as any).user;
+  if (lu?.id) await writeLog(lu.id, "LOGOUT", lu.email, sid ? `sid=${sid}` : "", req.ip).catch(() => {});
   res.json({ ok: true });
 });
 

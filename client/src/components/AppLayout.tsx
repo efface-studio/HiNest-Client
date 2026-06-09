@@ -16,7 +16,8 @@ import { NotificationProvider, useNotifications } from "../notifications";
 import { PinsProvider, usePins, pinLinkUrl } from "../pins";
 import { ROUTE_PREFETCH, loadProject } from "../routes";
 import { isDevAccount, DevBadge } from "../lib/devBadge";
-import { getDevPagesEnabled, setDevPagesEnabled } from "../lib/devPagesPref";
+import { getDevPagesEnabled } from "../lib/devPagesPref";
+import DevQuickToggle from "./DevQuickToggle";
 import { isPreviewMode, disablePreview } from "../lib/previewFlag";
 import { isInstalledApp, isDesktopApp, nativePlatform, isCapacitorNative } from "../lib/platform";
 import { LiquidGlassTabBar, setNativeTabBarHidden, syncNativeTabBarVisibility } from "../lib/liquidGlassTabBar";
@@ -1443,55 +1444,7 @@ type ProjectLite = {
   status: "ACTIVE" | "ARCHIVED";
 };
 
-/** 사이드바 본인 정보 옆 \"개발 중 페이지 보기\" 빠른 토글 — 개발자 전용. */
-function DevQuickToggle() {
-  const [on, setOn] = useState<boolean>(() => getDevPagesEnabled());
-  useEffect(() => {
-    function refresh() { setOn(getDevPagesEnabled()); }
-    window.addEventListener("hinest:devPagesChange", refresh);
-    window.addEventListener("storage", refresh);
-    return () => {
-      window.removeEventListener("hinest:devPagesChange", refresh);
-      window.removeEventListener("storage", refresh);
-    };
-  }, []);
-  function toggle() {
-    const next = !on;
-    setOn(next);
-    setDevPagesEnabled(next);
-  }
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      className="btn-icon"
-      title={on ? "“개발 중” 페이지 진입 켜짐 — 클릭해서 끄기" : "“개발 중” 페이지 진입 꺼짐 — 클릭해서 켜기"}
-      aria-label={on ? "개발 페이지 보기 끄기" : "개발 페이지 보기 켜기"}
-      style={{
-        position: "relative",
-        color: on ? "var(--c-warning)" : "var(--c-text-3)",
-      }}
-    >
-      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <polyline points="16 18 22 12 16 6" />
-        <polyline points="8 6 2 12 8 18" />
-      </svg>
-      <span
-        aria-hidden
-        style={{
-          position: "absolute",
-          right: 2,
-          bottom: 2,
-          width: 7,
-          height: 7,
-          borderRadius: "50%",
-          background: on ? "var(--c-warning)" : "var(--c-border-strong)",
-          border: "1.5px solid var(--c-surface)",
-        }}
-      />
-    </button>
-  );
-}
+// DevQuickToggle 은 공용 컴포넌트(components/DevQuickToggle.tsx)로 추출 — ConsoleLayout 과 공유.
 
 /**
  * 사이드바 "팀" 섹션 — 내가 참여중인 프로젝트 목록.

@@ -2,6 +2,7 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
+import { Skeleton } from "../components/Skeleton";
 import { getHoliday } from "../lib/holidays";
 import DateTimePicker from "../components/DateTimePicker";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
@@ -46,6 +47,8 @@ export default function SchedulePage() {
   const { user } = useAuth();
   const [cursor, setCursor] = useState(() => new Date());
   const [events, setEvents] = useState<Event[]>([]);
+  // 첫 로드 완료 여부 — false 동안 빈 영역 대신 Skeleton 을 띄워 깜빡임 제거.
+  const [loaded, setLoaded] = useState(false);
   // 일정 로드 실패 표시 — 조용히 빈 달력으로 두지 않고 재시도 배너를 띄운다.
   const [loadErr, setLoadErr] = useState(false);
   const [open, setOpen] = useState(false);
@@ -85,6 +88,7 @@ export default function SchedulePage() {
       if (aliveRef && !aliveRef.current) return;
       setEvents(res.events);
       setLoadErr(false);
+      setLoaded(true);
     } catch {
       // 401(세션 만료)은 api.ts 가 전역 처리(→ /login). 그 외(500·네트워크)는 재시도 배너.
       if (aliveRef && !aliveRef.current) return;

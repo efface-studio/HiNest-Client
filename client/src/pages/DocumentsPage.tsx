@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, apiFetch , imgSrc} from "../api";
+import { Skeleton } from "../components/Skeleton";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import Portal from "../components/Portal";
@@ -84,6 +85,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   ];
   const [folders, setFolders] = useState<Folder[]>([]);
   const [docs, setDocs] = useState<Doc[]>([]);
+  // 첫 로드 완료 여부 — false 동안 EmptyState 대신 Skeleton 그리드 표시.
+  const [loaded, setLoaded] = useState(false);
   // 문서/폴더 목록 조회 실패 시 상단에 표시 — empty state 로 오인되는 걸 방지
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
@@ -202,6 +205,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       setFolders(f.folders);
       setDocs(d.documents);
       setLoadErr(null);
+      setLoaded(true);
     } catch (e: any) {
       if (aliveRef && !aliveRef.current) return;
       // 기존에는 uncaught 로 조용히 empty state 처럼 보였음 — 상단에 사유 노출
@@ -1273,7 +1277,19 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
           </button>
         </div>
       )}
-      {docs.length === 0 ? (
+      {!loaded && docs.length === 0 ? (
+        // 첫 로드 동안 빈 상태 대신 Skeleton 그리드 — '문서가 없어요'가 잠깐 떴다 사라지는
+        // 깜빡임 제거. 데이터 도착하면 실제 카드 그리드로 전환.
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="panel p-3 flex flex-col gap-2">
+              <Skeleton w="100%" h={88} radius={10} />
+              <Skeleton w="80%" h={12} radius={6} />
+              <Skeleton w="50%" h={10} radius={6} />
+            </div>
+          ))}
+        </div>
+      ) : docs.length === 0 ? (
         <div className="panel py-14 px-6 text-center">
           <div className="mx-auto w-12 h-12 rounded-2xl bg-ink-100 grid place-items-center mb-3">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8E959E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

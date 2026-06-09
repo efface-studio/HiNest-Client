@@ -11,12 +11,37 @@ const router = Router();
 router.use(requireAuth);
 
 // 오늘 출퇴근 상태 — sessions 합산 근무 분(workedMinutes)도 함께 내려준다.
+// IP 자동 출근: 회사가 IP 제한을 켰고(allowedIps 존재), 허용 IP 에서 접속했고, 오늘 아직 출근
+// 기록이 0건이면 출근 버튼 없이 자동 체크인(src="ip"). 하루 첫 접속 1회만(이후 세션 존재로 skip).
 router.get("/today", async (req, res) => {
   const u = (req as any).user;
-  const rec = await prisma.attendance.findUnique({
-    where: { userId_date: { userId: u.id, date: todayStr() } },
+  const date = todayStr();
+  let rec = await prisma.attendance.findUnique({
+    where: { userId_date: { userId: u.id, date } },
   });
-  const sessions = normalizeSessions(rec);
+  let sessions = normalizeSessions(rec);
+
+  if (sessions.length === 0 && u.companyId && !u.superAdmin && !u.platformAdmin) {
+    const company = await prisma.company.findUnique({
+      where: { id: u.companyId },
+      select: { attendanceIpRestrictEnabled: true, allowedIps: { select: { cidr: true } } },
+    });
+    if (company?.attendanceIpRestrictEnabled && company.allowedIps.length > 0) {
+      const clientIp = normalizeClientIp(req.ip);
+      if (clientIp && ipMatchesAny(clientIp, company.allowedIps.map((a) => a.cidr))) {
+        const now = new Date();
+        const ipSession = [{ s: now.toISOString(), e: null, src: "ip" }] as unknown as object;
+        rec = await prisma.attendance.upsert({
+          where: { userId_date: { userId: u.id, date } },
+          update: { sessions: ipSession, checkIn: now, checkOut: null },
+          create: { userId: u.id, companyId: u.companyId, date, checkIn: now, sessions: ipSession },
+        });
+        sessions = normalizeSessions(rec);
+        await writeLog(u.id, "CHECK_IN", date, "ip-auto");
+      }
+    }
+  }
+
   res.json({
     attendance: rec,
     workedMinutes: workedMinutes(sessions),

@@ -90,18 +90,24 @@ export default function DashboardPage() {
   // 관리자 설정 기반 근무 시각 — 미설정 시 09:00/18:00 fallback.
   const startMin = parseHHmm(user?.workStartTime ?? "") ?? 9 * 60;
   const endMin = parseHHmm(user?.workEndTime ?? "") ?? 18 * 60;
-  const startLabel = formatHHmm(startMin);
+  // 실제 출근시간 반영 — 등록 출근시각(예: 9시)보다 일찍 출근(수동·IP자동)했다면, 그 날만
+  // 위젯 시작을 '실제 첫 출근시각'으로 한다(퍼센트도 그 기준). 늦게 출근은 등록 시각 유지.
+  const firstInMin = sessions.length
+    ? (() => { const d = new Date(sessions[0].s); return d.getHours() * 60 + d.getMinutes(); })()
+    : null;
+  const effStartMin = firstInMin != null && firstInMin < startMin ? firstInMin : startMin;
+  const startLabel = formatHHmm(effStartMin);
   const endLabel = formatHHmm(endMin);
   const dayProgress = useMemo(() => {
-    if (endMin <= startMin) return 0; // 잘못된 설정은 0%
-    // 데모(미리보기)는 방문 시각이 새벽일 수도 있어 09–18 절대시각 기준이면 0% 가 떠 자연스럽지 못함.
-    // 출근 후 경과 시간(workedMin) 을 근무 총 시간으로 나눠 '근무한 비율' 로 보여준다 — 항상 그럴듯한 값.
+    if (endMin <= effStartMin) return 0; // 잘못된 설정은 0%
+    // 데모(미리보기)는 방문 시각이 새벽일 수도 있어 절대시각 기준이면 0% 가 떠 자연스럽지 못함.
+    // 출근 후 경과 시간(workedMin) 을 근무 총 시간으로 나눠 '근무한 비율' 로 보여준다.
     if (isPreviewMode() && att?.checkIn) {
-      return Math.max(0, Math.min(1, workedMin / (endMin - startMin)));
+      return Math.max(0, Math.min(1, workedMin / (endMin - effStartMin)));
     }
     const m = now.getHours() * 60 + now.getMinutes();
-    return Math.max(0, Math.min(1, (m - startMin) / (endMin - startMin)));
-  }, [now, startMin, endMin, workedMin, att?.checkIn]);
+    return Math.max(0, Math.min(1, (m - effStartMin) / (endMin - effStartMin)));
+  }, [now, effStartMin, endMin, workedMin, att?.checkIn]);
 
   return (
     <div className="space-y-4">

@@ -1353,7 +1353,8 @@ ops.post("/chat-audit/unlock", requireSuperAdminStepUp, async (req, res) => {
     // '세션 만료' 로 오인해 전역 로그아웃시킨다(버그). 암호 오류는 forbidden 으로 분리.
     return res.status(403).json({ code: "BAD_STEPUP_PW", error: "암호 불일치" });
   }
-  await writeLog(u.id, "CHAT_AUDIT_UNLOCK_OK", undefined, undefined, req.ip).catch(() => {});
+  // 성공(UNLOCK_OK)은 감사 로그에 남기지 않는다 — 슈퍼관리자의 정상 운영 동작이라 활동 피드 노이즈.
+  // 실패(UNLOCK_FAIL)만 보안상 기록한다(위 두 분기). 재추가 금지.
   // 채팅 감사 API(/api/chat/rooms?scope=audit, .../messages)는 super step-up 쿠키(hinest_super)를
   // verifySuperToken 으로 요구한다. CHAT_AUDIT_PW 가 맞았으니 여기서 그 쿠키를 함께 발급해야
   // 패널 진입 시 401 이 나지 않는다. (예전엔 쿠키를 안 줘서 패널이 401 → api() 가 세션 만료로

@@ -3,6 +3,7 @@ package com.hivits.hinest;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.res.Configuration;
 import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
@@ -12,6 +13,7 @@ import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsCompat;
+import androidx.core.view.WindowInsetsControllerCompat;
 
 import com.getcapacitor.BridgeActivity;
 
@@ -40,6 +42,7 @@ public class MainActivity extends BridgeActivity {
     private void setupSafeAreaInsets() {
         WindowCompat.setDecorFitsSystemWindows(getWindow(), false); // 콘텐츠를 시스템바 뒤로(immersive)
         final View root = getWindow().getDecorView();
+        applyBarIconAppearance(root); // 시작 시 1회(첫 페인트 전 상태바 아이콘 색 보정)
         ViewCompat.setOnApplyWindowInsetsListener(root, (v, insets) -> {
             Insets bars = insets.getInsets(
                 WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
@@ -55,9 +58,24 @@ public class MainActivity extends BridgeActivity {
                 + "s.setProperty('--sa-right','" + right + "px');}catch(e){}})();";
             final WebView wv = getBridge() != null ? getBridge().getWebView() : null;
             if (wv != null) wv.post(() -> wv.evaluateJavascript(js, null));
+            applyBarIconAppearance(root); // 인셋·테마 변경 때마다 재적용(OEM 리셋 방어)
             return insets; // 인셋 미소비 — 시스템바 투명 유지(콘텐츠가 뒤까지 채우는 immersive)
         });
         ViewCompat.requestApplyInsets(root);
+    }
+
+    /**
+     * 상태바·내비바 아이콘 색을 배경 밝기에 맞춘다 — edge-to-edge 에선 시스템바가 투명이라
+     * 앱 배경(라이트=흰색) 위에 아이콘이 그려지는데, 기본이 밝은 아이콘이면 흰 배경에서 시계·배터리가
+     * 안 보인다. 시스템 다크모드면 밝은 아이콘, 라이트모드면 어두운 아이콘으로 강제한다.
+     * (@capacitor/status-bar setStyle 이 이 구성에서 시각적으로 안 먹어 네이티브로 직접 설정.)
+     */
+    private void applyBarIconAppearance(View root) {
+        boolean night = (getResources().getConfiguration().uiMode & Configuration.UI_MODE_NIGHT_MASK)
+            == Configuration.UI_MODE_NIGHT_YES;
+        WindowInsetsControllerCompat c = WindowCompat.getInsetsController(getWindow(), root);
+        c.setAppearanceLightStatusBars(!night);     // 라이트(밝은 배경) → 어두운 아이콘
+        c.setAppearanceLightNavigationBars(!night);
     }
 
     @Override

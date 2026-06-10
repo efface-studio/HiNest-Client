@@ -165,9 +165,13 @@ export default function ChatFab() {
                   // ※ 절대 위치 계산 대신 flex column 으로 변경 — 이전엔 헤더는 padding 안에,
                   //    본문은 absolute top:86 (border-box 기준) 으로 두면서 safe-area-top 만큼
                   //    헤더 일부가 본문에 가려져 모바일에서 뒤로가기 버튼이 사라져 보였음.
+                  // ※ height:100dvh 를 제거 — inset:0(top:0+bottom:0) 만으로 풀스크린.
+                  //   Keyboard.resize:'native' 가 키보드 곡선에 맞춰 WebView 를 줄이면, bottom:0
+                  //   앵커가 그 줄어드는 바닥에 자동으로 붙어 입력바가 키보드와 '동기' 로 올라온다.
+                  //   100dvh(고정 길이)는 iOS 가 키보드 애니메이션 중 보간하지 않고 끝난 뒤에야
+                  //   재계산해 입력바가 늦게 따라잡히는 증상을 유발했다.
                   inset: 0,
                   width: "100vw",
-                  height: "100dvh",
                   paddingTop: "var(--sa-top, env(safe-area-inset-top))",
                   paddingBottom: "var(--sa-bottom, env(safe-area-inset-bottom))",
                   paddingLeft: "var(--sa-left, env(safe-area-inset-left))",

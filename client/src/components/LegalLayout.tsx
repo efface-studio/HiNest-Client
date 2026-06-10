@@ -17,8 +17,8 @@ export default function LegalLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
-      {/* iOS 노치 회피 — env(safe-area-inset-top) 가산 (LoginPage 와 동일). */}
-      <header className="px-6 pb-4 flex items-center justify-between max-w-[760px] mx-auto w-full" style={{ paddingTop: "calc(env(safe-area-inset-top) + 2rem)" }}>
+      {/* iOS 노치 회피 — var(--sa-top, env(safe-area-inset-top)) 가산 (LoginPage 와 동일). */}
+      <header className="px-6 pb-4 flex items-center justify-between max-w-[760px] mx-auto w-full" style={{ paddingTop: "calc(var(--sa-top, env(safe-area-inset-top)) + 2rem)" }}>
         <Link to="/login" aria-label="로그인으로">
           <BrandLockup height={36} />
         </Link>

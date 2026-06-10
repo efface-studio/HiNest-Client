@@ -221,7 +221,7 @@ export default function ShareSheet({
         // 좌우/아래로 떠 보여 분리감이 생기는 문제). 상단만 노치 회피로 패딩 두고, 시트
         // 자체는 가장자리까지 차게 한다. 키보드 인셋은 ShareSheet 내부가 자체 관리(보내기
         // 버튼이 safe-area-inset-bottom 흡수).
-        paddingTop: "max(1rem, env(safe-area-inset-top))",
+        paddingTop: "max(1rem, var(--sa-top, env(safe-area-inset-top)))",
       }}
       onClick={onClose}
     >
@@ -415,7 +415,7 @@ export default function ShareSheet({
         {/* 보내기 버튼 — safe-area inset bottom 흡수 */}
         <div
           className="px-5 pt-2 pb-3 border-t border-ink-100 bg-white"
-          style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 12px)" }}
+          style={{ paddingBottom: "calc(var(--sa-bottom, env(safe-area-inset-bottom, 0px)) + 12px)" }}
         >
           <button
             onClick={send}

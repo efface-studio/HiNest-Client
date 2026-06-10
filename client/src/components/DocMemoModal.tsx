@@ -322,7 +322,7 @@ export default function DocMemoModal({
               에서도 동일한 여백을 보장. */}
           <div
             className="max-w-[740px] mx-auto px-6 md:px-10 pt-10"
-            style={{ paddingBottom: "max(4rem, calc(2rem + env(safe-area-inset-bottom)))" }}
+            style={{ paddingBottom: "max(4rem, calc(2rem + var(--sa-bottom, env(safe-area-inset-bottom))))" }}
           >
 
             {/* ── 대제목 ── */}

@@ -652,7 +652,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
   const isMacDesktop = !!window.hinest?.isDesktop && window.hinest?.platform === "darwin";
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  // iOS 노치/상태바 영역(env(safe-area-inset-top)) 을 누가 흡수할지 결정.
+  // iOS 노치/상태바 영역(var(--sa-top, env(safe-area-inset-top))) 을 누가 흡수할지 결정.
   // 항상 "맨 위에 첫 번째로 보이는 요소" 만 흡수해서 더블 패딩 방지.
   const isPreview = isPreviewMode();
   const isImpersonating = !!impersonator;
@@ -829,8 +829,8 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
           style={{
             // 모바일 드로어에서 fixed inset-y-0 로 떠 있을 때 iOS 노치를 흡수.
             // 데스크톱(md+)에선 env() = 0 이라 영향 없음.
-            paddingTop: "env(safe-area-inset-top)",
-            height: "calc(48px + env(safe-area-inset-top))",
+            paddingTop: "var(--sa-top, env(safe-area-inset-top))",
+            height: "calc(48px + var(--sa-top, env(safe-area-inset-top)))",
           }}
         >
           <BrandLockup height={34} />
@@ -901,7 +901,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
             // 이전엔 calc(8px + safe-area) 였지만 iOS PWA 에서 chip 아래로 ~42px 의 빈 공간이
             // 시각적으로 두드러져 사용자가 "이상한 공간" 으로 인식했음. safe-area 만 남기고
             // 추가 8px 은 제거 — 인디케이터 바로 위까지 chip 이 닿게.
-            paddingBottom: "max(8px, env(safe-area-inset-bottom))",
+            paddingBottom: "max(8px, var(--sa-bottom, env(safe-area-inset-bottom)))",
           }}
         >
           <div className="flex items-center gap-2.5 px-2 py-2 rounded-md hover:bg-ink-50">
@@ -1054,7 +1054,7 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
               //    스크롤 영역이 바 위에서 끝난다 → 본문은 숨 쉴 여백 24px 만(이중 여백 방지).
               //  · md+(태블릿 등): 하단 바가 없어 콘텐츠가 화면 바닥까지 닿는다 → 끝까지
               //    스크롤해도 마지막 콘텐츠가 홈 인디케이터(하단 세이프라인)에 가려지지 않게
-              //    max(24px, env(safe-area-inset-bottom)) 로 인디케이터 위에서 끝낸다.
+              //    max(24px, var(--sa-bottom, env(safe-area-inset-bottom))) 로 인디케이터 위에서 끝낸다.
               paddingBottom: "var(--hinest-main-pb)",
               // 당겨서 새로고침 — 콘텐츠가 손가락을 따라 내려오는 촉각 피드백.
               //   transform/transition 은 usePullToRefresh 가 ref 로 직접 갱신한다
@@ -1195,7 +1195,7 @@ function BottomNav({ items }: { items: NavItem[] }) {
               transform: "translateX(-50%)",
               width: "calc(100% - 24px)",
               maxWidth: 480,
-              bottom: "max(10px, env(safe-area-inset-bottom))",
+              bottom: "max(10px, var(--sa-bottom, env(safe-area-inset-bottom)))",
               zIndex: 30,
               borderRadius: 26,
               // 반투명 + blur — 뒤로 스크롤되는 본문이 비쳐 보이는 글래스 질감.
@@ -1212,7 +1212,7 @@ function BottomNav({ items }: { items: NavItem[] }) {
               background: "var(--c-surface)",
               borderTop: "1px solid var(--c-border)",
               // 홈 인디케이터 회피용 하단 여백. safe-area 없으면(env=0) 0.
-              paddingBottom: "max(env(safe-area-inset-bottom) - 10px, 0px)",
+              paddingBottom: "max(var(--sa-bottom, env(safe-area-inset-bottom)) - 10px, 0px)",
               boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
             }
       }
@@ -1704,12 +1704,12 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
           // 모바일 56px / 데스크톱 48px(기존 유지). 노치(safe-area-top)가 있으면 그만큼 더해
           // 콘텐츠 영역 높이는 그대로 두고 상태바 밑으로 안 깔리게 한다.
           (safeAreaTop
-            ? "min-h-[calc(56px+env(safe-area-inset-top))] md:min-h-[calc(48px+env(safe-area-inset-top))]"
+            ? "min-h-[calc(56px+var(--sa-top, env(safe-area-inset-top)))] md:min-h-[calc(48px+var(--sa-top, env(safe-area-inset-top)))]"
             : "min-h-[56px] md:min-h-[48px]")
         }
         style={{
           // iOS 노치 흡수 — 헤더 자체가 첫 요소일 때만 (배너가 위에 있으면 배너가 처리).
-          paddingTop: safeAreaTop ? "env(safe-area-inset-top)" : 0,
+          paddingTop: safeAreaTop ? "var(--sa-top, env(safe-area-inset-top))" : 0,
           ...(draggable ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined),
         }}
       >

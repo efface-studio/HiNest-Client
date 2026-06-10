@@ -51,8 +51,8 @@ export default function CompanySignupPage() {
   if (done) {
     return (
       <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
-        {/* iOS 노치 회피 — env(safe-area-inset-top) 가산 (LoginPage 와 동일). */}
-        <header className="px-6 pb-4 flex items-center" style={{ paddingTop: "calc(env(safe-area-inset-top) + 2rem)" }}>
+        {/* iOS 노치 회피 — var(--sa-top, env(safe-area-inset-top)) 가산 (LoginPage 와 동일). */}
+        <header className="px-6 pb-4 flex items-center" style={{ paddingTop: "calc(var(--sa-top, env(safe-area-inset-top)) + 2rem)" }}>
           <BrandLockup height={36} />
         </header>
         <main className="flex-1 flex items-center justify-center px-6 pb-12">
@@ -100,8 +100,8 @@ export default function CompanySignupPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ background: "var(--c-surface)" }}>
-      {/* iOS 노치 회피 — env(safe-area-inset-top) 가산 (LoginPage 와 동일). */}
-      <header className="px-6 pb-4 flex items-center" style={{ paddingTop: "calc(env(safe-area-inset-top) + 2rem)" }}>
+      {/* iOS 노치 회피 — var(--sa-top, env(safe-area-inset-top)) 가산 (LoginPage 와 동일). */}
+      <header className="px-6 pb-4 flex items-center" style={{ paddingTop: "calc(var(--sa-top, env(safe-area-inset-top)) + 2rem)" }}>
         <BrandLockup height={36} />
       </header>
 

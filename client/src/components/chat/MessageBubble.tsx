@@ -1426,7 +1426,7 @@ function CodeViewerModal({ code, lang, onClose }: { code: string; lang?: string;
         WebkitBackdropFilter: "blur(12px) saturate(1.2)",
         display: "grid",
         placeItems: "center",
-        padding: "max(env(safe-area-inset-top), 16px) 16px max(env(safe-area-inset-bottom), 16px)",
+        padding: "max(var(--sa-top, env(safe-area-inset-top)), 16px) 16px max(var(--sa-bottom, env(safe-area-inset-bottom)), 16px)",
       }}
       // 같은 portal 버블링 방지 — 닫기 후 React 부모 LongPress 가 mousedown 만 받고
       // mouseup 못 받아 롱프레스 메뉴가 자동으로 뜨는 사고 차단.

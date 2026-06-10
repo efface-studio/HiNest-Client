@@ -135,7 +135,7 @@ export default function PreviewOnboarding() {
           위에 깔려 '건너뛰기' 클릭이 가로채진다. */}
       <div
         className="hinest-onb-topbar absolute top-0 left-0 right-0 flex items-center justify-between px-6 sm:px-8"
-        style={{ paddingTop: "max(24px, calc(env(safe-area-inset-top) + 8px))", zIndex: 20 }}
+        style={{ paddingTop: "max(24px, calc(var(--sa-top, env(safe-area-inset-top)) + 8px))", zIndex: 20 }}
       >
         <div className="flex items-center gap-2.5">
           <span

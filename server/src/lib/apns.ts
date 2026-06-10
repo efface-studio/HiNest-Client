@@ -45,13 +45,13 @@ const PRIMARY_HOST = PRODUCTION ? PROD_HOST : SANDBOX_HOST;
 const ALT_HOST = PRODUCTION ? SANDBOX_HOST : PROD_HOST;
 const HOST = PRIMARY_HOST; // 표시·진단용 기본 게이트웨이
 
-// 통신알림(발신자 아바타) 임시 스위치.
-// ⚠️ false 로 둔다 — true 로 켜면 채팅 푸시에 mutable-content 가 실려 NSE 가 가로채는데, 현재 iOS
-// 빌드의 NSE 가 백그라운드에서 contentHandler 를 제때 못 부르면 "알림 자체가 안 뜨는" 회귀가 재발했다
-// (사용자 보고: 백그라운드 알람 자체가 안 옴). 알림 전달이 아바타보다 우선이므로 끈다 → mutable-content
-// 미탑재 → NSE 미호출 → 일반 알림으로 100% 정상 표시(발신자 이름·본문 그대로, 아바타 이미지만 생략).
-// 아바타 복구는 NSE 안정성을 실기기에서 충분히 검증한 뒤 별도로 재활성화한다.
-const ENABLE_COMMUNICATION_PUSH = false;
+// 통신알림(발신자 아바타) 스위치 — 켬.
+// 과거 false 였던 이유: 켜면 백그라운드 알림이 안 뜨는 회귀가 보고됐었다. 그런데 그 실제 원인은
+// NSE 가 아니라 서버 active-viewer 과억제(보던 방을 백그라운드에도 영영 막던 버그)였고, 이를 수정했다.
+// NSE 도 견고하다(다운로드 6s×3 한도 + serviceExtensionTimeWillExpire 폴백으로 항상 전달, 실패 시
+// 기본 아바타). → mutable-content 재탑재 → NSE 가 발신자 아바타로 통신알림 표시. NSE 없는 구 빌드면
+// 무해(일반 표시). 만약 전달 회귀가 재현되면 이 값만 false 로 되돌리면 즉시 안전.
+const ENABLE_COMMUNICATION_PUSH = true;
 
 export function apnsEnabled(): boolean {
   return Boolean(KEY_RAW && KEY_ID && TEAM_ID);

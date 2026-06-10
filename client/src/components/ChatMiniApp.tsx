@@ -2401,7 +2401,8 @@ function RoomView({
                     <div style={{ width: 26, flexShrink: 0 }} />
                   ) : null}
                   <div style={{ minWidth: 0, flex: "0 1 auto", position: "relative" }}>
-                    {!mine && m.showMeta && (
+                    {/* 발신자 이름·뱃지는 그룹방에서만 — 1:1 은 상대가 한 명이라 불필요(요구사항). */}
+                    {!mine && m.showMeta && room.type !== "DIRECT" && (
                       <button
                         type="button"
                         onClick={() => openProfile(m.sender.id)}

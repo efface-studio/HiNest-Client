@@ -6,6 +6,7 @@ import { useNotifications } from "../notifications";
 import { resolvePresence } from "../lib/presence";
 import { downloadFromUrl } from "../lib/download";
 import { isCapacitorNative } from "../lib/platform";
+import { isNativeAppActive } from "../lib/appActive";
 import { setActiveChatRoom } from "../lib/desktopNotify";
 import { Browser } from "@capacitor/browser";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
@@ -259,11 +260,16 @@ export default function ChatMiniApp({
   //    상호작용 중에 false 반환하는 케이스가 잦아, 사용자가 채팅창을 명백히 보고 있는 동안에도
   //    하트비트 markRead 가 스킵되어 active-viewer APNs 스킵이 동작하지 않았다.
   //    → 네이티브에선 hasFocus 의존성 제거(panel 열림 + visible 만 본다). 데스크톱 웹은 기존대로.
-  const isChatVisible = () =>
-    isPanelOpen &&
-    typeof document !== "undefined" &&
-    document.visibilityState === "visible" &&
-    (isCapacitorNative() || typeof document.hasFocus !== "function" || document.hasFocus());
+  // ⚠️ 네이티브(iOS/안드)는 document.visibilityState 가 백그라운드/잠금에도 'visible' 로 남는 경우가
+  //    있어, 그걸로 판정하면 백그라운드에서도 하트비트 markRead 가 계속 돌아 lastReadAt 이 신선하게
+  //    유지된다 → 서버 active-viewer 게이트가 "지금 보는 중"으로 오판해 그 방의 백그라운드 푸시까지
+  //    막아버린다(알림 안 옴). 네이티브는 @capacitor/app 의 실제 active 상태로 판정해, 백그라운드면
+  //    하트비트를 멈춘다. 웹은 기존대로 visibility + focus.
+  const isChatVisible = () => {
+    if (!isPanelOpen || typeof document === "undefined") return false;
+    if (isCapacitorNative()) return isNativeAppActive();
+    return document.visibilityState === "visible" && (typeof document.hasFocus !== "function" || document.hasFocus());
+  };
 
   const markRead = async (roomId: string) => {
     try {

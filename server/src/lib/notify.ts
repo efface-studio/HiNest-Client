@@ -80,8 +80,9 @@ async function mutedApnsSet(targets: { userId: string; linkUrl?: string | null }
 }
 
 /** 활성 시청자로 간주하는 lastReadAt 신선도 — 이 시간 안에 읽음이 갱신됐으면 "지금 그 방을 보고 있음".
- *  클라 하트비트는 15초 주기이므로 6배 여유(네트워크 지연·하트비트 1~2회 실패 흡수). */
-const ACTIVE_VIEW_MS = 90_000;
+ *  클라 하트비트 15초 주기의 2배 여유(1회 실패 흡수). 길면 방을 보다 나간 뒤에도 한참 푸시가
+ *  막혀 "알림 안 옴" 처럼 느껴진다 → 90s→30s 로 단축(백그라운드 전환 후 빠르게 알림 복귀). */
+const ACTIVE_VIEW_MS = 30_000;
 /**
  * (userId, roomId) 쌍 중 "지금 그 방을 보고 있는" 조합을 `${userId}:${roomId}` Set 으로 반환.
  * 보고 있는 방의 채팅 알림은 APNs(폰 푸시) 를 건너뛴다 — 화면에 떠 있으니 알림이 불필요(요구사항).

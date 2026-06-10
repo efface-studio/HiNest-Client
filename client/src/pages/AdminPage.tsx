@@ -470,7 +470,9 @@ function UsersTab({
           <button onClick={() => setUpdateErr(null)} className="text-red-500 hover:text-red-700">닫기</button>
         </div>
       )}
-      <div className="section-head flex-wrap">
+      {/* 상단 헤더 — 제목 + (우측) 뷰 토글 · 내보내기. 검색/필터는 아래 필터 바로 분리해
+          예전처럼 한 줄에 다 욱여넣어 좁을 때 3줄로 들쭉날쭉 줄바꿈되던 문제를 해결. */}
+      <div className="section-head flex-wrap gap-2">
         <div className="title">
           구성원 목록 <span className="text-ink-400 font-medium tabular ml-1">{filtered.length}</span>
           <BulkUnlockButton users={users} onUnlocked={reload} />
@@ -490,7 +492,7 @@ function UsersTab({
             ))}
           </div>
           {/* 엑셀 일괄 업로드 — 내부 검토중이라 일단 비노출. 다시 열 땐 이 블록 주석 해제.
-          <span className="mx-1 h-4 w-px bg-ink-200 hidden sm:block" />
+          <span className="mx-0.5 h-4 w-px bg-ink-200 hidden sm:block" />
           <label
             className="btn-ghost !h-[32px] !px-3 text-[12px] cursor-pointer"
             title="엑셀(.xlsx) 파일로 HR 정보 일괄 업데이트 (email/사번/HR번호 기준 매칭)"
@@ -504,7 +506,7 @@ function UsersTab({
             />
           </label>
           */}
-          <span className="mx-1 h-4 w-px bg-ink-200 hidden sm:block" />
+          <span className="mx-0.5 h-4 w-px bg-ink-200 hidden sm:block" />
           {/* 현재 필터/검색 결과 기준으로 내보내기 — 권한/상태는 앱 UI 전용이므로 제외. */}
           <button
             type="button"
@@ -543,16 +545,28 @@ function UsersTab({
             <PdfLogo />
             PDF
           </button>
-          <span className="mx-1 h-4 w-px bg-ink-200 hidden sm:block" />
-          <input className="input text-[12px] h-[32px] w-full sm:w-[200px]" placeholder="이름·이메일·팀 검색" value={q} onChange={(e) => setQ(e.target.value)} />
-          <Select className="input text-[12px] h-[32px] w-full sm:w-[120px]" value={roleFilter} onChange={(v) => setRoleFilter(v)} options={roleFilterOptions} />
-          <div className="tabs">
-            {(["active", "inactive", "resigned"] as const).map((v) => (
-              <button key={v} onClick={() => setActiveFilter(v)} className={`tab ${activeFilter === v ? "tab-active" : ""}`}>
-                {v === "active" ? "재직" : v === "inactive" ? "비활성" : `퇴사 ${users.filter((u) => u.resignedAt).length}`}
-              </button>
-            ))}
-          </div>
+        </div>
+      </div>
+      {/* 필터 바 — 검색 · 권한 · 상태. 한 줄로 정렬되고 좁아지면 자연스럽게 접힘. */}
+      <div className="flex items-center gap-2 flex-wrap px-5 py-2.5 border-b border-[color:var(--c-border)]">
+        <input
+          className="input text-[12px] h-[32px] w-full sm:w-[240px]"
+          placeholder="이름·이메일·팀 검색"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+        />
+        <Select
+          className="input text-[12px] h-[32px] w-[132px] shrink-0"
+          value={roleFilter}
+          onChange={(v) => setRoleFilter(v)}
+          options={roleFilterOptions}
+        />
+        <div className="tabs">
+          {(["active", "inactive", "resigned"] as const).map((v) => (
+            <button key={v} onClick={() => setActiveFilter(v)} className={`tab ${activeFilter === v ? "tab-active" : ""}`}>
+              {v === "active" ? "재직" : v === "inactive" ? "비활성" : `퇴사 ${users.filter((u) => u.resignedAt).length}`}
+            </button>
+          ))}
         </div>
       </div>
 

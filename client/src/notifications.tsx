@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, apiUrl } from "./api";
 import { getAuthToken } from "./lib/authToken";
-import { deliverPendingNotifications, markSeen } from "./lib/desktopNotify";
+import { deliverPendingNotifications, markSeen, getActiveChatRoom } from "./lib/desktopNotify";
 import { isCapacitorNative } from "./lib/platform";
 import { initNativeNotificationTaps } from "./lib/nativeNotify";
 import { shouldDeliverNotif } from "./lib/notifPrefs";
@@ -187,6 +187,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         es.addEventListener("notification", (ev: MessageEvent) => {
           try {
             const n = JSON.parse(ev.data) as Notif;
+            // 지금 보고 있는 방의 채팅(DM/MENTION) 알림은 도착 즉시 읽음 처리한다. 안 그러면 방을
+            // 보다 나갔을 때 그 방이 리스트에서 안읽음으로 남는다 — 메시지는 화면에서 봤지만 알림
+            // 레코드가 ChatMiniApp 의 markRoomRead 직후(레이스)에 도착해 미읽음으로 쌓이기 때문.
+            const nRoom = n.linkUrl?.match(/room=([^&]+)/)?.[1] ?? null;
+            const isActiveRoomChat =
+              (n.type === "DM" || n.type === "MENTION") && !!nRoom && nRoom === getActiveChatRoom();
+            if (isActiveRoomChat && !n.readAt) {
+              n.readAt = new Date().toISOString(); // 로컬 즉시 읽음(리스트 미읽음 방지)
+              void api("/api/notification/read", { method: "POST", json: { ids: [n.id] } }).catch(() => {});
+            }
             // 낙관적 삽입 — 서버 왕복 없이 즉시 벨에 반영.
             // (기존에는 매 이벤트마다 reload() 를 한 번 더 불렀지만, 공지사항 일괄 브로드캐스트 때
             //  같은 유저 세션이 동시에 여러 번 GET /api/notification 치는 문제 → 서버 부하 증가.

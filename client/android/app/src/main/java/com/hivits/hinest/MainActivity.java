@@ -36,6 +36,18 @@ public class MainActivity extends BridgeActivity {
         super.onCreate(savedInstanceState);
         createAlertsNotificationChannel();
         setupSafeAreaInsets();
+        pinWebViewTextZoom();
+    }
+
+    /**
+     * WebView 글꼴 배율을 100% 로 고정. 안드로이드 WebView 는 기본적으로 시스템 글꼴 크기
+     * (Settings>Display>Font size, font_scale)를 textZoom 으로 반영해, 사용자가 글꼴을 키우면
+     * (예: S22 font_scale=1.1) 앱 UI 가 통째로 110% 로 커져 iOS 와 레이아웃이 달라진다.
+     * iOS(WKWebView)는 시스템 글꼴을 웹 콘텐츠에 자동 적용하지 않으므로 안드로이드도 100% 고정.
+     */
+    private void pinWebViewTextZoom() {
+        WebView wv = getBridge() != null ? getBridge().getWebView() : null;
+        if (wv != null) wv.getSettings().setTextZoom(100);
     }
 
     /**

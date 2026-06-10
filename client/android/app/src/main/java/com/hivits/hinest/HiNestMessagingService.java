@@ -49,8 +49,8 @@ import java.util.Map;
  */
 public class HiNestMessagingService extends MessagingService {
 
-    /** #924 에서 IMPORTANCE_HIGH 로 만든 "기본 알림" 채널. */
-    private static final String CHANNEL_ID = "default";
+    /** 고중요도 "기본 알림" 채널(MainActivity 가 생성) — 헤드업·배지·잠금화면 속성 포함. */
+    private static final String CHANNEL_ID = MainActivity.CHANNEL_ID;
     /** = VITE_API_BASE (운영). iOS NSE 와 동일하게 하드코딩. */
     private static final String API_BASE = "https://nest.hi-vits.com";
     private static final int AVATAR_PX = 128;
@@ -130,7 +130,9 @@ public class HiNestMessagingService extends MessagingService {
                 .setContentText(body)
                 .setAutoCancel(true)
                 .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setPriority(NotificationCompat.PRIORITY_HIGH)        // 헤드업 배너(구버전 호환)
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)  // 잠금화면에 내용 표시
+                .setNumber(1)                                         // 앱 아이콘 배지 카운트
                 .setContentIntent(contentIntent);
         if (groupId != null) b.setGroup(groupId);
 

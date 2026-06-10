@@ -136,12 +136,8 @@ public class HiNestMessagingService extends MessagingService {
                 .setContentIntent(contentIntent);
         if (groupId != null) b.setGroup(groupId);
 
-        // 앱이 포그라운드면 시스템 알림을 띄우지 않는다 — 사용자가 앱을 보고 있어 SSE 로 메시지가
-        // 인앱에 즉시 표시되므로 채팅방을 보는 중에 헤드업이 또 뜨는 중복·방해를 막는다(요구사항).
-        // iOS 가 포그라운드 푸시 배너를 억제(willPresent 미구현=무표시)하는 것과 동일한 동작.
-        // 백그라운드/잠금이면 appForeground=false 라 아래로 진행해 정상 표시된다.
-        if (MainActivity.appForeground) return;
-
+        // (포그라운드 억제는 서버 active-viewer 게이트가 담당 — '지금 보는 방'만 푸시를 건너뛴다.
+        //  네이티브에서 무조건 포그라운드 억제하면 다른 방·다른 화면 알림까지 막혀 알림이 안 왔다.)
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         if (nm != null) nm.notify(notifId(groupId, senderName), b.build());
     }

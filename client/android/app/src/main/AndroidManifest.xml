@@ -70,4 +70,7 @@
     <!-- 햅틱(@capacitor/haptics)이 Vibrator 로 진동을 주려면 필요. iOS 와 동일 지점의 탭/토글/
          버튼 햅틱을 안드로이드에서도 동작시킨다. -->
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 배터리 최적화 제외 요청(카톡 방식) — 백그라운드/잠금 상태에서도 알림이 즉시 오게.
+         메시징 앱의 핵심 기능(실시간 알림)에 필요. Play Console 에 해당 사용처 선언 필요. -->
+    <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 </manifest>

@@ -13,8 +13,9 @@
  *  - https 또는 localhost 에서만 동작 (HiNest dev: localhost:1000 ✅)
  */
 
-import { isCapacitorNative } from "./platform";
+import { isCapacitorNative, nativePlatform } from "./platform";
 import { showNativeNotifications } from "./nativeNotify";
+import { isNativeAppActive } from "./appActive";
 
 export type DesktopNotifPermission = "default" | "granted" | "denied" | "unsupported";
 
@@ -224,15 +225,25 @@ export function deliverPendingNotifications(
 ) {
   // 네이티브(Capacitor): WKWebView 는 Web Notification 미지원 → local-notifications 로 배너 표시.
   if (isCapacitorNative()) {
-    const fresh = items.filter((it) => !alreadySeen(it.id));
+    // Android: 채팅 알림은 FCM(HiNestMessagingService)이 전경·후경 모두에서 발신자 아바타로 직접
+    // 그린다 → JS 로컬 배너는 항상 중복이고, 로컬 배너(vis=PRIVATE)가 여러 개 쌓이면 시스템 자동그룹
+    // 요약(PRIVATE)이 잠금화면 내용까지 가린다. 그래서 Android 에선 채팅 항목을 JS 배너 후보에서
+    // 제외(FCM 가 소유). iOS 는 전경에서 APNs 가 억제되므로 JS 배너로 보완해야 해 유지한다.
+    const isAndroid = nativePlatform() === "android";
+    const candidates = isAndroid
+      ? items.filter((it) => !((it.linkUrl ?? "").includes("room=") || (it.linkUrl ?? "").startsWith("/chat")))
+      : items;
+    const fresh = candidates.filter((it) => !alreadySeen(it.id));
     if (fresh.length) {
       // 항상 seen 처리 — 포그라운드 복귀 시 같은 알림이 로컬배너로 재등장하지 않게.
       markSeen(fresh.map((f) => f.id));
-      // ★ 포그라운드(visible)일 때만 로컬 배너를 띄운다. 백그라운드면 원격 APNs 푸시(+NSE 발신자
-      //   아바타)가 알림을 처리하므로, 여기서 로컬 알림을 스케줄하면 "앱로고 = 아바타 X" 배너가
-      //   먼저 떠버린다(앱이 백그라운드라도 잠깐 살아있으면 SSE 로 이 경로가 실행됐던 버그).
-      //   iOS 는 포그라운드에선 원격푸시 배너를 억제하므로, 포그라운드만 로컬 배너로 보완.
-      const foreground = typeof document !== "undefined" && document.visibilityState === "visible";
+      // ★ 포그라운드(active)일 때만 로컬 배너를 띄운다. 백그라운드면 원격 푸시(iOS=APNs+NSE,
+      //   Android=FCM+HiNestMessagingService)가 발신자 아바타 알림을 처리하므로, 여기서 로컬
+      //   알림을 스케줄하면 중복 + "앱로고=아바타 X" 배너가 같이 떠버린다(특히 Android: 로컬 배너는
+      //   vis=PRIVATE 라 잠금화면 내용까지 가려지고, 여러 개가 시스템 자동그룹으로 묶임).
+      //   ⚠️ document.visibilityState 는 Android WebView 에서 백그라운드/잠금에도 "visible" 로
+      //   남아(실기기 확인) 가드가 무력화됐다 → @capacitor/app 의 실제 앱 상태(appStateChange)로 가드.
+      const foreground = isNativeAppActive();
       if (foreground) void showNativeNotifications(fresh);
     }
     return;

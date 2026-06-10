@@ -410,21 +410,43 @@ class MainViewController: CAPBridgeViewController {
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // 키보드가 올라오며 WebView 가 위로 줄어들 때, 그 아래로 드러나는 것은 이 루트 뷰다.
-        // 기본값(검정) 대신 테마를 따르는 동적 색으로 칠해 라이트=#F5F6F8 / 다크=검정 으로
-        // 항상 테마와 일치시킨다. (윈도우 배경도 AppDelegate 에서 같은 색으로 설정)
+        applyChromeBackground()
+        // ⚠️ Capacitor 8 은 WKWebView 자체가 루트 view 다(CAPBridgeViewController.loadView: `view = webView`).
+        // 그리고 WebViewDelegationHandler 가 초기 로드 시 isOpaque=false 로 뒀다가 didFinish 에서
+        // 원래 값(기본 true)으로 **되돌린다**. 불투명 WKWebView 는 웹이 안 칠한 픽셀(키보드가 떠서
+        // webView frame 이 줄면 생기는 하단 띠)을 backgroundColor 가 아니라 **검정**으로 합성한다.
+        // 따라서 viewDidLoad 단계에서만 칠하면 첫 네비게이션 didFinish 가 isOpaque 를 true 로 덮어써
+        // 다시 검정이 된다. 로드가 끝난 뒤(viewDidAppear) 발화하는 .capacitorViewDidAppear 알림에
+        // 재적용해 isOpaque=false 를 영구화한다. (멱등이라 여러 번 불려도 무해)
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(applyChromeBackground),
+            name: .capacitorViewDidAppear,
+            object: nil
+        )
+    }
+
+    /// 키보드가 올라오며 WebView(=루트 view)가 위로 줄어들 때, 그 아래로 드러나는 띠가 검정으로
+    /// 합성되지 않도록 한다. 핵심은 webView.isOpaque=false(검정 합성 차단) + webView/scrollView
+    /// 배경을 테마색으로 칠하기. view 는 곧 webView 지만 명시적으로 같이 칠해 둔다(2차 안전망).
+    @objc private func applyChromeBackground() {
         view.backgroundColor = .hinestChromeBackground
+        // 핵심: 불투명 해제 + webView/scrollView 배경을 테마색으로. (Capacitor didFinish 복원 무력화)
+        webView?.isOpaque = false
+        webView?.backgroundColor = .hinestChromeBackground
+        webView?.scrollView.backgroundColor = .hinestChromeBackground
     }
 }
 
 extension UIColor {
     /// 웹뷰 뒤(키보드 영역·safe-area 등 네이티브 chrome) 배경에 쓰는 동적 색.
-    /// - 라이트: #F5F6F8 (Capacitor 웹뷰/스플래시 backgroundColor 와 동일 → 이음매 없음)
-    /// - 다크:   systemBackground (= 순수 검정) → 다크 테마에 자연스럽게 녹아듦
+    /// - 라이트: #F5F6F8 (Capacitor 웹뷰/스플래시 backgroundColor·웹 --c-bg(light) 와 동일 → 이음매 없음)
+    /// - 다크:   #0E1014 (웹 셸 --c-bg(dark) 와 동일). systemBackground(순수 검정)은 웹 다크 배경과
+    ///           미세하게 달라 키보드 띠에서 이음매가 보였다 — 웹 배경색에 정확히 맞춘다.
     /// userInterfaceStyle 에 따라 OS 가 자동으로 두 값 사이를 전환한다.
     static let hinestChromeBackground = UIColor { traits in
         traits.userInterfaceStyle == .dark
-            ? UIColor.systemBackground
+            ? UIColor(red: 0x0E / 255.0, green: 0x10 / 255.0, blue: 0x14 / 255.0, alpha: 1.0)
             : UIColor(red: 0xF5 / 255.0, green: 0xF6 / 255.0, blue: 0xF8 / 255.0, alpha: 1.0)
     }
 }

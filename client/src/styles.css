@@ -954,6 +954,13 @@ table.pro.pro-grid-fixed tbody td > div > select {
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--c-text-muted); }
 
+/* 터치 기기(모바일 네이티브 WebView)는 클래식 세로 스크롤바가 우측 거터를 점유해 콘텐츠가
+   왼쪽으로 치우쳐 보인다 → 거터 제거(풀폭). 데스크톱(마우스=fine pointer)은 그대로 노출. */
+@media (pointer: coarse) {
+  ::-webkit-scrollbar { width: 0 !important; height: 0 !important; display: none; }
+  * { scrollbar-width: none; -ms-overflow-style: none; }
+}
+
 .divide-y-pro > * + * { border-top: 1px solid var(--c-border); }
 
 /* ============================================================ */

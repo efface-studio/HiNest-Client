@@ -134,7 +134,7 @@ async function sendOne(token: string, payload: FcmPayload, access: string): Prom
         data: { ...(payload.linkUrl ? { linkUrl: payload.linkUrl } : {}) },
         android: {
           priority: "HIGH",
-          notification: { channelId: "default", ...(payload.groupId ? { tag: payload.groupId } : {}) },
+          notification: { channelId: "hinest_alerts", ...(payload.groupId ? { tag: payload.groupId } : {}) },
           ...(payload.groupId ? { collapseKey: payload.groupId } : {}),
         },
       };

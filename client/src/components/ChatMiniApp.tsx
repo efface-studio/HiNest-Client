@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import { useNotifications } from "../notifications";
 import { resolvePresence } from "../lib/presence";
 import { downloadFromUrl } from "../lib/download";
-import { isCapacitorNative } from "../lib/platform";
+import { isCapacitorNative, nativePlatform } from "../lib/platform";
 import { isNativeAppActive } from "../lib/appActive";
 import { setActiveChatRoom } from "../lib/desktopNotify";
 import { Browser } from "@capacitor/browser";
@@ -2165,6 +2165,13 @@ function RoomView({
   const [reactingId, setReactingId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const nav = useNavigate();
+  // 전송 래퍼 — onSend() 후 입력창 포커스를 되돌려 키보드를 유지(카톡/메신저처럼 연속 입력).
+  // 전송 버튼이 width:0 으로 collapse 되거나 setInput("") 리렌더가 끼어도 다음 프레임에
+  // textarea 로 포커스를 복원해 iOS/Android 가 키보드를 내리지 않게 한다.
+  const handleSend = () => {
+    onSend();
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
   const isGroupRoom = room.type !== "DIRECT";
   // 반응(이모지) 프로필 표시용 — userId → 멤버(아바타) 매핑. 그룹방에서 반응 칩에 누른 사람 아바타를 띄운다.
   const membersById = useMemo(
@@ -2249,6 +2256,42 @@ function RoomView({
       imgs.forEach((img) => img.removeEventListener("load", onLoad));
     };
   }, [room.id, messages.length]);
+
+  // iOS 키보드 등장 시 메시지 리스트를 바닥으로 재고정.
+  // Keyboard.resize:'native' 가 WebView(=스크롤 컨테이너)를 줄이면 브라우저가 scrollTop 을
+  // 보존해 최신 메시지가 접힘선 아래로 밀린다. 바닥에 붙어있던 사용자에 한해 다시 끌어내린다.
+  // 과거 메시지를 보던 중(stuckToBottomRef=false)이면 방해하지 않는다. 안드/웹/데스크톱은 no-op.
+  useEffect(() => {
+    if (nativePlatform() !== "ios") return;
+    let cancelled = false;
+    const removers: Array<() => void> = [];
+    const pinBottom = () => {
+      const el = scrollRef.current;
+      if (!el) return;
+      if (!stuckToBottomRef.current) return;
+      el.scrollTop = el.scrollHeight; // 즉시 점프 — 줄어든 높이 기준 바닥(smooth 는 키보드 곡선 추격 실패)
+    };
+    void import("@capacitor/keyboard")
+      .then(({ Keyboard }) => {
+        if (cancelled) return;
+        const reg = (ev: "keyboardWillShow" | "keyboardDidShow") => {
+          Keyboard.addListener(ev as never, (() => {
+            // willShow: 애니메이션 시작 직전. didShow: native 리사이즈 확정 후 한 번 더.
+            pinBottom();
+            requestAnimationFrame(pinBottom); // 레이아웃 반영 직후 1프레임 보정
+          }) as never).then((h) => {
+            removers.push(() => { try { void h.remove(); } catch {} });
+          });
+        };
+        reg("keyboardWillShow");
+        reg("keyboardDidShow");
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+      removers.forEach((fn) => fn());
+    };
+  }, [room.id]);
   const rendered = useMemo(() => {
     // 상대방이 보낸 메시지 중 가장 최근 것의 인덱스
     let lastFromOtherIdx = -1;
@@ -2757,7 +2800,7 @@ function RoomView({
                   if (slashRef.current?.handleKey(e)) return;
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
-                    onSend();
+                    handleSend();
                   }
                 }}
                 onPaste={(e) => {
@@ -2839,7 +2882,10 @@ function RoomView({
 
             {/* 외부 전송 버튼 — 입력/첨부 시 슬라이드 인 */}
             <button
-              onClick={onSend}
+              onClick={handleSend}
+              // 탭 시 mousedown 기본동작(포커스 이동)을 막아 textarea 포커스 유지 → 키보드 안 내려감.
+              // MentionMenu/SnippetSlashMenu 가 쓰는 것과 동일 패턴.
+              onMouseDown={(e) => e.preventDefault()}
               disabled={!hasContent || sending}
               title="보내기"
               aria-label="보내기"

@@ -21,6 +21,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         case "system": window?.overrideUserInterfaceStyle = .unspecified
         default: window?.overrideUserInterfaceStyle = .light
         }
+        // 키보드가 올라올 때 WKWebView 가 위로 줄어들면서 그 아래(키보드 영역·하단 safe-area)에
+        // 윈도우/루트 뷰의 기본 배경(검정)이 드러나던 버그 수정. 윈도우 배경을 테마를 따르는
+        // 동적 색(라이트=#F5F6F8 = 웹뷰 배경과 동일, 다크=systemBackground=검정)으로 칠해
+        // 드러나는 영역이 항상 테마와 일치하게 한다. (루트 뷰 배경은 MainViewController 에서 동일색으로 설정)
+        window?.backgroundColor = .hinestChromeBackground
         return true
     }
 
@@ -401,6 +406,26 @@ extension LiquidGlassTabBarPlugin: UITabBarDelegate {
 class MainViewController: CAPBridgeViewController {
     override func capacitorDidLoad() {
         bridge?.registerPluginInstance(LiquidGlassTabBarPlugin())
+    }
+
+    override func viewDidLoad() {
+        super.viewDidLoad()
+        // 키보드가 올라오며 WebView 가 위로 줄어들 때, 그 아래로 드러나는 것은 이 루트 뷰다.
+        // 기본값(검정) 대신 테마를 따르는 동적 색으로 칠해 라이트=#F5F6F8 / 다크=검정 으로
+        // 항상 테마와 일치시킨다. (윈도우 배경도 AppDelegate 에서 같은 색으로 설정)
+        view.backgroundColor = .hinestChromeBackground
+    }
+}
+
+extension UIColor {
+    /// 웹뷰 뒤(키보드 영역·safe-area 등 네이티브 chrome) 배경에 쓰는 동적 색.
+    /// - 라이트: #F5F6F8 (Capacitor 웹뷰/스플래시 backgroundColor 와 동일 → 이음매 없음)
+    /// - 다크:   systemBackground (= 순수 검정) → 다크 테마에 자연스럽게 녹아듦
+    /// userInterfaceStyle 에 따라 OS 가 자동으로 두 값 사이를 전환한다.
+    static let hinestChromeBackground = UIColor { traits in
+        traits.userInterfaceStyle == .dark
+            ? UIColor.systemBackground
+            : UIColor(red: 0xF5 / 255.0, green: 0xF6 / 255.0, blue: 0xF8 / 255.0, alpha: 1.0)
     }
 }
 

@@ -13,6 +13,10 @@ import { registerPlugin } from "@capacitor/core";
 export interface HiNestNativePlugin {
   /** 세션 토큰을 네이티브에 보관(아바타 /uploads 인증용). token="" 이면 제거(로그아웃). */
   setSessionToken(options: { token: string }): Promise<void>;
+  /** 앱이 OEM 배터리 최적화에서 제외돼 있는지(백그라운드 알림 신뢰도 지표). 안드로이드 전용. */
+  isIgnoringBatteryOptimizations(): Promise<{ ignoring: boolean }>;
+  /** 배터리 최적화 제외 시스템 다이얼로그 띄우기(카톡 방식). 안드로이드 전용. */
+  requestIgnoreBatteryOptimizations(): Promise<void>;
 }
 
 export const HiNestNative = registerPlugin<HiNestNativePlugin>("HiNestNative");

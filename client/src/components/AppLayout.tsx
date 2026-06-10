@@ -1709,7 +1709,13 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
         }
         style={{
           // iOS 노치 흡수 — 헤더 자체가 첫 요소일 때만 (배너가 위에 있으면 배너가 처리).
-          paddingTop: safeAreaTop ? "var(--sa-top, env(safe-area-inset-top))" : 0,
+          // 안드로이드는 상태바가 iOS 노치보다 짧아 상단바가 시계·배터리에 너무 붙는다 → 약간의
+          // 여백을 더한다(iOS/웹/데스크톱은 기존 그대로).
+          paddingTop: safeAreaTop
+            ? nativePlatform() === "android"
+              ? "calc(var(--sa-top, env(safe-area-inset-top)) + 10px)"
+              : "var(--sa-top, env(safe-area-inset-top))"
+            : 0,
           ...(draggable ? ({ WebkitAppRegion: "drag" } as React.CSSProperties) : undefined),
         }}
       >

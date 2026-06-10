@@ -21,16 +21,19 @@ let lastToken: string | null = null;
 // iOS(APNs)·Android(FCM) 모두 동일한 @capacitor/push-notifications 플로우를 쓴다.
 // 토큰 종류만 OS 가 다르게 발급(iOS=APNs hex, Android=FCM) → 서버는 platform 으로 라우팅.
 //
-// ⚠️ Android 주의: register() 는 FirebaseMessaging.getInstance() 를 호출하는데, google-services.json
-//    이 없어 FirebaseApp 이 초기화 안 됐으면 IllegalStateException 으로 **네이티브 크래시**가 난다
-//    (JS try/catch 로 못 잡음). 그래서 Android 는 Firebase 가 실제로 번들된 빌드에서만 켠다 —
-//    VITE_ANDROID_FCM=1 로 빌드할 때만(=google-services.json 추가 + 서버 FCM 설정 완료 시).
-//    그 전까지 Android 는 푸시 미등록(앱은 정상, 알림만 없음). iOS 는 APNs 라 추가 설정 없이 동작.
+// Android FCM 등록을 항상 켠다 — google-services.json 이 안드로이드 프로젝트에 상시 포함되고(빌드 시
+// google-services 플러그인이 FirebaseApp 을 초기화) 서버 FCM 도 설정 완료라, register() 가 안전하다.
+//
+// ⚠️ 과거엔 VITE_ANDROID_FCM=1 빌드 플래그로 게이트했는데(google-services.json 없을 때 register() 가
+//    FirebaseApp 미초기화로 네이티브 크래시 나는 걸 막으려고), Vercel 이 만드는 OTA 번들은 그 플래그를
+//    안 박아 안드로이드 FCM 이 영영 비활성 → 백그라운드 푸시 0 이 됐다(VITE_API_BASE 폴백과 동일 유형
+//    의 함정). FCM 셋업이 끝난 지금은 플래그 없이 항상 켠다. (google-services.json 을 제거하는 빌드를
+//    한다면 그때 다시 가드를 둘 것.)
 function isNativePush(): boolean {
   const p = nativePlatform();
   if (!isCapacitorNative()) return false;
   if (p === "ios") return true;
-  if (p === "android") return (import.meta as any).env?.VITE_ANDROID_FCM === "1";
+  if (p === "android") return true;
   return false;
 }
 

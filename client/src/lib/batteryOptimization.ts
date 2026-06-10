@@ -14,7 +14,6 @@
  */
 import { nativePlatform } from "./platform";
 import { HiNestNative } from "./hinestNative";
-import { confirmAsync } from "../components/ConfirmHost";
 
 const ASKED_KEY = "hinest.battery.askedV1";
 
@@ -37,26 +36,19 @@ export async function ensureAndroidBatteryExemption(): Promise<void> {
   } catch {
     return;
   }
-  // 알림 권한 시스템 다이얼로그가 먼저 처리되도록 잠깐 양보(두 다이얼로그가 겹치지 않게).
+  // 알림 권한 시스템 다이얼로그가 먼저 처리되도록 잠깐 양보(두 시스템 다이얼로그가 겹치지 않게).
   await sleep(2500);
-  const ok = await confirmAsync({
-    title: "알림을 놓치지 않으려면",
-    description:
-      "백그라운드·잠금 상태에서도 채팅·알림이 바로 오게 하려면 ‘배터리 최적화’에서 HiNest를 제외해 주세요.\n\n설정 화면을 열어드릴까요?",
-    confirmLabel: "설정 열기",
-    cancelLabel: "나중에",
-  });
-  // 허용/거부 무관 1회만 안내(다시 안 나오게). 거부해도 사용자가 설정에서 직접 바꿀 수 있음.
+  // 허용/거부 무관 1회만(다시 안 뜨게). 거부해도 사용자가 설정에서 직접 바꿀 수 있음.
   try {
     localStorage.setItem(ASKED_KEY, "1");
   } catch {
     /* 무시 */
   }
-  if (ok === true) {
-    try {
-      await HiNestNative.requestIgnoreBatteryOptimizations();
-    } catch {
-      /* 인텐트 미지원 등 — 무시 */
-    }
+  // 커스텀 안내 다이얼로그 없이 OS '배터리 최적화 제외' 요청 팝업을 바로 띄운다.
+  // (예전엔 confirmAsync 안내 → 설정 화면 2단계였는데, 사용자 요청으로 OS 승인 팝업 1번으로 단순화.)
+  try {
+    await HiNestNative.requestIgnoreBatteryOptimizations();
+  } catch {
+    /* 인텐트 미지원 등 — 무시 */
   }
 }

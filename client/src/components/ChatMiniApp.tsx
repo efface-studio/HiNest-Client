@@ -2165,6 +2165,13 @@ function RoomView({
   const [reactingId, setReactingId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const nav = useNavigate();
+  // 전송 래퍼 — onSend() 후 입력창 포커스를 되돌려 키보드를 유지(카톡/메신저처럼 연속 입력).
+  // 전송 버튼이 width:0 으로 collapse 되거나 setInput("") 리렌더가 끼어도 다음 프레임에
+  // textarea 로 포커스를 복원해 iOS/Android 가 키보드를 내리지 않게 한다.
+  const handleSend = () => {
+    onSend();
+    requestAnimationFrame(() => textareaRef.current?.focus());
+  };
   const isGroupRoom = room.type !== "DIRECT";
   // 반응(이모지) 프로필 표시용 — userId → 멤버(아바타) 매핑. 그룹방에서 반응 칩에 누른 사람 아바타를 띄운다.
   const membersById = useMemo(
@@ -2757,7 +2764,7 @@ function RoomView({
                   if (slashRef.current?.handleKey(e)) return;
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
-                    onSend();
+                    handleSend();
                   }
                 }}
                 onPaste={(e) => {
@@ -2839,7 +2846,10 @@ function RoomView({
 
             {/* 외부 전송 버튼 — 입력/첨부 시 슬라이드 인 */}
             <button
-              onClick={onSend}
+              onClick={handleSend}
+              // 탭 시 mousedown 기본동작(포커스 이동)을 막아 textarea 포커스 유지 → 키보드 안 내려감.
+              // MentionMenu/SnippetSlashMenu 가 쓰는 것과 동일 패턴.
+              onMouseDown={(e) => e.preventDefault()}
               disabled={!hasContent || sending}
               title="보내기"
               aria-label="보내기"

@@ -11,6 +11,7 @@ import { setActiveChatRoom } from "../lib/desktopNotify";
 import { Browser } from "@capacitor/browser";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
 import { SnippetSlashMenu, type SnippetSlashHandle } from "./chat/SnippetSlashMenu";
+import { MentionMenu, type MentionHandle } from "./chat/MentionMenu";
 import {
   C,
   FONT,
@@ -622,6 +623,14 @@ export default function ChatMiniApp({
     if (!activeId || sending) return;
     const content = input.trim();
     if (!content && attachments.length === 0) return;
+    // @멘션 — 본문의 `@멤버이름` 을 그룹 멤버명과 매칭해 userId 목록 파생(그룹만). 서버가 그들에게
+    // MENTION 알림을 보낸다(1:1 은 멘션 없음). 빈 배열이면 서버가 무시.
+    const mentions =
+      active && active.type !== "DIRECT"
+        ? active.members
+            .filter((rm) => rm.user.id !== (user?.id ?? "") && content.includes(`@${rm.user.name}`))
+            .map((rm) => rm.user.id)
+        : [];
     const prevInput = input;
     const prevAttachments = attachments;
     setInput("");
@@ -652,7 +661,7 @@ export default function ChatMiniApp({
       } else {
         const r = await api<{ message: Message }>(`/api/chat/rooms/${activeId}/messages`, {
           method: "POST",
-          json: { content, kind: "TEXT" },
+          json: { content, kind: "TEXT", mentions },
         });
         if (r?.message) appendLocal(r.message);
       }
@@ -2152,9 +2161,20 @@ function RoomView({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const slashRef = useRef<SnippetSlashHandle | null>(null);
+  const mentionRef = useRef<MentionHandle | null>(null);
   const [reactingId, setReactingId] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const nav = useNavigate();
+  const isGroupRoom = room.type !== "DIRECT";
+  // 반응(이모지) 프로필 표시용 — userId → 멤버(아바타) 매핑. 그룹방에서 반응 칩에 누른 사람 아바타를 띄운다.
+  const membersById = useMemo(
+    () => new Map(room.members.map((rm) => [rm.user.id, rm.user])),
+    [room.members],
+  );
+  // "누가 반응했는지" 바텀시트 상태(이모지 칩 길게누름). { emoji, userIds } 또는 null.
+  const [reactorSheet, setReactorSheet] = useState<{ emoji: string; userIds: string[] } | null>(null);
+  const reactLpTimer = useRef<number | null>(null);
+  const reactLpFired = useRef(false);
   // 채팅 메시지의 발신자 이름·아바타 클릭 → 사용자 프로필 페이지로. 채팅 팝업은 닫고 이동.
   function openProfile(userId: string) {
     if (!userId) return;
@@ -2520,17 +2540,33 @@ function RoomView({
                   >
                     {groupReactions(m.reactions).map((g) => {
                       const isMine = g.userIds.includes(meId);
+                      // 그룹방: 최근 누른 3명 아바타를 옆으로 중첩(마지막=최근). 1:1: 숫자.
+                      const recent = isGroupRoom ? g.userIds.slice(-3).reverse() : [];
+                      const ringBg = isMine ? C.blueSoft : C.gray100;
+                      const startLp = () => {
+                        reactLpFired.current = false;
+                        reactLpTimer.current = window.setTimeout(() => {
+                          reactLpFired.current = true;
+                          setReactorSheet({ emoji: g.emoji, userIds: g.userIds });
+                        }, 420);
+                      };
+                      const clearLp = () => { if (reactLpTimer.current) { clearTimeout(reactLpTimer.current); reactLpTimer.current = null; } };
                       return (
                         <button
                           key={g.emoji}
                           type="button"
-                          onClick={() => onReact(m.id, g.emoji)}
+                          onClick={() => { if (reactLpFired.current) { reactLpFired.current = false; return; } onReact(m.id, g.emoji); }}
+                          onPointerDown={startLp}
+                          onPointerUp={clearLp}
+                          onPointerLeave={clearLp}
+                          onPointerCancel={clearLp}
+                          onContextMenu={(e) => { e.preventDefault(); setReactorSheet({ emoji: g.emoji, userIds: g.userIds }); }}
                           title={g.names.join(", ")}
                           style={{
                             display: "inline-flex", alignItems: "center", gap: 4,
                             padding: "2px 8px", height: 24,
                             borderRadius: 999,
-                            background: isMine ? C.blueSoft : C.gray100,
+                            background: ringBg,
                             border: isMine ? `1px solid ${C.blue}` : `1px solid ${C.gray200}`,
                             color: C.ink, cursor: "pointer",
                             fontSize: 12, fontWeight: 600,
@@ -2538,7 +2574,21 @@ function RoomView({
                           }}
                         >
                           <span style={{ fontSize: 13 }}>{g.emoji}</span>
-                          <span style={{ fontVariantNumeric: "tabular-nums" }}>{g.count}</span>
+                          {isGroupRoom ? (
+                            <span style={{ display: "inline-flex", alignItems: "center" }}>
+                              {recent.map((uid, i) => {
+                                const u = membersById.get(uid);
+                                return (
+                                  <span key={uid} style={{ marginLeft: i === 0 ? 0 : -7, position: "relative", zIndex: 3 - i, borderRadius: 999, boxShadow: `0 0 0 1.5px ${ringBg}` }}>
+                                    <Avatar name={u?.name ?? "?"} color={u?.avatarColor ?? C.blue} imageUrl={u?.avatarUrl ?? null} size={16} />
+                                  </span>
+                                );
+                              })}
+                              {g.count > 3 && <span style={{ marginLeft: 3, fontVariantNumeric: "tabular-nums" }}>+{g.count - 3}</span>}
+                            </span>
+                          ) : (
+                            <span style={{ fontVariantNumeric: "tabular-nums" }}>{g.count}</span>
+                          )}
                         </button>
                       );
                     })}
@@ -2660,6 +2710,27 @@ function RoomView({
               }}
               innerRef={slashRef}
             />
+            {isGroupRoom && (
+              <MentionMenu
+                textareaRef={textareaRef}
+                value={input}
+                members={room.members.map((rm) => rm.user)}
+                onReplace={(start, end, replacement) => {
+                  const next = input.slice(0, start) + replacement + input.slice(end);
+                  setInput(next);
+                  requestAnimationFrame(() => {
+                    const ta = textareaRef.current;
+                    if (!ta) return;
+                    const pos = start + replacement.length;
+                    ta.focus();
+                    ta.setSelectionRange(pos, pos);
+                    ta.style.height = "auto";
+                    ta.style.height = Math.min(ta.scrollHeight, 92) + "px";
+                  });
+                }}
+                innerRef={mentionRef}
+              />
+            )}
             <div
               style={{
                 flex: 1, minWidth: 0,
@@ -2681,7 +2752,8 @@ function RoomView({
                   el.style.height = Math.min(el.scrollHeight, 92) + "px";
                 }}
                 onKeyDown={(e) => {
-                  // 슬래시 자동완성 메뉴가 열려있으면 ↑↓/Enter/Esc/Tab 을 그쪽이 먼저 소비.
+                  // @멘션 / 슬래시 자동완성 메뉴가 열려있으면 ↑↓/Enter/Esc/Tab 을 그쪽이 먼저 소비.
+                  if (mentionRef.current?.handleKey(e)) return;
                   if (slashRef.current?.handleKey(e)) return;
                   if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                     e.preventDefault();
@@ -2799,6 +2871,43 @@ function RoomView({
           </div>
         );
       })()}
+      {/* 이모지 반응 누른 사람 목록(칩 길게누름) — 바텀시트. 항목 탭 → 프로필. */}
+      {reactorSheet && (
+        <div
+          onClick={() => setReactorSheet(null)}
+          style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "flex-end", justifyContent: "center" }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%", maxWidth: 480, background: C.surface,
+              borderTopLeftRadius: 18, borderTopRightRadius: 18,
+              padding: "8px 0 max(16px, var(--sa-bottom, env(safe-area-inset-bottom)))",
+              maxHeight: "60vh", overflowY: "auto",
+            }}
+          >
+            <div style={{ width: 36, height: 4, borderRadius: 2, background: C.gray200, margin: "4px auto 6px" }} />
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, fontWeight: 700, color: C.ink, padding: "4px 18px 10px", fontSize: 15 }}>
+              <span style={{ fontSize: 18 }}>{reactorSheet.emoji}</span>
+              <span>{reactorSheet.userIds.length}</span>
+            </div>
+            {reactorSheet.userIds.slice().reverse().map((uid) => {
+              const u = membersById.get(uid);
+              return (
+                <button
+                  key={uid}
+                  type="button"
+                  onClick={() => { setReactorSheet(null); openProfile(uid); }}
+                  style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "8px 18px", background: "transparent", border: 0, cursor: "pointer", fontFamily: FONT }}
+                >
+                  <Avatar name={u?.name ?? "?"} color={u?.avatarColor ?? C.blue} imageUrl={u?.avatarUrl ?? null} size={36} />
+                  <span style={{ color: C.ink, fontSize: 14.5, fontWeight: 600 }}>{u?.name ?? "알 수 없음"}{uid === meId ? " (나)" : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </>
   );
 }

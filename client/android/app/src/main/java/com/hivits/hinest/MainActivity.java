@@ -21,6 +21,14 @@ public class MainActivity extends BridgeActivity {
     /** 고중요도 알림 채널 id. 구 "default" 채널의 굳은 설정을 피하려 새 id 사용. */
     static final String CHANNEL_ID = "hinest_alerts";
 
+    /**
+     * 앱이 현재 포그라운드(Activity resumed)인지 — HiNestMessagingService 가 채팅 푸시를 띄울지
+     * 판단할 때 참조한다. 포그라운드면 사용자가 앱에서 SSE 로 메시지를 즉시 보므로 시스템 알림을
+     * 띄우지 않는다(중복·방해 방지). iOS 가 willPresent 로 포그라운드 푸시 배너를 억제하는 것과 동일.
+     * onPause(잠금·홈·백그라운드) 에서 false 가 되어, 백그라운드/잠금 알림은 정상 표시된다.
+     */
+    static volatile boolean appForeground = false;
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         // 커스텀 플러그인은 반드시 super.onCreate(=Bridge 초기화) 이전에 등록.
@@ -81,11 +89,18 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onResume() {
         super.onResume();
+        appForeground = true; // 포그라운드 진입 — 채팅 푸시는 인앱에서 보이므로 시스템 알림 억제 대상.
         // OTA reload 등으로 document 가 새로 생기면 주입한 변수가 사라질 수 있어 인셋 재적용을 유도.
         try {
             ViewCompat.requestApplyInsets(getWindow().getDecorView());
         } catch (Throwable ignored) {
         }
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        appForeground = false; // 백그라운드/잠금 — 채팅 푸시를 시스템 알림으로 정상 표시.
     }
 
     /**

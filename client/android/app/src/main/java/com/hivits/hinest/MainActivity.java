@@ -56,7 +56,10 @@ public class MainActivity extends BridgeActivity {
                 WindowInsetsCompat.Type.systemBars() | WindowInsetsCompat.Type.displayCutout());
             float density = getResources().getDisplayMetrics().density;
             int top = Math.round(bars.top / density);       // px → CSS px(dp)
-            int bottom = Math.round(bars.bottom / density);
+            // 키보드(IME)가 떠 있으면 하단 내비바를 키보드가 가리므로 --sa-bottom 을 0 으로 둔다.
+            // 안 그러면 채팅 입력창이 죽은 내비바 인셋(예: 48dp)만큼 키보드 위로 떠 큰 간격이 생긴다.
+            boolean imeVisible = insets.isVisible(WindowInsetsCompat.Type.ime());
+            int bottom = imeVisible ? 0 : Math.round(bars.bottom / density);
             int left = Math.round(bars.left / density);
             int right = Math.round(bars.right / density);
             final String js = "(function(){try{var s=document.documentElement.style;"

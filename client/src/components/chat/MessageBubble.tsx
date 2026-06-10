@@ -1117,9 +1117,9 @@ function ShareCardBubble({ msg, mine }: { msg: Message; mine: boolean }) {
   );
 }
 
-// URL 자동 링크화 — http(s):// 또는 www. 로 시작하는 문자열을 <a> 로 변환.
+// URL 자동 링크화(group1) + @멘션 강조(group2).
 // 안전 조치: href 는 반드시 http/https 로만 구성하고, rel=noopener noreferrer + target=_blank.
-const URL_REGEX = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)/gi;
+const URL_REGEX = /(https?:\/\/[^\s<>"']+|www\.[^\s<>"']+)|(@[\w가-힣._-]+)/gi;
 
 function renderWithLinks(content: string, mine: boolean): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
@@ -1130,6 +1130,14 @@ function renderWithLinks(content: string, mine: boolean): React.ReactNode[] {
     const raw = match[0];
     const start = match.index;
     if (start > lastIndex) nodes.push(content.slice(lastIndex, start));
+    // @멘션 — 파랑/볼드 강조(이름 태그). 그룹방에서 누른 사람 알림은 서버가 처리.
+    if (match[2]) {
+      nodes.push(
+        <span key={start} style={{ color: mine ? "#dbe9ff" : C.blue, fontWeight: 700 }}>{raw}</span>
+      );
+      lastIndex = start + raw.length;
+      continue;
+    }
     // 문장 끝 구두점은 링크에서 제외
     const trailing = raw.match(/[).,!?;:]+$/);
     const clean = trailing ? raw.slice(0, raw.length - trailing[0].length) : raw;

@@ -5,9 +5,20 @@
  * VITE_API_BASE 로 절대 오리진(예: https://nest.hi-vits.com)을 주입한다.
  */
 import { getAuthToken } from "./lib/authToken";
+import { isCapacitorNative } from "./lib/platform";
 
-export const API_BASE: string =
-  ((import.meta as any).env?.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "") ?? "";
+const _envApiBase = ((import.meta as any).env?.VITE_API_BASE as string | undefined)?.replace(/\/+$/, "");
+
+/**
+ * API 오리진.
+ *  - 빌드시 VITE_API_BASE 가 박히면 그걸 쓴다(네이티브 빌드 cap:android/ios 스크립트가 주입).
+ *  - 비어 있고 **네이티브(Capacitor)** 면 운영 오리진으로 폴백한다.
+ *    왜: 라이브업데이트(OTA) 번들은 Vercel 이 `npm run build` 로 생성하는데, 웹은 동일 오리진이라
+ *    VITE_API_BASE 가 필요 없어 안 박힌다. 그 번들을 네이티브가 OTA 로 받으면 API_BASE 가 빈 값이 돼
+ *    모든 요청이 WebView 로컬(https://localhost)로 새서 로그인 등 전부 실패했다(데이터 타입 오류).
+ *    네이티브에서만 폴백하므로 웹/데스크톱은 기존처럼 상대경로(빈 base) 그대로 — 동작 변화 없음.
+ */
+export const API_BASE: string = _envApiBase || (isCapacitorNative() ? "https://nest.hi-vits.com" : "");
 
 /** 상대 API/자산 경로를 현재 빌드에 맞는 절대 URL 로. 절대 URL 은 그대로 통과. */
 export function apiUrl(path: string): string {

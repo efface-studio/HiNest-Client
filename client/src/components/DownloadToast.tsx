@@ -59,7 +59,7 @@ export default function DownloadToastHost() {
         className="fixed inset-x-0 z-[1200] flex justify-center pointer-events-none px-4"
         style={{
           // 모바일 하단 탭바·홈 인디케이터 위로 — safe-area + 여유. 데스크탑은 env=0 이라 하단에서 24px.
-          bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)",
+          bottom: "calc(var(--sa-bottom, env(safe-area-inset-bottom, 0px)) + 88px)",
         }}
       >
         <div

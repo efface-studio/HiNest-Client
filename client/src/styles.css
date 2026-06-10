@@ -57,7 +57,7 @@
   /* 90px: 우하단 ChatFab(60px + bottom 20px = 상단 80px)에 마지막 콘텐츠(표 마지막 행의
      '처리' 버튼 등)가 가리지 않도록 클리어런스 확보. FAB 는 md+ 에서만 뜨므로(아래 모바일
      쿼리가 24px 로 덮어씀) 데스크톱·태블릿 웹에만 적용된다. */
-  --hinest-main-pb: max(90px, env(safe-area-inset-bottom));
+  --hinest-main-pb: max(90px, var(--sa-bottom, env(safe-area-inset-bottom)));
 }
 
 /* Tailwind md 브레이크포인트(768px) 미만 = 사이드바가 드로어로 접히는 구간.
@@ -82,7 +82,7 @@ html, body {
    강제 노출한다. html.hinest-ios 는 iOS 네이티브에서만 붙으므로 웹·안드·데스크톱은 무영향. */
 html.hinest-ios {
   /* 플로팅 글래스 바(out-of-flow) 클리어런스 — 전 폭 공통. */
-  --hinest-main-pb: calc(60px + max(10px, env(safe-area-inset-bottom)) + 14px);
+  --hinest-main-pb: calc(60px + max(10px, var(--sa-bottom, env(safe-area-inset-bottom))) + 14px);
   /* ChatFab(우하단)을 글래스 바 위로 띄우는 높이(아이패드에서 FAB 노출 시). */
   --hinest-bottomnav-h: 78px;
 }
@@ -179,7 +179,7 @@ html.hinest-ios .app-topbar {
   border-bottom: 1px solid var(--c-glass-border);
 }
 html.hinest-ios .app-main-scroll {
-  padding-top: calc(56px + env(safe-area-inset-top));
+  padding-top: calc(56px + var(--sa-top, env(safe-area-inset-top)));
   /* 네이티브 모멘텀 스크롤 — 손가락을 떼도 관성으로 부드럽게 이어진다(웹틱한 즉시 정지 방지). */
   -webkit-overflow-scrolling: touch;
   /* 스크롤 끝에서 부모/문서로 스크롤이 새지 않게(고무줄 '뚫림' 방지). */
@@ -520,12 +520,12 @@ textarea.input {
 /* 풀높이 모달이 노치/홈인디케이터에 가리지 않도록 오버레이에 safe-area 패딩.
    env() 는 데스크톱에서 0 이라 웹/Electron 외형은 변하지 않음(p-4 동등). */
 .modal-safe {
-  padding-top: max(1rem, env(safe-area-inset-top));
+  padding-top: max(1rem, var(--sa-top, env(safe-area-inset-top)));
   /* --hinest-kb-inset = 키보드 높이(main.tsx visualViewport 추적). 키보드가 뜨면 그만큼 하단
      패딩이 늘어 가운데 패널이 키보드 위로 올라온다. 키보드 없으면 0 → 기존과 동일. */
-  padding-bottom: calc(max(1rem, env(safe-area-inset-bottom)) + var(--hinest-kb-inset, 0px));
-  padding-left: max(1rem, env(safe-area-inset-left));
-  padding-right: max(1rem, env(safe-area-inset-right));
+  padding-bottom: calc(max(1rem, var(--sa-bottom, env(safe-area-inset-bottom))) + var(--hinest-kb-inset, 0px));
+  padding-left: max(1rem, var(--sa-left, env(safe-area-inset-left)));
+  padding-right: max(1rem, var(--sa-right, env(safe-area-inset-right)));
   transition: padding-bottom 0.18s ease;
 }
 /* iOS Safari 는 네이티브 date/time/datetime-local 입력에 내장 min-width 를

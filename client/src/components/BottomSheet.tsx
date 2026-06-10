@@ -121,7 +121,7 @@ export default function BottomSheet({
           background: `rgba(15,18,28,${backdropOpacity})`,
           transition: "background 280ms ease",
           // 데스크탑·웹은 노치 없음(env=0). iOS 는 상단만 패딩(시트는 바닥에 붙음).
-          paddingTop: ios ? "max(1rem, env(safe-area-inset-top))" : undefined,
+          paddingTop: ios ? "max(1rem, var(--sa-top, env(safe-area-inset-top)))" : undefined,
         }}
         onClick={onClose}
       >
@@ -190,7 +190,7 @@ export default function BottomSheet({
           {footer && (
             <div
               className="px-5 sm:px-6 pt-3 border-t border-ink-100 bg-[var(--c-surface)] flex-shrink-0"
-              style={{ paddingBottom: ios ? "calc(env(safe-area-inset-bottom, 0px) + 12px)" : "16px" }}
+              style={{ paddingBottom: ios ? "calc(var(--sa-bottom, env(safe-area-inset-bottom, 0px)) + 12px)" : "16px" }}
             >
               {footer}
             </div>

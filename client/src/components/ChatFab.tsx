@@ -168,10 +168,10 @@ export default function ChatFab() {
                   inset: 0,
                   width: "100vw",
                   height: "100dvh",
-                  paddingTop: "env(safe-area-inset-top)",
-                  paddingBottom: "env(safe-area-inset-bottom)",
-                  paddingLeft: "env(safe-area-inset-left)",
-                  paddingRight: "env(safe-area-inset-right)",
+                  paddingTop: "var(--sa-top, env(safe-area-inset-top))",
+                  paddingBottom: "var(--sa-bottom, env(safe-area-inset-bottom))",
+                  paddingLeft: "var(--sa-left, env(safe-area-inset-left))",
+                  paddingRight: "var(--sa-right, env(safe-area-inset-right))",
                   transformOrigin: "bottom right",
                   borderRadius: 0,
                   overflow: "hidden",
@@ -187,12 +187,12 @@ export default function ChatFab() {
               : {
                   // 데스크톱: 기존 우하단 플로팅 팝업. flex column 으로 통일.
                   // 641~767px(=태블릿 좁은 폭)에선 하단 네비 바가 보이므로 그만큼 더 띄운다.
-                  right: "max(12px, env(safe-area-inset-right))",
+                  right: "max(12px, var(--sa-right, env(safe-area-inset-right)))",
                   bottom:
-                    "calc(96px + env(safe-area-inset-bottom) + var(--hinest-bottomnav-h, 0px))",
+                    "calc(96px + var(--sa-bottom, env(safe-area-inset-bottom)) + var(--hinest-bottomnav-h, 0px))",
                   width: "min(380px, calc(100vw - 24px))",
                   height: 580,
-                  maxHeight: "calc(100vh - 140px - env(safe-area-inset-bottom))",
+                  maxHeight: "calc(100vh - 140px - var(--sa-bottom, env(safe-area-inset-bottom)))",
                   transformOrigin: "bottom right",
                   borderRadius: 20,
                   overflow: "hidden",
@@ -256,9 +256,9 @@ export default function ChatFab() {
         style={{
           // notch/홈인디케이터 대응 — iPad/iPhone 세이프 에어리어 안쪽으로 당김.
           // 데스크톱은 하단 네비 바가 없어 --hinest-bottomnav-h 가 0 이라 그대로 우하단.
-          right: "max(20px, env(safe-area-inset-right))",
+          right: "max(20px, var(--sa-right, env(safe-area-inset-right)))",
           bottom:
-            "calc(20px + env(safe-area-inset-bottom, 0px) + var(--hinest-bottomnav-h, 0px))",
+            "calc(20px + var(--sa-bottom, env(safe-area-inset-bottom, 0px)) + var(--hinest-bottomnav-h, 0px))",
           width: 60, height: 60,
           borderRadius: 999,
           background: C.blue, color: "#fff",

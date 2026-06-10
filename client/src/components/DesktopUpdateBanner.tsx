@@ -185,7 +185,7 @@ export default function DesktopUpdateBanner() {
       // bottom 은 safe-area-inset 고려 (notch 기기에서 하단 홈바에 가려짐 방지).
       className="fixed left-4 right-4 z-[80] sm:left-auto sm:right-5 sm:w-[380px] panel p-0 overflow-hidden"
       style={{
-        bottom: "calc(1.25rem + env(safe-area-inset-bottom, 0px))",
+        bottom: "calc(1.25rem + var(--sa-bottom, env(safe-area-inset-bottom, 0px)))",
         boxShadow: "0 10px 28px rgba(0,0,0,.18), 0 2px 8px rgba(0,0,0,.12)",
       }}
     >

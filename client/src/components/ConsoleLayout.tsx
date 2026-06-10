@@ -171,7 +171,7 @@ export default function ConsoleLayout() {
       {/* ===== 데스크톱 사이드바 (어두운 운영 테마) ===== */}
       <aside
         className="console-sidebar hidden md:flex w-[252px] flex-col flex-shrink-0 bg-ink-900 text-white"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
+        style={{ paddingTop: "var(--sa-top, env(safe-area-inset-top))" }}
       >
         {/* 신호등 버튼용 드래그 가능 여백 — macOS 창모드에서만 */}
         {showTitlebarSpace && (
@@ -221,7 +221,7 @@ export default function ConsoleLayout() {
 
         <div
           className="border-t border-white/10 px-2 py-2 flex-shrink-0 space-y-1"
-          style={{ paddingBottom: "max(8px, env(safe-area-inset-bottom))" }}
+          style={{ paddingBottom: "max(8px, var(--sa-bottom, env(safe-area-inset-bottom)))" }}
         >
           <div className="flex items-center gap-2 px-3 py-2">
             {/* 회사 앱 상단바와 동일하게 — 프로필 사진(avatarUrl)이 있으면 사진을, 없으면 색+이니셜 폴백.
@@ -285,7 +285,7 @@ export default function ConsoleLayout() {
         )}
         <header
           className="md:hidden bg-white dark:bg-ink-900 text-ink-900 dark:text-white border-b border-ink-150 dark:border-ink-800 flex-shrink-0"
-          style={{ paddingTop: "env(safe-area-inset-top)" }}
+          style={{ paddingTop: "var(--sa-top, env(safe-area-inset-top))" }}
         >
           <div className="h-[48px] px-4 flex items-center gap-2">
             {/* onDark 를 넘기지 않으면 AdminLockup 이 앱 테마(resolved)를 따라간다. */}
@@ -317,7 +317,7 @@ export default function ConsoleLayout() {
         >
           {/* iOS 는 플로팅 바가 본문 위에 떠 있어 84px 클리어런스가 필요. 안드로이드·웹은
               부착형 바가 본문 아래 in-flow 로 자리하므로 일반 여백(pb-4)만 — 이중 간격 방지. */}
-          <div className={"max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:py-6 " + (ios ? "pb-[calc(84px+env(safe-area-inset-bottom))]" : "pb-4")}>
+          <div className={"max-w-[1400px] mx-auto px-4 md:px-8 pt-4 md:py-6 " + (ios ? "pb-[calc(84px+var(--sa-bottom, env(safe-area-inset-bottom)))]" : "pb-4")}>
             <Outlet />
           </div>
         </main>
@@ -338,7 +338,7 @@ export default function ConsoleLayout() {
                   position: "fixed",
                   left: "50%",
                   transform: "translateX(-50%)",
-                  bottom: "max(10px, env(safe-area-inset-bottom))",
+                  bottom: "max(10px, var(--sa-bottom, env(safe-area-inset-bottom)))",
                   width: "calc(100% - 24px)",
                   maxWidth: 480,
                   zIndex: 30,
@@ -356,7 +356,7 @@ export default function ConsoleLayout() {
                   // 인디케이터 회피용 하단 safe-area. 부착형이라 본문이 바 위로 겹치지 않는다.
                   background: "var(--c-surface)",
                   borderTop: "1px solid var(--c-border)",
-                  paddingBottom: "max(env(safe-area-inset-bottom) - 10px, 0px)",
+                  paddingBottom: "max(var(--sa-bottom, env(safe-area-inset-bottom)) - 10px, 0px)",
                   boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
                   alignItems: "stretch",
                 }

@@ -428,19 +428,22 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
           aria-label="뒤로"
           style={{
             width: 34, height: 34, borderRadius: 999,
-            background: C.gray100, color: C.ink,
-            border: 0, cursor: "pointer",
+            // iOS 26 리퀴드 글래스 — 네이티브 앱에서만 반투명+블러. 데스크톱/웹은 기존 솔리드.
+            background: glass ? "var(--c-glass)" : C.gray100, color: C.ink,
+            WebkitBackdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
+            backdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
+            border: glass ? "1px solid var(--c-glass-border)" : 0, cursor: "pointer",
             display: "grid", placeItems: "center",
             transition: "background .12s ease",
           }}
-          onMouseEnter={(e) => (e.currentTarget.style.background = C.gray200)}
-          onMouseLeave={(e) => (e.currentTarget.style.background = C.gray100)}
+          onMouseEnter={(e) => { if (!glass) e.currentTarget.style.background = C.gray200; }}
+          onMouseLeave={(e) => { if (!glass) e.currentTarget.style.background = C.gray100; }}
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
-        {info.onClose && <HeaderCloseButton onClose={info.onClose} />}
+        {info.onClose && <HeaderCloseButton onClose={info.onClose} glass={glass} />}
       </div>
     );
   }
@@ -474,14 +477,17 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
         aria-label="뒤로"
         style={{
           width: 34, height: 34, borderRadius: 999,
-          background: C.gray100, color: C.ink,
-          border: 0, cursor: "pointer",
+          // iOS 26 리퀴드 글래스 — 네이티브 앱에서만 반투명+블러. 데스크톱/웹은 기존 솔리드.
+          background: glass ? "var(--c-glass)" : C.gray100, color: C.ink,
+          WebkitBackdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
+          backdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
+          border: glass ? "1px solid var(--c-glass-border)" : 0, cursor: "pointer",
           display: "grid", placeItems: "center",
           flexShrink: 0,
           transition: "background .12s ease",
         }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = C.gray200)}
-        onMouseLeave={(e) => (e.currentTarget.style.background = C.gray100)}
+        onMouseEnter={(e) => { if (!glass) e.currentTarget.style.background = C.gray200; }}
+        onMouseLeave={(e) => { if (!glass) e.currentTarget.style.background = C.gray100; }}
       >
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
           <path d="M15 18l-6-6 6-6" />
@@ -541,13 +547,13 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
 
       {/* 모바일 풀스크린에선 패널 자체를 닫는 X — 방 안에서도 한 탭으로 빠져나갈 수 있게.
           desktop 에선 onClose 미전달 → 렌더링 안 됨 (외부에 띄운 팝업이라 별도 닫기 불필요). */}
-      {info.onClose && <HeaderCloseButton onClose={info.onClose} />}
+      {info.onClose && <HeaderCloseButton onClose={info.onClose} glass={glass} />}
     </div>
   );
 }
 
 /** 헤더 우측 X — 모바일 풀스크린 채팅을 한 번에 닫는 버튼. */
-function HeaderCloseButton({ onClose }: { onClose: () => void }) {
+function HeaderCloseButton({ onClose, glass = false }: { onClose: () => void; glass?: boolean }) {
   return (
     <button
       onClick={onClose}
@@ -555,14 +561,17 @@ function HeaderCloseButton({ onClose }: { onClose: () => void }) {
       aria-label="채팅 닫기"
       style={{
         width: 34, height: 34, borderRadius: 999,
-        background: C.gray100, color: C.ink,
-        border: 0, cursor: "pointer",
+        // iOS 26 리퀴드 글래스 — 네이티브 앱에서만 반투명+블러. 데스크톱/웹은 기존 솔리드.
+        background: glass ? "var(--c-glass)" : C.gray100, color: C.ink,
+        WebkitBackdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
+        backdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
+        border: glass ? "1px solid var(--c-glass-border)" : 0, cursor: "pointer",
         display: "grid", placeItems: "center",
         flexShrink: 0,
         transition: "background .12s ease",
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = C.gray200)}
-      onMouseLeave={(e) => (e.currentTarget.style.background = C.gray100)}
+      onMouseEnter={(e) => { if (!glass) e.currentTarget.style.background = C.gray200; }}
+      onMouseLeave={(e) => { if (!glass) e.currentTarget.style.background = C.gray100; }}
     >
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 6 6 18M6 6l12 12" />

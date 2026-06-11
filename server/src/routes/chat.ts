@@ -82,7 +82,7 @@ router.get("/rooms", async (req, res) => {
     where,
     orderBy: { createdAt: "desc" },
     include: {
-      members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
+      members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
       messages: {
         where: { deletedAt: null, scheduledAt: null },
         orderBy: { createdAt: "desc" },
@@ -159,7 +159,7 @@ router.post("/rooms", async (req, res) => {
         ],
       },
       include: {
-        members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
+        members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
         messages: {
           where: { deletedAt: null, scheduledAt: null },
           orderBy: { createdAt: "desc" },
@@ -181,7 +181,7 @@ router.post("/rooms", async (req, res) => {
         members: { create: [{ companyId: u.companyId, userId: u.id }, { companyId: u.companyId, userId: other }] },
       },
       include: {
-        members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
+        members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
         messages: { where: { deletedAt: null, scheduledAt: null }, orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
@@ -204,7 +204,7 @@ router.post("/rooms", async (req, res) => {
       members: { create: memberIds.map((userId) => ({ companyId: u.companyId, userId })) },
     },
     include: {
-      members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
+      members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
       messages: { where: { deletedAt: null, scheduledAt: null }, orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
@@ -327,7 +327,7 @@ router.get("/search", async (req, res) => {
         include: {
           // 검색 결과 카드에 최대 50명까지만 표시 — 대형 그룹방에서 수백 명을 끌어와
           // 응답 크기가 폭발하는 것을 방지. 실제 UI 는 아바타 5개 + "+N" 으로 표시.
-          members: { take: 50, include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } } },
+          members: { take: 50, include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
         },
       },
     },

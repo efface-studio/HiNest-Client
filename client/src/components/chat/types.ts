@@ -3,7 +3,7 @@
  * ChatMiniApp / MessageBubble / 확장 뷰들에서 공통으로 사용.
  */
 
-export type RoomMember = { muted?: boolean; user: { id: string; name: string; avatarColor?: string; avatarUrl?: string | null } };
+export type RoomMember = { muted?: boolean; user: { id: string; name: string; avatarColor?: string; avatarUrl?: string | null; position?: string | null; team?: string | null } };
 
 export type Room = {
   id: string;

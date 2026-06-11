@@ -473,8 +473,10 @@ export default function ChatMiniApp({
       const override = roomSettings[activeRoomObj.id]?.nickname;
       const title = override || roomTitle(activeRoomObj, user?.id ?? "");
       const muted = !!roomSettings[activeRoomObj.id]?.muted;
+      const directOther = activeRoomObj.members.find((m) => m.user.id !== (user?.id ?? ""));
       const baseSub =
-        activeRoomObj.type === "DIRECT" ? "1:1 대화"
+        activeRoomObj.type === "DIRECT"
+          ? ([directOther?.user.position, directOther?.user.team].filter(Boolean).join(" · ") || "1:1 대화")
           : activeRoomObj.type === "TEAM" ? "팀"
             : `${activeRoomObj.members.length}명`;
       const subtitle = showSettings ? "채팅방 설정" : (muted ? `${baseSub} · 알림 꺼짐` : baseSub);

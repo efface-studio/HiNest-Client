@@ -440,15 +440,15 @@ class MainViewController: CAPBridgeViewController {
 
 extension UIColor {
     /// 웹뷰 뒤(키보드 영역·safe-area 등 네이티브 chrome) 배경에 쓰는 동적 색.
-    /// - 라이트: #F5F6F8 (Capacitor 웹뷰/스플래시 backgroundColor·웹 --c-bg(light) 와 동일 → 이음매 없음)
-    /// - 다크:   #171A20 (웹 --c-surface(dark) 와 동일). 키보드가 인접하는 영역(채팅 입력바·로그인
-    ///           폼·바텀시트)은 --c-surface 라, 키보드 둥근 윗모서리 뒤로 드러나는 chrome 을 그 색에
-    ///           맞춰야 모서리가 더 검게 떠 보이지 않는다(--c-bg #0E1014 은 더 어두워 이음매가 보였다).
+    /// 키보드가 인접하는 영역(채팅 입력바·로그인 폼·바텀시트)은 모두 --c-surface 라, 키보드 둥근
+    /// 윗모서리 뒤로 드러나는 chrome 을 --c-surface 에 맞춰야 모서리가 이질적으로 떠 보이지 않는다.
+    /// - 라이트: #FFFFFF (웹 --c-surface(light)). --c-bg(#F5F6F8)은 살짝 회색이라 흰 surface 와 이음매가 보였다.
+    /// - 다크:   #171A20 (웹 --c-surface(dark)).  --c-bg(#0E1014)은 더 어두워 이음매가 보였다.
     /// userInterfaceStyle 에 따라 OS 가 자동으로 두 값 사이를 전환한다.
     static let hinestChromeBackground = UIColor { traits in
         traits.userInterfaceStyle == .dark
             ? UIColor(red: 0x17 / 255.0, green: 0x1A / 255.0, blue: 0x20 / 255.0, alpha: 1.0)
-            : UIColor(red: 0xF5 / 255.0, green: 0xF6 / 255.0, blue: 0xF8 / 255.0, alpha: 1.0)
+            : UIColor(red: 0xFF / 255.0, green: 0xFF / 255.0, blue: 0xFF / 255.0, alpha: 1.0)
     }
 }
 

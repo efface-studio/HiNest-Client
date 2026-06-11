@@ -171,9 +171,12 @@ html.hinest-keyboard-open .console-bottomnav { display: none !important; }
    스크롤하면 본문이 헤더 뒤로 지나가며 글래스 질감이 드러난다(스크롤 할 때만). TopBar 는
    main 밖(형제)에 그대로 둬 오버스크롤 '뚫림' 방지(main 의 overscroll-contain)도 유지된다.
    데스크톱(.hinest-ios 아님)은 기존 in-flow 솔리드 상단바 그대로 — 무회귀. */
-html.hinest-ios .app-topbar {
+html.hinest-ios .app-topbar.bg-white {
   position: absolute; top: 0; left: 0; right: 0; z-index: 30;
-  background: var(--c-glass);
+  /* 선택자에 .bg-white 를 더해 특이도 (0,3,1) — 전역 `html.dark .bg-white { background:
+     var(--c-surface) !important }`(0,2,1) 다크 리맵을 이긴다. 이게 없으면 특이도 동률+나중 규칙이라
+     글래스가 불투명(--c-surface)으로 덮여 뒤 콘텐츠가 안 비쳤다. */
+  background: var(--c-glass) !important;
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid var(--c-glass-border);

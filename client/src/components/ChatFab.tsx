@@ -1,4 +1,4 @@
-import { useEffect, useState, lazy, Suspense } from "react";
+import { useEffect, useState, useRef, useLayoutEffect, lazy, Suspense } from "react";
 import { useLocation } from "react-router-dom";
 import { useNotifications } from "../notifications";
 import { imgSrc } from "../api";
@@ -213,17 +213,8 @@ export default function ChatFab() {
                 }
           }
         >
-          {/* ===== 헤더 ===== */}
-          {activeRoom ? (
-            <RoomHeader
-              info={{
-                ...activeRoom,
-                // 패널 자체를 닫는 X. 런처를 상단바로 옮긴 뒤로는 모바일·데스크톱 모두
-                // 헤더의 X 로 닫는다(이전엔 데스크톱에서 우하단 FAB 가 닫기 역할을 했음).
-                onClose: () => setOpen(false),
-              }}
-            />
-          ) : (
+          {/* ===== 리스트 헤더 — 방 목록일 때만 flex 흐름. 대화방 헤더는 본문 위에 글래스로 떠 있다. ===== */}
+          {!activeRoom && (
             <ListHeader
               chatUnread={chatUnread}
               onCreateGroup={() => setCreateReq((n) => n + 1)}
@@ -240,6 +231,16 @@ export default function ChatFab() {
               background: C.surface,
             }}
           >
+            {/* 대화방 헤더 — iOS 26 리퀴드 글래스. 본문 기준 absolute 오버레이라 메시지가 이 뒤로 스크롤된다.
+                (헤더의 X 로 패널을 닫는다 — 런처가 상단바로 옮겨진 뒤 모바일·데스크톱 공통) */}
+            {activeRoom && (
+              <RoomHeader
+                info={{
+                  ...activeRoom,
+                  onClose: () => setOpen(false),
+                }}
+              />
+            )}
             <Suspense fallback={null}>
               <ChatMiniApp active={open} onActiveRoomChange={setActiveRoom} createGroupRequestId={createReq} openRoomRequest={openRoomReq} />
             </Suspense>
@@ -396,6 +397,13 @@ function ListHeader({
 
 /* ===== 대화방용 헤더 ===== */
 function RoomHeader({ info }: { info: ActiveRoomInfo }) {
+  // 글래스 헤더의 실제 높이를 CSS 변수로 노출 → 메시지 스크롤이 그만큼 padding-top 을 받아
+  // 헤더 뒤로 자연스럽게 스크롤된다(고정값 대신 실측이라 1줄·2줄 제목 모두 정확).
+  const headerRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const h = headerRef.current?.offsetHeight;
+    if (h) document.documentElement.style.setProperty("--chat-room-header-h", `${h}px`);
+  });
   // 설정 화면에서는 제목/닫기 없이 얇은 뒤로가기 바만 표시
   if (info.isSettings) {
     return (
@@ -432,13 +440,22 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
 
   return (
     <div
+      ref={headerRef}
       style={{
         padding: "18px 18px 12px",
         display: "flex",
         alignItems: "center",
         gap: 10,
-        background: C.surface,
-        flexShrink: 0,
+        // iOS 26 리퀴드 글래스 — 반투명 + 배경 블러. 메시지가 이 뒤로 스크롤되며 비친다.
+        background: "var(--c-glass)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        backdropFilter: "blur(20px) saturate(180%)",
+        borderBottom: "1px solid var(--c-glass-border)",
+        position: "absolute",
+        top: 0,
+        left: 0,
+        right: 0,
+        zIndex: 10,
       }}
     >
       <button

@@ -681,6 +681,10 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
     // iOS 네이티브(아이폰·아이패드)에서만 글래스 하단 네비 스타일 + 본문 하단 클리어런스 적용.
     // (웹/안드로이드/Electron 데스크톱은 클래스가 안 붙어 기존 디자인 그대로.)
     el.classList.toggle("hinest-ios", nativePlatform() === "ios");
+    // 안드로이드 앱: 상단 리퀴드 글래스(.app-topbar)만 iOS 와 동일하게 적용한다. 사이드바·하단탭은
+    // 미디어쿼리가 이미 모바일로 처리하므로 hinest-ios 의 셸 규칙은 안 붙이고, 글래스 전용 클래스만.
+    // (웹·데스크톱은 둘 다 안 붙어 글래스 없음 — 글래스는 iOS·Android 네이티브 앱에만.)
+    el.classList.toggle("hinest-android", nativePlatform() === "android");
     // 데스크톱(Electron 또는 마우스+호버 가능 브라우저)은 창을 폰 크기로 줄여도 모바일
     // 레이아웃으로 바뀌지 않도록 플래그. 실제 터치 폰/태블릿(coarse pointer)은 제외.
     const isDesktopDevice =

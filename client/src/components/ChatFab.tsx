@@ -3,6 +3,7 @@ import { useLocation } from "react-router-dom";
 import { useNotifications } from "../notifications";
 import { imgSrc } from "../api";
 import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
+import { nativePlatform } from "../lib/platform";
 // highlight.js(~92KB) 등 무거운 의존성을 끌고오므로 초기 번들에서 분리한다.
 // 채팅 패널은 사용자가 처음 열 때(mounted=true) 비로소 마운트되므로 lazy 로딩이 안전.
 const ChatMiniApp = lazy(() => import("./ChatMiniApp"));
@@ -404,6 +405,8 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
     const h = headerRef.current?.offsetHeight;
     if (h) document.documentElement.style.setProperty("--chat-room-header-h", `${h}px`);
   });
+  // 리퀴드 글래스는 iOS·Android 네이티브 앱에만 — 데스크톱/웹은 솔리드 헤더(요구사항).
+  const glass = nativePlatform() === "ios" || nativePlatform() === "android";
   // 설정 화면에서는 제목/닫기 없이 얇은 뒤로가기 바만 표시
   if (info.isSettings) {
     return (
@@ -446,10 +449,11 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
         display: "flex",
         alignItems: "center",
         gap: 10,
-        // iOS 26 리퀴드 글래스 — 반투명 + 배경 블러. 메시지가 이 뒤로 스크롤되며 비친다.
-        background: "var(--c-glass)",
-        WebkitBackdropFilter: "blur(20px) saturate(180%)",
-        backdropFilter: "blur(20px) saturate(180%)",
+        // iOS 26 리퀴드 글래스 — iOS·Android 네이티브 앱에서만 반투명+블러로 메시지가 뒤로 비친다.
+        // 데스크톱/웹은 솔리드 surface (글래스 미적용 — 요구사항). 오버레이 구조는 동일.
+        background: glass ? "var(--c-glass)" : "var(--c-surface)",
+        WebkitBackdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
+        backdropFilter: glass ? "blur(20px) saturate(180%)" : undefined,
         borderBottom: "1px solid var(--c-glass-border)",
         position: "absolute",
         top: 0,

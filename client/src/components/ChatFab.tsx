@@ -173,7 +173,10 @@ export default function ChatFab() {
                   //   재계산해 입력바가 늦게 따라잡히는 증상을 유발했다.
                   inset: 0,
                   width: "100vw",
-                  paddingTop: "var(--sa-top, env(safe-area-inset-top))",
+                  // safe-area(상태바)는 패널이 아니라 헤더(RoomHeader/ListHeader)가 흡수한다 —
+                  // 그래야 글래스 헤더가 상태바 영역까지 위로 덮어, 'safe-area 와 헤더가 따로 노는'
+                  // 분리(상단 솔리드 띠 + 그 아래 글래스 헤더)가 사라지고 한 덩어리로 보인다.
+                  paddingTop: 0,
                   paddingBottom: "var(--sa-bottom, env(safe-area-inset-bottom))",
                   paddingLeft: "var(--sa-left, env(safe-area-inset-left))",
                   paddingRight: "var(--sa-right, env(safe-area-inset-right))",
@@ -327,7 +330,8 @@ function ListHeader({
   return (
     <div
       style={{
-        padding: "22px 22px 14px",
+        // 패널이 더 이상 safe-area 를 안 먹으므로 리스트 헤더가 상태바를 흡수(상단 패딩).
+        padding: "calc(22px + var(--sa-top, env(safe-area-inset-top))) 22px 14px",
         display: "flex",
         alignItems: "flex-start",
         justifyContent: "space-between",
@@ -445,7 +449,9 @@ function RoomHeader({ info }: { info: ActiveRoomInfo }) {
     <div
       ref={headerRef}
       style={{
-        padding: "18px 18px 12px",
+        // 상단 패딩에 safe-area(상태바) 흡수 → 글래스가 상태바까지 덮고 제목은 그 아래에 온다.
+        // (데스크톱은 --sa-top=0 이라 무영향. 헤더 높이는 ref 로 실측돼 메시지 padding 이 자동 보정.)
+        padding: "calc(18px + var(--sa-top, env(safe-area-inset-top))) 18px 12px",
         display: "flex",
         alignItems: "center",
         gap: 10,

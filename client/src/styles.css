@@ -317,6 +317,16 @@ input, textarea, select, [contenteditable], [contenteditable] * {
   user-select: text;
   -webkit-touch-callout: default;
 }
+/* 채팅 메시지 버블(롱프레스 래퍼) — 모바일은 선택 차단(롱프레스=공감, 오선택 방지),
+   데스크탑 앱·웹(.hinest-desktop = Electron 또는 마우스 hover+fine)은 텍스트를 드래그로
+   원하는 만큼 선택·복사 가능. user-select 는 상속되므로 자식 텍스트도 함께 선택됨
+   (코드블록 줄번호 <pre> 는 인라인 user-select:none 이라 그대로 복사 제외 유지). */
+.chat-pressable { -webkit-user-select: none; user-select: none; }
+.hinest-desktop .chat-pressable {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
 
 .font-mono, code, pre, .tabular {
   font-family: "JetBrains Mono", "SF Mono", Menlo, Consolas, Monaco, monospace;

@@ -154,6 +154,7 @@ export function LongPress({
 
   return (
     <div
+      className="chat-pressable"
       onTouchStart={(e) => {
         const t = e.touches[0];
         start(t.clientX, t.clientY);
@@ -193,9 +194,9 @@ export function LongPress({
           firedRef.current = false;
         }
       }}
+      // user-select 는 .chat-pressable 가 플랫폼별로 담당 — 모바일=none(롱프레스 공감 보호),
+      // 데스크탑(.hinest-desktop)=text(메시지 텍스트 드래그 선택·복사). iOS 콜아웃만 인라인 유지.
       style={{
-        userSelect: "none",
-        WebkitUserSelect: "none",
         WebkitTouchCallout: "none",
         ...style,
       }}

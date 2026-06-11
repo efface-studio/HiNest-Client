@@ -2430,7 +2430,9 @@ function RoomView({
                   <div style={{ flex: 1, height: 1, background: C.gray200 }} />
                 </div>
               )}
-            <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: 4 }}>
+            {/* 연속 같은 발신자 메시지는 좁게(2px) 붙여 한 묶음처럼, 묶음의 마지막(showTime=다음이
+                다른 발신자/시간갭)이면 넓게(10px) 떨어뜨려 그룹을 시각적으로 구분한다(카톡 패턴). */}
+            <div style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", marginBottom: m.showTime ? 10 : 2 }}>
               {/* 세로 컬럼: [아바타+이름+버블row] 을 먼저 두고 그 아래에 리액션/피커를 형제로 배치.
                   기존엔 리액션이 inner column 안에 같이 들어있어 flex-end 정렬의 '컬럼 바닥' 이
                   리액션 줄까지 내려가 아바타가 리액션 옆에 붙었음. 리액션을 형제로 빼서

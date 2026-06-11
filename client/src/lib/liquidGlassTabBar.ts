@@ -1,5 +1,5 @@
 import { registerPlugin } from "@capacitor/core";
-import { isCapacitorNative } from "./platform";
+import { isCapacitorNative, nativePlatform } from "./platform";
 
 /**
  * 네이티브 Liquid Glass 하단 탭 바 브리지 (iOS 26 UIGlassEffect).
@@ -41,6 +41,9 @@ export interface LiquidGlassTabBarPlugin {
     token?: string;
     apiBase?: string;
   }): Promise<{ presented: boolean }>;
+  /** NSE 아바타 캐시 프리워밍 — 발신 가능성 있는 멤버 아바타(/uploads 경로)를 미리 받아 App Group
+   *  캐시에 넣어 "첫 알림은 앱아이콘" 콜드캐시 문제를 없앤다. iOS 전용(NSE 시간예산 이슈). */
+  prewarmAvatars(options: { paths: string[] }): Promise<{ cached: number }>;
   /** 애플 기본 확인 시트(action sheet). 로그아웃 등 재확인용. */
   confirm(options: {
     title?: string;
@@ -99,4 +102,17 @@ export function setNativeTabBarHidden(reason: string, hidden: boolean) {
 export function syncNativeTabBarVisibility() {
   lastVisible = null;
   applyVisibility();
+}
+
+/**
+ * NSE 아바타 캐시 프리워밍 — 채팅방 목록을 열 때 발신 가능성 있는 멤버 아바타(/uploads 경로)를
+ * 미리 받아 App Group 캐시에 넣는다. "첫 알림은 캐시 미스 → 앱아이콘 폴백"을 없애 첫 알림부터 아바타.
+ * iOS 네이티브에서만 동작(NSE 시간예산 문제는 iOS 한정; 안드/웹/데스크톱 no-op).
+ */
+export function prewarmChatAvatars(paths: Array<string | null | undefined>) {
+  if (!isCapacitorNative() || nativePlatform() !== "ios") return;
+  const uniq = Array.from(
+    new Set(paths.filter((p): p is string => !!p && p.startsWith("/uploads/"))),
+  ).slice(0, 40); // 과다 다운로드 방지(이미 캐시된 건 네이티브가 건너뜀)
+  if (uniq.length) LiquidGlassTabBar.prewarmAvatars({ paths: uniq }).catch(() => {});
 }

@@ -725,6 +725,8 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
         });
         removeListener = () => { try { void handle?.remove?.(); } catch {} };
         LiquidGlassTabBar.setSelected({ key: matchNativeTabKey(window.location.pathname) }).catch(() => {});
+        // 셸(AppLayout)이 마운트됐으니, 직전 언마운트에서 걸어둔 'shell' 숨김 사유를 해제한다.
+        setNativeTabBarHidden("shell", false);
         // 바 생성 직후 현재 숨김 사유(채팅·모달·라우트) 기준으로 가시성 재적용.
         syncNativeTabBarVisibility();
       } catch {
@@ -735,7 +737,9 @@ function AppLayoutInner({ children }: { children?: React.ReactNode }) {
       cancelled = true;
       removeListener?.();
       document.documentElement.classList.remove("hinest-native-tabbar");
-      LiquidGlassTabBar.setVisible({ visible: false }).catch(() => {});
+      // 셸이 사라짐(로그아웃·미리보기 종료 등) → 'shell' 사유로 숨김을 영구 유지. 다른 사유가
+      // 풀려도(예: onboarding 복원) 로그인 화면에서 네이티브 탭바가 되살아나지 않게 한다.
+      setNativeTabBarHidden("shell", true);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

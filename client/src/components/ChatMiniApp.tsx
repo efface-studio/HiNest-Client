@@ -2359,14 +2359,18 @@ function RoomView({
 
   return (
     <>
-      <PinnedBar pinned={pinnedList} onJump={scrollToMessage} onUnpin={onPin} />
+      {/* 글래스 헤더가 본문 위에 떠 있으므로, 고정 메시지 바가 있으면 헤더 높이만큼 내려 보이게 한다. */}
+      <div style={{ flexShrink: 0, paddingTop: pinnedList.length ? "var(--chat-room-header-h, 60px)" : 0 }}>
+        <PinnedBar pinned={pinnedList} onJump={scrollToMessage} onUnpin={onPin} />
+      </div>
       {/* 메시지 영역 */}
       <div
         ref={scrollRef}
         onScroll={onScroll}
         style={{
           flex: 1, overflowY: "auto",
-          padding: "4px 14px 10px",
+          // 글래스 헤더 뒤로 메시지가 스크롤되도록 헤더 높이만큼 위 여백(고정바가 있으면 그쪽이 이미 내려줌).
+          padding: pinnedList.length ? "4px 14px 10px" : "calc(4px + var(--chat-room-header-h, 60px)) 14px 10px",
           background: C.surface,
           // 첫 로드 완료 전에는 감춰서 "위에서 아래로 스크롤되는" 플래시를 숨김
           visibility: ready || messages.length === 0 ? "visible" : "hidden",

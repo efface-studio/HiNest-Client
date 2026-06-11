@@ -7,6 +7,7 @@ import { resolvePresence } from "../lib/presence";
 import { downloadFromUrl } from "../lib/download";
 import { isCapacitorNative, nativePlatform } from "../lib/platform";
 import { isNativeAppActive } from "../lib/appActive";
+import { prewarmChatAvatars } from "../lib/liquidGlassTabBar";
 import { setActiveChatRoom } from "../lib/desktopNotify";
 import { Browser } from "@capacitor/browser";
 import { alertAsync, confirmAsync } from "./ConfirmHost";
@@ -196,6 +197,8 @@ export default function ChatMiniApp({
       const res = await api<{ rooms: Room[] }>("/api/chat/rooms");
       setRooms(res.rooms);
       hydrateMutedFromServer(res.rooms);
+      // iOS: 발신 가능성 있는 멤버 아바타를 NSE 캐시에 선기록 → 첫 알림부터 통신알림 아바타.
+      prewarmChatAvatars(res.rooms.flatMap((r) => r.members.map((m) => m.user.avatarUrl)));
     } catch {}
   };
   // 1:1 대화 '나만 삭제'(per-user 숨김). 내 목록에서만 사라지고 상대에겐 유지. 새 메시지 오면 다시 나타남.

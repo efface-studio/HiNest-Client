@@ -101,6 +101,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "promptInput", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "haptic", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "presentShareSheet", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "prewarmAvatars", returnType: CAPPluginReturnPromise),
     ]
 
     private var tabBarView: UITabBar?
@@ -109,6 +110,54 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
 
     override public func load() {
         NSLog("[LGTB] plugin loaded (discovered by Capacitor)")
+    }
+
+    /// NSE(채팅 발신자 아바타) 캐시 프리워밍 — 앱이 채팅방 목록을 열 때 발신 가능성 있는 멤버들의
+    /// 아바타를 미리 다운로드해 NSE 와 동일한 App Group 캐시(avatar-cache/<퍼센트인코딩 경로>)에 넣어둔다.
+    /// 그러면 "첫 알림은 캐시 미스 → 다운로드가 NSE 시간예산을 못 맞춰 앱아이콘으로 폴백"하던 게 사라지고
+    /// 첫 알림부터 통신알림 아바타로 뜬다. NSE(NotificationService.swift) 의 cacheFile/fetch 스킴과 정확히 일치.
+    @objc func prewarmAvatars(_ call: CAPPluginCall) {
+        let paths = (call.getArray("paths", String.self) ?? []).filter { $0.hasPrefix("/uploads/") }
+        let groupId = "group.com.hivits.hinest"
+        let apiBase = "https://nest.hi-vits.com"
+        guard !paths.isEmpty,
+              let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId) else {
+            call.resolve(["cached": 0]); return
+        }
+        let dir = base.appendingPathComponent("avatar-cache", isDirectory: true)
+        try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let token = UserDefaults(suiteName: groupId)?.string(forKey: "hinest.session.token")
+        // 이미 캐시된 건 건너뛴다(불필요 다운로드 0). NSE 와 동일한 키(.alphanumerics 퍼센트 인코딩).
+        let targets: [(String, URL)] = paths.compactMap { p in
+            let key = p.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? p
+            let file = dir.appendingPathComponent(key)
+            return FileManager.default.fileExists(atPath: file.path) ? nil : (p, file)
+        }
+        if targets.isEmpty { call.resolve(["cached": 0]); return }
+        let config = URLSessionConfiguration.ephemeral
+        config.timeoutIntervalForRequest = 8
+        config.requestCachePolicy = .reloadIgnoringLocalCacheData
+        let session = URLSession(configuration: config)
+        let dg = DispatchGroup()
+        let lock = NSLock(); var ok = 0
+        for (p, file) in targets {
+            var urlStr = apiBase + p
+            if let token = token, !token.isEmpty,
+               let enc = token.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) {
+                urlStr += (urlStr.contains("?") ? "&" : "?") + "token=" + enc
+            }
+            guard let url = URL(string: urlStr) else { continue }
+            dg.enter()
+            session.dataTask(with: url) { data, response, _ in
+                defer { dg.leave() }
+                let status = (response as? HTTPURLResponse)?.statusCode ?? 0
+                if status == 200, let data = data, !data.isEmpty, UIImage(data: data) != nil {
+                    try? data.write(to: file, options: .atomic)
+                    lock.lock(); ok += 1; lock.unlock()
+                }
+            }.resume()
+        }
+        dg.notify(queue: .main) { call.resolve(["cached": ok]) }
     }
 
     /// 알림 서비스 확장(NSE)이 채팅 발신자 아바타(/uploads, 인증 필요)를 받을 수 있도록,

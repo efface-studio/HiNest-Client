@@ -8,6 +8,7 @@ import AppStoreUpdatePrompt from "./components/AppStoreUpdatePrompt";
 import DownloadToastHost from "./components/DownloadToast";
 import ConfirmHost from "./components/ConfirmHost";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { Skeleton, SkeletonList, SkeletonStatGrid } from "./components/Skeleton";
 import LoginPage from "./pages/LoginPage";
 import SignupPage from "./pages/SignupPage";
 import CompanySignupPage from "./pages/CompanySignupPage";
@@ -55,14 +56,50 @@ function RouteFallback() {
   return <div className="min-h-[60vh]" aria-hidden />;
 }
 
+/**
+ * 인증 복원(세션 확인) 중 보여주는 앱 셸 스켈레톤.
+ * 오프라인에서 새로고침해도 로그아웃되지 않고(auth.tsx 의 비-401 재시도) loading 이 유지되는데,
+ * 그동안 "불러오는 중…" 텍스트 대신 다가올 화면 형태를 스켈레톤으로 미리 보여줘 네이티브 앱처럼
+ * 느껴지게 한다. 이 단계엔 AppLayout 셸이 아직 안 붙으므로 상단바·본문을 직접 흉내 낸다.
+ * 색은 디자인 토큰(var(--c-bg), Skeleton 의 --c-surface-3)이라 다크/라이트 자동 대응.
+ */
+function ProtectedFallback() {
+  return (
+    <div
+      className="min-h-screen"
+      style={{
+        background: "var(--c-bg)",
+        paddingTop: "max(env(safe-area-inset-top), 12px)",
+        paddingBottom: "calc(env(safe-area-inset-bottom) + 88px)",
+      }}
+      aria-hidden
+    >
+      {/* 상단바 흉내 — 좌측 타이틀, 우측 아이콘 자리 */}
+      <div className="flex items-center justify-between px-4" style={{ height: 56 }}>
+        <Skeleton w={116} h={22} radius={6} />
+        <div className="flex items-center gap-2.5">
+          <Skeleton circle w={32} h={32} />
+          <Skeleton circle w={32} h={32} />
+        </div>
+      </div>
+      {/* 본문 — 통계 그리드 + 섹션 리스트(데스크톱에선 가운데 정렬) */}
+      <div
+        className="px-4 pt-3 mx-auto w-full max-w-3xl"
+        style={{ display: "flex", flexDirection: "column", gap: 22 }}
+      >
+        <SkeletonStatGrid count={4} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <Skeleton w={132} h={16} radius={6} />
+          <SkeletonList rows={4} />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Protected({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  if (loading)
-    return (
-      <div className="h-screen grid place-items-center text-slate-400">
-        불러오는 중…
-      </div>
-    );
+  if (loading) return <ProtectedFallback />;
   if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 }

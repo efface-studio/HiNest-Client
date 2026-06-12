@@ -645,9 +645,20 @@ export function ReactionPicker({
   const groupRef = useRef<HTMLDivElement | null>(null);
   const [top, setTop] = useState<number>(anchorRect.top);
   const [ready, setReady] = useState(false);
+  const [closing, setClosing] = useState(false);
+  // 메뉴가 뜨자마자(롱프레스를 떼는 포인터로) 바로 닫히지 않게 — backdrop 위에서 새로
+  // 시작된 탭일 때만 닫는다. 닫을 땐 짧게 페이드아웃 후 언마운트.
+  const armedRef = useRef(false);
+  const closingRef = useRef(false);
+  const requestClose = () => {
+    if (closingRef.current) return;
+    closingRef.current = true;
+    setClosing(true);
+    window.setTimeout(onDismiss, 150);
+  };
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDismiss(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") requestClose(); };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [onDismiss]);
@@ -677,26 +688,27 @@ export function ReactionPicker({
 
   return createPortal(
     <div
-      onClick={onDismiss}
-      onMouseDown={(e) => e.stopPropagation()}
+      onPointerDown={() => { armedRef.current = true; }}
+      onClick={() => { if (armedRef.current) requestClose(); }}
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 1000,
-        background: "rgba(0,0,0,0.34)",
-        backdropFilter: "blur(18px) saturate(1.1)",
-        WebkitBackdropFilter: "blur(18px) saturate(1.1)",
-        animation: "hinest-ctx-fade .2s ease",
+        background: "rgba(0,0,0,0.28)",
+        backdropFilter: "blur(6px) saturate(1.05)",
+        WebkitBackdropFilter: "blur(6px) saturate(1.05)",
+        animation: closing ? "hinest-ctx-fadeout .15s ease forwards" : "hinest-ctx-fade .18s ease",
       }}
     >
       <style>{`
         @keyframes hinest-ctx-fade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes hinest-ctx-fadeout { from { opacity: 1 } to { opacity: 0 } }
         @keyframes hinest-ctx-pop { from { opacity: 0; transform: scale(.9) } to { opacity: 1; transform: scale(1) } }
+        @keyframes hinest-ctx-popout { from { opacity: 1; transform: scale(1) } to { opacity: 0; transform: scale(.94) } }
       `}</style>
 
       <div
         ref={groupRef}
-        onClick={(e) => e.stopPropagation()}
         style={{
           position: "fixed",
           top,
@@ -708,11 +720,15 @@ export function ReactionPicker({
           maxWidth: "min(86vw, 360px)",
           opacity: ready ? 1 : 0,
           transformOrigin: mine ? "top right" : "top left",
-          animation: ready ? "hinest-ctx-pop .2s cubic-bezier(.2,.7,.3,1)" : undefined,
+          animation: closing
+            ? "hinest-ctx-popout .15s ease forwards"
+            : ready ? "hinest-ctx-pop .2s cubic-bezier(.2,.7,.3,1)" : undefined,
         } as React.CSSProperties}
       >
-        {/* 이모지 반응 바 */}
+        {/* 이모지 반응 바 — 자기 위 탭은 backdrop 로 안 새게 차단 */}
         <div
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => e.stopPropagation()}
           style={{
             background: C.surface,
             borderRadius: 999,
@@ -728,7 +744,7 @@ export function ReactionPicker({
             <button
               key={e}
               type="button"
-              onClick={() => onPick(e)}
+              onClick={() => { onPick(e); requestClose(); }}
               style={{
                 width: 38,
                 height: 38,
@@ -755,9 +771,11 @@ export function ReactionPicker({
           {children}
         </div>
 
-        {/* 액션 메뉴 */}
+        {/* 액션 메뉴 — 자기 위 탭은 backdrop 로 안 새게 차단 */}
         {(actions.length > 0 || header) && (
           <div
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             style={{
               background: C.surface,
               borderRadius: 16,
@@ -784,7 +802,7 @@ export function ReactionPicker({
               <button
                 key={a.key}
                 type="button"
-                onClick={() => { a.onSelect(); onDismiss(); }}
+                onClick={() => { a.onSelect(); requestClose(); }}
                 style={{
                   width: "100%",
                   display: "flex",

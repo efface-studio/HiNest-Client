@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { USER_AVATAR_SELECT } from "../lib/userSelect.js";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
@@ -223,7 +224,7 @@ router.get("/", async (req, res) => {
       authorId: true,
       createdAt: true,
       updatedAt: true,
-      author: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+      author: { select: USER_AVATAR_SELECT },
       project: { select: { id: true, name: true, color: true } },
     },
   });
@@ -295,7 +296,7 @@ router.get("/:id", async (req, res) => {
   const meeting = await prisma.meeting.findFirst({
     where: { id: req.params.id, deletedAt: null },
     include: {
-      author: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+      author: { select: USER_AVATAR_SELECT },
       project: { select: { id: true, name: true, color: true } },
       viewers: {
         include: { user: { select: { id: true, name: true, team: true, position: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
@@ -316,7 +317,6 @@ router.get("/:id", async (req, res) => {
 
 /* =========================== 첨부 (파일·이미지·영상·링크) =========================== */
 
-const ATTACHMENT_KINDS = ["FILE", "IMAGE", "VIDEO", "LINK"] as const;
 // 파일 첨부의 url 은 반드시 우리 업로드 경로 — 외부/javascript: 스킴 차단.
 const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
 const fileAttachmentSchema = z.object({
@@ -407,8 +407,6 @@ router.delete("/:id/attachment/:attachmentId", async (req, res) => {
   res.json({ ok: true });
 });
 
-// 미사용 변수 lint 경고 회피용 — 위 두 스키마가 cover 하는 종류 집합.
-void ATTACHMENT_KINDS;
 
 router.post("/", async (req, res) => {
   const u = (req as any).user;
@@ -657,7 +655,7 @@ router.get("/:id/revisions", async (req, res) => {
     where: { meetingId: existing.id },
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { editor: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+    include: { editor: { select: USER_AVATAR_SELECT } },
   });
   res.json({ revisions: rows });
 });

@@ -31,7 +31,7 @@ export default function Linkify({
     if (start > last) parts.push(text.slice(last, start));
 
     let href = matched;
-    let label = matched;
+    const label = matched;
     if (m[3]) {
       // email
       href = `mailto:${matched}`;

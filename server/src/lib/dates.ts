@@ -25,9 +25,6 @@ export function todayStr(): string {
 }
 
 /** 주어진 Date 의 KST 기준 YYYY-MM-DD. */
-export function dateStrKST(d: Date): string {
-  return KST_FMT.format(d);
-}
 
 /** KST 기준 오늘 00:00:00 (UTC Date 오브젝트). */
 export function startOfTodayKST(): Date {

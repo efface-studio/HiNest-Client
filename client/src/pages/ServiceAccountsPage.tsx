@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { api, apiFetch , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
@@ -116,7 +117,6 @@ function guessHost(url: string | null, name: string): string | null {
 }
 
 type Scope = "ALL" | "TEAM" | "PROJECT";
-const SCOPE_LABEL: Record<Scope, string> = { ALL: "전사", TEAM: "팀", PROJECT: "프로젝트" };
 type ScopeTab = "ALL_TAB" | Scope;
 
 type OwnerUser = { id: string; name: string; avatarColor: string; avatarUrl: string | null; email: string; team?: string | null; position?: string | null };
@@ -192,7 +192,7 @@ export default function ServiceAccountsPage() {
   const [users, setUsers] = useState<DirUser[]>([]);
   const [projects, setProjects] = useState<ProjectChip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => load());
   const [loadErr, setLoadErr] = useState<string | null>(null);
   const [q, setQ] = useState("");
   const [filterCat, setFilterCat] = useState<Category | "ALL">("ALL");
@@ -224,11 +224,6 @@ export default function ServiceAccountsPage() {
     }
   }
 
-  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
-  }
 
   useEffect(() => {
     load();

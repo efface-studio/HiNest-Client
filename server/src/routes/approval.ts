@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { USER_AVATAR_SELECT, USER_AVATAR_SELECT_ORG } from "../lib/userSelect.js";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
@@ -89,10 +90,10 @@ router.get("/", async (req, res) => {
     orderBy: { createdAt: "desc" },
     take: 200,
     include: {
-      requester: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } },
+      requester: { select: USER_AVATAR_SELECT_ORG },
       steps: {
         orderBy: { order: "asc" },
-        include: { reviewer: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+        include: { reviewer: { select: USER_AVATAR_SELECT } },
       },
     },
   });
@@ -120,7 +121,7 @@ router.get("/:id", async (req, res) => {
       revisions: { select: { id: true, title: true, status: true, createdAt: true }, orderBy: { createdAt: "asc" } },
       comments: {
         orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+        include: { author: { select: USER_AVATAR_SELECT } },
       },
     },
   });
@@ -147,7 +148,7 @@ router.post("/:id/comments", async (req, res) => {
   if (!canPost) return res.status(403).json({ error: "forbidden" });
   const c = await prisma.approvalComment.create({
     data: { approvalId: a.id, authorId: u.id, content },
-    include: { author: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+    include: { author: { select: USER_AVATAR_SELECT } },
   });
   // 관련 당사자에게 멘션 알림 — 본인 제외. 순차 notify() → 병렬 notifyMany() 로 교체.
   const targets = new Set<string>([a.requesterId, ...a.steps.map((s) => s.reviewerId)]);
@@ -341,10 +342,10 @@ router.post("/:id/act", async (req, res) => {
   const refreshed = await prisma.approval.findUnique({
     where: { id: a.id },
     include: {
-      requester: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } },
+      requester: { select: USER_AVATAR_SELECT_ORG },
       steps: {
         orderBy: { order: "asc" },
-        include: { reviewer: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+        include: { reviewer: { select: USER_AVATAR_SELECT } },
       },
     },
   });

@@ -2,7 +2,6 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
-import { Skeleton } from "../components/Skeleton";
 import { getHoliday } from "../lib/holidays";
 import DateTimePicker from "../components/DateTimePicker";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";
@@ -49,7 +48,6 @@ export default function SchedulePage() {
   const [cursor, setCursor] = useState(() => new Date());
   const [events, setEvents] = useState<Event[]>([]);
   // 첫 로드 완료 여부 — false 동안 빈 영역 대신 Skeleton 을 띄워 깜빡임 제거.
-  const [loaded, setLoaded] = useState(false);
   // 일정 로드 실패 표시 — 조용히 빈 달력으로 두지 않고 재시도 배너를 띄운다.
   const [loadErr, setLoadErr] = useState(false);
   const [open, setOpen] = useState(false);
@@ -89,7 +87,6 @@ export default function SchedulePage() {
       if (aliveRef && !aliveRef.current) return;
       setEvents(res.events);
       setLoadErr(false);
-      setLoaded(true);
     } catch {
       // 401(세션 만료)은 api.ts 가 전역 처리(→ /login). 그 외(500·네트워크)는 재시도 배너.
       if (aliveRef && !aliveRef.current) return;
@@ -487,59 +484,6 @@ function WeekAgenda({ days, eventsOn, onOpenDay }: { days: Date[]; eventsOn: (d:
           </div>
         );
       })}
-    </div>
-  );
-}
-
-/** 월 보기(모바일) — 선택한 하루의 일정 아젠다. 컴팩트한 월 그리드 아래의 빈 공간을
- *  실제 콘텐츠로 채워 'iOS 캘린더'처럼 자연스럽게 만든다. 데스크톱은 셀 안 칩으로 충분해 숨김. */
-function DayAgenda({ date, events, onOpenEvent, onAdd }: { date: Date; events: Event[]; onOpenEvent: () => void; onAdd: () => void }) {
-  const DOW = ["일", "월", "화", "수", "목", "금", "토"];
-  const dow = date.getDay();
-  const isToday = new Date().toDateString() === date.toDateString();
-  const titleColor = dow === 0 ? "text-rose-500" : dow === 6 ? "text-accent-500" : "text-ink-900";
-  return (
-    <div className="card cal-fullbleed p-0 overflow-hidden">
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-ink-100">
-        <span className={`text-[15px] font-extrabold tabular ${titleColor}`}>
-          {date.getMonth() + 1}월 {date.getDate()}일
-        </span>
-        <span className="text-[12.5px] font-bold text-ink-500">{DOW[dow]}요일</span>
-        {isToday && (
-          <span className="text-[10px] font-extrabold text-brand-600 bg-brand-50 dark:bg-brand-500/15 px-1.5 py-0.5 rounded-full">오늘</span>
-        )}
-        <span className="ml-auto text-[12px] font-bold text-ink-400 tabular">{events.length}건</span>
-      </div>
-      {events.length === 0 ? (
-        <button type="button" onClick={onAdd} className="w-full px-4 py-10 flex flex-col items-center gap-1 active:bg-ink-25 transition">
-          <span className="text-[13px] text-ink-400">이 날은 일정이 없어요</span>
-          <span className="text-[12.5px] font-bold text-brand-600">+ 일정 추가</span>
-        </button>
-      ) : (
-        <div className="divide-y divide-ink-100">
-          {events.map((e) => (
-            <button
-              key={e.id}
-              type="button"
-              onClick={onOpenEvent}
-              className="w-full flex items-center gap-3 text-left px-4 py-3 hover:bg-ink-25 active:bg-ink-50 transition"
-            >
-              <span className="w-1 h-9 rounded-full flex-shrink-0" style={{ background: e.color }} />
-              <div className="flex-1 min-w-0">
-                <div className="text-[14px] font-bold text-ink-900 truncate">{e.title}</div>
-                <div className="text-[11.5px] text-ink-500 tabular mt-0.5">
-                  {new Date(e.startAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
-                  {" – "}
-                  {new Date(e.endAt).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
-                </div>
-              </div>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-300 flex-shrink-0">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 }

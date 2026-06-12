@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { USER_AVATAR_SELECT } from "../lib/userSelect.js";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
@@ -431,7 +432,7 @@ router.get("/:id/qa", async (req, res) => {
   const users = userIds.length
     ? await prisma.user.findMany({
         where: { id: { in: userIds } },
-        select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true },
+        select: USER_AVATAR_SELECT,
       })
     : [];
   const userMap = new Map(users.map((x) => [x.id, x]));

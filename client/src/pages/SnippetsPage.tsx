@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
@@ -47,7 +48,7 @@ export default function SnippetsPage() {
   const [list, setList] = useState<Snippet[]>([]);
   const [q, setQ] = useState("");
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => load());
   const [editing, setEditing] = useState<Snippet | null>(null);
   const [creating, setCreating] = useState(false);
   const aliveRef = useRef(true);
@@ -70,11 +71,6 @@ export default function SnippetsPage() {
     }
   }
 
-  // 데스크탑 새로고침 버튼 — load() 재호출(전체 reload 아님). 모바일은 PTR 이 전역으로 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
-  }
 
   // 검색어 디바운스 — 빠르게 타이핑할 때 매 키마다 GET 안 치도록.
   useEffect(() => {

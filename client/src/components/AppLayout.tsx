@@ -1822,7 +1822,6 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
 
 /* ---------- Icons ---------- */
 type I = { active?: boolean };
-const swInv = (a?: boolean) => (a ? "#fff" : "#6B7280");
 
 function svgBase(_active: boolean, path: React.ReactNode) {
   return (
@@ -1848,4 +1847,3 @@ function SnippetIcon({ active }: I) { return svgBase(!!active, <><path d="m8 3-4
 function ShieldIcon({ active }: I) { return svgBase(!!active, <><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z" /><path d="m9 12 2 2 4-4" /></>); }
 function PayrollIcon({ active }: I) { return svgBase(!!active, <><path d="M4 4h16v16H4z" /><path d="M8 8h8M8 12h8M8 16h5" /></>); }
 function DevIcon({ active }: I) { return svgBase(!!active, <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>); }
-const _unused_swInv = swInv;

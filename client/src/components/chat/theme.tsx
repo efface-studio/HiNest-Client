@@ -111,20 +111,6 @@ export function formatClock(d: Date): string {
   return `${period} ${hh}:${mm}`;
 }
 
-/**
- * 간결 상대 시각 — "방금 / N분 전 / N시간 전 / M/D (하루 이상)".
- * 채팅 마지막 메시지 옆에 붙일 때 사용.
- */
-export function formatShort(d: Date): string {
-  const diff = Date.now() - d.getTime();
-  const s = Math.floor(diff / 1000);
-  if (s < 60) return "방금";
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}분 전`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
 
 /**
  * 채팅 메시지 사이 날짜 구분선 라벨.

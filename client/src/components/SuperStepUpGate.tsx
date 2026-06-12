@@ -42,7 +42,6 @@ export default function SuperStepUpGate({ children }: { children: React.ReactNod
     }
   }
 
-  const isElectron = typeof window !== "undefined" && !!window.hinest?.isDesktop;
 
   async function loadPasskeys() {
     try {
@@ -372,40 +371,7 @@ function formatAbsolute(iso: string) {
   return `${yy}.${mm}.${dd} ${hh}:${mi}`;
 }
 
-/** 상대시간(오늘/어제/N일 전/N달 전) — 현재 사용 안 함, 백업용 */
-function formatRelative(iso: string) {
-  const d = new Date(iso);
-  const diffMs = Date.now() - d.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  const diffHr = Math.floor(diffMin / 60);
-  const diffDay = Math.floor(diffHr / 24);
-  if (diffMin < 1) return "방금";
-  if (diffMin < 60) return `${diffMin}분 전`;
-  if (diffHr < 24) return `${diffHr}시간 전`;
-  if (diffDay === 1) return "어제";
-  if (diffDay < 7) return `${diffDay}일 전`;
-  if (diffDay < 30) return `${Math.floor(diffDay / 7)}주 전`;
-  if (diffDay < 365) return `${Math.floor(diffDay / 30)}달 전`;
-  return d.toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric" });
-}
 
-function EmptyDevicesState() {
-  return (
-    <div className="flex items-center gap-3 p-4 rounded-xl border border-dashed border-ink-200 bg-ink-25">
-      <div className="w-10 h-10 rounded-xl bg-ink-100 text-ink-500 grid place-items-center flex-shrink-0">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="4" y="4" width="16" height="12" rx="2" /><path d="M2 20h20M8 16v4M16 16v4" />
-        </svg>
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-[13px] font-bold text-ink-900">아직 등록된 기기가 없습니다</div>
-        <div className="text-[11.5px] text-ink-500 mt-0.5 leading-[1.5]">
-          아래에서 이 맥북을 등록하면 다음부터 비밀번호 없이 Touch ID 로 잠금을 해제할 수 있어요.
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function DesktopBiometricPanel({
   devices, deviceId, reload,

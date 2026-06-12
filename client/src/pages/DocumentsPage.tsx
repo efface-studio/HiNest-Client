@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api, apiFetch , imgSrc} from "../api";
+import { fmtSize } from "../lib/fmt";
 import { Skeleton } from "../components/Skeleton";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
@@ -52,12 +53,6 @@ type Doc = {
 };
 
 type ScopeTab = "all" | "public" | "team" | "private" | "custom";
-const SCOPE_TABS: { key: ScopeTab; label: string }[] = [
-  { key: "all",     label: "전체" },
-  { key: "team",    label: "팀" },
-  { key: "private", label: "개인" },
-  { key: "custom",  label: "사용자지정" },
-];
 const SCOPE_LABEL: Record<DocScope, string> = {
   ALL: "전체 공개",
   TEAM: "팀 공개",
@@ -1449,7 +1444,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                           onClick={() => openDocOrDownload(d)}
                           className="inline-flex items-center gap-1 max-w-[180px] sm:max-w-[260px] align-middle text-[12px] font-bold text-brand-600 hover:underline tabular text-left">
                           <span className="truncate">{d.fileName}</span>
-                          <span className="text-ink-400 flex-shrink-0">({humanSize(d.fileSize ?? 0)})</span>
+                          <span className="text-ink-400 flex-shrink-0">({fmtSize(d.fileSize ?? 0)})</span>
                         </button>
                       );
                     })()}
@@ -1532,7 +1527,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
             const ft: [string, string] = isMemo
               ? ["MEMO", "bg-violet-50 text-violet-700"]
               : (TM[ext] ?? [ext ? ext.slice(0, 3).toUpperCase() : "FILE", "bg-ink-100 text-ink-600"]);
-            const meta = isMemo ? "메모" : `${(ext || "file").toUpperCase()} · ${humanSize(d.fileSize ?? 0)}`;
+            const meta = isMemo ? "메모" : `${(ext || "file").toUpperCase()} · ${fmtSize(d.fileSize ?? 0)}`;
             const openDoc = () => {
               if (isMemo) { setMemoTarget(d); return; }
               // 데스크톱 파일명 링크와 동일: 미리보기 가능하면 열고, 그 외(.docx 등)는 다운로드.
@@ -1709,7 +1704,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                 ) : docForm.fileUrl ? (
                   <>
                     <div className="text-[13px] font-bold text-brand-600">✓ {docForm.fileName}</div>
-                    <div className="text-[11px] text-ink-500 tabular">{humanSize(docForm.fileSize)} · 클릭해서 변경</div>
+                    <div className="text-[11px] text-ink-500 tabular">{fmtSize(docForm.fileSize)} · 클릭해서 변경</div>
                   </>
                 ) : (
                   <>
@@ -1883,9 +1878,3 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   );
 }
 
-function humanSize(n: number) {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}

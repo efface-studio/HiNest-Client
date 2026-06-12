@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { api } from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
@@ -25,7 +26,7 @@ export default function PayrollPage() {
   const [employees, setEmployees] = useState<EmployeeOption[]>([]);
   const [list, setList] = useState<Payslip[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => reload());
   const [year, setYear] = useState(NOW.getFullYear());
   const [month, setMonth] = useState<number | 0>(0); // 0 = 전체
   const [employeeId, setEmployeeId] = useState("");
@@ -71,11 +72,6 @@ export default function PayrollPage() {
       .catch(() => {});
   }
 
-  // 데스크탑 새로고침 버튼 — 현재 필터 그대로 목록을 다시 불러온다. 모바일은 PTR 이 전역으로 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await reload(); } finally { setRefreshing(false); }
-  }
 
   function onSaved(p: Payslip) {
     setComposing(false);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { useSearchParams } from "react-router-dom";
 import { api } from "../api";
 import { useAuth } from "../auth";
@@ -58,7 +59,7 @@ export default function ExpensePage() {
   const [list, setList] = useState<Expense[]>([]);
   const [total, setTotal] = useState(0);
   const [loaded, setLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => load());
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({
     usedAt: todayDT(),
@@ -88,11 +89,6 @@ export default function ExpensePage() {
     setLoaded(true);
   }
 
-  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
-  }
 
   useEffect(() => {
     const aliveRef = { current: true };

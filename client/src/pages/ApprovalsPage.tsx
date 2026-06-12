@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
@@ -118,7 +119,7 @@ export default function ApprovalsPage() {
   };
   const [approvals, setApprovals] = useState<Approval[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => load());
   const [loadErr, setLoadErr] = useState(false);
   const [selected, setSelected] = useState<Approval | null>(null);
   const [creating, setCreating] = useState(false);
@@ -163,11 +164,6 @@ export default function ApprovalsPage() {
       if (!aliveRef.current || myToken !== loadTokenRef.current) return;
       setLoadErr(true);
     }
-  }
-  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
   }
   async function loadDirectory() {
     try {

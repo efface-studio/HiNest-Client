@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { USER_AVATAR_SELECT } from "../lib/userSelect.js";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth } from "../lib/auth.js";
@@ -44,7 +45,7 @@ router.get("/", async (req, res) => {
     where,
     orderBy: [{ updatedAt: "desc" }],
     take: 200,
-    include: { owner: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+    include: { owner: { select: USER_AVATAR_SELECT } },
   });
   res.json({ snippets });
 });

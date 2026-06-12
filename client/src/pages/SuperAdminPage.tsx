@@ -1,6 +1,7 @@
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useSearchParams } from "react-router-dom";
 import { api , imgSrc} from "../api";
+import { fmtSize } from "../lib/fmt";
 import { safeUploadUrl } from "../lib/safeUrl";
 import { isCapacitorNative } from "../lib/platform";
 import { Browser } from "@capacitor/browser";
@@ -915,7 +916,7 @@ function AuditAttachment({ msg }: { msg: Message }) {
         <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6" />
       </svg>
       <span className="text-[12px] font-semibold">{msg.fileName}</span>
-      <span className="text-[10px] text-ink-500 tabular">{humanSize(msg.fileSize ?? 0)}</span>
+      <span className="text-[10px] text-ink-500 tabular">{fmtSize(msg.fileSize ?? 0)}</span>
     </a>
   );
 }
@@ -926,12 +927,6 @@ function RoomTypeChip({ type }: { type: Room["type"] }) {
   return <span className="chip-gray">GROUP</span>;
 }
 
-function humanSize(n: number) {
-  if (n < 1024) return `${n} B`;
-  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
-  if (n < 1024 * 1024 * 1024) return `${(n / 1024 / 1024).toFixed(1)} MB`;
-  return `${(n / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}
 
 /* =============== API 명세 =============== */
 function ApiSpecPanel() {

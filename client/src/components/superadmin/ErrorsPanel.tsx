@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync } from "../ConfirmHost";
+import { relTime } from "./relTime";
 import Portal from "../Portal";
 
 type Group = {
@@ -157,10 +158,3 @@ export default function ErrorsPanel() {
   );
 }
 
-function relTime(ms: number): string {
-  const diff = Date.now() - ms;
-  if (diff < 60_000) return "방금";
-  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}분 전`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)}시간 전`;
-  return `${Math.floor(diff / 86_400_000)}일 전`;
-}

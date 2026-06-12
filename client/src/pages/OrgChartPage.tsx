@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { useNavigate } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
@@ -31,7 +32,7 @@ export default function OrgChartPage() {
   const [users, setUsers] = useState<DirUser[]>([]);
   const [positions, setPositions] = useState<Position[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => Promise.all([load(), loadPositions()]));
   const [dmBusyId, setDmBusyId] = useState<string | null>(null);
   const [view, setView] = useState<ViewMode>(() => {
     try {
@@ -61,11 +62,6 @@ export default function OrgChartPage() {
     setLoaded(true);
   }
 
-  // 데스크탑 새로고침 — 구성원 + 직급을 다시 불러온다(전체 reload 아님). 모바일은 PTR 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await Promise.all([load(), loadPositions()]); } finally { setRefreshing(false); }
-  }
 
   async function loadPositions() {
     try {

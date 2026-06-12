@@ -77,17 +77,6 @@ export function isStorageEnabled(): boolean {
   return !!s3 || !!supabase;
 }
 
-/** 디버깅/헬스체크용 — 현재 어떤 백엔드가 활성인지. */
-export function storageBackend(): "s3" | "supabase" | "none" {
-  if (s3) return "s3";
-  if (supabase) return "supabase";
-  return "none";
-}
-
-export function storageBucket(): string {
-  return s3 ? (S3_BUCKET as string) : SB_BUCKET;
-}
-
 /** 파일 저장. 신규 업로드는 S3 우선. */
 export async function uploadFile(
   key: string,

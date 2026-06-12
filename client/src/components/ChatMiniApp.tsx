@@ -2656,7 +2656,7 @@ function RoomView({
                   <ReactionPicker
                     anchorRect={reactingRect}
                     mine={mine}
-                    onPick={(e) => { onReact(m.id, e); setReactingId(null); setReactingRect(null); }}
+                    onPick={(e) => onReact(m.id, e)}
                     onDismiss={() => { setReactingId(null); setReactingRect(null); }}
                     header={formatDetailed(new Date(m.createdAt))}
                     actions={buildMessageActions(m, mine, onPin, onDelete)}

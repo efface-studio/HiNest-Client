@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
 import { api, invalidateCache, clearApiCache, apiFetch , imgSrc} from "../api";
 import { isCapacitorNative, nativePlatform } from "../lib/platform";
 import { useAuth } from "../auth";

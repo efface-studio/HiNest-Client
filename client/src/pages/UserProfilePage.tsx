@@ -5,7 +5,7 @@ import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { Skeleton, SkeletonText } from "../components/Skeleton";
 import { alertAsync } from "../components/ConfirmHost";
-import { isDevAccount, DevBadge } from "../lib/devBadge";
+import { DevBadge } from "../lib/devBadge";
 import { resolvePresence, type PresenceStatus, type WorkStatus } from "../lib/presence";
 
 type ProfileUser = {

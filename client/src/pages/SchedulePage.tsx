@@ -2,7 +2,6 @@ import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { api , imgSrc} from "../api";
 import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
-import { Skeleton } from "../components/Skeleton";
 import { getHoliday } from "../lib/holidays";
 import DateTimePicker from "../components/DateTimePicker";
 import { confirmAsync, alertAsync } from "../components/ConfirmHost";

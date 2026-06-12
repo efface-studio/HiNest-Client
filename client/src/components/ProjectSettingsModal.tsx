@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { api, invalidateCache , imgSrc} from "../api";
 import { confirmAsync } from "./ConfirmHost";
 import Portal from "./Portal";
-import Select, { type SelectOption } from "./Select";
+import Select from "./Select";
 
 type Role = "OWNER" | "MANAGER" | "MEMBER";
 

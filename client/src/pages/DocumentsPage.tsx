@@ -52,12 +52,6 @@ type Doc = {
 };
 
 type ScopeTab = "all" | "public" | "team" | "private" | "custom";
-const SCOPE_TABS: { key: ScopeTab; label: string }[] = [
-  { key: "all",     label: "전체" },
-  { key: "team",    label: "팀" },
-  { key: "private", label: "개인" },
-  { key: "custom",  label: "사용자지정" },
-];
 const SCOPE_LABEL: Record<DocScope, string> = {
   ALL: "전체 공개",
   TEAM: "팀 공개",

@@ -116,7 +116,6 @@ function guessHost(url: string | null, name: string): string | null {
 }
 
 type Scope = "ALL" | "TEAM" | "PROJECT";
-const SCOPE_LABEL: Record<Scope, string> = { ALL: "전사", TEAM: "팀", PROJECT: "프로젝트" };
 type ScopeTab = "ALL_TAB" | Scope;
 
 type OwnerUser = { id: string; name: string; avatarColor: string; avatarUrl: string | null; email: string; team?: string | null; position?: string | null };

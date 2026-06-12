@@ -10,7 +10,6 @@
  */
 
 const TODAY = new Date();
-const ymd = TODAY.toISOString().slice(0, 10);
 function iso(daysOffset: number, hour = 9, min = 0): string {
   const d = new Date(TODAY);
   d.setDate(d.getDate() + daysOffset);

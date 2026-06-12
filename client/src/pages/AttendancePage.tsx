@@ -633,13 +633,6 @@ function dowLabel(n: number) {
 function formatHM(iso: string) {
   return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" });
 }
-function durationLabel(c: string, o: string) {
-  const ms = new Date(o).getTime() - new Date(c).getTime();
-  if (ms <= 0) return "-";
-  const h = Math.floor(ms / 3600000);
-  const m = Math.floor((ms % 3600000) / 60000);
-  return `${h}h ${m}m`;
-}
 function msToHM(ms: number) {
   const h = Math.floor(ms / 3600000);
   const m = Math.floor((ms % 3600000) / 60000);

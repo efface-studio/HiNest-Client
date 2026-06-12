@@ -1,7 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { api , imgSrc} from "../api";
-import { useAuth } from "../auth";
 import PageHeader from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
 import type { MemoDoc } from "../components/DocMemoModal";
@@ -177,7 +176,6 @@ function SkeletonCard() {
 
 // ===== 메인 페이지 =====
 export default function MemosPage() {
-  const { user } = useAuth();
   const [memos, setMemos] = useState<Memo[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);

@@ -45,11 +45,6 @@ export function useConsoleCompany(): Ctx {
   return useContext(ConsoleCompanyContext);
 }
 
-/** 회사 fetch 쿼리스트링 헬퍼 — companyId 가 있으면 &companyId=... 를 덧붙인다. */
-export function appendCompanyParam(params: URLSearchParams, companyId: string | null): URLSearchParams {
-  if (companyId) params.set("companyId", companyId);
-  return params;
-}
 
 export function CompanyFilterProvider({ children }: { children: ReactNode }) {
   const [sp, setSp] = useSearchParams();

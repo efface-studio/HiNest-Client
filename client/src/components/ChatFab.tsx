@@ -166,22 +166,26 @@ export default function ChatFab() {
                   // ※ 절대 위치 계산 대신 flex column 으로 변경 — 이전엔 헤더는 padding 안에,
                   //    본문은 absolute top:86 (border-box 기준) 으로 두면서 safe-area-top 만큼
                   //    헤더 일부가 본문에 가려져 모바일에서 뒤로가기 버튼이 사라져 보였음.
-                  // ※ Keyboard.resize:'none'(전역) + 입력바 동기 상승: 패널 bottom 을 키보드 높이
-                  //   (--hinest-keyboard-h, keyboardWillShow 에서 세팅)에 맞추고 transition 을 줘
-                  //   입력바가 키보드와 '동시에' 부드럽게 올라온다. resize:'native' 는 WebView 리사이즈가
-                  //   키보드 애니메이션 끝에야 반영돼 입력바가 늦게 따라잡히던 문제를 유발했다.
-                  //   안드로이드는 --hinest-keyboard-h 미설정(0)→bottom:0, manifest adjustResize 의
-                  //   네이티브 리사이즈가 WebView 를 줄여 입력바가 따라온다(동일 결과).
+                  // ※ 입력바 동기 상승: 패널은 풀스크린(inset:0) 으로 유지하고, paddingBottom 에
+                  //   --hinest-keyboard-h(keyboardWillShow 에서 세팅) 를 더해 '콘텐츠(입력바)만' 키보드
+                  //   위로 올린다. 패널 자체를 bottom 으로 올리면 패널 아래에 (resize:'none' 풀스크린
+                  //   웹뷰의) 이전 페이지가 비쳐서 못 쓴다 — paddingBottom 영역은 패널 배경(surface)이라
+                  //   안 비친다. resize:'native' 구 네이티브에선 nativeKeyboard 가 --hinest-keyboard-h 를
+                  //   0 으로 둬(네이티브 리사이즈가 처리) 입력바가 2배로 뜨는 걸 막는다.
                   top: 0,
                   left: 0,
                   right: 0,
-                  bottom: "var(--hinest-keyboard-h, 0px)",
+                  bottom: 0,
                   width: "100vw",
                   // safe-area(상태바)는 패널이 아니라 헤더(RoomHeader/ListHeader)가 흡수한다 —
                   // 그래야 글래스 헤더가 상태바 영역까지 위로 덮어, 'safe-area 와 헤더가 따로 노는'
                   // 분리(상단 솔리드 띠 + 그 아래 글래스 헤더)가 사라지고 한 덩어리로 보인다.
                   paddingTop: 0,
-                  paddingBottom: "var(--sa-bottom, env(safe-area-inset-bottom))",
+                  // 콘텐츠(입력바)를 키보드 위로. 패널은 풀스크린이라 이 패딩 영역엔 패널 배경(surface)만
+                  // 보여 뒤 페이지가 안 비친다. max() — 키보드 닫힘:sa-bottom(홈인디케이터), 키보드 열림:
+                  // keyboard-h(키보드가 홈인디케이터까지 덮으므로 sa-bottom 더하면 안 됨 → 입력바가 키보드에 딱).
+                  paddingBottom:
+                    "max(var(--sa-bottom, env(safe-area-inset-bottom)), var(--hinest-keyboard-h, 0px))",
                   paddingLeft: "var(--sa-left, env(safe-area-inset-left))",
                   paddingRight: "var(--sa-right, env(safe-area-inset-right))",
                   transformOrigin: "bottom right",
@@ -194,7 +198,7 @@ export default function ChatFab() {
                   display: "flex",
                   flexDirection: "column",
                   transition:
-                    "opacity .22s cubic-bezier(.22,.61,.36,1), transform .26s cubic-bezier(.22,.61,.36,1), bottom .25s cubic-bezier(.17,.59,.4,1)",
+                    "opacity .22s cubic-bezier(.22,.61,.36,1), transform .26s cubic-bezier(.22,.61,.36,1), padding-bottom .25s cubic-bezier(.17,.59,.4,1)",
                 }
               : {
                   // 데스크톱: 기존 우하단 플로팅 팝업. flex column 으로 통일.

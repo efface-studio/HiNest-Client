@@ -49,9 +49,15 @@ export function attachNativeKeyboard(): () => void {
   //   `--hinest-keyboard-h` 를 노출해, 하단 네비바를 숨기거나 로그인 폼을 키보드 위로
   //   끌어올리는 등 네이티브 같은 동작이 CSS 만으로 가능하게 한다.
   const removeKbListeners: Array<() => void> = [];
+  // resize 모드 1회 판별 캐시. resize:'native' 면 WebView 가 키보드만큼 줄어 입력바/폼을 이미 올리므로
+  // CSS 리프트(--hinest-keyboard-h)는 0 으로 둔다 — 안 그러면 2배로 떠 입력바·키보드 사이가 벌어진다
+  // (구 네이티브 resize:'native' + 신 OTA 조합에서 발생). resize:'none' 이면 CSS 로 끌어올린다.
+  let resizeMode: "native" | "none" | null = null;
+  let preKbInnerH = 0;
   const setKbOpen = (h: number) => {
+    const lift = resizeMode === "native" ? 0 : h;
     document.documentElement.classList.add("hinest-keyboard-open");
-    document.documentElement.style.setProperty("--hinest-keyboard-h", `${Math.max(0, Math.round(h))}px`);
+    document.documentElement.style.setProperty("--hinest-keyboard-h", `${Math.max(0, Math.round(lift))}px`);
   };
   const setKbClosed = () => {
     document.documentElement.classList.remove("hinest-keyboard-open");
@@ -67,8 +73,13 @@ export function attachNativeKeyboard(): () => void {
       };
       // willShow 가 더 빠름(애니메이션 시작 직전) — 네비바 숨김·인셋 적용을 미리 시작해
       // 키보드가 올라오는 동안 jank 가 없다. didShow 에선 정확한 높이로 확정.
-      reg("keyboardWillShow", (info) => setKbOpen(info?.keyboardHeight ?? 0));
-      reg("keyboardDidShow", (info) => { setKbOpen(info?.keyboardHeight ?? 0); scrollFocusedIntoView(); });
+      reg("keyboardWillShow", (info) => { preKbInnerH = window.innerHeight; setKbOpen(info?.keyboardHeight ?? 0); });
+      reg("keyboardDidShow", (info) => {
+        // WebView(레이아웃 뷰포트)가 키보드로 줄었으면 resize:'native' — 1회만 판별해 캐시.
+        if (resizeMode === null) resizeMode = window.innerHeight < preKbInnerH - 50 ? "native" : "none";
+        setKbOpen(info?.keyboardHeight ?? 0);
+        scrollFocusedIntoView();
+      });
       reg("keyboardWillHide", () => setKbClosed());
       reg("keyboardDidHide", () => setKbClosed());
     })

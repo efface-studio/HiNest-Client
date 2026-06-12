@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../../api";
 import { confirmAsync, alertAsync } from "../ConfirmHost";
+import { relTime } from "./relTime";
 import { useConsoleCompany } from "./companyFilter";
 
 type Session = {
@@ -101,7 +102,7 @@ export default function SessionsPanel() {
                 </td>
                 <td className="py-2 pr-2 text-ink-700 sm:truncate sm:max-w-[280px]" data-label="디바이스" title={s.ua ?? ""}>{shortenUA(s.ua)}</td>
                 <td className="py-2 pr-2 text-ink-700 font-mono text-[11px]" data-label="IP">{s.ip ?? "—"}</td>
-                <td className="py-2 pr-2 text-ink-700" data-label="최근 활동">{relTime(s.lastSeenAt)}</td>
+                <td className="py-2 pr-2 text-ink-700" data-label="최근 활동">{relTime(new Date(s.lastSeenAt).getTime())}</td>
                 <td className="py-2 pr-2 text-right cell-actions">
                   <button className="btn-ghost btn-xs" onClick={() => revokeOne(s.id, s.user.name)} disabled={busy}>이 세션 종료</button>
                   <button className="btn-ghost btn-xs ml-1" onClick={() => revokeUser(s.userId, s.user.name)} disabled={busy}>전 디바이스</button>
@@ -126,10 +127,3 @@ function shortenUA(ua: string | null): string {
   return [m ? `${m[1]} ${m[2].split(".")[0]}` : "Browser", os ? os[1].split(";")[0] : ""].filter(Boolean).join(" · ");
 }
 
-function relTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  if (diff < 60_000) return "방금";
-  if (diff < 3600_000) return `${Math.floor(diff / 60_000)}분 전`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3600_000)}시간 전`;
-  return `${Math.floor(diff / 86_400_000)}일 전`;
-}

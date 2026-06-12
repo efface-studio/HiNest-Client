@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, clearApiCache } from "./api";
 import { setAuthToken, clearAuthToken } from "./lib/authToken";
 import { requestNotifPermissionOnLogin } from "./lib/notifPermission";
@@ -46,25 +46,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [impersonator, setImpersonator] = useState<Impersonator | null>(null);
   const [loading, setLoading] = useState(true);
+  // 세션 복원 재시도 — 네트워크 오류 시 잠시 후 다시 /api/me. (refreshRef 로 안전한 자기 참조)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const refreshRef = useRef<() => Promise<void>>();
 
   const refresh = useCallback(async () => {
+    if (retryTimerRef.current) { clearTimeout(retryTimerRef.current); retryTimerRef.current = null; }
     try {
       const res = await api<{ user: User; impersonator: Impersonator | null }>("/api/me");
       setUser(res.user);
       setImpersonator(res.impersonator ?? null);
-    } catch (e: any) {
-      setUser(null);
-      setImpersonator(null);
-      // 네이티브: 저장된 토큰이 만료/무효(401)면 제거 — 다음 로그인 때 새로 받는다.
-      // (일시 네트워크 오류 등 비-401 은 토큰을 지우지 않아 재시도 시 세션 유지.)
-      if (e?.status === 401) clearAuthToken();
-    } finally {
       setLoading(false);
+    } catch (e: any) {
+      if (e?.status === 401) {
+        // 진짜 인증 실패(세션 만료·무효) — 토큰 제거 + 로그아웃(→ /login).
+        clearAuthToken();
+        setUser(null);
+        setImpersonator(null);
+        setLoading(false);
+      } else {
+        // 네트워크·타임아웃 등 비-401 — 인증 실패가 아니므로 절대 로그아웃하지 않는다(인터넷이 잠깐
+        // 끊겨도 로그인 화면으로 안 튕긴다). loading/user 를 건드리지 않아: 첫 로드면 로딩(스켈레톤)
+        // 유지, 이미 로그인 상태면 셸 유지. 잠시 후 재시도 → 연결되면 정상 로드, 끝내 401 이면 그때 로그아웃.
+        retryTimerRef.current = setTimeout(() => { void refreshRef.current?.(); }, 2500);
+      }
     }
   }, []);
+  refreshRef.current = refresh;
 
   useEffect(() => {
     refresh();
+    return () => { if (retryTimerRef.current) clearTimeout(retryTimerRef.current); };
   }, [refresh]);
 
   // 세션 만료/무효 전역 처리 — 페이지 사용 도중 세션이 끊기면 api.ts 가 'hinest:unauthorized'

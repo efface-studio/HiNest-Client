@@ -15,75 +15,6 @@ import { LangIcon } from "../../lib/langIcon";
 import { splitBlocks, renderInlineMarkdown } from "../../lib/markdown";
 import { LinkPreview, extractFirstUrl } from "./LinkPreview";
 
-/**
- * 파일/이미지/동영상 메시지를 문서함으로 복사 저장.
- * - 이미 업로드된 /uploads/xxx URL 을 그대로 재참조 (재업로드 없음 → 중복 용량 안 씀).
- * - 폴더 선택 없이 기본 위치(ALL scope, 루트) 에 저장. 나중에 문서함에서 이동 가능.
- */
-function SaveToDocsChip({ fileUrl, fileName, fileType, fileSize, mine }: { fileUrl: string; fileName: string | null; fileType: string | null; fileSize: number | null; mine: boolean }) {
-  const [saving, setSaving] = useState(false);
-  const [done, setDone] = useState(false);
-  async function save() {
-    if (saving || done) return;
-    setSaving(true);
-    try {
-      await api("/api/document", {
-        method: "POST",
-        json: {
-          title: fileName ?? "파일",
-          description: "채팅방에서 저장",
-          fileUrl,
-          fileName,
-          fileType,
-          fileSize,
-          scope: "ALL",
-        },
-      });
-      setDone(true);
-    } catch (e: any) {
-      alertAsync({ title: "문서함 저장 실패", description: e?.message ?? "저장에 실패했어요" });
-    } finally {
-      setSaving(false);
-    }
-  }
-  return (
-    <button
-      type="button"
-      onClick={save}
-      disabled={saving || done}
-      style={{
-        alignSelf: mine ? "flex-end" : "flex-start",
-        fontSize: 11,
-        fontWeight: 600,
-        padding: "4px 8px",
-        borderRadius: 999,
-        // 종전엔 white/회색 하드코딩이라 다크 테마에서 우두커니 떴음. 테마 토큰으로 교체.
-        border: "1px solid var(--c-border)",
-        background: done ? "var(--c-surface-2)" : "var(--c-surface)",
-        color: done ? "var(--c-success)" : "var(--c-text-2)",
-        cursor: saving || done ? "default" : "pointer",
-        display: "inline-flex",
-        alignItems: "center",
-        gap: 4,
-      }}
-      title={done ? "문서함에 저장됨" : "문서함에 저장"}
-    >
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-        {done ? (
-          <polyline points="20 6 9 17 4 12" />
-        ) : (
-          <>
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="7 10 12 15 17 10" />
-            <line x1="12" y1="15" x2="12" y2="3" />
-          </>
-        )}
-      </svg>
-      {done ? "저장됨" : saving ? "저장 중…" : "문서함 저장"}
-    </button>
-  );
-}
-
 /* ===== 꾹 누르기 + 두번 탭 감지 래퍼 (터치 + 마우스 + 우클릭) =====
  *
  * onLongPress  — 420ms 누르고 있으면 발동 (메시지 리액션 메뉴)
@@ -996,7 +927,6 @@ function MessageBubbleInner({ msg, mine }: { msg: Message; mine: boolean }) {
             항목 전부 숨기고, 우리가 직접 styled 한 커스텀 오버플로 메뉴로 대체. */}
         <ChatVideoPlayer src={fileUrl!} fileName={msg.fileName ?? null} />
         {hasText && <TextBubble content={msg.content} mine={mine} />}
-        <SaveToDocsChip fileUrl={fileUrl!} fileName={msg.fileName ?? null} fileType={msg.fileType ?? null} fileSize={typeof msg.fileSize === "number" ? msg.fileSize : null} mine={mine} />
       </div>
     );
   }
@@ -1083,7 +1013,6 @@ function MessageBubbleInner({ msg, mine }: { msg: Message; mine: boolean }) {
           </div>
         </a>
         {hasText && <TextBubble content={msg.content} mine={mine} />}
-        <SaveToDocsChip fileUrl={fileUrl!} fileName={msg.fileName ?? null} fileType={msg.fileType ?? null} fileSize={typeof msg.fileSize === "number" ? msg.fileSize : null} mine={mine} />
       </div>
     );
   }

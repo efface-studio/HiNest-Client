@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import BrandLockup from "../components/BrandLockup";
 import SoftInput from "../components/SoftInput";
 import { isInstalledApp } from "../lib/platform";
+import { setNativeTabBarHidden } from "../lib/liquidGlassTabBar";
 
 // 회사(테넌트) 상태로 로그인이 막힌 경우의 코드 — 비밀번호 오류처럼 빨갛게 보이지 않게 별도 톤 처리.
 const COMPANY_ERROR_CODES = ["COMPANY_PENDING", "COMPANY_SUSPENDED", "COMPANY_REJECTED", "COMPANY_INACTIVE"];
@@ -22,6 +23,13 @@ export default function LoginPage() {
   const [err, setErr] = useState("");
   const [errCode, setErrCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // 강제 이탈(세션 만료·네트워크 등)로 셸(AppLayout)이 깔끔히 언마운트되지 않아도 로그인 화면엔
+  // 네이티브 하단 탭바가 안 보이게 직접 숨긴다(방어). 로그인 성공 → 셸 마운트가 다시 보이게 한다.
+  useEffect(() => {
+    setNativeTabBarHidden("auth", true);
+    return () => setNativeTabBarHidden("auth", false);
+  }, []);
 
   // 콘솔 전용 계정(consoleOnly)만 운영 콘솔로 직행. 일반 총관리자(superAdmin) 는 회사 앱
   // 홈으로 보낸 뒤, 사이드바의 '운영 콘솔' 링크로 왕복하게 한다. (총관리자도 평상시엔 회사

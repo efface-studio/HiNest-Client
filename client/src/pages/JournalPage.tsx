@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { api, apiSWR } from "../api";
 import PageHeader from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
@@ -33,7 +34,7 @@ type Mode = "view" | "create" | "edit";
 export default function JournalPage() {
   const [list, setList] = useState<Journal[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => load());
   const [selected, setSelected] = useState<Journal | null>(null);
   const [form, setForm] = useState({ date: today(), title: "", content: "" });
   const [mode, setMode] = useState<Mode>("view");
@@ -72,8 +73,6 @@ export default function JournalPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 데스크탑 새로고침 버튼 — 최신 목록을 강제로 다시 가져온다(현재 선택은 유지).
-  // 모바일은 PTR 이 전역으로 담당.
   async function load() {
     try {
       const d = await api<{ journals: Journal[] }>("/api/journal");
@@ -83,10 +82,6 @@ export default function JournalPage() {
     } finally {
       if (aliveRef.current) setLoading(false);
     }
-  }
-  async function refresh() {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
   }
 
   function openCreate() {

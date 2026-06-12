@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { useNavigate } from "react-router-dom";
 import { useNotifications, type Notif } from "../notifications";
 import { NotifRow, navigateToNotif } from "../components/notifShared";
@@ -18,7 +19,7 @@ export default function NotificationsPage() {
   // 첫 reload 완료 여부 — useNotifications 훅이 loading 을 노출하지 않으므로 로컬로 추적.
   // false 동안엔 빈 영역 대신 Skeleton 행을 띄워 깜빡임 제거.
   const [loaded, setLoaded] = useState(false);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => reload());
 
   // 페이지 진입 시 최신 알림으로 한 번 갱신(프로바이더의 주기 폴링과 별개로 즉시 동기화).
   useEffect(() => {
@@ -27,11 +28,6 @@ export default function NotificationsPage() {
     return () => { alive = false; };
   }, [reload]);
 
-  // 데스크탑 새로고침 버튼 — 알림 목록만 다시 불러온다(전체 reload 아님). 모바일은 PTR 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await reload(); } finally { setRefreshing(false); }
-  }
 
   const visible = tab === "unread" ? bellItems.filter((n) => !n.readAt) : bellItems;
 

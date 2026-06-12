@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { api, apiSWR } from "../api";
 import PageHeader from "../components/PageHeader";
 import { Skeleton } from "../components/Skeleton";
@@ -74,7 +75,7 @@ export default function AttendancePage() {
   const [month, setMonth] = useState(ymNow());
   const [records, setRecords] = useState<Attendance[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => load());
   const [leaves, setLeaves] = useState<Leave[]>([]);
   const [allLeaves, setAllLeaves] = useState<Leave[]>([]);
   const [open, setOpen] = useState(false);
@@ -111,11 +112,6 @@ export default function AttendancePage() {
     }
   }
 
-  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
-  }
 
   // SWR — 월별 출퇴근과 휴가 목록은 탭 재진입 시 캐시로 즉시 채움.
   const isReviewer = user?.role === "ADMIN" || user?.role === "MANAGER";

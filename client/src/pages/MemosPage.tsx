@@ -1,4 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
+import { useRefresh } from "../lib/useRefresh";
 import { useSearchParams } from "react-router-dom";
 import { api , imgSrc} from "../api";
 import PageHeader from "../components/PageHeader";
@@ -178,7 +179,7 @@ function SkeletonCard() {
 export default function MemosPage() {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const { refreshing, refresh } = useRefresh(() => load());
   const [scopeTab, setScopeTab] = useState<ScopeTab>("all");
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
@@ -221,11 +222,6 @@ export default function MemosPage() {
     load();
   }, [load]);
 
-  // 데스크탑 새로고침 버튼 — load() 재호출. 모바일은 PTR 이 전역으로 담당.
-  async function refresh() {
-    setRefreshing(true);
-    try { await load(); } finally { setRefreshing(false); }
-  }
 
   // Cmd/Ctrl+K → 검색 포커스
   useEffect(() => {

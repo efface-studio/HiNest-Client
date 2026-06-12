@@ -2168,6 +2168,8 @@ function RoomView({
   const slashRef = useRef<SnippetSlashHandle | null>(null);
   const mentionRef = useRef<MentionHandle | null>(null);
   const [reactingId, setReactingId] = useState<string | null>(null);
+  // 롱프레스한 버블의 화면 위치 — iOS peek 오버레이를 그 자리에 띄우기 위해 측정.
+  const [reactingRect, setReactingRect] = useState<DOMRect | null>(null);
   const [ready, setReady] = useState(false);
   const nav = useNavigate();
   // 전송 래퍼 — onSend() 후 입력창 포커스를 되돌려 키보드를 유지(카톡/메신저처럼 연속 입력).
@@ -2564,7 +2566,7 @@ function RoomView({
                       </div>
                     ) : (
                       <LongPress
-                        onLongPress={() => setReactingId(m.id)}
+                        onLongPress={(rect) => { setReactingId(m.id); setReactingRect(rect); }}
                         // 상대 메시지 두 번 탭 → 👍 토글 (있으면 제거, 없으면 추가).
                         // 본인 메시지에선 더블탭이 무의미하므로 비활성.
                         onDoubleTap={!mine ? () => onReact(m.id, "👍") : undefined}
@@ -2649,17 +2651,18 @@ function RoomView({
                   </div>
                 )}
 
-                {/* 컨텍스트 메뉴: 이모지 + 액션 — 헤더는 상세 시각 */}
-                {isPicking && (
-                  <div style={{ paddingLeft: !mine ? 34 : 0, position: "relative" }}>
-                    <ReactionPicker
-                      mine={mine}
-                      onPick={(e) => { onReact(m.id, e); setReactingId(null); }}
-                      onDismiss={() => setReactingId(null)}
-                      header={formatDetailed(new Date(m.createdAt))}
-                      actions={buildMessageActions(m, mine, onPin, onDelete)}
-                    />
-                  </div>
+                {/* 컨텍스트 메뉴(iOS peek 스타일): 블러 backdrop + 이모지 바 + 강조 버블 + 액션 메뉴 */}
+                {isPicking && reactingRect && (
+                  <ReactionPicker
+                    anchorRect={reactingRect}
+                    mine={mine}
+                    onPick={(e) => { onReact(m.id, e); setReactingId(null); setReactingRect(null); }}
+                    onDismiss={() => { setReactingId(null); setReactingRect(null); }}
+                    header={formatDetailed(new Date(m.createdAt))}
+                    actions={buildMessageActions(m, mine, onPin, onDelete)}
+                  >
+                    <MessageBubble msg={m} mine={mine} />
+                  </ReactionPicker>
                 )}
               </div>
             </div>

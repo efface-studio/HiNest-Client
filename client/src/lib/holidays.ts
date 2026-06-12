@@ -114,11 +114,4 @@ export function getHoliday(d: Date): Holiday | undefined {
   return MAP.get(ymd(d));
 }
 
-export function isHoliday(d: Date): boolean {
-  return MAP.has(ymd(d));
-}
 
-/** 일요일 또는 공휴일이면 true */
-export function isRedDay(d: Date): boolean {
-  return d.getDay() === 0 || isHoliday(d);
-}

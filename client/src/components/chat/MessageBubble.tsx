@@ -99,11 +99,12 @@ export function LongPress({
   style,
 }: {
   children: React.ReactNode;
-  onLongPress: () => void;
+  onLongPress: (rect: DOMRect) => void;
   onDoubleTap?: () => void;
   delay?: number;
   style?: React.CSSProperties;
 }) {
+  const elRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | null>(null);
   const firedRef = useRef(false);
   const startPosRef = useRef<{ x: number; y: number } | null>(null);
@@ -116,7 +117,8 @@ export function LongPress({
     startPosRef.current = { x, y };
     timerRef.current = window.setTimeout(() => {
       firedRef.current = true;
-      onLongPress();
+      const r = elRef.current?.getBoundingClientRect();
+      if (r) onLongPress(r);
     }, delay);
   };
   const cancel = () => {
@@ -154,6 +156,7 @@ export function LongPress({
 
   return (
     <div
+      ref={elRef}
       className="chat-pressable"
       onTouchStart={(e) => {
         const t = e.touches[0];
@@ -184,7 +187,8 @@ export function LongPress({
         e.preventDefault();
         cancel();
         firedRef.current = true;
-        onLongPress();
+        const r = elRef.current?.getBoundingClientRect();
+        if (r) onLongPress(r);
       }}
       // 롱프레스/더블탭이 발동된 직후 따라오는 click 은 자식(이미지 뷰어 등)으로 내려가지 않게 차단
       onClickCapture={(e) => {
@@ -681,202 +685,212 @@ export type MessageAction = {
   onSelect: () => void;
 };
 
+/**
+ * 메시지 롱프레스 컨텍스트 메뉴 — iOS 네이티브('peek') 스타일.
+ * 풀스크린 블러+딤 backdrop 위에 [이모지 반응 바 · 강조된 메시지 버블 · 액션 메뉴]를 세로로 띄운다.
+ * 채팅 컨테이너에 transform 이 걸려 있어 position:fixed 가 어긋나므로 document.body 로 portal.
+ * anchorRect(원본 버블 위치)를 측정해 버블을 제자리 근처에 두되, 위/아래가 화면 밖으로
+ * 안 나가게 그룹 위치를 클램프한다. (useLayoutEffect = paint 전 보정이라 깜빡임 없음)
+ */
 export function ReactionPicker({
+  anchorRect,
   mine,
   onPick,
   onDismiss,
   actions = [],
   header,
+  children,
 }: {
+  anchorRect: DOMRect;
   mine: boolean;
   onPick: (emoji: string) => void;
   onDismiss: () => void;
   actions?: MessageAction[];
-  /** 액션 메뉴 상단에 표시할 부가 정보(예: 보낸 시각) */
+  /** 메뉴 상단 부가 정보(보낸 시각) */
   header?: string;
+  /** 강조해 보여줄 메시지 버블(원본과 동일 렌더) */
+  children: React.ReactNode;
 }) {
-  // 버블 위에 띄움. 바깥 클릭 시 닫기.
+  const groupRef = useRef<HTMLDivElement | null>(null);
+  const [top, setTop] = useState<number>(anchorRect.top);
+  const [ready, setReady] = useState(false);
+
   useEffect(() => {
-    const onDown = () => onDismiss();
-    const t = window.setTimeout(
-      () => window.addEventListener("mousedown", onDown),
-      0
-    );
-    return () => {
-      clearTimeout(t);
-      window.removeEventListener("mousedown", onDown);
-    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onDismiss(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [onDismiss]);
 
-  // 긴 버블일 때 위쪽으로 띄우면 스크롤 컨테이너/뷰포트에서 잘리므로
-  // 렌더 직후 측정 → 잘리면 버블 하단으로 뒤집음.
-  const ref = useRef<HTMLDivElement | null>(null);
-  const [flip, setFlip] = useState(false);
   useLayoutEffect(() => {
-    const el = ref.current;
+    const el = groupRef.current;
     if (!el) return;
-    const r = el.getBoundingClientRect();
-    // 가장 가까운 스크롤 가능한 조상 찾기
-    let p: HTMLElement | null = el.parentElement;
-    let limitTop = 0;
-    while (p) {
-      const style = window.getComputedStyle(p);
-      if (/(auto|scroll)/.test(style.overflowY)) {
-        limitTop = p.getBoundingClientRect().top;
-        break;
-      }
-      p = p.parentElement;
-    }
-    if (r.top < limitTop + 4) setFlip(true);
-  }, []);
+    const groupH = el.offsetHeight;
+    const vh = window.innerHeight;
+    const safeTop = 56;     // 상태바/노치 여유
+    const safeBottom = 36;  // 홈 인디케이터 여유
+    const bubbleEl = el.querySelector("[data-ctx-bubble]") as HTMLElement | null;
+    const bubbleOffset = bubbleEl ? bubbleEl.offsetTop : 56;
+    let t = anchorRect.top - bubbleOffset;
+    if (t + groupH > vh - safeBottom) t = vh - safeBottom - groupH;
+    if (t < safeTop) t = safeTop;
+    setTop(t);
+    setReady(true);
+  }, [anchorRect]);
 
-  return (
+  const vw = typeof window !== "undefined" ? window.innerWidth : 0;
+  const EDGE = 10;
+  const MIN_W = 224;
+  const side: React.CSSProperties = mine
+    ? { right: Math.max(EDGE, Math.min(vw - anchorRect.right, vw - MIN_W - EDGE)) }
+    : { left: Math.max(EDGE, Math.min(anchorRect.left, vw - MIN_W - EDGE)) };
+
+  return createPortal(
     <div
-      ref={ref}
+      onClick={onDismiss}
       onMouseDown={(e) => e.stopPropagation()}
       style={{
-        position: "absolute",
-        ...(flip
-          ? { top: "calc(100% + 6px)" }
-          : { bottom: "calc(100% + 6px)" }),
-        [mine ? "right" : "left"]: 0,
-        zIndex: 10,
-        display: "flex",
-        flexDirection: "column",
-        alignItems: mine ? "flex-end" : "flex-start",
-        gap: 8,
-        animation: "hinest-pop .14s cubic-bezier(.22,.61,.36,1)",
-      } as React.CSSProperties}
+        position: "fixed",
+        inset: 0,
+        zIndex: 1000,
+        background: "rgba(0,0,0,0.34)",
+        backdropFilter: "blur(18px) saturate(1.1)",
+        WebkitBackdropFilter: "blur(18px) saturate(1.1)",
+        animation: "hinest-ctx-fade .2s ease",
+      }}
     >
-      <style>{`@keyframes hinest-pop {
-        from { transform: scale(.85) translateY(4px); opacity: 0; }
-        to   { transform: scale(1) translateY(0); opacity: 1; }
-      }`}</style>
+      <style>{`
+        @keyframes hinest-ctx-fade { from { opacity: 0 } to { opacity: 1 } }
+        @keyframes hinest-ctx-pop { from { opacity: 0; transform: scale(.9) } to { opacity: 1; transform: scale(1) } }
+      `}</style>
 
-      {/* 이모지 행 */}
       <div
+        ref={groupRef}
+        onClick={(e) => e.stopPropagation()}
         style={{
-          background: C.surface,
-          border: `1px solid ${C.gray200}`,
-          borderRadius: 999,
-          padding: "4px 6px",
+          position: "fixed",
+          top,
+          ...side,
           display: "flex",
-          alignItems: "center",
-          gap: 2,
-          boxShadow:
-            "0 8px 24px rgba(25, 31, 40, .14), 0 2px 6px rgba(25, 31, 40, .06)",
-        }}
+          flexDirection: "column",
+          alignItems: mine ? "flex-end" : "flex-start",
+          gap: 10,
+          maxWidth: "min(86vw, 360px)",
+          opacity: ready ? 1 : 0,
+          transformOrigin: mine ? "top right" : "top left",
+          animation: ready ? "hinest-ctx-pop .2s cubic-bezier(.2,.7,.3,1)" : undefined,
+        } as React.CSSProperties}
       >
-        {QUICK_EMOJIS.map((e) => (
-          <button
-            key={e}
-            type="button"
-            onClick={() => onPick(e)}
-            style={{
-              width: 32,
-              height: 32,
-              borderRadius: 999,
-              background: "transparent",
-              border: 0,
-              cursor: "pointer",
-              fontSize: 18,
-              lineHeight: 1,
-              display: "grid",
-              placeItems: "center",
-              transition: "background .12s ease, transform .12s ease",
-            }}
-            onMouseEnter={(ev) => {
-              ev.currentTarget.style.background = C.gray100;
-              ev.currentTarget.style.transform = "scale(1.15)";
-            }}
-            onMouseLeave={(ev) => {
-              ev.currentTarget.style.background = "transparent";
-              ev.currentTarget.style.transform = "scale(1)";
-            }}
-          >
-            {e}
-          </button>
-        ))}
-      </div>
-
-      {/* 액션 메뉴 */}
-      {(actions.length > 0 || header) && (
+        {/* 이모지 반응 바 */}
         <div
           style={{
             background: C.surface,
+            borderRadius: 999,
+            padding: "5px 8px",
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
             border: `1px solid ${C.gray200}`,
-            borderRadius: 14,
-            minWidth: 200,
-            padding: 4,
-            boxShadow:
-              "0 10px 28px rgba(25, 31, 40, .16), 0 2px 6px rgba(25, 31, 40, .06)",
-            overflow: "hidden",
+            boxShadow: "0 12px 34px rgba(0,0,0,.3)",
           }}
         >
-          {header && (
-            <div
-              style={{
-                padding: "8px 12px 6px",
-                fontSize: 11,
-                fontWeight: 600,
-                color: C.gray500,
-                fontFamily: FONT,
-                borderBottom: `1px solid ${C.gray100}`,
-                marginBottom: 2,
-              }}
-            >
-              {header}
-            </div>
-          )}
-          {actions.map((a, i) => (
+          {QUICK_EMOJIS.map((e) => (
             <button
-              key={a.key}
+              key={e}
               type="button"
-              onClick={() => {
-                a.onSelect();
-                onDismiss();
-              }}
+              onClick={() => onPick(e)}
               style={{
-                width: "100%",
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "10px 12px",
+                width: 38,
+                height: 38,
+                borderRadius: 999,
                 background: "transparent",
                 border: 0,
-                borderTop: i === 0 ? "none" : `1px solid ${C.gray100}`,
                 cursor: "pointer",
-                fontSize: 14,
-                fontWeight: 600,
-                fontFamily: FONT,
-                color: a.danger ? C.red : C.ink,
-                textAlign: "left",
-                transition: "background .12s ease",
+                fontSize: 23,
+                lineHeight: 1,
+                display: "grid",
+                placeItems: "center",
+                transition: "transform .1s ease",
               }}
-              onMouseEnter={(ev) => {
-                ev.currentTarget.style.background = C.gray100;
-              }}
-              onMouseLeave={(ev) => {
-                ev.currentTarget.style.background = "transparent";
-              }}
+              onMouseEnter={(ev) => { ev.currentTarget.style.transform = "scale(1.22)"; }}
+              onMouseLeave={(ev) => { ev.currentTarget.style.transform = "scale(1)"; }}
             >
-              <span
-                style={{
-                  width: 18,
-                  height: 18,
-                  display: "grid",
-                  placeItems: "center",
-                  color: a.danger ? C.red : C.gray600,
-                }}
-              >
-                {a.icon}
-              </span>
-              <span>{a.label}</span>
+              {e}
             </button>
           ))}
         </div>
-      )}
-    </div>
+
+        {/* 강조된 메시지 버블(원본과 동일) */}
+        <div data-ctx-bubble style={{ pointerEvents: "none", maxWidth: "100%" }}>
+          {children}
+        </div>
+
+        {/* 액션 메뉴 */}
+        {(actions.length > 0 || header) && (
+          <div
+            style={{
+              background: C.surface,
+              borderRadius: 16,
+              minWidth: MIN_W,
+              border: `1px solid ${C.gray200}`,
+              boxShadow: "0 14px 38px rgba(0,0,0,.3)",
+              overflow: "hidden",
+            }}
+          >
+            {header && (
+              <div
+                style={{
+                  padding: "9px 16px 7px",
+                  fontSize: 11.5,
+                  fontWeight: 600,
+                  color: C.gray500,
+                  fontFamily: FONT,
+                }}
+              >
+                {header}
+              </div>
+            )}
+            {actions.map((a, i) => (
+              <button
+                key={a.key}
+                type="button"
+                onClick={() => { a.onSelect(); onDismiss(); }}
+                style={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 13,
+                  padding: "13px 16px",
+                  background: "transparent",
+                  border: 0,
+                  borderTop: (i === 0 && !header) ? "none" : `1px solid ${C.gray100}`,
+                  cursor: "pointer",
+                  fontSize: 15,
+                  fontWeight: 500,
+                  fontFamily: FONT,
+                  color: a.danger ? C.red : C.ink,
+                  textAlign: "left",
+                }}
+              >
+                <span
+                  style={{
+                    width: 20,
+                    height: 20,
+                    flexShrink: 0,
+                    display: "grid",
+                    placeItems: "center",
+                    color: a.danger ? C.red : C.gray600,
+                  }}
+                >
+                  {a.icon}
+                </span>
+                <span>{a.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>,
+    document.body,
   );
 }
 

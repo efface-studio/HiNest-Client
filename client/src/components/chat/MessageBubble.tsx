@@ -670,9 +670,9 @@ export function ReactionPicker({
     const vh = window.innerHeight;
     const safeTop = 56;     // 상태바/노치 여유
     const safeBottom = 36;  // 홈 인디케이터 여유
-    const bubbleEl = el.querySelector("[data-ctx-bubble]") as HTMLElement | null;
-    const bubbleOffset = bubbleEl ? bubbleEl.offsetTop : 56;
-    let t = anchorRect.top - bubbleOffset;
+    // 어느 메시지를 누르든 항상 같은 자리(화면 세로 중앙쯤)에 뜨게 — 메시지 위치(위/아래)
+    // 따라 팝업이 흔들리지 않도록 고정. 너무 길면 위/아래 safe-area 안으로 클램프.
+    let t = Math.round((vh - groupH) / 2);
     if (t + groupH > vh - safeBottom) t = vh - safeBottom - groupH;
     if (t < safeTop) t = safeTop;
     setTop(t);
@@ -719,7 +719,7 @@ export function ReactionPicker({
           gap: 10,
           maxWidth: "min(86vw, 360px)",
           opacity: ready ? 1 : 0,
-          transformOrigin: mine ? "top right" : "top left",
+          transformOrigin: "center",
           animation: closing
             ? "hinest-ctx-popout .15s ease forwards"
             : ready ? "hinest-ctx-pop .2s cubic-bezier(.2,.7,.3,1)" : undefined,

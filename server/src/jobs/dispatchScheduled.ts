@@ -1,4 +1,5 @@
 import { prisma } from "../lib/db.js";
+import { USER_AVATAR_SELECT } from "../lib/userSelect.js";
 import { publishMany } from "../lib/sse.js";
 import { notifyMany } from "../lib/notify.js";
 
@@ -20,7 +21,7 @@ import { notifyMany } from "../lib/notify.js";
  */
 
 const MESSAGE_INCLUDE = {
-  sender: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+  sender: { select: USER_AVATAR_SELECT },
   room: { select: { id: true, name: true, type: true } },
   reactions: { select: { userId: true, emoji: true, user: { select: { name: true } } } },
 } as const;

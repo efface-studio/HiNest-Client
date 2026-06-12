@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { USER_AVATAR_SELECT } from "../lib/userSelect.js";
 import { z } from "zod";
 import archiver from "archiver";
 import { Prisma } from "@prisma/client";
@@ -671,7 +672,7 @@ router.get("/:id/revisions", async (req, res) => {
     where: { documentId: exist.id },
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { editor: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+    include: { editor: { select: USER_AVATAR_SELECT } },
   });
   res.json({ revisions: rows });
 });

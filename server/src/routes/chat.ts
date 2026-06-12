@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { USER_AVATAR_SELECT, USER_AVATAR_SELECT_ORG } from "../lib/userSelect.js";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, verifySuperToken, writeLog } from "../lib/auth.js";
@@ -82,7 +83,7 @@ router.get("/rooms", async (req, res) => {
     where,
     orderBy: { createdAt: "desc" },
     include: {
-      members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
+      members: { include: { user: { select: USER_AVATAR_SELECT_ORG } } },
       messages: {
         where: { deletedAt: null, scheduledAt: null },
         orderBy: { createdAt: "desc" },
@@ -159,7 +160,7 @@ router.post("/rooms", async (req, res) => {
         ],
       },
       include: {
-        members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
+        members: { include: { user: { select: USER_AVATAR_SELECT_ORG } } },
         messages: {
           where: { deletedAt: null, scheduledAt: null },
           orderBy: { createdAt: "desc" },
@@ -181,7 +182,7 @@ router.post("/rooms", async (req, res) => {
         members: { create: [{ companyId: u.companyId, userId: u.id }, { companyId: u.companyId, userId: other }] },
       },
       include: {
-        members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
+        members: { include: { user: { select: USER_AVATAR_SELECT_ORG } } },
         messages: { where: { deletedAt: null, scheduledAt: null }, orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
@@ -204,7 +205,7 @@ router.post("/rooms", async (req, res) => {
       members: { create: memberIds.map((userId) => ({ companyId: u.companyId, userId })) },
     },
     include: {
-      members: { include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
+      members: { include: { user: { select: USER_AVATAR_SELECT_ORG } } },
       messages: { where: { deletedAt: null, scheduledAt: null }, orderBy: { createdAt: "desc" }, take: 1 },
     },
   });
@@ -322,12 +323,12 @@ router.get("/search", async (req, res) => {
     orderBy: { createdAt: "desc" },
     take: 80,
     include: {
-      sender: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+      sender: { select: USER_AVATAR_SELECT },
       room: {
         include: {
           // 검색 결과 카드에 최대 50명까지만 표시 — 대형 그룹방에서 수백 명을 끌어와
           // 응답 크기가 폭발하는 것을 방지. 실제 UI 는 아바타 5개 + "+N" 으로 표시.
-          members: { take: 50, include: { user: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true, position: true, team: true } } } },
+          members: { take: 50, include: { user: { select: USER_AVATAR_SELECT_ORG } } },
         },
       },
     },
@@ -420,7 +421,7 @@ router.get("/rooms/:id/messages", async (req, res) => {
     orderBy: { createdAt: "asc" },
     take: 300,
     include: {
-      sender: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+      sender: { select: USER_AVATAR_SELECT },
       reactions: { select: { userId: true, emoji: true, user: { select: { name: true } } } },
     },
   });
@@ -562,7 +563,7 @@ router.post("/rooms/:id/messages", async (req, res) => {
       scheduledAt,
     },
     include: {
-      sender: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+      sender: { select: USER_AVATAR_SELECT },
       room: { select: { id: true, name: true, type: true } },
       reactions: { select: { userId: true, emoji: true, user: { select: { name: true } } } },
     },
@@ -710,7 +711,7 @@ router.patch("/messages/:id", async (req, res) => {
   const updated = await prisma.chatMessage.update({
     where: { id: msg.id },
     data,
-    include: { sender: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+    include: { sender: { select: USER_AVATAR_SELECT } },
   });
   broadcastToRoom(msg.roomId, "chat:update", { kind: "edit", message: updated });
   res.json({ message: updated });
@@ -735,7 +736,7 @@ router.post("/messages/:id/pin", async (req, res) => {
       pinnedAt: pin ? new Date() : null,
       pinnedById: pin ? u.id : null,
     },
-    include: { sender: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+    include: { sender: { select: USER_AVATAR_SELECT } },
   });
   broadcastToRoom(msg.roomId, "chat:update", { kind: "pin", message: updated });
   res.json({ message: updated });

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { USER_AVATAR_SELECT } from "../lib/userSelect.js";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
@@ -223,7 +224,7 @@ router.get("/", async (req, res) => {
       authorId: true,
       createdAt: true,
       updatedAt: true,
-      author: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+      author: { select: USER_AVATAR_SELECT },
       project: { select: { id: true, name: true, color: true } },
     },
   });
@@ -295,7 +296,7 @@ router.get("/:id", async (req, res) => {
   const meeting = await prisma.meeting.findFirst({
     where: { id: req.params.id, deletedAt: null },
     include: {
-      author: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } },
+      author: { select: USER_AVATAR_SELECT },
       project: { select: { id: true, name: true, color: true } },
       viewers: {
         include: { user: { select: { id: true, name: true, team: true, position: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
@@ -654,7 +655,7 @@ router.get("/:id/revisions", async (req, res) => {
     where: { meetingId: existing.id },
     orderBy: { createdAt: "desc" },
     take: 100,
-    include: { editor: { select: { id: true, name: true, avatarColor: true, isDeveloper: true, avatarUrl: true } } },
+    include: { editor: { select: USER_AVATAR_SELECT } },
   });
   res.json({ revisions: rows });
 });

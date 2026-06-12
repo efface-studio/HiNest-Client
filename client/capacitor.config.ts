@@ -61,11 +61,13 @@ const config: CapacitorConfig = {
   },
   plugins: {
     // 키보드 등장 애니메이션 — 'native' 리사이즈는 iOS 가 WebView 자체를 키보드 곡선에 맞춰
-    // 끌어올린다(CSS 트랜지션 없이도 부드러움). 'body' 보다 자연스럽고 입력 지연이 없다.
-    // resizeOnFullScreen=true → 안드로이드 전체화면에서도 동일 동작.
+    // [변경] resize:'none' — 플러그인이 WebView 를 리사이즈하지 않고, 앱이 --hinest-keyboard-h
+    // (nativeKeyboard 가 keyboardWillShow 에서 세팅)로 채팅 입력바·로그인·바텀시트를 키보드와
+    // '동시에' 올린다. 'native' 는 WebView 리사이즈가 키보드 애니메이션 끝에야 반영돼 입력바가
+    // 늦게 따라오던 잔상이 있었다(요구사항: 동시에 부드럽게).
+    // 안드로이드는 AndroidManifest 의 windowSoftInputMode=adjustResize 가 네이티브로 WebView 를 줄인다.
     Keyboard: {
-      resize: "native",
-      resizeOnFullScreen: true,
+      resize: "none",
     },
     // Capacitor Live Updates (Capgo, MIT, self-hosted) — 셸은 App Store 한 번만 심사받고,
     // 웹 번들(dist)은 우리 서버에서 OTA 로 받는다. autoUpdate=true ⇒ SDK 가 백그라운드에서

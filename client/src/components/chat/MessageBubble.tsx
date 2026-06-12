@@ -476,7 +476,7 @@ function VideoMenuItem({
 }
 
 /* ===== 이미지 썸네일 + 라이트박스 (뷰포트 안에 contain) ===== */
-function ImageThumb({ src, alt }: { src: string; alt: string }) {
+function ImageThumb({ src, alt, fileName, fileType, fileSize }: { src: string; alt: string; fileName: string | null; fileType: string | null; fileSize: number | null }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -514,7 +514,7 @@ function ImageThumb({ src, alt }: { src: string; alt: string }) {
           }}
         />
       </button>
-      {open && <ImageLightbox src={src} alt={alt} onClose={() => setOpen(false)} />}
+      {open && <ImageLightbox src={src} alt={alt} fileName={fileName} fileType={fileType} fileSize={fileSize} onClose={() => setOpen(false)} />}
     </>
   );
 }
@@ -522,12 +522,20 @@ function ImageThumb({ src, alt }: { src: string; alt: string }) {
 function ImageLightbox({
   src,
   alt,
+  fileName,
+  fileType,
+  fileSize,
   onClose,
 }: {
   src: string;
   alt: string;
+  fileName: string | null;
+  fileType: string | null;
+  fileSize: number | null;
   onClose: () => void;
 }) {
+  const [savingDocs, setSavingDocs] = useState(false);
+  const [savedDocs, setSavedDocs] = useState(false);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -541,27 +549,43 @@ function ImageLightbox({
     };
   }, [onClose]);
 
-  // 채팅 미니앱 컨테이너에 transform 이 걸려있어 position:fixed 가 viewport 가 아니라
-  // 그 컨테이너 기준으로 잡히는 문제 → document.body 로 portal 해서 진짜 풀 화면.
-  // [중요] React portal 은 React 트리 따라 이벤트가 버블링되므로, 여기서 mousedown 을
-  // stopPropagation 안 하면 닫기 직후 사라진 모달 위치의 React 부모(LongPress)가
-  // mousedown 만 받고 mouseup 은 못 받아 롱프레스 타이머가 발동되는 버그가 생김.
+  async function saveToDocs() {
+    if (savingDocs || savedDocs) return;
+    setSavingDocs(true);
+    try {
+      await api("/api/document", {
+        method: "POST",
+        json: { title: fileName ?? "사진", description: "채팅방에서 저장", fileUrl: src, fileName, fileType, fileSize, scope: "ALL" },
+      });
+      setSavedDocs(true);
+    } catch (e: any) {
+      alertAsync({ title: "문서함 저장 실패", description: e?.message ?? "저장에 실패했어요" });
+    } finally {
+      setSavingDocs(false);
+    }
+  }
+
+  // document.body 로 portal — 채팅 패널 transform 영향 없이 진짜 풀스크린.
+  // [중요] mousedown 은 stopPropagation 해 React 부모(LongPress)로 안 새게 한다(롱프레스 오발동 방지).
+  // 닫기는 onClick(탭 업)으로 — iOS 에서 onMouseDown(탭다운 즉시 닫힘)보다 탭에 안정적이라 'X·배경
+  // 안 먹힘'을 해결. 풀스크린 flexbox 센터 + box-sizing 으로 이미지가 넘쳐 한쪽으로 치우치던 것도 해결.
   return createPortal(
     <div
       role="dialog"
-      onMouseDown={(e) => {
-        e.stopPropagation();
-        onClose();
-      }}
-      onClick={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={onClose}
       style={{
         position: "fixed",
         inset: 0,
         zIndex: 9999,
-        background: "rgba(0, 0, 0, .82)",
-        display: "grid",
-        placeItems: "center",
-        padding: 24,
+        background: "rgba(0,0,0,.92)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        // 상단은 버튼줄(safe-area+64), 좌우/하단 여유. 이미지 maxWidth/Height:100% 가 이 패딩 박스 기준.
+        padding:
+          "calc(env(safe-area-inset-top) + 64px) 16px calc(env(safe-area-inset-bottom) + 16px)",
+        boxSizing: "border-box",
         animation: "hinest-fade .12s ease",
       }}
     >
@@ -570,66 +594,77 @@ function ImageLightbox({
         src={imgSrc(src)}
         alt={alt}
         onMouseDown={(e) => e.stopPropagation()}
+        onClick={(e) => e.stopPropagation()}
         style={{
-          maxWidth: "min(96vw, 1600px)",
-          maxHeight: "94vh",
+          maxWidth: "100%",
+          maxHeight: "100%",
           width: "auto",
           height: "auto",
           objectFit: "contain",
           borderRadius: 8,
           boxShadow: "0 16px 48px rgba(0,0,0,.4)",
-        }} loading="lazy" decoding="async"/>
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="닫기"
-        style={{
-          position: "absolute",
-          top: 16,
-          right: 16,
-          width: 40,
-          height: 40,
-          borderRadius: 999,
-          background: "rgba(255,255,255,.12)",
-          border: 0,
-          color: "#fff",
-          cursor: "pointer",
-          display: "grid",
-          placeItems: "center",
-          backdropFilter: "blur(8px)",
         }}
-      >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </button>
-      <a
-        href={src}
-        download={alt || undefined}
-        onClick={(e) => e.stopPropagation()}
+        loading="lazy"
+        decoding="async"
+      />
+      {/* 상단 버튼줄 — safe-area 아래. 좌: 사진 저장·문서함 저장, 우: 닫기. 탭이 배경 닫기로 안 새게 stop. */}
+      <div
         onMouseDown={(e) => e.stopPropagation()}
-        aria-label="다운로드"
+        onClick={(e) => e.stopPropagation()}
         style={{
           position: "absolute",
-          top: 16,
-          right: 64,
-          width: 40,
-          height: 40,
-          borderRadius: 999,
-          background: "rgba(255,255,255,.12)",
-          color: "#fff",
-          textDecoration: "none",
-          display: "grid",
-          placeItems: "center",
-          backdropFilter: "blur(8px)",
+          top: "calc(env(safe-area-inset-top) + 12px)",
+          left: 16,
+          right: 16,
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
         }}
       >
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <path d="M7 10l5 5 5-5" />
-          <path d="M12 15V3" />
-        </svg>
-      </a>
+        <div style={{ display: "flex", gap: 10 }}>
+          {/* 사진 저장 — iOS/안드는 downloadFromUrl 이 네이티브 저장(공유시트 등) 처리. */}
+          <button
+            type="button"
+            aria-label="사진 저장"
+            title="사진 저장"
+            onClick={() => downloadFromUrl(src, fileName ?? "")}
+            style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,.16)", border: 0, color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <path d="M7 10l5 5 5-5" />
+              <path d="M12 15V3" />
+            </svg>
+          </button>
+          {/* 문서함 저장 */}
+          <button
+            type="button"
+            aria-label="문서함 저장"
+            title={savedDocs ? "문서함에 저장됨" : "문서함 저장"}
+            onClick={saveToDocs}
+            disabled={savingDocs || savedDocs}
+            style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,.16)", border: 0, color: "#fff", cursor: savingDocs || savedDocs ? "default" : "pointer", opacity: savedDocs ? 0.6 : 1, display: "grid", placeItems: "center", WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}
+          >
+            {savedDocs ? (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            ) : (
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /></svg>
+            )}
+          </button>
+        </div>
+        {/* 닫기 */}
+        <button
+          type="button"
+          aria-label="닫기"
+          title="닫기"
+          onClick={onClose}
+          style={{ width: 44, height: 44, borderRadius: 999, background: "rgba(255,255,255,.16)", border: 0, color: "#fff", cursor: "pointer", display: "grid", placeItems: "center", WebkitBackdropFilter: "blur(8px)", backdropFilter: "blur(8px)" }}
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M18 6 6 18M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
     </div>,
     document.body,
   );
@@ -918,9 +953,15 @@ function MessageBubbleInner({ msg, mine }: { msg: Message; mine: boolean }) {
           gap: 4,
         }}
       >
-        <ImageThumb src={fileUrl!} alt={msg.fileName ?? ""} />
+        <ImageThumb
+          src={fileUrl!}
+          alt={msg.fileName ?? ""}
+          fileName={msg.fileName ?? null}
+          fileType={msg.fileType ?? null}
+          fileSize={typeof msg.fileSize === "number" ? msg.fileSize : null}
+        />
         {hasText && <TextBubble content={msg.content} mine={mine} />}
-        <SaveToDocsChip fileUrl={fileUrl!} fileName={msg.fileName ?? null} fileType={msg.fileType ?? null} fileSize={typeof msg.fileSize === "number" ? msg.fileSize : null} mine={mine} />
+        {/* 문서함 저장 칩은 사진 밑에서 제거 — 라이트박스(사진 확대)의 저장 버튼으로 이동. */}
       </div>
     );
   }

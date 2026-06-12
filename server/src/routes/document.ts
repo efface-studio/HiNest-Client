@@ -336,7 +336,6 @@ router.delete("/folders/:id", async (req, res) => {
 
   if (mode === "keep") {
     // 문서를 부모 폴더로 이동 — parentId 가 없으면 루트(null).
-    const parentId = check.folder.projectId ? null : null; // 현재 모델은 Folder.parentId 기반. 최상위면 null.
     const target = (await prisma.folder.findUnique({
       where: { id: req.params.id },
       select: { parentId: true },
@@ -348,7 +347,6 @@ router.delete("/folders/:id", async (req, res) => {
     // 빈 폴더들 삭제 (하위부터 상위 순서는 Prisma cascade 가 처리).
     await prisma.folder.delete({ where: { id: req.params.id } });
     await writeLog(u.id, "FOLDER_DELETE", req.params.id, "keep-docs");
-    void parentId; // 린트 무시 — 향후 프로젝트 이동 고려 자리.
     return res.json({ ok: true, mode: "keep" });
   }
 

@@ -58,8 +58,3 @@ export function publishMany(userIds: string[], event: string, data: unknown) {
 }
 
 /** 디버깅용 */
-export function clientCount() {
-  let n = 0;
-  for (const s of clients.values()) n += s.size;
-  return n;
-}

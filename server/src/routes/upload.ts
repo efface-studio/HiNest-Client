@@ -4,11 +4,11 @@ import path from "node:path";
 import fs from "node:fs";
 import crypto from "node:crypto";
 import { requireAuth } from "../lib/auth.js";
-import { isStorageEnabled, uploadFile } from "../lib/storage.js";
+import { isStorageEnabled, uploadFileFromPath } from "../lib/storage.js";
 
 /**
  * 업로드 플로우.
- *  1. multer 는 memoryStorage — 파일을 메모리로만 받는다 (디스크 미경유).
+ *  1. multer 는 diskStorage — 파일을 디스크 임시파일로 받는다 (RAM 미경유 → 대용량 OOM 방지).
  *  2. Supabase Storage 활성화 시 → 버킷에 올림. URL 은 /uploads/<key> 로 반환해
  *     기존 클라이언트 코드·DB 저장값이 그대로 유지됨. 실제 파일은 서버가 프록시해서 내려줌.
  *  3. 비활성화 시 (로컬 dev) → 과거와 동일하게 uploads/ 디렉터리에 파일 기록.
@@ -18,6 +18,11 @@ import { isStorageEnabled, uploadFile } from "../lib/storage.js";
 
 const UPLOAD_DIR = path.resolve(process.cwd(), "uploads");
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+
+// 업로드 임시 디렉터리 — multer 가 파일을 RAM 대신 디스크로 받기 위함(아래 diskStorage).
+// UPLOAD_DIR 하위에 둬서 dev fallback 의 rename(임시→uploads)이 같은 파일시스템에서 동작.
+const TMP_DIR = path.join(UPLOAD_DIR, ".tmp");
+if (!fs.existsSync(TMP_DIR)) fs.mkdirSync(TMP_DIR, { recursive: true });
 
 // multer는 multipart 파일명을 latin1로 해석해서 한글이 깨짐 → UTF-8로 복원
 function fixName(name: string) {
@@ -58,13 +63,19 @@ function safeExt(name: string) {
   return path.extname(base).toLowerCase();
 }
 
-// 메모리 스토리지 — 용도별로 한도가 다름.
+// 용도별 업로드 한도.
 //  - 채팅/범용(`/api/upload`)       : 100MB
 //  - 문서함  (`/api/upload/document`) : 500MB (큰 파일이 자주 오가는 문서함 전용)
-// 참고: memoryStorage 는 전체 파일을 RAM 에 올려두므로, 500MB 동시 업로드가 겹치면
-//       Fargate 태스크 RAM(현재 설정 확인 필요) 을 초과할 위험이 있음. 더 키우고 싶다면
-//       S3 multipart presigned URL 로 브라우저 → S3 직업로드 경로로 바꾸는 게 정석.
-const storage = multer.memoryStorage();
+//
+// diskStorage 사용(과거 memoryStorage 가 OOM 원인). memoryStorage 는 파일 전체를 RAM 에
+// 들고 있어, 대용량(수백 MB) 파일을 동시에 여러 개 올리면 Fargate 태스크 RAM 을 초과해
+// 프로세스가 죽고(→ 502/연결 끊김) 업로드 배치 전체가 실패했다. diskStorage 로 임시파일에
+// 받은 뒤 S3 로 스트리밍(createReadStream)하면 파일 크기·동시성과 무관하게 RAM 이 안정적이다.
+const storage = multer.diskStorage({
+  destination: (_req: any, _file: any, cb: any) => cb(null, TMP_DIR),
+  filename: (_req: any, _file: any, cb: any) =>
+    cb(null, `up-${Date.now()}-${crypto.randomBytes(8).toString("hex")}`),
+});
 
 function buildUploader(maxBytes: number) {
   return multer({
@@ -93,7 +104,7 @@ router.use(requireAuth);
 // 업로드 후 스토리지에 저장하고 JSON 으로 URL/메타데이터를 내려주는 공용 핸들러.
 async function storeAndRespond(req: any, res: any) {
   const f = (req as any).file as {
-    buffer: Buffer;
+    path: string;
     originalname: string;
     mimetype: string;
     size: number;
@@ -118,14 +129,18 @@ async function storeAndRespond(req: any, res: any) {
 
   try {
     if (isStorageEnabled()) {
-      await uploadFile(key, f.buffer, mime);
+      // 임시파일에서 스토리지로 스트리밍 업로드 (S3 는 RAM 미사용).
+      await uploadFileFromPath(key, f.path, f.size, mime);
     } else {
-      // dev fallback — 디스크 기록 (프로덕션은 Supabase 경로를 반드시 씀)
-      await fs.promises.writeFile(path.join(UPLOAD_DIR, key), f.buffer);
+      // dev fallback — 임시파일을 uploads/ 로 이동 (같은 FS 라 rename, 버퍼 미사용).
+      await fs.promises.rename(f.path, path.join(UPLOAD_DIR, key));
     }
   } catch (e: any) {
     console.error("[upload] failed", e);
     return res.status(500).json({ error: "업로드 저장 실패" });
+  } finally {
+    // 임시파일 정리 — S3/Supabase 경로는 업로드 후 삭제, dev rename 경로는 이미 옮겨져 없음(무시).
+    fs.promises.unlink(f.path).catch(() => {});
   }
 
   let kind: "IMAGE" | "VIDEO" | "FILE" = "FILE";
@@ -146,6 +161,9 @@ function runUploader(uploader: ReturnType<typeof buildUploader>) {
   return (req: any, res: any, next: any) => {
     uploader.single("file")(req, res, (err: any) => {
       if (err) {
+        // 크기 초과 등으로 실패하면 multer 가 남긴 임시파일을 정리한다.
+        const p = (req as any).file?.path;
+        if (p) fs.promises.unlink(p).catch(() => {});
         return res.status(400).json({ error: err.message ?? "업로드 실패" });
       }
       next();

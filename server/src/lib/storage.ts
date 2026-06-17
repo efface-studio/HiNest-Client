@@ -8,6 +8,7 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import type { Readable } from "node:stream";
+import fs from "node:fs";
 
 /**
  * 파일 업로드 저장소 래퍼.
@@ -97,6 +98,43 @@ export async function uploadFile(
   }
   if (supabase) {
     const { error } = await supabase.storage.from(SB_BUCKET).upload(key, body, {
+      contentType,
+      upsert: false,
+      cacheControl: "86400",
+    });
+    if (error) throw new Error(`storage upload: ${error.message}`);
+    return;
+  }
+  throw new Error("storage disabled");
+}
+
+/**
+ * 디스크 임시파일에서 스토리지로 업로드 (대용량 업로드용).
+ * S3 는 createReadStream 으로 스트리밍 → 파일 전체를 RAM 에 올리지 않는다(memoryStorage OOM 회피).
+ * Supabase 는 stream 지원이 버전 의존적이라 안전하게 Buffer 로 읽어 올린다(현재 prod 는 S3 라 미사용 경로).
+ */
+export async function uploadFileFromPath(
+  key: string,
+  filePath: string,
+  size: number,
+  contentType: string
+): Promise<void> {
+  if (s3) {
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: S3_BUCKET as string,
+        Key: key,
+        Body: fs.createReadStream(filePath),
+        ContentLength: size,
+        ContentType: contentType,
+        CacheControl: "max-age=86400",
+      })
+    );
+    return;
+  }
+  if (supabase) {
+    const buf = await fs.promises.readFile(filePath);
+    const { error } = await supabase.storage.from(SB_BUCKET).upload(key, buf, {
       contentType,
       upsert: false,
       cacheControl: "86400",

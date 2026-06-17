@@ -1075,6 +1075,7 @@ model Meeting {
   /// TipTap JSON document. HTML 이 아닌 구조화된 노드 트리.
   content     Json
   visibility  String              @default("ALL") // ALL | PROJECT | SPECIFIC
+  tags        String?             // 쉼표 구분 태그 — 메모(Document.tags)와 동일
   projectId   String?
   project     Project?            @relation(fields: [projectId], references: [id], onDelete: SetNull)
   authorId    String

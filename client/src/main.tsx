@@ -97,6 +97,15 @@ if (typeof window !== "undefined") {
     reportClientError(r?.message || String(r ?? "unhandledrejection"), r?.stack);
   });
 
+  // 파일을 화면 빈 곳(드롭존이 아닌 데)에 떨어뜨리면 브라우저/Electron 이 그 파일로 페이지를
+  // 이동시켜(앱이 통째로 사라짐) 버린다 — 메모에 사진 드롭하다 살짝 빗나가면 겪는 문제.
+  // 메모·문서함 등 실제 드롭존은 자기 onDrop 에서 preventDefault 하므로 defaultPrevented 가 켜진다
+  // → 그 외(처리 안 된) 파일 드롭만 막아 페이지가 날아가지 않게 한다. 내부 드래그(정렬 등)는
+  // dataTransfer 에 "Files" 가 없어 건드리지 않음.
+  const dropHasFiles = (e: DragEvent) => Array.from(e.dataTransfer?.types ?? []).includes("Files");
+  document.addEventListener("dragover", (e) => { if (dropHasFiles(e)) e.preventDefault(); });
+  document.addEventListener("drop", (e) => { if (dropHasFiles(e) && !e.defaultPrevented) e.preventDefault(); });
+
   // 핀치 줌 (iOS)
   document.addEventListener("gesturestart", (e) => e.preventDefault());
   document.addEventListener("gesturechange", (e) => e.preventDefault());

@@ -5,7 +5,8 @@ import archiver from "archiver";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
-import { downloadFile, isStorageEnabled } from "../lib/storage.js";
+import { getFileStream, isStorageEnabled } from "../lib/storage.js";
+import { Readable } from "node:stream";
 import { UPLOAD_DIR } from "./upload.js";
 import { safeUniqueZipEntry } from "../lib/zipSafe.js";
 import path from "node:path";
@@ -192,13 +193,22 @@ export async function streamFolderZip(
   for (const doc of docs) {
     const key = doc.fileUrl!.replace(/^\/uploads\//, "");
     try {
-      const buf = await readFileKey(key);
-      if (!buf) continue;
+      // 무버퍼 스트리밍 — 파일을 통째로 RAM 에 올리지 않고 S3 스트림을 archiver 로 바로 흘려보낸다
+      // (대용량 폴더 OOM·zip 잘림 방지). archiver 가 다 읽을 때까지 기다린 뒤 다음 파일로.
+      const stream = await readFileStream(key);
+      if (!stream) continue;
       const prefix = folderPath(doc.folderId);
       const fname = doc.fileName ?? `${doc.title}`;
       const entryPath = safeUniqueZipEntry(usedEntryNames, prefix, fname);
-      archive.append(buf, { name: entryPath });
-      added++;
+      const s = stream;
+      let ok = false;
+      await new Promise<void>((resolve) => {
+        s.on("end", () => { ok = true; resolve(); });
+        s.on("close", () => resolve());
+        s.on("error", (err) => { console.error("[folderShare:zip] stream error", key, err); resolve(); });
+        archive.append(s, { name: entryPath });
+      });
+      if (ok) added++;
     } catch (e) {
       console.error("[folderShare:zip] fetch failed", key, e);
     }
@@ -210,13 +220,13 @@ export async function streamFolderZip(
   await archive.finalize();
 }
 
-async function readFileKey(key: string): Promise<Buffer | null> {
+async function readFileStream(key: string): Promise<Readable | null> {
   // path traversal 2차 방어 — key 가 안전한 charset 이 아니거나
   // resolve 결과가 UPLOAD_DIR 바깥이면 거부. (1차 방어는 docSchema.fileUrl regex.)
   if (!/^[A-Za-z0-9._-]+$/.test(key)) return null;
   if (isStorageEnabled()) {
-    const f = await downloadFile(key);
-    if (f) return f.buffer;
+    const s = await getFileStream(key);
+    if (s) return s;
   }
   const diskPath = path.join(UPLOAD_DIR, key);
   const resolved = path.resolve(diskPath);
@@ -224,7 +234,7 @@ async function readFileKey(key: string): Promise<Buffer | null> {
   if (!resolved.startsWith(uploadDirResolved + path.sep) && resolved !== uploadDirResolved) {
     return null;
   }
-  if (fs.existsSync(resolved)) return fs.promises.readFile(resolved);
+  if (fs.existsSync(resolved)) return fs.createReadStream(resolved);
   return null;
 }
 

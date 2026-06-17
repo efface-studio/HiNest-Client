@@ -7,7 +7,7 @@ import {
   NoSuchKey,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import type { Readable } from "node:stream";
+import { Readable } from "node:stream";
 import fs from "node:fs";
 
 /**
@@ -188,6 +188,34 @@ export async function downloadFile(key: string): Promise<{
     };
   }
 
+  return null;
+}
+
+/**
+ * 파일을 스트림으로 연다 (zip 묶음 등 대용량 다운로드용 — 전체를 RAM 에 버퍼하지 않음).
+ * S3 는 GetObject 응답 Body 를 그대로 반환(진짜 스트리밍). Supabase 는 stream API 가 없어
+ * Blob→Buffer→stream 폴백(현재 prod=S3 라 거의 미사용). 키가 어느 백엔드에도 없으면 null.
+ */
+export async function getFileStream(key: string): Promise<Readable | null> {
+  if (s3) {
+    try {
+      const res = await s3.send(new GetObjectCommand({ Bucket: S3_BUCKET as string, Key: key }));
+      if (res.Body) return res.Body as Readable;
+    } catch (e: any) {
+      const is404 =
+        e instanceof NoSuchKey ||
+        e?.name === "NoSuchKey" ||
+        e?.$metadata?.httpStatusCode === 404;
+      if (!is404) throw e;
+    }
+  }
+  if (supabase) {
+    const { data, error } = await supabase.storage.from(SB_BUCKET).download(key);
+    if (!error && data) {
+      const ab = await data.arrayBuffer();
+      return Readable.from(Buffer.from(ab));
+    }
+  }
   return null;
 }
 

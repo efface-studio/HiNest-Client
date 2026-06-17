@@ -1,4 +1,5 @@
 import { Node, mergeAttributes } from "@tiptap/core";
+import type { Editor } from "@tiptap/core";
 import type { EditorView } from "@tiptap/pm/view";
 import { apiFetch } from "../api";
 import { fmtSize } from "../lib/fmt";
@@ -103,4 +104,28 @@ export async function uploadAndInsertAt(view: EditorView, pos: number, file: Fil
   // 업로드(비동기) 동안 문서가 바뀌었을 수 있으니 현재 문서 크기로 클램프.
   const p = Math.max(0, Math.min(pos, view.state.doc.content.size));
   view.dispatch(view.state.tr.insert(p, node));
+}
+
+/** 파일 선택창을 띄워 고른 파일을 업로드 후 에디터 커서 위치에 삽입(툴바 📎·슬래시 명령 공용). */
+export function pickFilesAndInsert(editor: Editor, accept = "image/*,*/*"): void {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = accept;
+  input.multiple = true;
+  input.style.display = "none";
+  document.body.appendChild(input);
+  input.onchange = async () => {
+    const files = Array.from(input.files ?? []);
+    input.remove();
+    for (const f of files) {
+      const r = await uploadEditorFile(f);
+      if (!r) continue;
+      if (r.kind === "IMAGE") {
+        editor.chain().focus().insertContent({ type: "image", attrs: { src: r.url, alt: r.name } }).run();
+      } else {
+        editor.chain().focus().insertContent({ type: "fileAttachment", attrs: { href: r.url, name: r.name, size: r.size, mime: r.type } }).run();
+      }
+    }
+  };
+  input.click();
 }

@@ -392,3 +392,88 @@ html.dark .mention-item.is-active {
   font-size: 11.5px;
   color: var(--c-text-muted, #64748B);
 }
+
+/* ===== 슬래시(/) 명령 메뉴 (editorSlash) ===== */
+.slash-popup-host {
+  animation: mention-in 80ms ease-out;
+}
+.slash-menu {
+  background: var(--c-surface-1, #fff);
+  border: 1px solid var(--c-border, #E2E8F0);
+  border-radius: 12px;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.16);
+  padding: 6px;
+  min-width: 240px;
+  max-width: 300px;
+  max-height: 320px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+html.dark .slash-menu {
+  background: #0F172A;
+  border-color: #1E293B;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.5);
+}
+.slash-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 7px 9px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  color: var(--c-text, #0F172A);
+}
+html.dark .slash-item {
+  color: #E2E8F0;
+}
+.slash-item.is-active {
+  background: var(--c-surface-3, #F1F5F9);
+}
+html.dark .slash-item.is-active {
+  background: #1E293B;
+}
+.slash-ic {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--c-surface-3, #F1F5F9);
+  font-size: 13px;
+  font-weight: 700;
+}
+html.dark .slash-ic {
+  background: #1E293B;
+}
+.slash-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.slash-title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.slash-hint {
+  font-size: 11.5px;
+  color: var(--c-text-muted, #64748B);
+}
+.slash-empty {
+  background: var(--c-surface-1, #fff);
+  border: 1px solid var(--c-border, #E2E8F0);
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--c-text-muted, #64748B);
+}
+html.dark .slash-empty {
+  background: #0F172A;
+  border-color: #1E293B;
+}

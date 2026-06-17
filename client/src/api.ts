@@ -51,6 +51,42 @@ export function apiFetch(path: string, init: RequestInit = {}): Promise<Response
 }
 
 /**
+ * multipart 업로드 응답을 견고하게 해석한다 (문서함·첨부 등 공용).
+ *
+ * 서버가 정상이면 JSON(`{url,name,...}` 또는 `{error}`)을 주지만, 요청이 앱에 닿기 전
+ * 프록시·로드밸런서·게이트웨이가 막으면(413 용량초과·502/503·504 타임아웃 등) 본문이
+ * HTML(`"<html>.."`)이나 플레인 텍스트(`"An error occurred.."`)로 온다. 이때 `res.json()`
+ * 을 그대로 부르면 `Unexpected token '<' ... is not valid JSON` 같은 암호 같은 에러가
+ * 사용자에게 그대로 노출된다 → 본문을 text 로 먼저 읽고, JSON 이면 그대로, 아니면 HTTP
+ * 상태로 사람이 읽을 메시지를 만든다.
+ */
+export async function readUploadResponse<T = any>(res: Response): Promise<T> {
+  const text = await res.text().catch(() => "");
+  let data: any = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    /* 비-JSON 본문(HTML/텍스트 에러 페이지) — 아래 상태 기반 메시지로 처리 */
+  }
+  if (res.ok) {
+    if (data) return data as T;
+    throw new Error("업로드 응답을 해석할 수 없어요. 잠시 후 다시 시도해 주세요.");
+  }
+  if (data && typeof data.error === "string") throw new Error(data.error);
+  throw new Error(uploadStatusMessage(res.status));
+}
+
+function uploadStatusMessage(status: number): string {
+  if (status === 413) return "파일이 너무 커서 업로드할 수 없어요 (서버 허용 용량을 초과했어요).";
+  if (status === 429) return "업로드 요청이 많아요. 잠시 후 다시 시도해 주세요.";
+  if (status === 504) return "업로드 시간이 초과됐어요. 네트워크가 빠른 곳에서 다시 시도하거나 파일을 나눠 올려 주세요.";
+  if (status === 502 || status === 503) return "서버가 잠시 바빠 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.";
+  if (status >= 500) return "서버 오류로 업로드에 실패했어요. 잠시 후 다시 시도해 주세요.";
+  if (status === 401 || status === 403) return "로그인이 만료됐거나 권한이 없어요. 새로고침 후 다시 시도해 주세요.";
+  return `업로드에 실패했어요 (오류 ${status}).`;
+}
+
+/**
  * <img>/<video> 처럼 헤더를 못 싣는 태그의 src 변환 — 주로 /uploads 이미지(아바타·첨부).
  *
  * 두 가지를 해결한다:

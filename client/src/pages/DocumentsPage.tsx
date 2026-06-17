@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { api, apiFetch , imgSrc} from "../api";
+import { api, apiFetch, imgSrc, readUploadResponse } from "../api";
 import { fmtSize } from "../lib/fmt";
 import { Skeleton } from "../components/Skeleton";
 import { useAuth } from "../auth";
@@ -19,6 +19,15 @@ import { Browser } from "@capacitor/browser";
 
 // DocMemoModal 은 TipTap(무거운 번들)을 포함 → 실제 열릴 때만 로드.
 const DocMemoModal = lazy(() => import("../components/DocMemoModal"));
+
+// 대용량 파일이 섞이면 동시 업로드 수를 줄인다. 서버는 업로드 파일을 통째로 메모리에
+// 버퍼(memoryStorage)하므로, 대용량(수백 MB) 파일을 6개씩 동시에 올리면 서버 RAM 이
+// 터져 태스크가 죽고(→ 502/HTML 응답) 배치 전체가 "is not valid JSON" 으로 실패한다.
+// 큰 파일이 하나라도 있으면 2로 묶어 RAM 피크를 제한하고, 파일당 업로드 대역폭도 확보한다.
+const LARGE_FILE_BYTES = 50 * 1024 * 1024;
+function uploadConcurrency(files: File[]): number {
+  return files.some((f) => f.size > LARGE_FILE_BYTES) ? 2 : 6;
+}
 
 type Folder = {
   id: string;
@@ -359,8 +368,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       form.append("file", file);
       // 문서함 전용 엔드포인트 — 서버에서 500MB 까지 허용.
       const res = await apiFetch("/api/upload/document", { method: "POST", body: form });
-      if (!res.ok) throw new Error((await res.json()).error);
-      const json = await res.json();
+      const json = await readUploadResponse(res);
       setDocForm((p) => ({
         ...p,
         title: p.title || file.name.replace(/\.[^.]+$/, ""),
@@ -391,8 +399,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     const form = new FormData();
     form.append("file", file);
     const res = await apiFetch("/api/upload/document", { method: "POST", body: form });
-    if (!res.ok) throw new Error((await res.json()).error);
-    const up = await res.json();
+    const up = await readUploadResponse(res);
     const fallbackScope: DocScope =
       scopeTab === "team" ? "TEAM" : scopeTab === "private" ? "PRIVATE" : "ALL";
     await api("/api/document", {
@@ -474,7 +481,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       //    에러는 그때그때 alert 로 띄우지 않고 모았다가 끝나고 사유별로 한 번에 보여준다.
       let done = 0;
       const failures: { rel: string; reason: string }[] = [];
-      await runInPool(list, 6, async (f) => {
+      await runInPool(list, uploadConcurrency(list), async (f) => {
         const rel: string = (f as any).webkitRelativePath || f.name;
         const parts = rel.split("/");
         const folderPath = parts.slice(0, -1).join("/");
@@ -486,8 +493,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
             const form = new FormData();
             form.append("file", f);
             const res = await apiFetch("/api/upload/document", { method: "POST", body: form });
-            if (!res.ok) throw new Error((await res.json()).error);
-            const up = await res.json();
+            const up = await readUploadResponse(res);
             await api("/api/document", {
               method: "POST",
               json: {
@@ -641,7 +647,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
       setFolderUpload({ done: 0, total: list.length, label: "" });
       let done = 0;
       const failures: { rel: string; reason: string }[] = [];
-      await runInPool(list, 6, async (f) => {
+      await runInPool(list, uploadConcurrency(list), async (f) => {
         try { await uploadAndCreate(f); }
         catch (e: any) { failures.push({ rel: f.name, reason: e?.message ?? "알 수 없는 오류" }); }
         done += 1;

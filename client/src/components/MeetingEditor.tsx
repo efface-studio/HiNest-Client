@@ -237,7 +237,22 @@ export default function MeetingEditor({ value, onChange, editable = true, placeh
   if (!editor) return null;
 
   return (
-    <div className={`meeting-editor ${editable ? "" : "is-readonly"}`}>
+    <div
+      className={`meeting-editor ${editable ? "" : "is-readonly"}`}
+      // 에디터 컨테이너 전체를 파일 드롭존으로 확장 — 글쓰기 영역(.ProseMirror)이 작은 빈 메모에서도
+      // 근처에 떨어뜨리면 삽입되게. 텍스트 위에 정확히 떨어지면 ProseMirror 의 handleDrop 이 처리하고
+      // (드롭 위치 삽입) e.defaultPrevented 가 켜지므로, 여기선 그 바깥(여백·툴바 등)에 떨어진
+      // 파일만 문서 끝에 삽입한다(중복 방지). 빈 영역에 떨궈도 안 먹던 기존 문제 해결.
+      onDragOver={editable ? (e) => { if (Array.from(e.dataTransfer?.types ?? []).includes("Files")) e.preventDefault(); } : undefined}
+      onDrop={editable ? (e) => {
+        if (e.defaultPrevented) return; // ProseMirror 가 이미 처리(텍스트 위 드롭)
+        const files = Array.from(e.dataTransfer?.files ?? []);
+        if (files.length === 0) return;
+        e.preventDefault();
+        const pos = editor.state.doc.content.size; // 문서 끝
+        for (const f of files) void uploadAndInsertAt(editor.view, pos, f);
+      } : undefined}
+    >
       {editable && <Toolbar editor={editor} />}
       <EditorContent editor={editor} className="meeting-editor-content" />
     </div>

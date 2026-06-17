@@ -25,6 +25,8 @@ const createSchema = z.object({
   title: z.string().min(1).max(200),
   content: z.any(), // TipTap JSON document
   visibility: z.enum(VIS).default("ALL"),
+  // 메모(Document.tags)와 동일 — 쉼표 구분 태그 문자열.
+  tags: z.string().max(500).optional(),
   // CUID/UUID 길이는 36자 이내. 50자면 여유 있음.
   projectId: z.string().max(50).optional().nullable(),
   // 지정 열람자 최대 200명 — 특정 대상 회의록 자리의 합리적 상한.
@@ -35,6 +37,7 @@ const updateSchema = z.object({
   title: z.string().min(1).max(200).optional(),
   content: z.any().optional(),
   visibility: z.enum(VIS).optional(),
+  tags: z.string().max(500).optional(),
   projectId: z.string().max(50).optional().nullable(),
   viewerIds: z.array(z.string().max(50)).max(200).optional(),
 });
@@ -220,6 +223,7 @@ router.get("/", async (req, res) => {
       id: true,
       title: true,
       visibility: true,
+      tags: true,
       projectId: true,
       authorId: true,
       createdAt: true,
@@ -443,6 +447,7 @@ router.post("/", async (req, res) => {
       title: d.title,
       content: d.content ?? {},
       visibility: d.visibility,
+      tags: d.tags,
       projectId: d.visibility === "PROJECT" ? d.projectId ?? null : null,
       authorId: u.id,
       viewers:
@@ -584,6 +589,7 @@ router.patch("/:id", async (req, res) => {
         title: d.title,
         content: d.content,
         visibility: d.visibility,
+        tags: d.tags,
         projectId:
           d.visibility !== undefined
             ? d.visibility === "PROJECT"

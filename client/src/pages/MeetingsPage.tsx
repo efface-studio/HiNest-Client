@@ -17,6 +17,7 @@ type MeetingRow = {
   updatedAt: string;
   author: { id: string; name: string; avatarColor: string; avatarUrl?: string | null };
   project: { id: string; name: string; color: string } | null;
+  tags?: string | null;
 };
 
 type Vis = MeetingRow["visibility"];
@@ -82,7 +83,7 @@ export default function MeetingsPage() {
     if (visibilityFilter === "mine") arr = arr.filter((m) => m.authorId === user?.id);
     else if (visibilityFilter !== "all") arr = arr.filter((m) => m.visibility === visibilityFilter);
     const k = q.trim().toLowerCase();
-    if (k) arr = arr.filter((m) => m.title.toLowerCase().includes(k) || m.author.name.toLowerCase().includes(k));
+    if (k) arr = arr.filter((m) => m.title.toLowerCase().includes(k) || m.author.name.toLowerCase().includes(k) || (m.tags ?? "").toLowerCase().includes(k));
     // 서버는 updatedAt desc 로 주지만 화면 기준에 맞춰 다시 정렬.
     const field = sortKey === "updated" ? "updatedAt" : "createdAt";
     arr = [...arr].sort((a, b) => new Date(b[field]).getTime() - new Date(a[field]).getTime());
@@ -293,6 +294,7 @@ function MeetingCard({ m, sortKey }: { m: MeetingRow; sortKey: SortKey }) {
     : "#D97706";
   const timeIso = sortKey === "updated" ? m.updatedAt : m.createdAt;
   const timeLabel = sortKey === "updated" ? "수정" : "작성";
+  const tags = (m.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean);
   return (
     <Link
       to={`/meetings/${m.id}`}
@@ -308,6 +310,15 @@ function MeetingCard({ m, sortKey }: { m: MeetingRow; sortKey: SortKey }) {
             </div>
             <VisibilityBadge v={m.visibility} />
           </div>
+          {tags.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {tags.slice(0, 4).map((t) => (
+                <span key={t} className="text-[10px] font-medium px-1.5 py-[1px] rounded bg-ink-100 dark:bg-ink-800 text-ink-500 dark:text-ink-400">
+                  #{t}
+                </span>
+              ))}
+            </div>
+          )}
           <div className="flex items-end justify-between gap-2 mt-3">
             <div className="flex items-center gap-2 text-[11.5px] text-ink-500 flex-wrap min-w-0">
               <AuthorChip author={m.author} />

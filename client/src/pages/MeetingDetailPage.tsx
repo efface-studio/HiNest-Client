@@ -28,6 +28,7 @@ type Meeting = {
   title: string;
   content: any;
   visibility: Visibility;
+  tags?: string | null;
   projectId: string | null;
   authorId: string;
   createdAt: string;
@@ -54,6 +55,7 @@ export default function MeetingDetailPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState<any>(null);
   const [visibility, setVisibility] = useState<Visibility>("ALL");
+  const [tags, setTags] = useState("");
   const [projectId, setProjectId] = useState<string | null>(null);
   const [viewerIds, setViewerIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -96,6 +98,7 @@ export default function MeetingDetailPage() {
     setTitle(m.title);
     setContent(m.content ?? { type: "doc", content: [{ type: "paragraph" }] });
     setVisibility(m.visibility);
+    setTags(m.tags ?? "");
     setProjectId(m.projectId);
     setViewerIds(m.viewers.map((v) => v.userId));
     setErr(null);
@@ -169,7 +172,7 @@ export default function MeetingDetailPage() {
       if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, content, visibility, projectId, viewerIds, edit, canEdit]);
+  }, [title, content, visibility, tags, projectId, viewerIds, edit, canEdit]);
 
   async function doSave() {
     if (!meeting || !canEdit) return;
@@ -184,6 +187,7 @@ export default function MeetingDetailPage() {
         title: title.trim() || "제목 없는 회의록",
         content,
         visibility,
+        tags: tags.trim() || undefined,
         projectId: visibility === "PROJECT" ? projectId : null,
       };
       if (visibility === "SPECIFIC") payload.viewerIds = viewerIds;
@@ -375,6 +379,23 @@ export default function MeetingDetailPage() {
           </>
         )}
       </div>
+
+      {/* 태그 — 메모와 동일 (쉼표 구분) */}
+      {edit ? (
+        <input
+          className="block w-full text-[13px] text-slate-400 placeholder-slate-300 bg-transparent border-none outline-none mb-4"
+          placeholder="# 태그 입력 (쉼표로 구분, 예: 기획, 아이디어)"
+          value={tags}
+          onChange={(e) => setTags(e.target.value)}
+          maxLength={200}
+        />
+      ) : (tags || meeting.tags) ? (
+        <div className="flex flex-wrap gap-1 mb-4">
+          {((meeting.tags ?? tags) || "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
+            <span key={t} className="chip-gray text-[11px]">#{t}</span>
+          ))}
+        </div>
+      ) : null}
 
       {/* 공개 범위 — 편집모드에서만 */}
       {edit && (

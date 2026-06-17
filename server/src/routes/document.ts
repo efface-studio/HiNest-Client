@@ -5,7 +5,8 @@ import archiver from "archiver";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog, queryTokenAuth } from "../lib/auth.js";
-import { downloadFile, isStorageEnabled } from "../lib/storage.js";
+import { getFileStream, isStorageEnabled } from "../lib/storage.js";
+import { Readable } from "node:stream";
 import { UPLOAD_DIR } from "./upload.js";
 import { safeUniqueZipEntry } from "../lib/zipSafe.js";
 import path from "node:path";
@@ -744,14 +745,15 @@ router.delete("/:id", async (req, res) => {
  * 폴더 자체를 못 보면 애초에 이 엔드포인트로 접근 불가.
  */
 
-/** 저장소/디스크 어디든 해당 파일의 Buffer 를 꺼낸다. 없으면 null.
+/** 저장소/디스크 어디든 해당 파일을 스트림으로 연다. 없으면 null. zip 묶음에서 파일 전체를
+ *  RAM 에 버퍼하지 않기 위함(대용량 폴더 OOM·zip 잘림 방지).
  *  path traversal 2차 방어 — key 가 안전한 charset 이 아니거나 resolve 결과가
  *  UPLOAD_DIR 바깥이면 거부. (1차 방어는 docSchema.fileUrl regex.) */
-async function fetchFileBuffer(key: string): Promise<Buffer | null> {
+async function fetchFileStream(key: string): Promise<Readable | null> {
   if (!/^[A-Za-z0-9._-]+$/.test(key)) return null;
   if (isStorageEnabled()) {
-    const f = await downloadFile(key);
-    if (f) return f.buffer;
+    const s = await getFileStream(key);
+    if (s) return s;
   }
   // 디스크 fallback (dev / legacy)
   const diskPath = path.join(UPLOAD_DIR, key);
@@ -761,7 +763,7 @@ async function fetchFileBuffer(key: string): Promise<Buffer | null> {
     return null;
   }
   if (fs.existsSync(resolved)) {
-    return fs.promises.readFile(resolved);
+    return fs.createReadStream(resolved);
   }
   return null;
 }
@@ -872,32 +874,28 @@ router.get("/folders/:id/download", async (req, res) => {
     planned.push({ key, name });
   }
 
-  // ★ 속도 개선 — 예전엔 파일을 "순차" 로 S3 에서 받아(왕복 latency 가 직렬 합산) 폴더가 크면
-  //   매우 느렸다. 동시성 제한(워커 3개)으로 S3 fetch 를 겹쳐 체감 속도를 크게 줄인다.
-  //   cap=3 은 메모리 상한(최대 3개 파일 버퍼 동시 보유)과 속도의 절충 — 대용량 파일 다수에서도
-  //   Fargate 메모리를 과하게 먹지 않게. (완전한 무버퍼 스트리밍은 storage 스트림 API 후속 과제.)
-  const CONCURRENCY = 3;
+  // 무버퍼 스트리밍 — 각 파일을 S3 에서 스트림으로 열어 archiver 로 바로 흘려보낸다(파일 전체를
+  //   RAM 에 올리지 않음). 한 번에 한 파일만 열고 archiver 가 다 읽을 때까지 기다린 뒤 다음 파일로 →
+  //   대용량 영상 폴더도 메모리 안정. (예전엔 파일을 통째로 버퍼해 동시 3개 받다 Fargate RAM 초과 →
+  //   프로세스 사망 → zip 스트림이 중간에 끊겨 "잘못된 메시지(EBADMSG)"로 깨졌음.)
   let added = 0;
-  let idx = 0;
-  async function worker() {
-    while (idx < planned.length) {
-      const e = planned[idx++];
-      let buf: Buffer | null = null;
-      try {
-        buf = await fetchFileBuffer(e.key);
-      } catch (err) {
-        console.error("[doc:zip] fetch failed", e.key, err);
-      }
-      if (buf) {
-        archive.append(buf, { name: e.name }); // archiver 가 내부 큐로 직렬화 — 동시 append 안전
-        added++;
-      }
+  for (const e of planned) {
+    let stream: Readable | null = null;
+    try {
+      stream = await fetchFileStream(e.key);
+    } catch (err) {
+      console.error("[doc:zip] stream open failed", e.key, err);
     }
-  }
-  try {
-    await Promise.all(Array.from({ length: Math.min(CONCURRENCY, planned.length) }, () => worker()));
-  } catch (err) {
-    console.error("[doc:zip] collect loop failed", err);
+    if (!stream) continue;
+    const s = stream;
+    let ok = false;
+    await new Promise<void>((resolve) => {
+      s.on("end", () => { ok = true; resolve(); });
+      s.on("close", () => resolve());
+      s.on("error", (err) => { console.error("[doc:zip] stream error", e.key, err); resolve(); });
+      archive.append(s, { name: e.name });
+    });
+    if (ok) added++;
   }
 
   if (added === 0) {

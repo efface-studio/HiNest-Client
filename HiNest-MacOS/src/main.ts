@@ -208,6 +208,71 @@ function showWindow() {
   mainWindow.focus();
 }
 
+/**
+ * 애플리케이션 메뉴.
+ *
+ * App Store 심사(Guideline 4) 대응: 메인 창을 닫으면 트레이로 숨겨지는데, 다시 열 수 있는
+ * "메뉴 항목"이 없으면 리젝된다 → "창" 메뉴와 앱 메뉴에 [HiNest 창 열기] 를 둔다.
+ * 또한 원격 웹앱을 띄우는 웹뷰라, 복사/붙여넣기·전체선택 같은 Edit 역할 메뉴가 없으면
+ * ⌘C/⌘V 등 키보드 단축키가 동작하지 않으므로 표준 메뉴(앱·편집·보기·창)를 함께 구성한다.
+ * (기본 메뉴를 setApplicationMenu 로 대체하므로 표준 항목을 직접 채워야 한다.)
+ */
+function buildAppMenu() {
+  const isMac = process.platform === "darwin";
+  const template: Electron.MenuItemConstructorOptions[] = [];
+
+  if (isMac) {
+    template.push({
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        { label: "HiNest 창 열기", click: () => showWindow() },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    });
+  }
+
+  template.push({
+    label: "편집",
+    submenu: [
+      { role: "undo" },
+      { role: "redo" },
+      { type: "separator" },
+      { role: "cut" },
+      { role: "copy" },
+      { role: "paste" },
+      { role: "selectAll" },
+    ],
+  });
+
+  template.push({
+    label: "보기",
+    submenu: [{ role: "togglefullscreen" }],
+  });
+
+  template.push({
+    label: "창",
+    submenu: [
+      // ★ 닫아서 트레이로 숨긴 메인 창을 다시 여는 항목 (App Store 심사 필수)
+      { label: "HiNest 창 열기", accelerator: "CmdOrCtrl+0", click: () => showWindow() },
+      { type: "separator" },
+      { role: "minimize" },
+      { role: "zoom" },
+      { role: "front" },
+    ],
+  });
+
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.on("second-instance", () => {
   showWindow();
 });
@@ -231,6 +296,7 @@ function initAutoLaunchDefault() {
 
 app.whenReady().then(() => {
   createWindow();
+  buildAppMenu();
   createTray();
   initAutoLaunchDefault();
 

@@ -56,8 +56,6 @@
       ],
       "hardenedRuntime": false,
       "extendInfo": {
-        "NSCameraUsageDescription": "영상 통화에 카메라를 사용합니다.",
-        "NSMicrophoneUsageDescription": "영상·음성 통화에 마이크를 사용합니다.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },

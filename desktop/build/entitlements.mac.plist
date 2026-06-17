@@ -24,11 +24,7 @@
     <key>com.apple.security.files.downloads.read-write</key>
     <true/>
 
-    <!-- 생체 인증 / 키체인 / 패스키 관련 -->
-    <key>com.apple.security.device.camera</key>
-    <true/>
-    <key>com.apple.security.device.audio-input</key>
-    <true/>
+    <!-- AppleScript 자동화 (시스템 이벤트 등) -->
     <key>com.apple.security.automation.apple-events</key>
     <true/>
 

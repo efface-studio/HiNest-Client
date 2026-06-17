@@ -16,12 +16,6 @@
     <key>com.apple.security.files.downloads.read-write</key>
     <true/>
 
-    <!-- 영상·음성 통화 (getUserMedia) -->
-    <key>com.apple.security.device.camera</key>
-    <true/>
-    <key>com.apple.security.device.audio-input</key>
-    <true/>
-
     <!-- App Store 배포 식별자 — 프로비저닝 프로파일과 일치해야 함.
          3NVCLTSP9V = 팀 ID (기존 Developer ID 서명 identity 에서 확인). -->
     <key>com.apple.application-identifier</key>

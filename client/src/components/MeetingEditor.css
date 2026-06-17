@@ -337,3 +337,58 @@ html.dark .mention-item.is-active {
   font-size: 12px;
   color: var(--c-text-muted, #64748B);
 }
+
+/* ===== 인라인 이미지·파일 첨부 (editorMedia 노드) ===== */
+.meeting-editor-content img.me-img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  margin: 10px 0;
+  border: 1px solid var(--c-border);
+}
+.meeting-editor-content img.me-img.ProseMirror-selectednode {
+  outline: 2px solid var(--c-brand, #3B5CF0);
+  outline-offset: 1px;
+}
+.meeting-editor-content a.me-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  background: var(--c-surface-2, #fafbfc);
+  text-decoration: none;
+  color: var(--c-text);
+  max-width: 360px;
+  cursor: pointer;
+}
+.meeting-editor-content a.me-file:hover {
+  background: var(--c-surface-3, rgba(0, 0, 0, 0.06));
+}
+.meeting-editor-content a.me-file.ProseMirror-selectednode {
+  outline: 2px solid var(--c-brand, #3B5CF0);
+  outline-offset: 1px;
+}
+.me-file-ic {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+.me-file-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.me-file-name {
+  font-size: 13.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.me-file-size {
+  font-size: 11.5px;
+  color: var(--c-text-muted, #64748B);
+}

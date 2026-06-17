@@ -14,13 +14,14 @@ import { Extension } from "@tiptap/core";
 import { PluginKey } from "@tiptap/pm/state";
 import { DOMParser as PMDOMParser } from "@tiptap/pm/model";
 import { markdownToHtml, looksLikeMarkdown } from "../lib/markdownToHtml";
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import Select, { type SelectOption } from "./Select";
 import "./MeetingEditor.css";
 import { promptAsync } from "./ConfirmHost";
 import MentionList, { type MentionUser } from "./MentionList";
 import { parseCodeSegments } from "../lib/codeDetect";
+import { EditorImage, FileAttachment, uploadEditorFile, uploadAndInsertAt } from "./editorMedia";
 
 /** 페이스트된 평문이 코드처럼 보이는지 — codeDetect 의 휴리스틱 재사용.
  *  parseCodeSegments 가 반환하는 segment 중 코드(펜스/휴리스틱)가 본문 대부분을 차지하면 true. */
@@ -137,6 +138,8 @@ export default function MeetingEditor({ value, onChange, editable = true, placeh
       Placeholder.configure({ placeholder: placeholder ?? "여기에 회의록을 작성하세요..." }),
       TaskList,
       TaskItem.configure({ nested: true }),
+      EditorImage,
+      FileAttachment,
       ...(mentionFetcher
         ? [
             Mention.configure({
@@ -151,7 +154,26 @@ export default function MeetingEditor({ value, onChange, editable = true, placeh
     // - HTML 페이스트(워드/노션 등 서식 있는 출처)는 건드리지 않음
     // - 휴리스틱은 lib/codeDetect.ts 와 동일 규칙 (한글 비율·코드 토큰 비율)
     editorProps: {
+      // 파일 드래그&드롭 → 업로드 후 드롭 위치(노션식)에 이미지/파일 노드 삽입.
+      handleDrop: (view, event) => {
+        const dragEvent = event as DragEvent;
+        const files = Array.from(dragEvent.dataTransfer?.files ?? []);
+        if (files.length === 0) return false;
+        event.preventDefault();
+        const at = view.posAtCoords({ left: dragEvent.clientX, top: dragEvent.clientY });
+        const pos = at?.pos ?? view.state.selection.from;
+        for (const f of files) void uploadAndInsertAt(view, pos, f);
+        return true;
+      },
       handlePaste: (view, event) => {
+        // 0) 이미지 파일 붙여넣기(스크린샷 등) → 업로드 후 커서 위치에 삽입.
+        const imgFiles = Array.from(event.clipboardData?.files ?? []).filter((f) => f.type.startsWith("image/"));
+        if (imgFiles.length > 0) {
+          event.preventDefault();
+          const pos = view.state.selection.from;
+          for (const f of imgFiles) void uploadAndInsertAt(view, pos, f);
+          return true;
+        }
         const html = event.clipboardData?.getData("text/html");
         if (html) return false; // 리치 HTML 페이스트(워드·웹 등)는 기본 동작 유지
         const text = event.clipboardData?.getData("text/plain");
@@ -221,6 +243,22 @@ export default function MeetingEditor({ value, onChange, editable = true, placeh
 }
 
 function Toolbar({ editor }: { editor: Editor }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  // 툴바 첨부 버튼 — 고른 파일들을 업로드해 커서 위치에 이미지/파일로 삽입.
+  async function onPickFiles(list: FileList | null) {
+    const files = Array.from(list ?? []);
+    for (const f of files) {
+      const r = await uploadEditorFile(f);
+      if (!r) continue;
+      if (r.kind === "IMAGE") {
+        editor.chain().focus().insertContent({ type: "image", attrs: { src: r.url, alt: r.name } }).run();
+      } else {
+        editor.chain().focus().insertContent({ type: "fileAttachment", attrs: { href: r.url, name: r.name, size: r.size, mime: r.type } }).run();
+      }
+    }
+  }
+
   return (
     <div className="meeting-toolbar">
       {/* 글씨 크기 */}
@@ -356,6 +394,18 @@ function Toolbar({ editor }: { editor: Editor }) {
       <ToolBtn onClick={() => editor.chain().focus().setHorizontalRule().run()} title="구분선">
         ―
       </ToolBtn>
+
+      <ToolBtn onClick={() => fileRef.current?.click()} title="이미지·파일 첨부">
+        📎
+      </ToolBtn>
+      <input
+        ref={fileRef}
+        type="file"
+        multiple
+        accept="image/*,*/*"
+        style={{ display: "none" }}
+        onChange={(e) => { void onPickFiles(e.target.files); e.target.value = ""; }}
+      />
 
       <Divider />
 

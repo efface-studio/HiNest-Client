@@ -22,6 +22,7 @@ import { promptAsync } from "./ConfirmHost";
 import MentionList, { type MentionUser } from "./MentionList";
 import { parseCodeSegments } from "../lib/codeDetect";
 import { EditorImage, FileAttachment, uploadEditorFile, uploadAndInsertAt } from "./editorMedia";
+import { SlashCommands } from "./editorSlash";
 
 /** 페이스트된 평문이 코드처럼 보이는지 — codeDetect 의 휴리스틱 재사용.
  *  parseCodeSegments 가 반환하는 segment 중 코드(펜스/휴리스틱)가 본문 대부분을 차지하면 true. */
@@ -140,6 +141,7 @@ export default function MeetingEditor({ value, onChange, editable = true, placeh
       TaskItem.configure({ nested: true }),
       EditorImage,
       FileAttachment,
+      SlashCommands,
       ...(mentionFetcher
         ? [
             Mention.configure({

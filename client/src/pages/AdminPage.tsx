@@ -2294,26 +2294,26 @@ function rowStatus(r: OverviewRow): AttStatus {
 /** 상태 표시 — 배경 박스 없이 컬러 점 + 색 텍스트 (토스/리니어 미니멀 스타일).
  *  라이트/다크 모두 가독성 좋게 채도 충분한 단일 색만 사용. 칩이 둥둥 떠 보이지 않게.
  *  fg(글자/점 색)만으로 표현 — 미출근/퇴근은 회색 톤이라 행에 자연스럽게 녹는다. */
-const STATUS_META: Record<AttStatus, { label: string; fg: string }> = {
-  working: { label: "근무 중", fg: "#22C55E" },
-  off:     { label: "퇴근",    fg: "#94A3B8" },
-  absent:  { label: "미출근",  fg: "#F59E0B" },
+const STATUS_META: Record<AttStatus, { label: string; fg: string; bg: string }> = {
+  working: { label: "근무 중", fg: "#22C55E", bg: "rgba(34,197,94,0.12)" },
+  off:     { label: "퇴근",    fg: "#94A3B8", bg: "rgba(148,163,184,0.14)" },
+  absent:  { label: "미출근",  fg: "#F59E0B", bg: "rgba(245,158,11,0.13)" },
 };
 function StatusDot({ status }: { status: AttStatus }) {
   const m = STATUS_META[status];
   return (
-    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold whitespace-nowrap" style={{ color: m.fg }}>
+    <span className="inline-flex items-center gap-1.5 text-[11.5px] font-bold whitespace-nowrap px-2.5 py-1 rounded-full" style={{ color: m.fg, background: m.bg }}>
       <span
         className={`inline-block rounded-full ${status === "working" ? "live-dot" : ""}`}
-        style={{ width: 6, height: 6, background: m.fg }}
+        style={{ width: 5, height: 5, background: m.fg }}
         aria-hidden
       />
       {m.label}
     </span>
   );
 }
-type SortKey = "name" | "week" | "month" | "total" | "today";
-const SORT_LABEL: Record<SortKey, string> = { name: "이름", today: "오늘", week: "이번 주", month: "이번 달", total: "총 근무" };
+type SortKey = "name" | "week" | "month";
+const SORT_LABEL: Record<SortKey, string> = { name: "이름", week: "이번 주", month: "이번 달" };
 
 function AttendanceOverviewTab() {
   const [rows, setRows] = useState<OverviewRow[]>([]);
@@ -2349,10 +2349,8 @@ function AttendanceOverviewTab() {
     });
     const key = (r: OverviewRow): number | string => {
       switch (sortKey) {
-        case "today": return r.today?.worked ?? -1;
         case "week": return r.weekMinutes;
         case "month": return r.monthMinutes;
-        case "total": return r.totalMinutes;
         default: return r.name;
       }
     };
@@ -2393,7 +2391,7 @@ function AttendanceOverviewTab() {
           {/* 모바일 정렬 셀렉트 — 데스크톱은 헤더 클릭 */}
           <div className="md:hidden flex items-center gap-1.5">
             <Select className="input !py-1.5 !h-[36px] !text-[12.5px]" value={sortKey} onChange={(v) => setSortKey(v as SortKey)}
-              options={(["name", "today", "week", "month", "total"] as SortKey[]).map((k) => ({ value: k, label: SORT_LABEL[k] }))}
+              options={(["name", "week", "month"] as SortKey[]).map((k) => ({ value: k, label: SORT_LABEL[k] }))}
             />
             <button className="btn-ghost btn-xs" onClick={() => setSortDesc((d) => !d)} title={sortDesc ? "내림차순" : "오름차순"}>
               {sortDesc ? "↓" : "↑"}
@@ -2434,11 +2432,9 @@ function AttendanceOverviewTab() {
               <tr className="text-ink-500 border-b border-ink-100 text-[11.5px] uppercase tracking-wide select-none">
                 <th onClick={() => toggleSort("name")} className="text-left font-bold px-5 py-3 cursor-pointer hover:text-ink-800 sticky left-0 bg-[var(--c-surface-1)]">구성원{sortArrow("name")}</th>
                 <th className="text-center font-bold px-3 py-3">상태</th>
-                <th className="text-center font-bold px-3 py-3">오늘 출/퇴근</th>
-                <th onClick={() => toggleSort("today")} className="text-right font-bold px-3 py-3 cursor-pointer hover:text-ink-800">오늘 근무{sortArrow("today")}</th>
+                <th className="text-left font-bold px-3 py-3">오늘 출·퇴근</th>
                 <th onClick={() => toggleSort("week")} className="text-right font-bold px-3 py-3 cursor-pointer hover:text-ink-800 min-w-[180px]">이번 주{sortArrow("week")}</th>
-                <th onClick={() => toggleSort("month")} className="text-right font-bold px-3 py-3 cursor-pointer hover:text-ink-800">이번 달{sortArrow("month")}</th>
-                <th onClick={() => toggleSort("total")} className="text-right font-bold px-5 py-3 cursor-pointer hover:text-ink-800">총 근무{sortArrow("total")}</th>
+                <th onClick={() => toggleSort("month")} className="text-right font-bold px-5 py-3 cursor-pointer hover:text-ink-800">이번 달{sortArrow("month")}</th>
               </tr>
             </thead>
             <tbody>
@@ -2462,27 +2458,31 @@ function AttendanceOverviewTab() {
                     <td className="text-center px-3 py-3">
                       <StatusDot status={st} />
                     </td>
-                    <td className="text-center px-3 py-3 tabular-nums text-ink-700">
-                      <span className="text-ink-900 font-semibold">{fmtTime(r.today?.checkIn ?? null)}</span>
-                      <span className="text-ink-300 mx-1">·</span>
-                      <span>{fmtTime(r.today?.checkOut ?? null)}</span>
+                    <td className="text-left px-3 py-3 tabular-nums">
+                      {r.today ? (
+                        <>
+                          <span className="text-ink-900 font-semibold">{fmtTime(r.today.checkIn)}</span>
+                          <span className="text-ink-300 mx-1">–</span>
+                          <span className="text-ink-600">{fmtTime(r.today.checkOut)}</span>
+                        </>
+                      ) : (
+                        <span className="text-ink-300">—</span>
+                      )}
                     </td>
-                    <td className="text-right px-3 py-3 tabular-nums font-semibold text-ink-900">{r.today ? fmtMin(r.today.worked) : "—"}</td>
                     <td className="px-3 py-3 min-w-[180px]">
                       <div className="flex items-center justify-end gap-2.5">
-                        <span className="tabular-nums text-ink-700">{fmtMin(r.weekMinutes)}</span>
+                        <span className={`tabular-nums ${r.weekMinutes ? "text-ink-800" : "text-ink-300"}`}>{fmtMin(r.weekMinutes)}</span>
                         <div className="w-20 h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-surface-3)" }} title="주 40시간 기준">
                           <div className="h-full rounded-full" style={{ width: `${weekPct * 100}%`, background: weekPct >= 1 ? "#16A34A" : "var(--c-brand)" }} />
                         </div>
                       </div>
                     </td>
-                    <td className="text-right px-3 py-3 tabular-nums text-ink-700">{fmtMin(r.monthMinutes)}</td>
-                    <td className="text-right px-5 py-3 tabular-nums font-bold text-ink-900">{fmtMin(r.totalMinutes)}</td>
+                    <td className={`text-right px-5 py-3 tabular-nums ${r.monthMinutes ? "text-ink-700" : "text-ink-300"}`}>{fmtMin(r.monthMinutes)}</td>
                   </tr>
                 );
               })}
               {!loading && filtered.length === 0 && (
-                <tr><td colSpan={7} className="text-center py-12 text-ink-400">조건에 맞는 구성원이 없어요.</td></tr>
+                <tr><td colSpan={5} className="text-center py-12 text-ink-400">조건에 맞는 구성원이 없어요.</td></tr>
               )}
             </tbody>
           </table>
@@ -2512,14 +2512,14 @@ function AttendanceOverviewTab() {
               <div className="grid grid-cols-2 gap-2.5 text-[12px]">
                 <KV2 label="오늘 출근" value={fmtTime(r.today?.checkIn ?? null)} />
                 <KV2 label="오늘 퇴근" value={fmtTime(r.today?.checkOut ?? null)} />
-                <KV2 label="오늘 근무" value={r.today ? fmtMin(r.today.worked) : "—"} bold />
-                <KV2 label="이번 주" value={fmtMin(r.weekMinutes)} />
+                <KV2 label="이번 주" value={fmtMin(r.weekMinutes)} bold />
+                <KV2 label="이번 달" value={fmtMin(r.monthMinutes)} />
               </div>
               <div className="mt-2">
                 <div className="w-full h-1.5 rounded-full overflow-hidden" style={{ background: "var(--c-surface-3)" }}>
                   <div className="h-full rounded-full" style={{ width: `${weekPct * 100}%`, background: weekPct >= 1 ? "#16A34A" : "var(--c-brand)" }} />
                 </div>
-                <div className="text-[10.5px] text-ink-400 mt-1">주 40시간 기준 · 이번 달 {fmtMin(r.monthMinutes)} · 총 {fmtMin(r.totalMinutes)}</div>
+                <div className="text-[10.5px] text-ink-400 mt-1">주 40시간 기준</div>
               </div>
             </div>
           );

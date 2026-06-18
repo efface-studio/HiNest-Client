@@ -1502,6 +1502,14 @@ router.get("/attendance/overview", async (req, res) => {
       companyId: u.companyId ?? null,
       active: true,
       ...(u.superAdmin ? {} : { superAdmin: false }), // 일반 관리자에겐 총관리자 은닉
+      // 테스트용 계정(팀/직급에 "테스트")은 근태 현황에서 숨김 — 실제 직원 목록만 깔끔히.
+      // 실제 회사엔 "테스트" 팀이 없어 무영향. (비활성 계정은 위 active:true 로 이미 제외.)
+      NOT: {
+        OR: [
+          { team: { contains: "테스트" } },
+          { position: { contains: "테스트" } },
+        ],
+      },
     },
     select: {
       id: true, name: true, team: true, position: true,

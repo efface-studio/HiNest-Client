@@ -29,6 +29,7 @@ import notificationRouter from "./routes/notification.js";
 import pushRouter from "./routes/push.js";
 import updatesRouter from "./routes/updates.js";
 import attendanceIpRestrictRouter from "./routes/attendanceIpRestrict.js";
+import attendanceGeofenceRouter from "./routes/attendanceGeofence.js";
 import searchRouter from "./routes/search.js";
 import documentRouter from "./routes/document.js";
 import approvalRouter from "./routes/approval.js";
@@ -296,6 +297,8 @@ app.use("/api/feature-flags", featureFlagsRouter);
 //    Express 가 /api/admin/attendance-ip 를 adminRouter 안에서 처리하려다 404 가 됨.
 // 회사 출근 IP 화이트리스트 — 회사 관리자(ADMIN) 전용. CRUD.
 app.use("/api/admin/attendance-ip", attendanceIpRestrictRouter);
+// 회사 출근 위치(지오펜스) — 회사 관리자(ADMIN) 전용. CRUD. (attendance-ip 미러)
+app.use("/api/admin/attendance-geo", attendanceGeofenceRouter);
 app.use("/api/admin", adminRouter);
 app.use("/api/platform", platformRouter);
 app.use("/api/users", usersRouter);

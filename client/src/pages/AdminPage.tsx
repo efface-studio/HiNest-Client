@@ -2724,20 +2724,36 @@ function AttendanceIpTab({ onCountChange }: { onCountChange?: (n: number) => voi
   const [labelInput, setLabelInput] = useState("");
   const [adding, setAdding] = useState(false);
 
+  // ── 위치 기반 자동출근(지오펜스) — 출근 IP 제한을 미러링한 별개 설정 ──
+  type Geofence = { id: string; lat: number; lng: number; radiusM: number; label: string | null; createdAt: string };
+  const [geoEnabled, setGeoEnabled] = useState(false);
+  const [geofences, setGeofences] = useState<Geofence[]>([]);
+  const [geoLabel, setGeoLabel] = useState("");
+  const [geoLat, setGeoLat] = useState("");
+  const [geoLng, setGeoLng] = useState("");
+  const [geoRadius, setGeoRadius] = useState("150");
+  const [geoAdding, setGeoAdding] = useState(false);
+  const [locating, setLocating] = useState(false);
+
   // 목록 길이가 바뀔 때마다 상위 탭 배지 카운트 동기화(추가/삭제 즉시 반영).
   useEffect(() => { onCountChange?.(items.length); }, [items.length, onCountChange]);
 
   async function load() {
     setLoading(true);
     try {
-      const res = await api<{
-        enabled: boolean;
-        allowedIps: { id: string; cidr: string; label: string | null; createdAt: string }[];
-        clientIp: string | null;
-      }>("/api/admin/attendance-ip");
-      setEnabled(res.enabled);
-      setItems(res.allowedIps);
-      setClientIp(res.clientIp);
+      const [ip, geo] = await Promise.all([
+        api<{
+          enabled: boolean;
+          allowedIps: { id: string; cidr: string; label: string | null; createdAt: string }[];
+          clientIp: string | null;
+        }>("/api/admin/attendance-ip"),
+        api<{ enabled: boolean; geofences: Geofence[] }>("/api/admin/attendance-geo"),
+      ]);
+      setEnabled(ip.enabled);
+      setItems(ip.allowedIps);
+      setClientIp(ip.clientIp);
+      setGeoEnabled(geo.enabled);
+      setGeofences(geo.geofences);
     } catch (e: any) {
       alertAsync({ title: "불러오기 실패", description: e?.message ?? String(e) });
     } finally {
@@ -2786,6 +2802,81 @@ function AttendanceIpTab({ onCountChange }: { onCountChange?: (n: number) => voi
     setItems((arr) => arr.filter((x) => x.id !== id));
     try { await api(`/api/admin/attendance-ip/${id}`, { method: "DELETE" }); }
     catch (e: any) { setItems(prev); alertAsync({ title: "제거 실패", description: e?.message ?? String(e) }); }
+  }
+
+  // ── 지오펜스 핸들러 ──
+  async function toggleGeo(next: boolean) {
+    setGeoEnabled(next);
+    try {
+      await api("/api/admin/attendance-geo", { method: "PATCH", json: { enabled: next } });
+    } catch (e: any) {
+      setGeoEnabled(!next);
+      alertAsync({ title: "변경 실패", description: e?.message ?? String(e) });
+    }
+  }
+
+  function useCurrentLocation() {
+    if (!navigator.geolocation) {
+      alertAsync({ title: "위치를 가져올 수 없어요", description: "이 기기/브라우저가 위치 기능을 지원하지 않아요." });
+      return;
+    }
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGeoLat(pos.coords.latitude.toFixed(6));
+        setGeoLng(pos.coords.longitude.toFixed(6));
+        setLocating(false);
+      },
+      (err) => {
+        setLocating(false);
+        alertAsync({
+          title: "현재 위치를 가져오지 못했어요",
+          description: err?.message || "위치 권한을 허용했는지 확인해 주세요.",
+        });
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }
+
+  async function addGeo() {
+    const lat = Number(geoLat.trim());
+    const lng = Number(geoLng.trim());
+    const radiusM = Math.round(Number(geoRadius.trim()) || 0);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      alertAsync({ title: "좌표를 확인하세요", description: "위도 -90~90, 경도 -180~180 범위의 숫자를 입력하세요." });
+      return;
+    }
+    if (!(radiusM >= 20 && radiusM <= 5000)) {
+      alertAsync({ title: "반경을 확인하세요", description: "반경은 20m ~ 5000m 사이여야 해요." });
+      return;
+    }
+    setGeoAdding(true);
+    try {
+      const res = await api<{ ok: boolean; item: Geofence }>("/api/admin/attendance-geo", {
+        method: "POST",
+        json: { lat, lng, radiusM, label: geoLabel.trim() || undefined },
+      });
+      setGeofences((arr) => [...arr, res.item]);
+      setGeoLabel(""); setGeoLat(""); setGeoLng(""); setGeoRadius("150");
+    } catch (e: any) {
+      alertAsync({ title: "추가 실패", description: e?.message ?? String(e) });
+    } finally {
+      setGeoAdding(false);
+    }
+  }
+
+  async function removeGeo(id: string) {
+    const ok = await confirmAsync({
+      title: "이 위치를 목록에서 제거할까요?",
+      description: "이 위치 반경에서는 더 이상 자동 출근이 안 돼요.",
+      tone: "danger",
+      confirmLabel: "제거",
+    });
+    if (!ok) return;
+    const prev = geofences;
+    setGeofences((arr) => arr.filter((x) => x.id !== id));
+    try { await api(`/api/admin/attendance-geo/${id}`, { method: "DELETE" }); }
+    catch (e: any) { setGeofences(prev); alertAsync({ title: "제거 실패", description: e?.message ?? String(e) }); }
   }
 
   return (
@@ -2851,6 +2942,87 @@ function AttendanceIpTab({ onCountChange }: { onCountChange?: (n: number) => voi
                   </div>
                 </div>
                 <button className="btn-icon" title="삭제" onClick={() => remove(it.id)}>
+                  <TrashIcon />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* ── 위치 기반 자동출근(지오펜스) — 출근 IP 제한과 같은 패턴 ── */}
+      <div className="panel p-5">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-[15px] font-extrabold text-ink-900">위치 기반 자동출근</div>
+            <div className="text-[12.5px] text-ink-500 mt-1 leading-relaxed">
+              켜면 등록한 사무실 위치 반경 안에 들어왔을 때 자동으로 출근 처리돼요. 모바일 앱의 위치 권한이 필요합니다.
+              플랫폼/슈퍼 관리자는 이 기능과 무관합니다.
+            </div>
+          </div>
+          <label className="flex items-center gap-2 select-none cursor-pointer">
+            <input type="checkbox" className="accent-brand-500 w-5 h-5" checked={geoEnabled}
+              onChange={(e) => toggleGeo(e.target.checked)} disabled={loading} />
+            <span className="text-[13px] font-bold text-ink-800">사용</span>
+          </label>
+        </div>
+      </div>
+
+      <div className="panel p-5">
+        <div className="text-[13px] font-bold text-ink-800 mb-3">사무실 위치 추가</div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex-1 min-w-[160px]">
+            <label className="field-label">라벨 (선택)</label>
+            <input className="input" placeholder="예: 본사 사무실"
+              value={geoLabel} onChange={(e) => setGeoLabel(e.target.value)} maxLength={60} />
+          </div>
+          <div className="w-[130px]">
+            <label className="field-label">위도</label>
+            <input className="input" placeholder="37.566500" inputMode="decimal"
+              value={geoLat} onChange={(e) => setGeoLat(e.target.value)} />
+          </div>
+          <div className="w-[130px]">
+            <label className="field-label">경도</label>
+            <input className="input" placeholder="126.978000" inputMode="decimal"
+              value={geoLng} onChange={(e) => setGeoLng(e.target.value)} />
+          </div>
+          <div className="w-[110px]">
+            <label className="field-label">반경 (m)</label>
+            <input className="input" placeholder="150" inputMode="numeric"
+              value={geoRadius} onChange={(e) => setGeoRadius(e.target.value)} />
+          </div>
+          <button className="btn-ghost" disabled={locating} onClick={useCurrentLocation}>
+            {locating ? "가져오는 중…" : "현재 위치 가져오기"}
+          </button>
+          <button className="btn-primary" disabled={geoAdding || !geoLat.trim() || !geoLng.trim()} onClick={addGeo}>추가</button>
+        </div>
+      </div>
+
+      <div className="panel p-0 overflow-hidden">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-ink-100">
+          <div className="text-[13px] font-bold text-ink-800">사무실 위치 목록 <span className="text-ink-400 tabular ml-1">{geofences.length}</span></div>
+          {!geoEnabled && <span className="chip-amber text-[11px]">사용 꺼짐</span>}
+        </div>
+        {loading ? (
+          <div className="px-4 py-8 text-center text-[13px] text-ink-500">불러오는 중…</div>
+        ) : geofences.length === 0 ? (
+          <div className="px-4 py-10 text-center text-[13px] text-ink-500">
+            등록된 위치가 없어요. 위에서 추가하세요.
+          </div>
+        ) : (
+          <ul className="divide-y divide-ink-100">
+            {geofences.map((g) => (
+              <li key={g.id} className="px-4 py-3 flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <div className="text-[13px] font-bold text-ink-900 truncate">
+                    {g.label ? `${g.label} · ` : ""}{g.lat.toFixed(5)}, {g.lng.toFixed(5)}
+                    <span className="text-ink-400 font-semibold"> · 반경 {g.radiusM}m</span>
+                  </div>
+                  <div className="text-[11.5px] text-ink-500 truncate">
+                    {new Date(g.createdAt).toLocaleString("ko-KR")}
+                  </div>
+                </div>
+                <button className="btn-icon" title="삭제" onClick={() => removeGeo(g.id)}>
                   <TrashIcon />
                 </button>
               </li>

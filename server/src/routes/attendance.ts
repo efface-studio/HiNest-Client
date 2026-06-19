@@ -5,6 +5,7 @@ import { requireAuth, writeLog } from "../lib/auth.js";
 import { notify } from "../lib/notify.js";
 import { todayStr } from "../lib/dates.js";
 import { ipMatchesAny, normalizeClientIp } from "../lib/ipMatch.js";
+import { withinAnyGeofence, isValidLatLng } from "../lib/geoMatch.js";
 import { normalizeSessions, workedMinutes, hasOpenSession, closeOpenSessions, type WorkSession } from "../lib/attendanceSessions.js";
 
 const router = Router();
@@ -127,6 +128,92 @@ router.post("/check-out", async (req, res) => {
   });
   await writeLog(u.id, "CHECK_OUT", date);
   res.json({ attendance: rec, workedMinutes: workedMinutes(normalizeSessions(rec)), working: false });
+});
+
+// 위치 자동출근 설정 조회 — 네이티브가 지오펜스 등록(OS 위치 모니터링)에 사용.
+// 슈퍼/플랫폼 어드민·회사 없음은 enabled:false 로 응답(자동출근 대상 아님).
+router.get("/geo-config", async (req, res) => {
+  const u = (req as any).user;
+  if (!u.companyId || u.superAdmin || u.platformAdmin) {
+    return res.json({ enabled: false, geofences: [] });
+  }
+  const company = await prisma.company.findUnique({
+    where: { id: u.companyId },
+    select: {
+      attendanceGeoEnabled: true,
+      geofences: { select: { lat: true, lng: true, radiusM: true } },
+    },
+  });
+  res.json({
+    enabled: !!company?.attendanceGeoEnabled,
+    geofences: company?.geofences ?? [],
+  });
+});
+
+// 위치 기반 자동출근 — 네이티브가 회사 반경 진입 시 호출. 좌표가 등록된 지오펜스 안이면 출근.
+// IP 자동출근(check-in src="ip")과 동일한 다중 세션 로직, src="geo".
+//   (a) 회사 없음/슈퍼·플랫폼 어드민 → 400
+//   (b) 위치 자동출근 꺼짐 or 지오펜스 0건 → 400 GEO_DISABLED
+//   (c) 반경 밖 → 403 GEO_OUT_OF_RANGE
+//   (d) 이미 근무 중(열린 세션 존재) → 멱등(현재 상태 반환, 중복 출근 X)
+// IP 제한이 켜져 있어도 geo-check-in 은 통과 — 별개 경로.
+const geoCheckInSchema = z.object({
+  lat: z.number(),
+  lng: z.number(),
+  accuracy: z.number().optional(),
+});
+router.post("/geo-check-in", async (req, res) => {
+  const u = (req as any).user;
+  if (!u.companyId || u.superAdmin || u.platformAdmin) {
+    return res.status(400).json({ error: "위치 자동출근 대상이 아니에요." });
+  }
+  const parsed = geoCheckInSchema.safeParse(req.body);
+  if (!parsed.success || !isValidLatLng(parsed.data.lat, parsed.data.lng)) {
+    return res.status(400).json({ error: "올바른 좌표가 아니에요." });
+  }
+  const { lat, lng } = parsed.data;
+  const date = todayStr();
+
+  const company = await prisma.company.findUnique({
+    where: { id: u.companyId },
+    select: {
+      attendanceGeoEnabled: true,
+      geofences: { select: { lat: true, lng: true, radiusM: true } },
+    },
+  });
+  if (!company?.attendanceGeoEnabled || company.geofences.length === 0) {
+    return res.status(400).json({ code: "GEO_DISABLED", error: "위치 자동출근이 꺼져 있어요." });
+  }
+  if (!withinAnyGeofence(lat, lng, company.geofences)) {
+    return res.status(403).json({ code: "GEO_OUT_OF_RANGE", error: "회사 위치 반경 밖이에요" });
+  }
+
+  const existing = await prisma.attendance.findUnique({
+    where: { userId_date: { userId: u.id, date } },
+  });
+  const sessions = normalizeSessions(existing);
+
+  // 이미 근무 중이면 멱등 — 새 세션을 또 열지 않는다(반경 재진입 중복 출근 방지).
+  if (hasOpenSession(sessions)) {
+    return res.json({ attendance: existing, workedMinutes: workedMinutes(sessions), working: true });
+  }
+
+  const now = new Date();
+  sessions.push({ s: now.toISOString(), e: null, src: "geo" });
+  const firstCheckIn = existing?.checkIn ?? now; // 최초 출근 시각 보존
+  const rec = await prisma.attendance.upsert({
+    where: { userId_date: { userId: u.id, date } },
+    update: { sessions: sessions as unknown as object, checkIn: firstCheckIn, checkOut: null },
+    create: {
+      userId: u.id,
+      companyId: u.companyId ?? null,
+      date,
+      checkIn: now,
+      sessions: [{ s: now.toISOString(), e: null, src: "geo" }] as unknown as object,
+    },
+  });
+  await writeLog(u.id, "CHECK_IN", date, "geo-auto");
+  res.json({ attendance: rec, workedMinutes: workedMinutes(normalizeSessions(rec)), working: true });
 });
 
 // 월별 근태 기록

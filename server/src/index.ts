@@ -429,7 +429,7 @@ app.use("/uploads", uploadsQueryToken, requireAuth, async (req, res) => {
 
     // 다운로드(첨부)는 presigned URL 로 302 리다이렉트 — 클라이언트가 스토리지(S3 CDN)에서 직접 받는다.
     // ECS 가 전체 파일을 메모리로 버퍼링해 되넘기던 4-hop 경로 제거 → 속도 대폭 향상 + 504 타임아웃 해소 +
-    // ResponseContentDisposition 으로 원본 파일명 보장. (인라인 이미지/영상은 아래 버퍼+캐시 경로 유지 —
+    // ResponseContentDisposition 으로 원본 파일명 보장. (인라인 이미지/오디오는 아래 버퍼+캐시 경로 유지 —
     // 아바타 재요청 시 max-age 캐시 활용, 매 로드마다 리다이렉트 hop 이 생기지 않게.)
     if (wantAttachment) {
       const signed = await getSignedDownloadUrl(name, {
@@ -442,7 +442,19 @@ app.use("/uploads", uploadsQueryToken, requireAuth, async (req, res) => {
       }
     }
 
-    // 인라인 이미지/영상, 또는 presigned 실패 → 기존 버퍼 스트림(+캐시).
+    // 인라인 영상은 presigned(inline)로 302 — S3 가 Range 요청(탐색/스트리밍)을 직접 처리해
+    // ECS 가 큰 영상을 통째 버퍼링하던 것보다 훨씬 빠르고 RAM 도 안 쓴다. (이미지/오디오는
+    // 아래 버퍼+캐시 경로 유지 — 작은 파일 재요청 시 max-age 캐시 활용.)
+    if (!forceDownload && mt.startsWith("video/")) {
+      // 영상은 한 번 받은 URL 로 길게 재생/탐색하므로 TTL 을 넉넉히(6h) — 기본 5분이면 긴 영상이 중간에 끊긴다.
+      const signed = await getSignedDownloadUrl(name, { contentType: mt, expiresIn: 21600 }); // downloadName 없음 = inline
+      if (signed) {
+        res.setHeader("Cache-Control", "no-store");
+        return res.redirect(302, signed);
+      }
+    }
+
+    // 인라인 이미지/오디오, 또는 presigned 실패 → 기존 버퍼 스트림(+캐시).
     const file = await downloadFile(name);
     if (file) {
       const fmt = file.contentType || mt;

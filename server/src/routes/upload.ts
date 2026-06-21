@@ -64,8 +64,8 @@ function safeExt(name: string) {
 }
 
 // 용도별 업로드 한도.
-//  - 채팅/범용(`/api/upload`)       : 100MB
-//  - 문서함  (`/api/upload/document`) : 500MB (큰 파일이 자주 오가는 문서함 전용)
+//  - 채팅/범용(`/api/upload`)       : 500MB (채팅·메모)
+//  - 문서함  (`/api/upload/document`) : 2GB (큰 영상 등 — diskStorage 스트리밍이라 RAM 안전)
 //
 // diskStorage 사용(과거 memoryStorage 가 OOM 원인). memoryStorage 는 파일 전체를 RAM 에
 // 들고 있어, 대용량(수백 MB) 파일을 동시에 여러 개 올리면 Fargate 태스크 RAM 을 초과해
@@ -95,8 +95,8 @@ function buildUploader(maxBytes: number) {
   });
 }
 
-const uploadChat     = buildUploader(100 * 1024 * 1024); // 100MB
-const uploadDocument = buildUploader(500 * 1024 * 1024); // 500MB
+const uploadChat     = buildUploader(500 * 1024 * 1024);  // 500MB (채팅·메모)
+const uploadDocument = buildUploader(2048 * 1024 * 1024); // 2GB (문서함 — 대용량 영상)
 
 const router = Router();
 router.use(requireAuth);
@@ -171,10 +171,10 @@ function runUploader(uploader: ReturnType<typeof buildUploader>) {
   };
 }
 
-// 문서함 전용(500MB) — 반드시 범용 라우트보다 먼저 선언해야 `/` 매치보다 앞섬.
+// 문서함 전용(2GB) — 반드시 범용 라우트보다 먼저 선언해야 `/` 매치보다 앞섬.
 router.post("/document", runUploader(uploadDocument), storeAndRespond);
 
-// 채팅/범용(100MB) — 기존 `/api/upload` 를 그대로 유지해 채팅 클라 변경 불필요.
+// 채팅/범용(500MB) — 기존 `/api/upload` 를 그대로 유지해 채팅 클라 변경 불필요.
 router.post("/", runUploader(uploadChat), storeAndRespond);
 
 export default router;

@@ -23,10 +23,11 @@ const DocMemoModal = lazy(() => import("../components/DocMemoModal"));
 // 대용량 파일이 섞이면 동시 업로드 수를 줄인다. 서버는 업로드 파일을 통째로 메모리에
 // 버퍼(memoryStorage)하므로, 대용량(수백 MB) 파일을 6개씩 동시에 올리면 서버 RAM 이
 // 터져 태스크가 죽고(→ 502/HTML 응답) 배치 전체가 "is not valid JSON" 으로 실패한다.
-// 큰 파일이 하나라도 있으면 2로 묶어 RAM 피크를 제한하고, 파일당 업로드 대역폭도 확보한다.
+// 큰 파일이 하나라도 있으면 3으로 묶어 RAM 피크를 제한하고, 파일당 업로드 대역폭도 확보한다.
+// (diskStorage 스트리밍이라 RAM 안전 → 기존 2 → 3 으로 상향, 대용량 배치도 더 빨리.)
 const LARGE_FILE_BYTES = 50 * 1024 * 1024;
 function uploadConcurrency(files: File[]): number {
-  return files.some((f) => f.size > LARGE_FILE_BYTES) ? 2 : 6;
+  return files.some((f) => f.size > LARGE_FILE_BYTES) ? 3 : 6;
 }
 
 type Folder = {
@@ -358,15 +359,15 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   }
 
   async function uploadFile(file: File) {
-    if (file.size > 500 * 1024 * 1024) {
-      await alertAsync({ title: "파일 크기 초과", description: "파일은 500MB 이하만 업로드 가능해요" });
+    if (file.size > 2048 * 1024 * 1024) {
+      await alertAsync({ title: "파일 크기 초과", description: "파일은 2GB 이하만 업로드 가능해요" });
       return;
     }
     setUploading(true);
     try {
       const form = new FormData();
       form.append("file", file);
-      // 문서함 전용 엔드포인트 — 서버에서 500MB 까지 허용.
+      // 문서함 전용 엔드포인트 — 서버에서 2GB 까지 허용.
       const res = await apiFetch("/api/upload/document", { method: "POST", body: form });
       const json = await readUploadResponse(res);
       setDocForm((p) => ({
@@ -392,8 +393,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
    * 사용자 선택이 필요하므로 드롭 업로드에선 ALL 로 내린다.
    */
   async function uploadAndCreate(file: File) {
-    if (file.size > 500 * 1024 * 1024) {
-      await alertAsync({ title: "파일 크기 초과", description: "파일은 500MB 이하만 업로드 가능해요" });
+    if (file.size > 2048 * 1024 * 1024) {
+      await alertAsync({ title: "파일 크기 초과", description: "파일은 2GB 이하만 업로드 가능해요" });
       return;
     }
     const form = new FormData();
@@ -487,8 +488,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         const folderPath = parts.slice(0, -1).join("/");
         const targetFolderId = pathToId.get(folderPath) ?? null;
         try {
-          if (f.size > 500 * 1024 * 1024) {
-            failures.push({ rel, reason: "500MB 초과" });
+          if (f.size > 2048 * 1024 * 1024) {
+            failures.push({ rel, reason: "2GB 초과" });
           } else {
             const form = new FormData();
             form.append("file", f);
@@ -1715,7 +1716,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                 ) : (
                   <>
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3v12" /><path d="m7 8 5-5 5 5" /><path d="M20 21H4" /></svg>
-                    <div className="text-[13px] font-bold text-ink-800">파일 선택 (최대 500MB)</div>
+                    <div className="text-[13px] font-bold text-ink-800">파일 선택 (최대 2GB)</div>
                     <div className="text-[11px] text-ink-500">여러 개 선택 가능 · 링크만 있는 문서도 OK</div>
                   </>
                 )}

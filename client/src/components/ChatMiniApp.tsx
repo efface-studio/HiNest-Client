@@ -276,6 +276,19 @@ export default function ChatMiniApp({
   };
 
   const markRead = async (roomId: string) => {
+    // 내 readStates 를 로컬에서 즉시 낙관 갱신 — 메시지별 "1" 뱃지가 SSE/30s 폴링 대기 없이 사라진다.
+    // (서버 POST 가 끝나면 SSE chat:update(kind:"read") 가 도착해 같은 값으로 재확인됨.)
+    const meId = user?.id;
+    if (meId && roomId === activeId) {
+      const now = new Date().toISOString();
+      setReadStates((prev) => {
+        const idx = prev.findIndex((r) => r.userId === meId);
+        if (idx < 0) return [...prev, { userId: meId, lastReadAt: now }];
+        const next = prev.slice();
+        next[idx] = { userId: meId, lastReadAt: now };
+        return next;
+      });
+    }
     try {
       await api(`/api/chat/rooms/${roomId}/read`, { method: "POST" });
     } catch {}

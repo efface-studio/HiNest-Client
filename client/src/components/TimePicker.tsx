@@ -119,9 +119,10 @@ export default function TimePicker({
         </svg>
       </button>
       {open && pos && createPortal(
+        // z-[2000]: BottomSheet/모달(zIndex 1000~1200) 위에 떠야 클릭 가능 — 낮으면 시트 뒤로 깔림.
         <div
           ref={popRef}
-          className="fixed z-[100] bg-white rounded-lg shadow-lg border border-ink-100"
+          className="fixed z-[2000] bg-white rounded-lg shadow-lg border border-ink-100"
           style={{ width: 220, top: pos.top, left: pos.left }}
         >
           <div className="flex items-center justify-between px-3 pt-2 pb-1">

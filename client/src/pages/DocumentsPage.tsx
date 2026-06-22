@@ -163,11 +163,9 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   const [historyDoc, setHistoryDoc] = useState<Doc | null>(null);
   /** 현재 열린 메모 편집/열람 모달 (null = 닫힘 | "new" = 새 메모 | Doc = 기존 메모) */
   const [memoTarget, setMemoTarget] = useState<Doc | "new" | null>(null);
-  const [docForm, setDocForm] = useState<{
-    title: string; description: string; tags: string;
-    fileUrl: string; fileName: string; fileType: string; fileSize: number;
-    scope: DocScope; scopeTeam: string; scopeUserIds: string[];
-  }>({ title: "", description: "", tags: "", fileUrl: "", fileName: "", fileType: "", fileSize: 0, scope: "ALL", scopeTeam: "", scopeUserIds: [] });
+  type DocForm = { title: string; description: string; tags: string; fileUrl: string; fileName: string; fileType: string; fileSize: number; scope: DocScope; scopeTeam: string; scopeUserIds: string[]; };
+  const emptyDocForm = (): DocForm => ({ title: "", description: "", tags: "", fileUrl: "", fileName: "", fileType: "", fileSize: 0, scope: "ALL", scopeTeam: "", scopeUserIds: [] });
+  const [docForm, setDocForm] = useState<DocForm>(emptyDocForm);
   const fileRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
   // "폴더 업로드" 진행 상황 — 현재 파일 n/total 이랑 현재 경로를 표시한다.
@@ -180,6 +178,8 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
   //   - 브라우저가 returnValue 의 문자열을 그대로 보여주진 않지만(모질라/크롬 모두 무시),
   //     값을 세팅해야 모달이 뜬다. 업로드 안 하면 이 훅은 no-op.
   const isUploadingSomething = uploading || !!folderUpload;
+  // 문서 업로드 모달 열릴 때마다 폼 초기화 — 취소/닫기로 빠져나간 뒤 다시 열면 이전 입력 잔존하던 것 방지.
+  useEffect(() => { if (creating === "doc") setDocForm(emptyDocForm()); }, [creating]);
   useEffect(() => {
     if (!isUploadingSomething) return;
     const handler = (e: BeforeUnloadEvent) => {
@@ -695,7 +695,6 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         },
       });
       setCreating(null);
-      setDocForm({ title: "", description: "", tags: "", fileUrl: "", fileName: "", fileType: "", fileSize: 0, scope: "ALL", scopeTeam: "", scopeUserIds: [] });
       await load();
     } catch (e: any) {
       setModalErr(e?.message ?? "문서 등록에 실패했어요");

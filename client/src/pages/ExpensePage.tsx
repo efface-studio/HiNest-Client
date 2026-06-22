@@ -61,7 +61,7 @@ export default function ExpensePage() {
   const [loaded, setLoaded] = useState(false);
   const { refreshing, refresh } = useRefresh(() => load());
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({
+  const emptyForm = () => ({
     usedAt: todayDT(),
     merchant: "",
     category: "식비",
@@ -69,7 +69,10 @@ export default function ExpensePage() {
     memo: "",
     receiptUrl: "",
   });
+  const [form, setForm] = useState(emptyForm);
   const [saving, setSaving] = useState(false);
+  // 모달 열 때마다 폼 초기화 — 취소/닫기로 빠져나간 뒤 다시 열면 이전 입력 잔존하던 것 방지.
+  useEffect(() => { if (open) setForm(emptyForm()); }, [open]);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -144,7 +147,6 @@ export default function ExpensePage() {
         },
       });
       setOpen(false);
-      setForm({ usedAt: todayDT(), merchant: "", category: "식비", amount: 0, memo: "", receiptUrl: "" });
       if (fileRef.current) fileRef.current.value = "";
       await load();
     } catch (err: any) {

@@ -115,9 +115,10 @@ export default function DatePicker({
         )}
       </button>
       {open && pos && createPortal(
+        // z-[2000]: BottomSheet/모달(zIndex 1000~1200) 위에 떠야 클릭 가능 — 낮으면 시트 뒤로 깔림.
         <div
           ref={popRef}
-          className="fixed z-[100] bg-white rounded-lg shadow-lg border border-ink-100 p-3"
+          className="fixed z-[2000] bg-white rounded-lg shadow-lg border border-ink-100 p-3"
           style={{ width: 280, top: pos.top, left: pos.left }}
         >
           {/* 월 헤더 + 이동 */}

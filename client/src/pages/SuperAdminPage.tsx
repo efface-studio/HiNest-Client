@@ -1624,6 +1624,11 @@ function ConsolePanel() {
         color: t.textPrimary,
         fontFamily: "'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
         border: `1px solid ${t.border}`,
+        // flex column 으로 만들고 viewport 안에 가두기 — 모바일에서 출력 영역이 너무 길어 input 이
+        // 화면 밖으로 밀려나가던 것 수정. dvh 로 iOS 주소창 동적 높이 안정.
+        display: "flex",
+        flexDirection: "column",
+        maxHeight: "calc(100dvh - 120px)",
       }}
     >
       {/* macOS 스타일 타이틀 바 */}
@@ -1686,11 +1691,13 @@ function ConsolePanel() {
         </div>
       </div>
 
-      {/* 출력 영역 */}
+      {/* 출력 영역 — flex:1 로 부모 높이 안에서 늘어남, 부족하면 스크롤. 입력 영역은 자동 하단. */}
       <div
         ref={scrollRef}
         style={{
-          height: "min(60vh, 540px)",
+          flex: 1,
+          minHeight: 180,
+          maxHeight: 540,
           overflowY: "auto",
           padding: "14px 16px",
           fontSize: 12.5,

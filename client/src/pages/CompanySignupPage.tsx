@@ -1,9 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import { api } from "../api";
 import BrandLockup from "../components/BrandLockup";
 import SoftInput from "../components/SoftInput";
+
+// Tailwind md breakpoint(1024px) 미만은 회사 등록 폼이 너무 길고 입력 정확도가 떨어져
+// 데스크탑 전용으로 운영. URL 로 직접 들어와도 안내 화면으로 막는다.
+const MOBILE_MQ = "(max-width: 1023.98px)";
 
 /**
  * 회사 가입 신청 페이지 — 새 회사(테넌트)를 등록하고 첫 관리자 계정을 만든다.
@@ -22,7 +26,36 @@ export default function CompanySignupPage() {
   const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
+  // 모바일/태블릿 가드 — 진입점은 LoginPage·SignupPage 에서 hidden md:block 으로 숨겼지만,
+  // URL 직접 입력/뒤로가기로 들어올 수 있어 페이지 자체에서도 막는다. 회전·크기 변화 대응.
+  const [isMobile, setIsMobile] = useState<boolean>(
+    typeof window !== "undefined" ? window.matchMedia(MOBILE_MQ).matches : false
+  );
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia(MOBILE_MQ);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
   if (user) return <Navigate to="/" replace />;
+
+  if (isMobile) {
+    return (
+      <div className="min-h-[100dvh] flex items-center justify-center px-6 bg-[color:var(--c-bg)]">
+        <div className="max-w-sm w-full text-center space-y-5">
+          <div className="flex justify-center"><BrandLockup /></div>
+          <div className="text-5xl">💻</div>
+          <h1 className="text-[20px] font-extrabold text-[color:var(--c-text)]">데스크탑에서 진행해 주세요</h1>
+          <p className="text-[13px] text-[color:var(--c-text-muted)] leading-relaxed">
+            회사 등록 신청은 입력해야 할 정보가 많아<br />컴퓨터(데스크탑·노트북)에서만 진행할 수 있어요.
+          </p>
+          <Link to="/login" replace className="btn-primary inline-flex">로그인으로 돌아가기</Link>
+        </div>
+      </div>
+    );
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

@@ -86,6 +86,7 @@ export const loadMemos = () => import("./pages/MemosPage");
 export const loadPayroll = () => import("./pages/PayrollPage");
 export const loadPlatform = () => import("./pages/PlatformPage");
 export const loadNotifications = () => import("./pages/NotificationsPage");
+export const loadDesignSystem = () => import("./pages/DesignSystemPage");
 
 export const SchedulePage = lazyWithReload(loadSchedule);
 export const AttendancePage = lazyWithReload(loadAttendance);
@@ -109,6 +110,7 @@ export const MemosPage = lazyWithReload(loadMemos);
 export const PayrollPage = lazyWithReload(loadPayroll);
 export const PlatformPage = lazyWithReload(loadPlatform);
 export const NotificationsPage = lazyWithReload(loadNotifications);
+export const DesignSystemPage = lazyWithReload(loadDesignSystem);
 
 /** 사이드바 경로별 prefetch 함수 매핑 — hover/focus 시 호출해 청크 선로딩. */
 export const ROUTE_PREFETCH: Record<string, () => Promise<unknown>> = {

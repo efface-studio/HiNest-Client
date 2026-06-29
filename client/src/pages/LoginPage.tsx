@@ -195,7 +195,8 @@ export default function LoginPage() {
           </div>
 
           {/* 새 회사 셀프 가입 — 멀티테넌트 진입점 */}
-          <div className="mt-4 text-center text-[12.5px]">
+          {/* 회사 등록 진입점 — 모바일에서는 숨김(긴 회사 정보 폼은 데스크탑에서만 작성). */}
+          <div className="mt-4 text-center text-[12.5px] hidden md:block">
             <span className="text-ink-400">회사를 새로 시작하시나요? </span>
             <Link
               to="/company-signup"

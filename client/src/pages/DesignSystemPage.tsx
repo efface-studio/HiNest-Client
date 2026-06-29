@@ -638,13 +638,25 @@ function SwitchRow({ label, checked, onChange, disabled }: { label: string; chec
       className={`flex items-center justify-between gap-3 py-1 disabled:opacity-50 ${disabled ? "cursor-not-allowed" : ""}`}
     >
       <span className="text-[13px] text-[color:var(--c-text)]">{label}</span>
+      {/* container 크기는 명시 px 로 강제 — Tailwind w-10 h-6 가 rem 기반이라 14px base
+          환경에서 35×21 로 줄어 비례가 깨졌었음. 명시 px 로 OS·테마 무관 일관 비율. */}
       <span
-        className="w-10 h-6 rounded-full transition relative"
-        style={{ background: checked ? "var(--c-brand)" : "var(--c-surface-3, #D8DCE3)" }}
+        className="rounded-full transition relative"
+        style={{
+          width: 40,
+          height: 24,
+          background: checked ? "var(--c-brand)" : "var(--c-surface-3, #D8DCE3)",
+        }}
       >
+        {/* knob 18×18, 양쪽 padding 3px — ON(brand×흰 knob 대비) 시 끝에 붙어보이던 거 수정. */}
         <span
-          className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition"
-          style={{ left: checked ? 18 : 2 }}
+          className="absolute rounded-full bg-white shadow-sm transition"
+          style={{
+            top: 3,
+            width: 18,
+            height: 18,
+            left: checked ? 19 : 3,
+          }}
         />
       </span>
     </button>

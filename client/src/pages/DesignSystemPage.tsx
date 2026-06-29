@@ -5,11 +5,14 @@ import { Skeleton, SkeletonText, SkeletonCard, SkeletonList, SkeletonStatGrid } 
 import DatePicker from "../components/DatePicker";
 import TimePicker from "../components/TimePicker";
 import DateTimePicker from "../components/DateTimePicker";
+import MonthPicker from "../components/MonthPicker";
 import Select from "../components/Select";
 import BottomSheet from "../components/BottomSheet";
 import BrandLockup from "../components/BrandLockup";
 import AdminLockup from "../components/AdminLockup";
 import { DevBadge } from "../lib/devBadge";
+import { alertAsync, confirmAsync } from "../components/ConfirmHost";
+import { PRESENCE_CHOICES } from "../lib/presence";
 
 /**
  * /design-system — HiVits 직원 전용 디자인 시스템 카탈로그.
@@ -24,12 +27,22 @@ export default function DesignSystemPage() {
     <div className="space-y-10 pb-12">
       <Header />
       <ColorsSection />
+      <AvatarSection />
+      <PresenceSection />
       <TypographySection />
       <ButtonsSection />
+      <ChipsSection />
+      <FormSection />
       <InputsSection />
+      <TabsSection />
       <PanelsSection />
+      <RadiusShadowSection />
       <BadgesSection />
       <ModalsSection />
+      <NativeDialogsSection />
+      <BannerSection />
+      <EmptyStateSection />
+      <MessageBubbleSection />
       <SkeletonsSection />
       <IconsSection />
       <BrandingSection />
@@ -250,17 +263,22 @@ function InputsSection() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [dt, setDt] = useState("");
+  const [month, setMonth] = useState("");
 
   return (
-    <Section title="입력 / Picker" desc=".input · 커스텀 Select · DatePicker · TimePicker · DateTimePicker (z-2000 — 모달 위에서도 정상 표시).">
+    <Section title="입력 / Picker" desc=".input · 커스텀 Select · Date/Time/DateTime/MonthPicker (z-2000 — 모달 위에서도 정상 표시).">
       <div className="grid md:grid-cols-2 gap-4">
         <div className="space-y-1.5">
           <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)]">.input — 텍스트</div>
           <input className="input" placeholder="여기에 입력" value={text} onChange={(e) => setText(e.target.value)} />
         </div>
         <div className="space-y-1.5">
-          <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)]">.input — 숫자</div>
+          <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)]">.input — 숫자 (.tabular)</div>
           <input type="number" className="input tabular" value={num} onChange={(e) => setNum(Number(e.target.value))} />
+        </div>
+        <div className="space-y-1.5">
+          <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)]">.input — textarea</div>
+          <textarea className="input" rows={2} placeholder="여러 줄" />
         </div>
         <div className="space-y-1.5">
           <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)]">Select (커스텀)</div>
@@ -277,6 +295,10 @@ function InputsSection() {
         <div className="space-y-1.5">
           <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)]">DateTimePicker</div>
           <DateTimePicker value={dt} onChange={setDt} mode="datetime" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)]">MonthPicker (YYYY-MM)</div>
+          <MonthPicker value={month} onChange={setMonth} />
         </div>
       </div>
     </Section>
@@ -446,6 +468,402 @@ function BrandingSection() {
         <div className="space-y-2">
           <Label>AdminLockup</Label>
           <div className="panel p-4 bg-[color:var(--c-bg)]"><AdminLockup /></div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Avatar ============ */
+
+// 가입 시 자동 할당되는 10색 팔레트 — previewMock 의 AVATAR_PALETTE 와 동일.
+const AVATAR_PALETTE = ["#3D54C4", "#16A34A", "#7C3AED", "#DB2777", "#F59E0B", "#0EA5E9", "#EF4444", "#0891B2", "#84CC16", "#F97316"];
+const AVATAR_NAMES = ["김하나", "이앨리스", "한이브", "박그레이스", "최마틴", "강레오", "윤소피아", "임도훈", "조에", "민준"];
+
+function AvatarSection() {
+  return (
+    <Section title="Avatar" desc="가입 시 자동 할당되는 10색 팔레트. 이니셜 = 이름 마지막 2글자. 사진 있으면 background 대신 img.">
+      <div className="space-y-4">
+        <div>
+          <Label>10색 팔레트 — 클릭해서 hex 복사</Label>
+          <div className="flex gap-2 flex-wrap">
+            {AVATAR_PALETTE.map((c, i) => (
+              <CopyChip key={c} value={c} className="flex flex-col items-center gap-1">
+                <div className="w-12 h-12 rounded-full grid place-items-center text-white text-[13px] font-bold shadow-sm" style={{ background: c }}>
+                  {AVATAR_NAMES[i].slice(-2)}
+                </div>
+                <span className="text-[10px] text-[color:var(--c-text-muted)] font-mono">{c}</span>
+              </CopyChip>
+            ))}
+          </div>
+        </div>
+        <div>
+          <Label>크기 변형</Label>
+          <div className="flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full grid place-items-center text-white text-[9px] font-bold" style={{ background: AVATAR_PALETTE[0] }}>나</div>
+            <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold" style={{ background: AVATAR_PALETTE[1] }}>리스</div>
+            <div className="w-9 h-9 rounded-full grid place-items-center text-white text-[12px] font-bold" style={{ background: AVATAR_PALETTE[2] }}>이브</div>
+            <div className="w-12 h-12 rounded-full grid place-items-center text-white text-[14px] font-bold" style={{ background: AVATAR_PALETTE[3] }}>이스</div>
+            <div className="w-16 h-16 rounded-full grid place-items-center text-white text-[18px] font-bold" style={{ background: AVATAR_PALETTE[4] }}>마틴</div>
+          </div>
+        </div>
+        <div>
+          <Label>겹친 그룹 (최근 N명)</Label>
+          <div className="flex -space-x-2">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="w-8 h-8 rounded-full grid place-items-center text-white text-[11px] font-bold border-2 border-[color:var(--c-surface)]" style={{ background: AVATAR_PALETTE[i] }}>
+                {AVATAR_NAMES[i].slice(-2)}
+              </div>
+            ))}
+            <div className="w-8 h-8 rounded-full grid place-items-center text-[11px] font-bold border-2 border-[color:var(--c-surface)] bg-[color:var(--c-surface-3)] text-[color:var(--c-text-muted)]">+5</div>
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Presence Status ============ */
+
+const PRESENCE_FALLBACKS: Record<string, { color: string; label: string; emoji: string }> = {
+  AVAILABLE: { color: "#22c55e", label: "근무중", emoji: "🟢" },
+  OFFLINE:   { color: "#94a3b8", label: "오프라인", emoji: "⚪" },
+};
+
+function PresenceSection() {
+  const all = [
+    ...PRESENCE_CHOICES.filter((c) => c.value),
+    { value: "AVAILABLE", label: PRESENCE_FALLBACKS.AVAILABLE.label, emoji: PRESENCE_FALLBACKS.AVAILABLE.emoji },
+    { value: "OFFLINE",   label: PRESENCE_FALLBACKS.OFFLINE.label,   emoji: PRESENCE_FALLBACKS.OFFLINE.emoji },
+  ];
+  return (
+    <Section title="Presence Status" desc="사용자 현재 상태 — 6가지. AVAILABLE/OFFLINE 은 출퇴근 기준 자동, 그 외는 수동 설정.">
+      <div className="flex gap-2 flex-wrap">
+        {all.map((p) => (
+          <div key={String(p.value)} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[color:var(--c-surface-2)] border border-[color:var(--c-border)]">
+            <span className="text-[14px]">{p.emoji}</span>
+            <span className="text-[12px] font-semibold text-[color:var(--c-text)]">{p.label}</span>
+            <code className="text-[10.5px] text-[color:var(--c-text-muted)] font-mono">{p.value}</code>
+          </div>
+        ))}
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Chips ============ */
+
+function ChipsSection() {
+  return (
+    <Section title="Chip" desc=".chip / .chip-brand / .chip-green / 색별 변형. 작은 라벨·태그·필터에 사용.">
+      <div className="flex gap-2 flex-wrap">
+        <span className="chip">기본 chip</span>
+        <span className="chip chip-brand">브랜드</span>
+        <span className="chip chip-green">초록</span>
+        <span className="chip" style={{ background: "rgba(220,38,38,.10)", color: "#B91C1C" }}>위험</span>
+        <span className="chip" style={{ background: "rgba(217,119,6,.10)", color: "#B45309" }}>주의</span>
+        <span className="chip" style={{ background: "rgba(14,165,233,.10)", color: "#0369A1" }}>정보</span>
+        <span className="chip">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+          dot 포함
+        </span>
+        <span className="chip" style={{ paddingRight: 4 }}>
+          삭제 가능
+          <button type="button" className="ml-1 w-4 h-4 grid place-items-center rounded-full hover:bg-[color:var(--c-surface-3)]" aria-label="제거">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
+        </span>
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Form: Switch / Checkbox / Radio ============ */
+
+function FormSection() {
+  const [sw1, setSw1] = useState(true);
+  const [sw2, setSw2] = useState(false);
+  const [chk, setChk] = useState(true);
+  const [radio, setRadio] = useState("a");
+  return (
+    <Section title="Switch / Checkbox / Radio" desc="role='switch' 슬라이드 토글 · accent-brand-500 체크박스 / 라디오 — 기본 OS UI.">
+      <div className="grid md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Switch (role='switch')</Label>
+          <div className="flex flex-col gap-2">
+            <SwitchRow label="알림 켜기" checked={sw1} onChange={setSw1} />
+            <SwitchRow label="다크모드" checked={sw2} onChange={setSw2} />
+            <SwitchRow label="비활성 (disabled)" checked={false} onChange={() => {}} disabled />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <Label>Checkbox</Label>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" className="accent-brand-500 w-5 h-5" checked={chk} onChange={(e) => setChk(e.target.checked)} />
+            <span className="text-[13px] text-[color:var(--c-text)]">동의합니다</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer opacity-50">
+            <input type="checkbox" className="accent-brand-500 w-5 h-5" checked disabled />
+            <span className="text-[13px] text-[color:var(--c-text)]">잠긴 항목 (disabled)</span>
+          </label>
+        </div>
+        <div className="space-y-2 md:col-span-2">
+          <Label>Radio</Label>
+          <div className="flex gap-4">
+            {[
+              { v: "a", l: "선택 A" },
+              { v: "b", l: "선택 B" },
+              { v: "c", l: "선택 C" },
+            ].map((o) => (
+              <label key={o.v} className="flex items-center gap-2 cursor-pointer">
+                <input type="radio" name="ds-radio" className="accent-brand-500 w-4 h-4" checked={radio === o.v} onChange={() => setRadio(o.v)} />
+                <span className="text-[13px] text-[color:var(--c-text)]">{o.l}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+function SwitchRow({ label, checked, onChange, disabled }: { label: string; checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`flex items-center justify-between gap-3 py-1 disabled:opacity-50 ${disabled ? "cursor-not-allowed" : ""}`}
+    >
+      <span className="text-[13px] text-[color:var(--c-text)]">{label}</span>
+      <span
+        className="w-10 h-6 rounded-full transition relative"
+        style={{ background: checked ? "var(--c-brand)" : "var(--c-surface-3, #D8DCE3)" }}
+      >
+        <span
+          className="absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition"
+          style={{ left: checked ? 18 : 2 }}
+        />
+      </span>
+    </button>
+  );
+}
+
+/* ============ Tabs ============ */
+
+const TAB_ITEMS = ["개요", "구성원", "근태", "출근 IP", "사용 시간"];
+
+function TabsSection() {
+  const [active, setActive] = useState(0);
+  return (
+    <Section title="Tabs" desc="가로 스크롤 탭 — 활성 탭 아래에 brand 라인. 모바일에서도 잘리지 않게 overflow-x scroll.">
+      <div className="overflow-x-auto -mx-4 px-4">
+        <div className="flex gap-1 border-b border-[color:var(--c-border)] min-w-max">
+          {TAB_ITEMS.map((t, i) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setActive(i)}
+              className={`px-3 py-2 text-[13px] font-semibold border-b-2 -mb-px whitespace-nowrap transition ${
+                active === i
+                  ? "border-brand-500 text-[color:var(--c-brand)]"
+                  : "border-transparent text-[color:var(--c-text-muted)] hover:text-[color:var(--c-text)]"
+              }`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-3 text-[12.5px] text-[color:var(--c-text-muted)]">현재 탭: <b className="text-[color:var(--c-text)]">{TAB_ITEMS[active]}</b></div>
+    </Section>
+  );
+}
+
+/* ============ Radius / Shadow ============ */
+
+const RADIUS_SCALE: { label: string; value: string }[] = [
+  { label: "xs", value: "6px" },
+  { label: "sm", value: "8px" },
+  { label: "md", value: "10px" },
+  { label: "lg", value: "12px" },
+  { label: "xl", value: "14px" },
+  { label: "2xl", value: "18px" },
+  { label: "sheet", value: "22px" },
+  { label: "full", value: "9999px" },
+];
+
+const SHADOW_SCALE: { label: string; css: string }[] = [
+  { label: "panel", css: "0 1px 2px rgba(0,0,0,0.04), 0 2px 6px rgba(0,0,0,0.04)" },
+  { label: "panel-dark", css: "0 1px 2px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25)" },
+  { label: "lg", css: "0 8px 24px rgba(15,18,28,0.10)" },
+  { label: "xl", css: "0 16px 40px rgba(15,18,28,0.14)" },
+];
+
+function RadiusShadowSection() {
+  return (
+    <Section title="Radius / Shadow / Spacing" desc="둥글기·그림자·간격 스케일. 컴포넌트 만들 때 이 값들 중에서 선택.">
+      <div className="space-y-5">
+        <div>
+          <Label>Border Radius</Label>
+          <div className="flex flex-wrap gap-3">
+            {RADIUS_SCALE.map((r) => (
+              <CopyChip key={r.label} value={r.value} className="flex flex-col items-center gap-1">
+                <div className="w-14 h-14 bg-[color:var(--c-brand-soft)] border border-[color:var(--c-border)]" style={{ borderRadius: r.value }} />
+                <div className="text-[11px] font-bold text-[color:var(--c-text)] font-mono">{r.label}</div>
+                <div className="text-[10px] text-[color:var(--c-text-muted)] font-mono">{r.value}</div>
+              </CopyChip>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Shadow</Label>
+          <div className="flex flex-wrap gap-4">
+            {SHADOW_SCALE.map((s) => (
+              <CopyChip key={s.label} value={s.css} className="flex flex-col items-center gap-1">
+                <div className="w-24 h-16 rounded-xl bg-[color:var(--c-surface)] border border-[color:var(--c-border)]" style={{ boxShadow: s.css }} />
+                <div className="text-[11px] font-bold text-[color:var(--c-text)] font-mono">{s.label}</div>
+              </CopyChip>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Spacing 스케일 (4의 배수)</Label>
+          <div className="flex items-end gap-2">
+            {[4, 8, 12, 16, 20, 24, 32, 40, 48].map((px) => (
+              <CopyChip key={px} value={`${px}px`} className="flex flex-col items-center gap-1">
+                <div className="bg-[color:var(--c-brand)] rounded" style={{ width: 24, height: px }} />
+                <div className="text-[10px] text-[color:var(--c-text-muted)] font-mono">{px}</div>
+              </CopyChip>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <Label>Glass 표면 (--c-glass, backdrop-filter blur)</Label>
+          <div className="rounded-xl p-4 relative overflow-hidden" style={{ background: "linear-gradient(135deg, var(--c-brand) 0%, #7C3AED 100%)" }}>
+            <div className="rounded-xl p-4 backdrop-blur-md text-white text-[13px] font-semibold border" style={{ background: "var(--c-glass)", borderColor: "var(--c-glass-border)" }}>
+              유리 효과 카드 — 채팅 입력바·상단바·iOS 알림 등에서 사용
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <Label>Gradient (브랜드 그라데이션)</Label>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="h-16 rounded-xl bg-gradient-to-br from-brand-500 to-brand-700 grid place-items-center text-white text-[12px] font-bold">brand 500 → 700</div>
+            <div className="h-16 rounded-xl bg-gradient-to-br from-brand-400 to-fuchsia-500 grid place-items-center text-white text-[12px] font-bold">brand 400 → fuchsia 500</div>
+          </div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Native Dialogs ============ */
+
+function NativeDialogsSection() {
+  return (
+    <Section title="네이티브 알럿 / 확인 / 입력" desc="alertAsync · confirmAsync · promptAsync — iOS/iPadOS 에선 진짜 네이티브 시트, 데스크탑/웹은 동일 디자인 모달.">
+      <div className="flex gap-2 flex-wrap">
+        <button className="btn-primary btn-xs" onClick={() => alertAsync({ title: "알림", description: "디자인 시스템 카탈로그에서 띄운 alertAsync 예시." })}>alertAsync</button>
+        <button className="btn-ghost btn-xs" onClick={async () => {
+          const ok = await confirmAsync({ title: "확인 필요", description: "정말 진행할까요?", confirmLabel: "진행", tone: "primary" });
+          alertAsync({ title: "결과", description: `사용자가 ${ok === true ? "확인" : "취소"} 선택` });
+        }}>confirmAsync</button>
+        <button className="btn-danger btn-xs" onClick={async () => {
+          const ok = await confirmAsync({ title: "삭제", description: "되돌릴 수 없어요.", confirmLabel: "삭제", tone: "danger" });
+          alertAsync({ title: "결과", description: `사용자가 ${ok === true ? "삭제" : "취소"} 선택` });
+        }}>confirmAsync · danger</button>
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Banner ============ */
+
+function BannerSection() {
+  return (
+    <Section title="Banner" desc="화면 상단에 띄우는 상태 안내. UpdateBanner · ImpersonationBanner · PreviewBanner 패턴.">
+      <div className="space-y-2">
+        <div className="rounded-xl px-3 py-2 flex items-center gap-2 bg-brand-50 text-brand-700 border border-brand-200">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+          <span className="text-[12.5px] font-semibold">새 버전이 준비됐어요</span>
+          <button className="ml-auto text-[11px] font-bold underline">새로고침</button>
+        </div>
+        <div className="rounded-xl px-3 py-2 flex items-center gap-2 bg-amber-50 text-amber-800 border border-amber-200">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+          <span className="text-[12.5px] font-semibold">다른 사용자로 보는 중 (impersonation)</span>
+          <button className="ml-auto text-[11px] font-bold underline">해제</button>
+        </div>
+        <div className="rounded-xl px-3 py-2 flex items-center gap-2 bg-emerald-50 text-emerald-700 border border-emerald-200">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12" /></svg>
+          <span className="text-[12.5px] font-semibold">저장됐어요</span>
+        </div>
+        <div className="rounded-xl px-3 py-2 flex items-center gap-2 bg-rose-50 text-rose-700 border border-rose-200">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="15" y1="9" x2="9" y2="15" /><line x1="9" y1="9" x2="15" y2="15" /></svg>
+          <span className="text-[12.5px] font-semibold">네트워크가 끊겼어요</span>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Empty State ============ */
+
+function EmptyStateSection() {
+  return (
+    <Section title="Empty State" desc="데이터 0건 — 아이콘 + 안내 + (선택) 액션 버튼. loaded 플래그로 로딩 vs 0건 구분.">
+      <div className="grid md:grid-cols-2 gap-3">
+        <div className="panel p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-[color:var(--c-surface-2)] grid place-items-center mx-auto mb-3 text-[color:var(--c-text-muted)]">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /></svg>
+          </div>
+          <div className="text-[13.5px] font-bold text-[color:var(--c-text)]">아직 문서가 없어요</div>
+          <div className="text-[12px] text-[color:var(--c-text-muted)] mt-1">첫 문서를 등록해 보세요</div>
+          <button className="btn-primary btn-xs mt-3">+ 문서 등록</button>
+        </div>
+        <div className="panel p-8 text-center">
+          <div className="text-[28px] mb-2">📭</div>
+          <div className="text-[13.5px] font-bold text-[color:var(--c-text)]">알림이 없어요</div>
+          <div className="text-[12px] text-[color:var(--c-text-muted)] mt-1">모든 알림을 다 확인했어요</div>
+        </div>
+      </div>
+    </Section>
+  );
+}
+
+/* ============ Message Bubble (Chat) ============ */
+
+function MessageBubbleSection() {
+  return (
+    <Section title="Message Bubble (채팅)" desc="발신자: 우측 brand. 수신자: 좌측 surface. 메타(시각·읽음)는 버블 옆 세로 스택.">
+      <div className="space-y-2 max-w-md">
+        <div className="flex justify-start items-end gap-2">
+          <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0" style={{ background: AVATAR_PALETTE[1] }}>리스</div>
+          <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-[color:var(--c-chat-bubble-other)] text-[13px] text-[color:var(--c-text)] max-w-[70%]">
+            안녕하세요! 디자인 시스템 보고 있어요 :)
+          </div>
+          <span className="text-[10px] text-[color:var(--c-text-muted)] mb-0.5">오전 10:24</span>
+        </div>
+        <div className="flex justify-end items-end gap-2">
+          <div className="flex flex-col items-end mb-0.5">
+            <span className="text-[10px] font-bold text-brand-500">1</span>
+            <span className="text-[10px] text-[color:var(--c-text-muted)]">오전 10:25</span>
+          </div>
+          <div className="px-3 py-2 rounded-2xl rounded-br-md bg-brand-500 text-white text-[13px] max-w-[70%]">
+            네 좋아요! 카탈로그 잘 정리됐네요.
+          </div>
+        </div>
+        <div className="flex justify-start items-end gap-2">
+          <div className="w-7 h-7 rounded-full grid place-items-center text-white text-[11px] font-bold flex-shrink-0" style={{ background: AVATAR_PALETTE[1] }}>리스</div>
+          <div className="px-3 py-2 rounded-2xl rounded-bl-md bg-[color:var(--c-chat-bubble-other)] text-[13px] text-[color:var(--c-text)] max-w-[70%] italic text-[color:var(--c-text-muted)]">
+            (삭제된 메시지)
+          </div>
         </div>
       </div>
     </Section>

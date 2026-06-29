@@ -45,6 +45,7 @@ import {
   PayrollPage,
   PlatformPage,
   NotificationsPage,
+  DesignSystemPage,
 } from "./routes";
 
 /**
@@ -214,6 +215,8 @@ export default function App() {
           {/* 급여명세서 — 관리자는 전체 관리, 직원은 본인 것만 열람(페이지 내부에서 분기) */}
           <Route path="payroll" element={<PayrollPage />} />
           <Route path="users/:id" element={<UserProfilePage />} />
+          {/* 디자인 시스템 — HiVits 직원(isDeveloper) 만 접근. 페이지 내부에서 가드. */}
+          <Route path="design-system" element={<DesignSystemPage />} />
           <Route
             path="admin"
             element={

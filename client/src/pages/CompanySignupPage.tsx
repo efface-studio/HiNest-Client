@@ -40,22 +40,8 @@ export default function CompanySignupPage() {
   }, []);
 
   if (user) return <Navigate to="/" replace />;
-
-  if (isMobile) {
-    return (
-      <div className="min-h-[100dvh] flex items-center justify-center px-6 bg-[color:var(--c-bg)]">
-        <div className="max-w-sm w-full text-center space-y-5">
-          <div className="flex justify-center"><BrandLockup /></div>
-          <div className="text-5xl">💻</div>
-          <h1 className="text-[20px] font-extrabold text-[color:var(--c-text)]">데스크탑에서 진행해 주세요</h1>
-          <p className="text-[13px] text-[color:var(--c-text-muted)] leading-relaxed">
-            회사 등록 신청은 입력해야 할 정보가 많아<br />컴퓨터(데스크탑·노트북)에서만 진행할 수 있어요.
-          </p>
-          <Link to="/login" replace className="btn-primary inline-flex">로그인으로 돌아가기</Link>
-        </div>
-      </div>
-    );
-  }
+  // 모바일/태블릿은 그냥 조용히 로그인으로 리다이렉트(안내 화면 없이).
+  if (isMobile) return <Navigate to="/login" replace />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

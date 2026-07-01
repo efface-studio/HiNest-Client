@@ -44,6 +44,16 @@ export type Message = {
   createdAt: string;
   sender: { id: string; name: string; avatarColor?: string; avatarUrl?: string | null };
   reactions?: Reaction[];
+  // 낙관적 전송 UI 전용 필드(서버는 안 봄).
+  //  - pending: 로컬에 낙관적으로 삽입된 메시지(id 는 임시).
+  //  - pendingClientId: 서버 응답/SSE 와 매칭해 dedup 하는 클라이언트 UUID.
+  //  - pendingSetId: 다중 첨부는 한 번의 send() 가 여러 메시지를 만드므로,
+  //    세트 단위 재시도(세트 전체 삭제 + payload 재전송)를 위해 같은 setId 를 공유.
+  //  - status: 'sending' 전송 중 · 'failed' 실패(재시도 UI 노출). 성공 시 제거/교체.
+  pending?: boolean;
+  pendingClientId?: string;
+  pendingSetId?: string;
+  status?: "sending" | "failed";
 };
 
 export type Attachment = {

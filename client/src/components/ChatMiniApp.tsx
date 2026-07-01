@@ -821,6 +821,8 @@ export default function ChatMiniApp({
           return next;
         });
       };
+      // 인터랙션 PR(#1070)의 '실패 첨부 attachments 복원' 흐름은 이 재시도 시스템(status='failed' +
+      // 빨간 재시도 아이콘)이 대체한다 — 실패한 세트를 통째로 재전송하므로 UX 상 상위 개념.
       const markFailed = (clientId: string) => {
         setMessages((prev) => prev.map((m) => (m.pendingClientId === clientId ? { ...m, status: "failed" } : m)));
       };
@@ -1073,6 +1075,9 @@ function ListView({
           const title = displayTitle(r);
           const last = r.messages[0];
           const muted = !!roomSettings[r.id]?.muted;
+          // 음소거 방은 방 목록 뱃지를 0 으로 — 서버 알림 레코드는 유지되므로 벨/사이드바
+          // 카운트에는 남지만, 방 목록의 미읽음 뱃지는 표시 안 함(카톡·Slack 컨벤션).
+          // 서버 정책 참조: server/src/lib/notify.ts 상단 주석("음소거 방 알림 정책").
           const u = muted ? 0 : (unread[r.id] ?? 0);
           const mine = !!last && last.senderId === meId;
           const preview = last ? previewForMessage(last) : "새로운 대화를 시작해보세요";
@@ -2276,16 +2281,30 @@ function SharedCodeRow({ code, lang, createdAt, senderName }: { code: string; la
   );
 }
 
-/* 메시지 컨텍스트 메뉴 액션 빌드 — 복사 / 다운로드(파일) / 고정(토글) / 삭제(본인만) */
+/* 메시지 컨텍스트 메뉴 액션 빌드 — 답장(옵션) / 복사 / 다운로드(파일) / 고정(토글) / 삭제(본인만).
+ * onReply 는 백엔드 replyToId 지원이 붙는 별도 PR 에서 전달 예정 — 지금은 undefined 라 항목이 뜨지 않는다. */
 function buildMessageActions(
   m: Message,
   mine: boolean,
   onPin: (id: string) => void,
   onDelete: (id: string) => void,
+  onReply?: (m: Message) => void,
 ): MessageAction[] {
   const actions: MessageAction[] = [];
 
+  // 답장 — onReply 콜백이 있을 때만 노출. 실제 답장 로직/스키마(replyToId) 는 별도 PR.
+  if (onReply) {
+    actions.push({
+      key: "reply",
+      label: "답장",
+      icon: ActionIcons.reply,
+      onSelect: () => onReply(m),
+    });
+  }
+
   // 복사 — 텍스트는 본문, 파일은 파일명을 복사(없으면 본문)
+  // navigator.clipboard 는 iOS/Android WebView 에서 실패할 수 있어 execCommand 폴백이
+  // 들어있는 lib/clipboard 헬퍼로 위임. 성공/실패 토스트 피드백까지 헬퍼가 처리한다.
   actions.push({
     key: "copy",
     label: "복사",
@@ -2293,7 +2312,7 @@ function buildMessageActions(
     onSelect: () => {
       const text = m.kind === "TEXT" ? (m.content || "") : (m.fileName || m.content || "");
       if (!text) return;
-      navigator.clipboard?.writeText(text).catch(() => {});
+      void copyToClipboard(text, { title: "복사됨", description: "메시지를 클립보드에 복사했어요." });
     },
   });
 
@@ -3052,7 +3071,15 @@ function RoomView({
                   // @멘션 / 슬래시 자동완성 메뉴가 열려있으면 ↑↓/Enter/Esc/Tab 을 그쪽이 먼저 소비.
                   if (mentionRef.current?.handleKey(e)) return;
                   if (slashRef.current?.handleKey(e)) return;
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  // Enter=전송, Shift+Enter=개행. sending 중이거나 auto-repeat(꾹눌러 연타)면
+                  // 중복 전송 방지 — clientId dedup 이 없으면 서버에 같은 메시지가 두 번 저장될 수 있음.
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    !e.nativeEvent.isComposing &&
+                    !e.repeat &&
+                    !sending
+                  ) {
                     e.preventDefault();
                     handleSend();
                   }

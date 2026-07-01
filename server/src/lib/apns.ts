@@ -131,26 +131,60 @@ interface SendResult {
   reason?: string;
 }
 
+/**
+ * APNs 페이로드 4KB 상한(정확히는 4096B, 안전마진 96B 로 4000). 초과 시 PayloadTooLarge 로
+ * 거절돼 알림이 아예 안 온다 → 우아하게 축약:
+ *  1) senderAvatarPath 제거(NSE 는 기본 아바타 폴백)
+ *  2) 여전히 초과면 body 를 앞에서 slice(200)
+ *  3) 그래도 초과면 title 을 slice(80)
+ * 로그 남기고 조립된 페이로드 객체를 반환.
+ */
+const APNS_PAYLOAD_LIMIT = 4000;
+function buildApnsBody(payload: ApnsPayload): Buffer {
+  const build = (p: ApnsPayload): { obj: Record<string, unknown>; buf: Buffer } => {
+    const aps: Record<string, unknown> = {
+      alert: { title: p.title, ...(p.body ? { body: p.body } : {}) },
+      sound: p.sound || "default",
+    };
+    if (typeof p.badge === "number") aps.badge = p.badge;
+    if (p.groupId) aps["thread-id"] = p.groupId;
+    if (ENABLE_COMMUNICATION_PUSH && p.senderName) aps["mutable-content"] = 1;
+    const bodyObj: Record<string, unknown> = { aps };
+    if (p.linkUrl) bodyObj.linkUrl = p.linkUrl;
+    if (p.senderName) bodyObj.senderName = p.senderName;
+    if (p.senderAvatarPath) bodyObj.senderAvatarPath = p.senderAvatarPath;
+    if (p.senderAvatarColor) bodyObj.senderAvatarColor = p.senderAvatarColor;
+    return { obj: bodyObj, buf: Buffer.from(JSON.stringify(bodyObj)) };
+  };
+  let cur = payload;
+  let { buf } = build(cur);
+  if (buf.length <= APNS_PAYLOAD_LIMIT) return buf;
+  // 1) 아바타 경로 제거(NSE 가 기본 아바타 폴백)
+  cur = { ...cur, senderAvatarPath: undefined };
+  ({ buf } = build(cur));
+  if (buf.length <= APNS_PAYLOAD_LIMIT) {
+    console.warn("apns payload trimmed: dropped senderAvatarPath");
+    return buf;
+  }
+  // 2) body 축약(앞 200자)
+  if (cur.body && cur.body.length > 200) cur = { ...cur, body: cur.body.slice(0, 200) };
+  ({ buf } = build(cur));
+  if (buf.length <= APNS_PAYLOAD_LIMIT) {
+    console.warn("apns payload trimmed: sliced body");
+    return buf;
+  }
+  // 3) title 축약(앞 80자)
+  if (cur.title && cur.title.length > 80) cur = { ...cur, title: cur.title.slice(0, 80) };
+  ({ buf } = build(cur));
+  console.warn("apns payload trimmed: sliced title", { finalBytes: buf.length });
+  return buf;
+}
+
 /** 단일 기기 토큰에 발송. http2 스트림 1건 = 요청 1건. */
 function sendOne(deviceToken: string, payload: ApnsPayload, host: string): Promise<SendResult> {
   return new Promise((resolve) => {
-    const aps: Record<string, unknown> = {
-      alert: { title: payload.title, ...(payload.body ? { body: payload.body } : {}) },
-      sound: payload.sound || "default",
-    };
-    if (typeof payload.badge === "number") aps.badge = payload.badge;
-    // OS 알림센터에서 같은 대화(방)끼리 묶이도록 thread-id 지정. (collapse-id 와 달리 교체가 아님)
-    if (payload.groupId) aps["thread-id"] = payload.groupId;
-    // Communication Notification — senderName 이 있으면(채팅) NSE 가 발신자 아바타로 알림을 재구성하도록
-    // mutable-content 를 켜고, NSE 가 읽을 발신자 정보를 커스텀 키로 싣는다. NSE 미존재 시엔 일반 표시(무해).
-    // (ENABLE_COMMUNICATION_PUSH=false 동안은 mutable-content 를 끄고 일반 알림으로 표시 — 위 스위치 주석 참고)
-    if (ENABLE_COMMUNICATION_PUSH && payload.senderName) aps["mutable-content"] = 1;
-    const bodyObj: Record<string, unknown> = { aps };
-    if (payload.linkUrl) bodyObj.linkUrl = payload.linkUrl;
-    if (payload.senderName) bodyObj.senderName = payload.senderName;
-    if (payload.senderAvatarPath) bodyObj.senderAvatarPath = payload.senderAvatarPath;
-    if (payload.senderAvatarColor) bodyObj.senderAvatarColor = payload.senderAvatarColor;
-    const body = Buffer.from(JSON.stringify(bodyObj));
+    // 페이로드 4KB 상한 초과 시 아바타→body→title 순서로 축약(위 buildApnsBody 참고).
+    const body = buildApnsBody(payload);
 
     let session: http2.ClientHttp2Session;
     try {

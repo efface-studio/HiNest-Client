@@ -4,6 +4,16 @@ import { publish } from "./sse.js";
 import { sendApnsToUser, sendApnsToUsers } from "./apns.js";
 import { sendFcmToUser, sendFcmToUsers } from "./fcm.js";
 
+/**
+ * 음소거 방(RoomMember.muted=true) 알림 정책 — 카톡·Slack 과 동일:
+ *  - Notification 레코드는 그대로 저장(벨/사이드바 알림 카운트에 포함, 알림 히스토리 유지).
+ *  - SSE publish 도 유지(다른 탭·인앱 실시간 상태 동기화).
+ *  - APNs/FCM(폰 푸시)만 스킵 — "조용히" 가 정확히 이 뜻.
+ *  - 방 목록 뱃지(roomUnread)는 클라이언트가 muted 방에 대해 0 으로 표시
+ *    (client/src/components/ChatMiniApp.tsx `muted ? 0 : unread[r.id]`, 아래 900번대 라인).
+ * 이 컨벤션은 서버(여기)와 클라(위 참조 지점) 양쪽이 함께 지켜야 일관성 유지.
+ */
+
 export type NotifyType =
   | "NOTICE"
   | "DM"
@@ -128,7 +138,11 @@ export async function notify(input: NotifyInput) {
       }
       // 원격 푸시 — fire-and-forget. iOS=APNs, Android=FCM. 각 함수가 자기 platform 토큰만
       // 조회하므로 둘 다 호출해도 안전(미설정/토큰없음이면 내부 no-op).
-      if (!muted) {
+      // DND 게이트 — allowPush 는 위 resolveDelivery 에서 !inDnd 로 이미 계산됨. notifyMany 는
+      // pushFlag 로 이 검사를 하는데(line ~187), 여기서도 동일하게 걸어야 DND 중에도 폰이 울리는
+      // 버그가 안 남는다(과거: !muted 만 검사 → DND 무시).
+      const allowPush = !d || d.allowPush;
+      if (!muted && allowPush) {
         const p = { title: input.title, body: input.body, linkUrl: input.linkUrl, groupId: rid ?? undefined };
         void sendApnsToUser(input.userId, p);
         void sendFcmToUser(input.userId, p);

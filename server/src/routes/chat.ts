@@ -172,6 +172,13 @@ router.post("/rooms", async (req, res) => {
 
     const otherUser = await prisma.user.findUnique({ where: { id: other } });
     if (!otherUser) return res.status(400).json({ error: "상대를 찾을 수 없습니다" });
+    // 크로스테넌트 가드 — DIRECT 방은 같은 회사 멤버끼리만. 위 allSameCompanyUsers 는
+    // GROUP/TEAM 경로에만 걸려 있어(이 아래) DIRECT 는 다른 회사 유저와 DM 방을 만들 수 있었다.
+    // Prisma auto-scope 는 새 행의 companyId 를 주입할 뿐 사용자가 넘긴 외래 userId 가 같은 회사인지
+    // 검사하지 않는다. u.companyId 가 없으면(플랫폼/슈퍼) 스킵.
+    if (u.companyId && otherUser.companyId !== u.companyId) {
+      return res.status(400).json({ error: "같은 회사 멤버만 대화할 수 있습니다" });
+    }
 
     const room = await prisma.chatRoom.create({
       data: {

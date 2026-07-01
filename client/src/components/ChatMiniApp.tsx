@@ -931,6 +931,9 @@ function ListView({
           const title = displayTitle(r);
           const last = r.messages[0];
           const muted = !!roomSettings[r.id]?.muted;
+          // 음소거 방은 방 목록 뱃지를 0 으로 — 서버 알림 레코드는 유지되므로 벨/사이드바
+          // 카운트에는 남지만, 방 목록의 미읽음 뱃지는 표시 안 함(카톡·Slack 컨벤션).
+          // 서버 정책 참조: server/src/lib/notify.ts 상단 주석("음소거 방 알림 정책").
           const u = muted ? 0 : (unread[r.id] ?? 0);
           const mine = !!last && last.senderId === meId;
           const preview = last ? previewForMessage(last) : "새로운 대화를 시작해보세요";

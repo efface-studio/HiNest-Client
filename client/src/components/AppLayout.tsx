@@ -1686,6 +1686,12 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
     }, 0);
   };
   const [searchOpen, setSearchOpen] = useState(false);
+  // 검색 단축키 힌트 — macOS 는 ⌘K, 그 외(Windows/Linux)는 Ctrl K. userAgentData 우선, 폴백은 platform.
+  const isMac =
+    typeof navigator !== "undefined" &&
+    /mac|iphone|ipad|ipod/i.test(
+      (navigator as any).userAgentData?.platform || navigator.platform || navigator.userAgent || "",
+    );
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -1777,7 +1783,20 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
               <path d="m20 20-3.5-3.5" />
             </svg>
             <span className="flex-1 text-left">검색</span>
-            <span className="kbd">⌘K</span>
+            <span className="kbd">{isMac ? "⌘K" : "Ctrl K"}</span>
+          </button>
+          {/* 모바일 검색 진입점 — 데스크톱 검색 바(hidden md:flex)가 안 보이는 <md 에서
+              검색을 아예 못 열던 발견성 문제 해결. 돋보기 아이콘만(단축키 힌트는 생략). */}
+          <button
+            className="btn-icon md:hidden !w-[40px] !h-[40px]"
+            onClick={() => setSearchOpen(true)}
+            title="검색"
+            aria-label="검색"
+          >
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
           </button>
           {/* 사내톡 런처 — 모바일(<md) 전용. 상단바 벨 옆에 두고 클릭 시 전역 "chat:toggle"
               이벤트로 ChatFab 패널을 토글한다(패널/리스너는 ChatFab 에 그대로 있음).

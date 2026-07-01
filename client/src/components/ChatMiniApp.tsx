@@ -689,20 +689,40 @@ export default function ChatMiniApp({
         setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
       };
       if (prevAttachments.length > 0) {
+        // 첨부를 순차 전송하다가 하나가 실패하면, 이전 코드는 catch 로 빠져 남은 첨부가
+        // 모두 유실됐다. 각 요청을 개별 try/catch 로 감싸 실패한 첨부만 배열에 축적 →
+        // 루프 끝나고 UI 로 복원해 사용자가 재시도 가능하게 한다. 텍스트 본문은 첫
+        // 첨부에 실었으므로, 첫 번째가 실패하면 본문도 함께 복구.
+        const failedAttachments: Attachment[] = [];
+        let restoreContent = "";
         for (let i = 0; i < prevAttachments.length; i++) {
           const a = prevAttachments[i];
-          const r = await api<{ message: Message }>(`/api/chat/rooms/${activeId}/messages`, {
-            method: "POST",
-            json: {
-              content: i === 0 ? content : "",
-              kind: a.kind,
-              fileUrl: a.url,
-              fileName: a.name,
-              fileType: a.type,
-              fileSize: a.size,
-            },
+          try {
+            const r = await api<{ message: Message }>(`/api/chat/rooms/${activeId}/messages`, {
+              method: "POST",
+              json: {
+                content: i === 0 ? content : "",
+                kind: a.kind,
+                fileUrl: a.url,
+                fileName: a.name,
+                fileType: a.type,
+                fileSize: a.size,
+              },
+            });
+            if (r?.message) appendLocal(r.message);
+          } catch {
+            failedAttachments.push(a);
+            // 첫 첨부가 실패하면 본문도 아직 전송되지 않았으니 함께 복구.
+            if (i === 0) restoreContent = content;
+          }
+        }
+        if (failedAttachments.length > 0) {
+          setAttachments(failedAttachments);
+          if (restoreContent) setInput(restoreContent);
+          await alertAsync({
+            title: "일부 첨부 전송 실패",
+            description: "다시 시도해 주세요.",
           });
-          if (r?.message) appendLocal(r.message);
         }
       } else {
         const r = await api<{ message: Message }>(`/api/chat/rooms/${activeId}/messages`, {
@@ -2137,16 +2157,30 @@ function SharedCodeRow({ code, lang, createdAt, senderName }: { code: string; la
   );
 }
 
-/* 메시지 컨텍스트 메뉴 액션 빌드 — 복사 / 다운로드(파일) / 고정(토글) / 삭제(본인만) */
+/* 메시지 컨텍스트 메뉴 액션 빌드 — 답장(옵션) / 복사 / 다운로드(파일) / 고정(토글) / 삭제(본인만).
+ * onReply 는 백엔드 replyToId 지원이 붙는 별도 PR 에서 전달 예정 — 지금은 undefined 라 항목이 뜨지 않는다. */
 function buildMessageActions(
   m: Message,
   mine: boolean,
   onPin: (id: string) => void,
   onDelete: (id: string) => void,
+  onReply?: (m: Message) => void,
 ): MessageAction[] {
   const actions: MessageAction[] = [];
 
+  // 답장 — onReply 콜백이 있을 때만 노출. 실제 답장 로직/스키마(replyToId) 는 별도 PR.
+  if (onReply) {
+    actions.push({
+      key: "reply",
+      label: "답장",
+      icon: ActionIcons.reply,
+      onSelect: () => onReply(m),
+    });
+  }
+
   // 복사 — 텍스트는 본문, 파일은 파일명을 복사(없으면 본문)
+  // navigator.clipboard 는 iOS/Android WebView 에서 실패할 수 있어 execCommand 폴백이
+  // 들어있는 lib/clipboard 헬퍼로 위임. 성공/실패 토스트 피드백까지 헬퍼가 처리한다.
   actions.push({
     key: "copy",
     label: "복사",
@@ -2154,7 +2188,7 @@ function buildMessageActions(
     onSelect: () => {
       const text = m.kind === "TEXT" ? (m.content || "") : (m.fileName || m.content || "");
       if (!text) return;
-      navigator.clipboard?.writeText(text).catch(() => {});
+      void copyToClipboard(text, { title: "복사됨", description: "메시지를 클립보드에 복사했어요." });
     },
   });
 
@@ -2856,7 +2890,15 @@ function RoomView({
                   // @멘션 / 슬래시 자동완성 메뉴가 열려있으면 ↑↓/Enter/Esc/Tab 을 그쪽이 먼저 소비.
                   if (mentionRef.current?.handleKey(e)) return;
                   if (slashRef.current?.handleKey(e)) return;
-                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                  // Enter=전송, Shift+Enter=개행. sending 중이거나 auto-repeat(꾹눌러 연타)면
+                  // 중복 전송 방지 — clientId dedup 이 없으면 서버에 같은 메시지가 두 번 저장될 수 있음.
+                  if (
+                    e.key === "Enter" &&
+                    !e.shiftKey &&
+                    !e.nativeEvent.isComposing &&
+                    !e.repeat &&
+                    !sending
+                  ) {
                     e.preventDefault();
                     handleSend();
                   }

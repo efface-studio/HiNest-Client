@@ -790,10 +790,14 @@ model ChatMessage {
   scheduledAt DateTime?
   pinnedAt    DateTime?
   pinnedById  String?
+  replyToId   String?
   createdAt   DateTime          @default(now())
   room        ChatRoom          @relation(fields: [roomId], references: [id], onDelete: Cascade)
   sender      User              @relation("Sender", fields: [senderId], references: [id], onDelete: Cascade)
   reactions   MessageReaction[]
+  // 답장(인용) — 원본 메시지 자기참조. 원본이 하드삭제되면 SetNull(소프트삭제는 deletedAt 유지).
+  replyTo     ChatMessage?      @relation("Reply", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies     ChatMessage[]     @relation("Reply")
 
   @@index([roomId, scheduledAt])
   // after-cursor 증분 폴링 — createdAt 역정렬·범위 조회가 핵심 경로
@@ -803,6 +807,7 @@ model ChatMessage {
   // 기존 (roomId,*) 인덱스를 못 타고 (companyId) 로 떨어져 회사 전체 메시지를
   // 스캔했다. senderId 는 회사에 종속되므로 companyId prefix 불필요.
   @@index([senderId, scheduledAt])
+  @@index([replyToId])
 }
 
 model MessageReaction {

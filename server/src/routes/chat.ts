@@ -53,6 +53,16 @@ function broadcastToRoom(roomId: string, event: "chat:message" | "chat:update" |
   });
 }
 
+// 답장 인용 미리보기용 얕은 select — 원본 메시지의 최소 정보만(무한 중첩 방지).
+const REPLY_TO_SELECT = {
+  id: true,
+  content: true,
+  kind: true,
+  fileName: true,
+  deletedAt: true,
+  sender: { select: { id: true, name: true } },
+} as const;
+
 const router = Router();
 router.use(requireAuth);
 
@@ -430,11 +440,14 @@ router.get("/rooms/:id/messages", async (req, res) => {
     include: {
       sender: { select: USER_AVATAR_SELECT },
       reactions: { select: { userId: true, emoji: true, user: { select: { name: true } } } },
+      replyTo: { select: REPLY_TO_SELECT },
     },
   });
 
   // 삭제 메시지 마스킹 (단 본인 + superAdmin 은 원본 볼 수 있음)
   const messages = raw.map((m) => {
+    // 인용된 원본이 삭제됐으면 미리보기 내용도 감춘다(삭제 메시지 내용 유출 방지). 클라는 deletedAt 로 "삭제된 메시지" 표시.
+    const replyTo = m.replyTo?.deletedAt ? { ...m.replyTo, content: "", fileName: null } : m.replyTo;
     const hide = m.deletedAt && m.senderId !== u.id && !u.superAdmin;
     if (hide) {
       return {
@@ -445,9 +458,10 @@ router.get("/rooms/:id/messages", async (req, res) => {
         fileName: null,
         fileType: null,
         fileSize: null,
+        replyTo,
       };
     }
-    return m;
+    return { ...m, replyTo };
   });
 
   // readStates 는 room.members 에서 곧바로 뽑아 재사용 — 별도 쿼리 제거.
@@ -528,6 +542,8 @@ const sendSchema = z.object({
   scheduledAt: z.string().max(40).optional(),
   // 메시지 당 멘션은 50명 상한. 실무 과잉 방지 + 알림 폭탄 차단.
   mentions: z.array(z.string().max(50)).max(50).optional(),
+  // 답장 대상 원본 메시지 id(같은 방·미삭제 검증은 핸들러에서).
+  replyToId: z.string().max(40).optional(),
 });
 
 router.post("/rooms/:id/messages", async (req, res) => {
@@ -556,6 +572,22 @@ router.post("/rooms/:id/messages", async (req, res) => {
 
   const mentions = (d.mentions ?? []).filter((id) => id && id !== u.id);
 
+  // 답장 대상 검증 — 반드시 같은 방의 미삭제 메시지여야. 다른 방 원본 참조(내용 유출)·삭제 원본 차단.
+  let replyToId: string | null = null;
+  if (d.replyToId) {
+    const orig = await prisma.chatMessage.findUnique({
+      where: { id: d.replyToId },
+      select: { roomId: true, deletedAt: true },
+    });
+    if (!orig || orig.roomId !== req.params.id) {
+      return res.status(400).json({ error: "답장 대상 메시지를 찾을 수 없습니다" });
+    }
+    if (orig.deletedAt) {
+      return res.status(400).json({ error: "삭제된 메시지에는 답장할 수 없습니다" });
+    }
+    replyToId = d.replyToId;
+  }
+
   const msg = await prisma.chatMessage.create({
     data: {
       roomId: req.params.id,
@@ -568,11 +600,13 @@ router.post("/rooms/:id/messages", async (req, res) => {
       fileSize: d.fileSize,
       mentions: mentions.length ? mentions.join(",") : null,
       scheduledAt,
+      replyToId,
     },
     include: {
       sender: { select: USER_AVATAR_SELECT },
       room: { select: { id: true, name: true, type: true } },
       reactions: { select: { userId: true, emoji: true, user: { select: { name: true } } } },
+      replyTo: { select: REPLY_TO_SELECT },
     },
   });
 

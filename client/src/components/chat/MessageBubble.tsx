@@ -1044,8 +1044,72 @@ function MessageBubbleInner({ msg, mine }: { msg: Message; mine: boolean }) {
 // 얕은 비교로 충분 — msg 는 서버에서 객체 그대로 넘어오고, 증분 폴링 때 기존 요소의
 // 참조는 바뀌지 않는다. full 동기화(15초 주기) 시에만 reference 가 새로 만들어져
 // 재렌더가 발생 → 의도된 동작.
+/** 답장 인용 미리보기 카드 — 버블 위에 원본 발신자 + 내용 요약. 클릭 시 원본으로 스크롤(전역 이벤트). */
+function ReplyQuote({ reply, mine }: { reply: NonNullable<Message["replyTo"]>; mine: boolean }) {
+  const preview = reply.deletedAt
+    ? "삭제된 메시지"
+    : reply.kind === "IMAGE"
+    ? "사진"
+    : reply.kind === "VIDEO"
+    ? "동영상"
+    : reply.kind === "FILE"
+    ? reply.fileName || "파일"
+    : (reply.content || "").replace(/\n/g, " ").slice(0, 80) || "메시지";
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        if (reply.deletedAt) return;
+        window.dispatchEvent(new CustomEvent("chat:scroll-to-message", { detail: { id: reply.id } }));
+      }}
+      className="text-left"
+      style={{
+        maxWidth: "78%",
+        display: "flex",
+        flexDirection: "column",
+        gap: 1,
+        padding: "4px 9px",
+        marginBottom: -2,
+        borderRadius: 10,
+        borderLeft: "3px solid var(--c-brand)",
+        background: "var(--c-surface-2, rgba(0,0,0,0.04))",
+        cursor: reply.deletedAt ? "default" : "pointer",
+        opacity: reply.deletedAt ? 0.6 : 1,
+      }}
+    >
+      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--c-brand)", lineHeight: 1.2 }}>
+        {reply.sender?.name ?? "알 수 없음"}
+      </span>
+      <span
+        style={{
+          fontSize: 12,
+          color: "var(--c-text-muted)",
+          lineHeight: 1.25,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: 220,
+        }}
+      >
+        {preview}
+      </span>
+    </button>
+  );
+}
+
+function MessageBubbleWrapped({ msg, mine }: { msg: Message; mine: boolean }) {
+  if (!msg.replyTo) return <MessageBubbleInner msg={msg} mine={mine} />;
+  // 답장이면 인용 카드를 버블 위에 스택(발신 측 정렬 맞춤).
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: mine ? "flex-end" : "flex-start", gap: 3 }}>
+      <ReplyQuote reply={msg.replyTo} mine={mine} />
+      <MessageBubbleInner msg={msg} mine={mine} />
+    </div>
+  );
+}
+
 export const MessageBubble = memo(
-  MessageBubbleInner,
+  MessageBubbleWrapped,
   (a, b) => a.mine === b.mine && a.msg === b.msg
 );
 

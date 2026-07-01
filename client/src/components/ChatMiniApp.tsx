@@ -33,6 +33,7 @@ import type {
   Attachment,
   Message,
   MessageHit,
+  ReplyPreview,
   Room,
   RoomLocalSetting,
 } from "./chat/types";
@@ -746,6 +747,21 @@ export default function ChatMiniApp({
   //  실패 마킹된 로컬 메시지에서 재시도 클릭 시 이 맵을 참조해 send() 재호출.
   const pendingPayloadsRef = useRef<Map<string, { content: string; attachments: Attachment[] }>>(new Map());
 
+  // 답장(인용) 대상 — 롱프레스 '답장' 으로 세팅, 컴포저 위에 미리보기 바 노출, 전송 시 replyToId 로 전송.
+  const [replyingTo, setReplyingTo] = useState<ReplyPreview | null>(null);
+  function startReply(m: Message) {
+    if (m.deletedAt || m.pending) return;
+    setReplyingTo({
+      id: m.id,
+      content: m.content,
+      kind: m.kind,
+      fileName: m.fileName,
+      deletedAt: m.deletedAt,
+      sender: { id: m.sender.id, name: m.sender.name },
+    });
+    // 입력창 포커스는 RoomView 가 replyingTo 변화를 감지해 처리(textarea 가 거기 있음).
+  }
+
   async function send(retryPayload?: { content: string; attachments: Attachment[] }) {
     if (!activeId || sending) return; // 더블 클릭/Enter 연타 1차 방어선
     const content = retryPayload ? retryPayload.content : input.trim();
@@ -759,9 +775,12 @@ export default function ChatMiniApp({
             .filter((rm) => rm.user.id !== (user?.id ?? "") && content.includes(`@${rm.user.name}`))
             .map((rm) => rm.user.id)
         : [];
+    // 답장 대상 — 재시도는 원본 payload 만 재전송하므로 reply 는 최초 전송에서만.
+    const replyTarget = retryPayload ? null : replyingTo;
     if (!retryPayload) {
       setInput("");
       setAttachments([]);
+      setReplyingTo(null);
     }
     setSending(true);
 
@@ -801,6 +820,9 @@ export default function ChatMiniApp({
             pendingClientId: clientId,
             pendingSetId: setId,
             status: "sending",
+            // 답장은 첫 메시지(본문 포함)에만 붙인다.
+            replyToId: i === 0 ? replyTarget?.id : undefined,
+            replyTo: i === 0 ? (replyTarget ?? undefined) : undefined,
           },
           body: {
             content: i === 0 ? content : "",
@@ -810,6 +832,7 @@ export default function ChatMiniApp({
             fileType: a.type,
             fileSize: a.size,
             clientId,
+            replyToId: i === 0 ? replyTarget?.id : undefined,
           },
         });
       }
@@ -827,8 +850,10 @@ export default function ChatMiniApp({
           pendingClientId: clientId,
           pendingSetId: setId,
           status: "sending",
+          replyToId: replyTarget?.id,
+          replyTo: replyTarget ?? undefined,
         },
-        body: { content, kind: "TEXT", mentions, clientId },
+        body: { content, kind: "TEXT", mentions, clientId, replyToId: replyTarget?.id },
       });
     }
 
@@ -1006,6 +1031,9 @@ export default function ChatMiniApp({
           onPin={pinMessage}
           onDelete={deleteMessage}
           onEdit={editMessage}
+          onReply={startReply}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
           onRetry={retrySend}
           readStates={readStates}
           presenceMap={presenceMap}
@@ -2397,7 +2425,7 @@ function buildMessageActions(
 /* ======================= 대화방 ======================= */
 function RoomView({
   room, messages, meId, onBack, input, setInput, onSend, sending, scrollRef,
-  attachments, uploading, onPickFile, onRemoveAttachment, onReact, onPin, onDelete, onEdit, onRetry, readStates, presenceMap,
+  attachments, uploading, onPickFile, onRemoveAttachment, onReact, onPin, onDelete, onEdit, onReply, replyingTo, onCancelReply, onRetry, readStates, presenceMap,
 }: {
   room: Room; messages: Message[]; meId: string; onBack: () => void;
   input: string; setInput: (v: string) => void; onSend: () => void; sending: boolean;
@@ -2408,6 +2436,9 @@ function RoomView({
   onPin: (messageId: string) => void;
   onDelete: (messageId: string) => void;
   onEdit: (m: Message) => void;
+  onReply: (m: Message) => void;
+  replyingTo: ReplyPreview | null;
+  onCancelReply: () => void;
   onRetry: (setId: string) => void;
   readStates: { userId: string; lastReadAt: string | null }[];
   presenceMap: Record<string, { presenceStatus: string | null; workStatus: string | null; presenceMessage: string | null }>;
@@ -2421,6 +2452,19 @@ function RoomView({
   const [reactingRect, setReactingRect] = useState<DOMRect | null>(null);
   const [ready, setReady] = useState(false);
   const nav = useNavigate();
+  // 답장 인용 카드 클릭 → 원본 메시지로 스크롤(MessageBubble 이 전역 이벤트 디스패치, 여기서 수신).
+  useEffect(() => {
+    const onScroll = (e: Event) => {
+      const id = (e as CustomEvent).detail?.id;
+      if (id) scrollToMessage(id);
+    };
+    window.addEventListener("chat:scroll-to-message", onScroll);
+    return () => window.removeEventListener("chat:scroll-to-message", onScroll);
+  }, []);
+  // 답장 시작(replyingTo 세팅) 시 입력창 포커스 — 바로 답장 작성.
+  useEffect(() => {
+    if (replyingTo) requestAnimationFrame(() => textareaRef.current?.focus());
+  }, [replyingTo?.id]);
   // 전송 래퍼 — onSend() 후 입력창 포커스를 되돌려 키보드를 유지(카톡/메신저처럼 연속 입력).
   // 전송 버튼이 width:0 으로 collapse 되거나 setInput("") 리렌더가 끼어도 다음 프레임에
   // textarea 로 포커스를 복원해 iOS/Android 가 키보드를 내리지 않게 한다.
@@ -2968,7 +3012,7 @@ function RoomView({
                     onPick={(e) => onReact(m.id, e)}
                     onDismiss={() => { setReactingId(null); setReactingRect(null); }}
                     header={formatDetailed(new Date(m.createdAt))}
-                    actions={buildMessageActions(m, mine, onPin, onDelete, undefined, onEdit)}
+                    actions={buildMessageActions(m, mine, onPin, onDelete, onReply, onEdit)}
                   >
                     <MessageBubble msg={m} mine={mine} />
                   </ReactionPicker>
@@ -3042,6 +3086,33 @@ function RoomView({
               업로드 중…
             </div>
           )}
+        </div>
+      )}
+
+      {/* 답장 대상 미리보기 바 — 롱프레스 '답장' 시 컴포저 위에 노출. X 로 취소. */}
+      {replyingTo && (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 12px", borderTop: `1px solid ${C.gray200 ?? "#E5E7EB"}`, background: C.gray100 }}>
+          <div style={{ width: 3, alignSelf: "stretch", borderRadius: 2, background: "var(--c-brand)", flexShrink: 0 }} />
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--c-brand)", lineHeight: 1.3 }}>
+              {replyingTo.sender.name}에게 답장
+            </div>
+            <div style={{ fontSize: 12, color: C.gray600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.3 }}>
+              {replyingTo.deletedAt ? "삭제된 메시지"
+                : replyingTo.kind === "IMAGE" ? "사진"
+                : replyingTo.kind === "VIDEO" ? "동영상"
+                : replyingTo.kind === "FILE" ? (replyingTo.fileName || "파일")
+                : (replyingTo.content || "").replace(/\n/g, " ").slice(0, 60) || "메시지"}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onCancelReply}
+            aria-label="답장 취소"
+            style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", border: 0, background: "transparent", color: C.gray600, cursor: "pointer", display: "grid", placeItems: "center" }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+          </button>
         </div>
       )}
 

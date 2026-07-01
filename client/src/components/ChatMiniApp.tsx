@@ -249,11 +249,13 @@ export default function ChatMiniApp({
             return fresh.length ? [...prev, ...fresh] : prev;
           });
         }
-        // readStates 는 가벼워서 매번 교체 — 안읽음 카운트가 실시간으로 갱신돼야 함
-        if (res.readStates) setReadStates(res.readStates);
+        // readStates 는 가벼워서 매번 교체 — 안읽음 카운트가 실시간으로 갱신돼야 함.
+        // 단, 내 것은 로컬 낙관 갱신(markRead)이 더 최신일 수 있으니 max() 로 병합해야
+        // 방 진입 순간 발사한 loadMessages 응답이 markRead 낙관 갱신을 덮어쓰지 않는다.
+        if (res.readStates) mergeReadStatesKeepingMine(res.readStates);
       } else {
         setMessages(res.messages);
-        setReadStates(res.readStates ?? []);
+        mergeReadStatesKeepingMine(res.readStates ?? []);
       }
       // 스크롤은 RoomView 의 useLayoutEffect 에서 페인트 전에 수행 (플래시 방지)
     } catch {}
@@ -273,6 +275,32 @@ export default function ChatMiniApp({
     if (!isPanelOpen || typeof document === "undefined") return false;
     if (isCapacitorNative()) return isNativeAppActive();
     return document.visibilityState === "visible" && (typeof document.hasFocus !== "function" || document.hasFocus());
+  };
+
+  /**
+   * 서버가 반환한 readStates 를 로컬에 반영하되, **내 lastReadAt 은 로컬이 더 최신이면 유지**한다.
+   * 방 진입 시:
+   *   1) loadMessages(activeId, {full:true}) 발사 — 서버는 그 시점 스냅샷을 응답으로 준비
+   *   2) markRead(activeId) 로컬 낙관 갱신 (내 lastReadAt = now) — UI 즉시 반영
+   *   3) markRead 안의 서버 POST /read 완료 → DB 업데이트
+   *   4) loadMessages 응답 도착 — 하지만 이 응답의 readStates 는 t=0 시점(=옛날 값)
+   *   5) 그냥 setReadStates(res.readStates) 하면 옛날 값이 낙관 갱신 덮어씀 → "1" 안 사라짐 버그
+   * 그래서 내 lastReadAt 은 max(local, server) 로 유지.
+   */
+  const mergeReadStatesKeepingMine = (incoming: { userId: string; lastReadAt: string | null }[]) => {
+    const meId = user?.id;
+    setReadStates((prev) => {
+      if (!meId) return incoming;
+      const prevMy = prev.find((r) => r.userId === meId)?.lastReadAt ?? null;
+      if (!prevMy) return incoming;
+      const serverMy = incoming.find((r) => r.userId === meId)?.lastReadAt ?? null;
+      if (serverMy && serverMy >= prevMy) return incoming;
+      // 로컬이 더 최신 → 서버 목록에 내 항목만 로컬 값으로 덮어씀
+      const hasMe = incoming.some((r) => r.userId === meId);
+      return hasMe
+        ? incoming.map((r) => (r.userId === meId ? { userId: meId, lastReadAt: prevMy } : r))
+        : [...incoming, { userId: meId, lastReadAt: prevMy }];
+    });
   };
 
   const markRead = async (roomId: string) => {

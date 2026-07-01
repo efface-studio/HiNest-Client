@@ -1,0 +1,63 @@
+# CI — PR·push(main) 시 타입체크 + 빌드 게이트. 통과해야 머지.
+# 클라: tsc -b + vite build. 서버: prisma generate/validate + tsc --noEmit.
+# (원문 팀 규칙의 서버 ruff/pytest 는 Python/FastAPI 기준 — HiNest 서버는 TS/Prisma 라 적응.)
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+# 같은 브랜치에서 새 커밋이 오면 이전 실행 취소(러너 절약).
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  client:
+    name: client · tsc + vite build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - run: npm ci
+      - name: Typecheck (tsc -b)
+        run: npx tsc -b
+      - name: Build (vite)
+        run: npx vite build
+        env:
+          # 빌드 시 API 베이스 — 시크릿 아님(공개 도메인). 번들에만 들어감.
+          VITE_API_BASE: https://nest.hi-vits.com
+
+  server:
+    name: server · prisma + tsc
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    # prisma generate/validate 는 DB 연결 없이 스키마만 검사하지만, schema.prisma 가
+    # env("DATABASE_URL") 를 참조하므로 더미 값을 넣어 파싱 에러를 막는다(실제 연결 안 함).
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - name: Prisma generate
+        run: npx prisma generate
+      - name: Prisma validate (schema ↔ migrations)
+        run: npx prisma validate
+      - name: Typecheck (tsc --noEmit)
+        run: npx tsc -p tsconfig.json --noEmit

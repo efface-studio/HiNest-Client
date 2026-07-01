@@ -27,6 +27,16 @@ export type Reaction = {
   user?: { name: string };
 };
 
+/** 답장 인용 미리보기 — 서버 REPLY_TO_SELECT 와 동일 얕은 형태. */
+export type ReplyPreview = {
+  id: string;
+  content: string;
+  kind: string;
+  fileName?: string | null;
+  deletedAt?: string | null;
+  sender: { id: string; name: string };
+};
+
 export type Message = {
   id: string;
   // 서버는 include 여부에 따라 roomId 를 포함하기도/생략하기도 한다. SSE 푸시
@@ -45,6 +55,9 @@ export type Message = {
   createdAt: string;
   sender: { id: string; name: string; avatarColor?: string; avatarUrl?: string | null };
   reactions?: Reaction[];
+  // 답장(인용) — 서버가 함께 내려주는 원본 메시지 얕은 미리보기.
+  replyToId?: string | null;
+  replyTo?: ReplyPreview | null;
   // 낙관적 전송 UI 전용 필드(서버는 안 봄).
   //  - pending: 로컬에 낙관적으로 삽입된 메시지(id 는 임시).
   //  - pendingClientId: 서버 응답/SSE 와 매칭해 dedup 하는 클라이언트 UUID.

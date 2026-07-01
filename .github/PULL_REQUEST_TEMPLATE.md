@@ -1,40 +1,23 @@
 <!--
-  PR 제목: `type(scope): 한국어 설명`  (예: fix(console): 하단 네비바 숨김)
-  머지 시 연결 이슈가 자동 종료되도록 아래 "Closes #" 를 꼭 채워주세요.
-  본문은 아래 4섹션(증상·원인·수정·검증) 표준을 갖춰주세요.
--->
-
-## 증상
-<!--
-  사용자 입장에서 보이는 결과 + 재현 단계 + 스크린샷(있으면).
-  단순 "안 됨" 금지 — 어떤 화면, 어떤 동작, 어떤 결과인지 구체적으로.
+  PR 제목: 🔀 :: (#<issue>) <설명>
+  본문: 원인·수정·검증·비고 + 마지막에 Closes #<issue>.
+  ⚠️ 커밋·PR 어디에도 Claude 서명(Co-authored-by / Generated with Claude Code) 금지.
+  이슈 1개 ↔ PR 1개. Assignee=Xixn2, Type 라벨 1개(+Priority/Area).
 -->
 
 ## 원인
-<!--
-  근본 원인을 짧게라도 인과관계로. 파일·라인·코드 인용 환영.
-  '근본 원인' vs '표면 증상' 구분해서 적기.
--->
+<!-- 근본 원인을 인과관계로 짧게. 파일·라인·코드 인용 환영. '근본 원인' vs '표면 증상' 구분. -->
 
-## 작업 내용
-<!--
-  무엇을 어떻게 바꿨는지 — 파일별/기능별 글머리표.
-  추가/수정/제거를 명확히 구분.
-  부작용·호환성·idempotent·롤백 가능성 + 외부 영향(다른 페이지·다른 플랫폼) 명시.
--->
+## 수정
+<!-- 무엇을 어떻게 바꿨는지 파일/모듈별 글머리표. 추가/수정/제거 구분. 부작용·idempotent·롤백·외부 영향(다른 페이지·플랫폼) 명시. -->
 
 ## 검증
-- [ ] `server` tsc / `client` tsc 통과
-- [ ] 로컬 빌드 또는 실기기 · 프리뷰로 동작 확인
-- [ ] 연결 이슈에 `Closes #N` 기입
-- [ ] 본인(@Xixn2)을 Assignee 로 지정
+- [ ] `client` tsc(`tsc -b`) / `server` tsc(`--noEmit`) 통과
+- [ ] 로컬 빌드 또는 프리뷰·실기기 동작 확인
+- [ ] CI(client · server) 통과
+- [ ] Assignee `Xixn2` + Type 라벨 1개(+Priority/Area)
+
+## 비고
+<!-- 회귀 위험, 후속 작업, before/after 스크린샷 등 -->
 
 Closes #
-
-## 분류
-- **type:** <!-- feat / fix / refactor / perf / security / chore / docs -->
-- **area:** <!-- client / server / ios / desktop / console / ci -->
-- **priority:** <!-- P0 / P1 / P2 (선택) -->
-
-## 비고 · 스크린샷
-<!-- 회귀 위험, 후속 작업, before/after 등 -->

@@ -10,7 +10,7 @@ import { isNativeAppActive } from "../lib/appActive";
 import { prewarmChatAvatars } from "../lib/liquidGlassTabBar";
 import { setActiveChatRoom } from "../lib/desktopNotify";
 import { Browser } from "@capacitor/browser";
-import { alertAsync, confirmAsync } from "./ConfirmHost";
+import { alertAsync, confirmAsync, promptAsync } from "./ConfirmHost";
 import { SnippetSlashMenu, type SnippetSlashHandle } from "./chat/SnippetSlashMenu";
 import { MentionMenu, type MentionHandle } from "./chat/MentionMenu";
 import {
@@ -670,6 +670,39 @@ export default function ChatMiniApp({
   }
 
   /**
+   * 메시지 편집 — 본인 텍스트 메시지만. 백엔드 PATCH /messages/:id 는 이미 존재(작성자·8000자 가드,
+   * editedAt 세팅, chat:update(kind:"edit") 브로드캐스트). 여기선 트리거 UI 만: 여러 줄 프롬프트로
+   * 원문을 열어 수정 → 낙관 반영 → PATCH. 실패 시 원문으로 롤백. "(수정됨)" 표시는 렌더에서 editedAt 기준.
+   */
+  async function editMessage(m: Message) {
+    if (m.kind !== "TEXT" || m.deletedAt || m.pending) return;
+    const next = await promptAsync({
+      title: "메시지 수정",
+      defaultValue: m.content ?? "",
+      multiline: true,
+      confirmLabel: "저장",
+      cancelLabel: "취소",
+    });
+    if (next == null) return; // 취소
+    const trimmed = next.trim();
+    if (!trimmed) {
+      alertAsync({ title: "수정 실패", description: "빈 메시지로 저장할 수 없어요. 삭제를 원하면 삭제를 사용하세요." });
+      return;
+    }
+    if (trimmed === (m.content ?? "")) return; // 변화 없음
+    const prevContent = m.content;
+    const prevEditedAt = m.editedAt;
+    setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, content: trimmed, editedAt: new Date().toISOString() } : x)));
+    try {
+      await api(`/api/chat/messages/${m.id}`, { method: "PATCH", json: { content: trimmed } });
+      // SSE chat:update(kind:"edit") 가 최신 메시지로 다시 덮어써 정합.
+    } catch (e: any) {
+      setMessages((prev) => prev.map((x) => (x.id === m.id ? { ...x, content: prevContent, editedAt: prevEditedAt } : x)));
+      alertAsync({ title: "수정 실패", description: e?.message ?? "잠시 후 다시 시도해주세요." });
+    }
+  }
+
+  /**
    * 메시지 삭제(소프트). 본인이 보낸 메시지만.
    * 확인 → 낙관적으로 deletedAt 설정 → DELETE 호출.
    * 서버는 chat:update(kind:"delete") 로 나머지 멤버에 브로드캐스트 → 모두 "삭제된 메시지" 로 대체.
@@ -972,6 +1005,7 @@ export default function ChatMiniApp({
           onReact={reactToMessage}
           onPin={pinMessage}
           onDelete={deleteMessage}
+          onEdit={editMessage}
           onRetry={retrySend}
           readStates={readStates}
           presenceMap={presenceMap}
@@ -2289,6 +2323,7 @@ function buildMessageActions(
   onPin: (id: string) => void,
   onDelete: (id: string) => void,
   onReply?: (m: Message) => void,
+  onEdit?: (m: Message) => void,
 ): MessageAction[] {
   const actions: MessageAction[] = [];
 
@@ -2299,6 +2334,16 @@ function buildMessageActions(
       label: "답장",
       icon: ActionIcons.reply,
       onSelect: () => onReply(m),
+    });
+  }
+
+  // 편집 — 본인이 보낸 텍스트 메시지만(삭제·전송중 제외). 백엔드 PATCH /messages/:id 존재.
+  if (onEdit && mine && m.kind === "TEXT" && !m.deletedAt && !m.pending) {
+    actions.push({
+      key: "edit",
+      label: "수정",
+      icon: ActionIcons.edit,
+      onSelect: () => onEdit(m),
     });
   }
 
@@ -2352,7 +2397,7 @@ function buildMessageActions(
 /* ======================= 대화방 ======================= */
 function RoomView({
   room, messages, meId, onBack, input, setInput, onSend, sending, scrollRef,
-  attachments, uploading, onPickFile, onRemoveAttachment, onReact, onPin, onDelete, onRetry, readStates, presenceMap,
+  attachments, uploading, onPickFile, onRemoveAttachment, onReact, onPin, onDelete, onEdit, onRetry, readStates, presenceMap,
 }: {
   room: Room; messages: Message[]; meId: string; onBack: () => void;
   input: string; setInput: (v: string) => void; onSend: () => void; sending: boolean;
@@ -2362,6 +2407,7 @@ function RoomView({
   onReact: (messageId: string, emoji: string) => void;
   onPin: (messageId: string) => void;
   onDelete: (messageId: string) => void;
+  onEdit: (m: Message) => void;
   onRetry: (setId: string) => void;
   readStates: { userId: string; lastReadAt: string | null }[];
   presenceMap: Record<string, { presenceStatus: string | null; workStatus: string | null; presenceMessage: string | null }>;
@@ -2758,7 +2804,7 @@ function RoomView({
                         예전에는 [시각 | 안읽음 | 버블] 이 한 줄로 늘어서 있어 "오후 6:03 1"
                         처럼 읽혀 어떤 값이 안읽음인지 즉시 구분되지 않던 문제가 있었음.
                         같은 발신자 연속 묶음의 마지막에만 시각을 노출(m.showTime). */}
-                    {(m.showTime && !m.deletedAt) || m.unread > 0 ? (
+                    {(m.showTime && !m.deletedAt) || m.unread > 0 || (!!m.editedAt && !m.deletedAt) ? (
                       <div
                         style={{
                           display: "flex",
@@ -2770,6 +2816,10 @@ function RoomView({
                           flexShrink: 0,
                         }}
                       >
+                        {/* 편집된 메시지 표시 — showTime 여부와 무관하게 editedAt 있으면 노출(카톡식). */}
+                        {m.editedAt && !m.deletedAt && (
+                          <span style={{ fontSize: 10, fontWeight: 500, color: C.gray500, lineHeight: 1.1 }}>수정됨</span>
+                        )}
                         {m.unread > 0 && (
                           <span
                             title={m.unreadNames?.length ? `안 읽음: ${m.unreadNames.join(", ")}` : undefined}
@@ -2918,7 +2968,7 @@ function RoomView({
                     onPick={(e) => onReact(m.id, e)}
                     onDismiss={() => { setReactingId(null); setReactingRect(null); }}
                     header={formatDetailed(new Date(m.createdAt))}
-                    actions={buildMessageActions(m, mine, onPin, onDelete)}
+                    actions={buildMessageActions(m, mine, onPin, onDelete, undefined, onEdit)}
                   >
                     <MessageBubble msg={m} mine={mine} />
                   </ReactionPicker>

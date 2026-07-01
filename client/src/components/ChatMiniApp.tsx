@@ -413,7 +413,39 @@ export default function ChatMiniApp({
       if (!detail?.message) return;
       const msg = detail.message;
       if (msg.roomId === activeId) {
-        setMessages((prev) => (prev.some((m) => m.id === msg.id) ? prev : [...prev, msg]));
+        setMessages((prev) => {
+          // 이미 서버 id 로 존재하면 skip.
+          if (prev.some((m) => m.id === msg.id)) return prev;
+          // 서버가 clientId 를 echo 해 준 경우: 같은 pendingClientId 를 가진 낙관 슬롯을 교체.
+          const echoedClientId = (msg as any).clientId as string | undefined;
+          if (echoedClientId) {
+            const idx = prev.findIndex((m) => m.pendingClientId === echoedClientId);
+            if (idx >= 0) {
+              const next = prev.slice();
+              next[idx] = msg;
+              return next;
+            }
+          }
+          // echo 없어도 fallback: 같은 방·같은 발신자의 pending TEXT/파일 URL 이 정확히 일치하면
+          //  중복 append 를 막는다(서버 응답보다 SSE 가 먼저 도착하는 레이스). 정확한 매칭 실패 시
+          //  일반 append — 이 경우 send() 성공 branch 가 나중에 pending 을 자체 정리.
+          if (msg.sender?.id === (user?.id ?? "")) {
+            const matchIdx = prev.findIndex(
+              (m) =>
+                m.pending &&
+                m.sender.id === msg.sender.id &&
+                m.kind === msg.kind &&
+                m.content === msg.content &&
+                (m.fileUrl ?? null) === (msg.fileUrl ?? null),
+            );
+            if (matchIdx >= 0) {
+              const next = prev.slice();
+              next[matchIdx] = msg;
+              return next;
+            }
+          }
+          return [...prev, msg];
+        });
         if (isChatVisible()) {
           markRead(msg.roomId);
           // 로컬 NotificationProvider items 에서도 이 방의 DM/MENTION 을 즉시 readAt 처리 →
@@ -665,10 +697,27 @@ export default function ChatMiniApp({
     }
   }
 
-  async function send() {
-    if (!activeId || sending) return;
-    const content = input.trim();
-    if (!content && attachments.length === 0) return;
+  // 낙관 UI 용 임시 id 생성기 — crypto.randomUUID 폴백 포함(구 브라우저·구 WebView).
+  //  더블탭/Enter 연타로 같은 payload 가 두 번 POST 되던 버그의 서버측 dedup 힌트로도 쓴다.
+  //  서버가 아직 clientId 를 안 보더라도 (a) 로컬 낙관 UI 매칭·교체 (b) SSE echo 매칭에
+  //  즉시 활용된다.
+  function makeClientId(): string {
+    try {
+      const c: any = (globalThis as any).crypto;
+      if (c && typeof c.randomUUID === "function") return c.randomUUID();
+    } catch {}
+    return `c-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
+  // 재시도용 payload 보관 — pendingClientId → { content, attachments }.
+  //  실패 마킹된 로컬 메시지에서 재시도 클릭 시 이 맵을 참조해 send() 재호출.
+  const pendingPayloadsRef = useRef<Map<string, { content: string; attachments: Attachment[] }>>(new Map());
+
+  async function send(retryPayload?: { content: string; attachments: Attachment[] }) {
+    if (!activeId || sending) return; // 더블 클릭/Enter 연타 1차 방어선
+    const content = retryPayload ? retryPayload.content : input.trim();
+    const outbound = retryPayload ? retryPayload.attachments : attachments;
+    if (!content && outbound.length === 0) return;
     // @멘션 — 본문의 `@멤버이름` 을 그룹 멤버명과 매칭해 userId 목록 파생(그룹만). 서버가 그들에게
     // MENTION 알림을 보낸다(1:1 은 멘션 없음). 빈 배열이면 서버가 무시.
     const mentions =
@@ -677,68 +726,142 @@ export default function ChatMiniApp({
             .filter((rm) => rm.user.id !== (user?.id ?? "") && content.includes(`@${rm.user.name}`))
             .map((rm) => rm.user.id)
         : [];
-    const prevInput = input;
-    const prevAttachments = attachments;
-    setInput("");
-    setAttachments([]);
+    if (!retryPayload) {
+      setInput("");
+      setAttachments([]);
+    }
     setSending(true);
+
+    // 낙관 UI — 전송 즉시 로컬에 삽입(pending=true, status="sending").
+    //  첨부가 여러 개인 경우 각 첨부가 별도 메시지가 되므로 각각 clientId + placeholder 생성.
+    const nowIso = new Date().toISOString();
+    const senderStub = {
+      id: user?.id ?? "",
+      name: user?.name ?? "",
+      avatarColor: user?.avatarColor,
+      avatarUrl: user?.avatarUrl ?? null,
+    };
+    type Optimistic = {
+      clientId: string;
+      msg: Message;
+      body: Record<string, any>;
+    };
+    const setId = makeClientId();
+    const optimistic: Optimistic[] = [];
+    if (outbound.length > 0) {
+      for (let i = 0; i < outbound.length; i++) {
+        const a = outbound[i];
+        const clientId = makeClientId();
+        optimistic.push({
+          clientId,
+          msg: {
+            id: `pending:${clientId}`,
+            content: i === 0 ? content : "",
+            kind: a.kind,
+            fileUrl: a.url,
+            fileName: a.name,
+            fileType: a.type,
+            fileSize: a.size,
+            createdAt: nowIso,
+            sender: senderStub,
+            pending: true,
+            pendingClientId: clientId,
+            pendingSetId: setId,
+            status: "sending",
+          },
+          body: {
+            content: i === 0 ? content : "",
+            kind: a.kind,
+            fileUrl: a.url,
+            fileName: a.name,
+            fileType: a.type,
+            fileSize: a.size,
+            clientId,
+          },
+        });
+      }
+    } else {
+      const clientId = makeClientId();
+      optimistic.push({
+        clientId,
+        msg: {
+          id: `pending:${clientId}`,
+          content,
+          kind: "TEXT",
+          createdAt: nowIso,
+          sender: senderStub,
+          pending: true,
+          pendingClientId: clientId,
+          pendingSetId: setId,
+          status: "sending",
+        },
+        body: { content, kind: "TEXT", mentions, clientId },
+      });
+    }
+
+    // 재시도용 원본 payload 저장(setId 를 키로 — 세트 단위 재시도).
+    //  다중 첨부 중 일부 실패해도 세트 전체를 다시 보낸다(부분 재시도는 UX 상 요구 밖).
+    pendingPayloadsRef.current.set(setId, { content, attachments: outbound });
+
+    // 낙관 append — pending 메시지들을 로컬에 즉시 삽입.
+    setMessages((prev) => [...prev, ...optimistic.map((o) => o.msg)]);
+
     try {
       // 전송 응답에 서버가 만든 메시지가 그대로 담겨온다. SSE 도 같은 메시지를
-      // 로컬로 다시 푸시하므로 즉시 낙관적 append — dedup 은 message.id 기준.
-      const appendLocal = (m: Message) => {
-        setMessages((prev) => (prev.some((x) => x.id === m.id) ? prev : [...prev, m]));
-      };
-      if (prevAttachments.length > 0) {
-        // 첨부를 순차 전송하다가 하나가 실패하면, 이전 코드는 catch 로 빠져 남은 첨부가
-        // 모두 유실됐다. 각 요청을 개별 try/catch 로 감싸 실패한 첨부만 배열에 축적 →
-        // 루프 끝나고 UI 로 복원해 사용자가 재시도 가능하게 한다. 텍스트 본문은 첫
-        // 첨부에 실었으므로, 첫 번째가 실패하면 본문도 함께 복구.
-        const failedAttachments: Attachment[] = [];
-        let restoreContent = "";
-        for (let i = 0; i < prevAttachments.length; i++) {
-          const a = prevAttachments[i];
-          try {
-            const r = await api<{ message: Message }>(`/api/chat/rooms/${activeId}/messages`, {
-              method: "POST",
-              json: {
-                content: i === 0 ? content : "",
-                kind: a.kind,
-                fileUrl: a.url,
-                fileName: a.name,
-                fileType: a.type,
-                fileSize: a.size,
-              },
-            });
-            if (r?.message) appendLocal(r.message);
-          } catch {
-            failedAttachments.push(a);
-            // 첫 첨부가 실패하면 본문도 아직 전송되지 않았으니 함께 복구.
-            if (i === 0) restoreContent = content;
-          }
-        }
-        if (failedAttachments.length > 0) {
-          setAttachments(failedAttachments);
-          if (restoreContent) setInput(restoreContent);
-          await alertAsync({
-            title: "일부 첨부 전송 실패",
-            description: "다시 시도해 주세요.",
-          });
-        }
-      } else {
-        const r = await api<{ message: Message }>(`/api/chat/rooms/${activeId}/messages`, {
-          method: "POST",
-          json: { content, kind: "TEXT", mentions },
+      // 로컬로 다시 푸시하므로 dedup — 우선 pendingClientId 매칭 → 실제 서버 id 로 교체.
+      //  서버가 clientId 를 echo 해주지 않아도, 이미 sender/content 로 pending 을 만들어둔
+      //  뒤 성공 시 대응되는 optimistic 슬롯을 서버 응답으로 교체하므로 UI 는 언제나 정합.
+      const replaceOptimistic = (clientId: string, serverMsg: Message) => {
+        setMessages((prev) => {
+          // 이미 SSE 로 서버 id 가 들어왔을 수 있음 — 그 경우 pending 제거만.
+          const hasServerId = prev.some((m) => m.id === serverMsg.id);
+          const next = prev
+            .map((m) => (m.pendingClientId === clientId ? (hasServerId ? null : serverMsg) : m))
+            .filter((m): m is Message => m !== null);
+          return next;
         });
-        if (r?.message) appendLocal(r.message);
+      };
+      // 인터랙션 PR(#1070)의 '실패 첨부 attachments 복원' 흐름은 이 재시도 시스템(status='failed' +
+      // 빨간 재시도 아이콘)이 대체한다 — 실패한 세트를 통째로 재전송하므로 UX 상 상위 개념.
+      const markFailed = (clientId: string) => {
+        setMessages((prev) => prev.map((m) => (m.pendingClientId === clientId ? { ...m, status: "failed" } : m)));
+      };
+
+      let anyFailed = false;
+      for (const o of optimistic) {
+        try {
+          const r = await api<{ message: Message }>(`/api/chat/rooms/${activeId}/messages`, {
+            method: "POST",
+            json: o.body,
+          });
+          if (r?.message) replaceOptimistic(o.clientId, r.message);
+          else {
+            // 응답이 이상하면 안전하게 pending 제거(중복 방지).
+            setMessages((prev) => prev.filter((m) => m.pendingClientId !== o.clientId));
+          }
+        } catch {
+          anyFailed = true;
+          markFailed(o.clientId);
+        }
       }
+      // 전체 성공이면 재시도 payload 제거. 하나라도 실패면 세트 재전송용으로 남겨둔다.
+      if (!anyFailed) pendingPayloadsRef.current.delete(setId);
       // ← 전체 loadMessages 재조회 제거. SSE + 낙관적 append 로 이미 최신 상태.
-    } catch {
-      setInput(prevInput);
-      setAttachments(prevAttachments);
     } finally {
       setSending(false);
     }
   }
+
+  // 실패한 메시지 재시도 — 로컬에서 해당 세트를 제거하고 원래 payload 로 send() 재호출.
+  //  setId 는 실패 메시지의 pendingSetId(다중 첨부 세트 전체를 함께 재전송).
+  const retrySend = (setId: string) => {
+    const payload = pendingPayloadsRef.current.get(setId);
+    if (!payload) return;
+    // 같은 세트의 pending 메시지들을 messages 에서 제거(성공·실패 무관 — 어차피 재삽입됨).
+    setMessages((prev) => prev.filter((m) => m.pendingSetId !== setId));
+    pendingPayloadsRef.current.delete(setId);
+    void send(payload);
+  };
 
   const filteredRooms = useMemo(() => {
     const k = q.trim().toLowerCase();
@@ -849,6 +972,7 @@ export default function ChatMiniApp({
           onReact={reactToMessage}
           onPin={pinMessage}
           onDelete={deleteMessage}
+          onRetry={retrySend}
           readStates={readStates}
           presenceMap={presenceMap}
         />
@@ -2228,7 +2352,7 @@ function buildMessageActions(
 /* ======================= 대화방 ======================= */
 function RoomView({
   room, messages, meId, onBack, input, setInput, onSend, sending, scrollRef,
-  attachments, uploading, onPickFile, onRemoveAttachment, onReact, onPin, onDelete, readStates, presenceMap,
+  attachments, uploading, onPickFile, onRemoveAttachment, onReact, onPin, onDelete, onRetry, readStates, presenceMap,
 }: {
   room: Room; messages: Message[]; meId: string; onBack: () => void;
   input: string; setInput: (v: string) => void; onSend: () => void; sending: boolean;
@@ -2238,6 +2362,7 @@ function RoomView({
   onReact: (messageId: string, emoji: string) => void;
   onPin: (messageId: string) => void;
   onDelete: (messageId: string) => void;
+  onRetry: (setId: string) => void;
   readStates: { userId: string; lastReadAt: string | null }[];
   presenceMap: Record<string, { presenceStatus: string | null; workStatus: string | null; presenceMessage: string | null }>;
 }) {
@@ -2399,17 +2524,20 @@ function RoomView({
       const isLast = i === messages.length - 1;
       const isLastFromOther = i === lastFromOtherIdx;
 
-      // 안읽음 카운트 — 발신자 본인은 제외, lastReadAt 이 메시지 createdAt 보다 이전인 멤버 수
+      // 안읽음 카운트 — 발신자 본인은 제외, lastReadAt 이 메시지 createdAt 보다 이전인 멤버 수.
+      //  낙관 pending(전송중/실패) 메시지는 서버에 아직 존재하지 않으니 안읽음 표시를 생략(오해 방지).
       const sent = new Date(m.createdAt).getTime();
       let unread = 0;
       const unreadNames: string[] = [];
-      for (const r of readStates) {
-        if (r.userId === m.sender.id) continue;
-        const readAt = r.lastReadAt ? new Date(r.lastReadAt).getTime() : 0;
-        if (readAt < sent) {
-          unread++;
-          const mem = room.members.find((rm) => rm.user.id === r.userId);
-          if (mem) unreadNames.push(mem.user.name);
+      if (!m.pending) {
+        for (const r of readStates) {
+          if (r.userId === m.sender.id) continue;
+          const readAt = r.lastReadAt ? new Date(r.lastReadAt).getTime() : 0;
+          if (readAt < sent) {
+            unread++;
+            const mem = room.members.find((rm) => rm.user.id === r.userId);
+            if (mem) unreadNames.push(mem.user.name);
+          }
         }
       }
       return { ...m, showMeta, showTime, showDayDivider, isLast, isLastFromOther, unread, unreadNames };
@@ -2584,6 +2712,48 @@ function RoomView({
                         maxWidth: "100%",
                       }}
                     >
+                    {/* 전송 실패 — 재시도 아이콘(빨간 원형 화살표). 발신자(mine) 쪽에만,
+                        낙관 메시지가 실패(status:"failed")로 마킹된 경우 노출. 클릭 시 세트 재전송.
+                        flex row 는 mine=row 라 시각/안읽음 스택보다 먼저 그리면 버블 바로 왼쪽에 붙는다. */}
+                    {mine && m.status === "failed" && m.pendingSetId ? (
+                      <button
+                        type="button"
+                        onClick={() => onRetry(m.pendingSetId as string)}
+                        title="다시 보내기"
+                        aria-label="다시 보내기"
+                        style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 22, height: 22, borderRadius: 999,
+                          background: "transparent", border: 0, padding: 0, cursor: "pointer",
+                          color: "#E5484D", // red
+                          flexShrink: 0, marginBottom: 2,
+                        }}
+                      >
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="9" />
+                          <path d="M12 8v4l2.5 2.5" />
+                          <path d="M8.5 8.5 12 12" />
+                        </svg>
+                      </button>
+                    ) : null}
+                    {/* 전송 중 — 낙관 메시지가 아직 응답 대기 중이면 회색 스피너(옅게). */}
+                    {mine && m.status === "sending" ? (
+                      <span
+                        title="보내는 중"
+                        aria-label="보내는 중"
+                        style={{
+                          display: "inline-flex", alignItems: "center", justifyContent: "center",
+                          width: 22, height: 22,
+                          color: C.gray500, opacity: 0.7,
+                          flexShrink: 0, marginBottom: 2,
+                        }}
+                      >
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="9" opacity="0.35" />
+                          <path d="M12 3a9 9 0 0 1 9 9" />
+                        </svg>
+                      </span>
+                    ) : null}
                     {/* 버블 옆 메타 — 안읽음 카운트(위) + 시각(아래) 을 세로로 스택.
                         예전에는 [시각 | 안읽음 | 버블] 이 한 줄로 늘어서 있어 "오후 6:03 1"
                         처럼 읽혀 어떤 값이 안읽음인지 즉시 구분되지 않던 문제가 있었음.
@@ -2641,6 +2811,17 @@ function RoomView({
                         }}
                       >
                         삭제된 메시지
+                      </div>
+                    ) : m.pending ? (
+                      // 낙관 pending — 서버에 없는 임시 id 라 롱프레스/리액션 대상에서 제외.
+                      //  실패 시 옆의 재시도 아이콘으로 재전송하도록 유도.
+                      <div
+                        style={{
+                          transition: "opacity .15s ease",
+                          opacity: m.status === "failed" ? 0.55 : 0.75,
+                        }}
+                      >
+                        <MessageBubble msg={m} mine={mine} />
                       </div>
                     ) : (
                       <LongPress

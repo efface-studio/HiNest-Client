@@ -45,6 +45,8 @@ type PromptOpts = {
   cancelLabel?: string;
   /** 비밀번호 등 마스킹이 필요한 입력은 "password" 로. 기본은 "text". */
   inputType?: "text" | "password";
+  /** 여러 줄 입력(메시지 편집 등) — textarea 로 렌더하고 네이티브 단일줄 프롬프트 대신 인앱 모달 사용. */
+  multiline?: boolean;
 };
 
 type ConfirmResult = boolean | "secondary";
@@ -119,6 +121,8 @@ export function alertAsync(opts: AlertOpts): Promise<void> {
 }
 
 export function promptAsync(opts: PromptOpts): Promise<string | null> {
+  // 여러 줄 입력은 네이티브 단일줄 프롬프트로 표현 불가(개행 유실) → 항상 인앱 모달(textarea).
+  if (opts.multiline) return webPrompt(opts);
   if (useNativeDialogs()) {
     return LiquidGlassTabBar.promptInput({
       title: opts.title,
@@ -242,7 +246,18 @@ export default function ConfirmHost() {
               {dialog.opts.description}
             </div>
           )}
-          {dialog.kind === "prompt" && (
+          {dialog.kind === "prompt" && dialog.opts.multiline && (
+            <textarea
+              ref={inputRef as any}
+              className="input"
+              rows={4}
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              placeholder={dialog.opts.placeholder}
+              style={{ resize: "vertical", minHeight: 88 }}
+            />
+          )}
+          {dialog.kind === "prompt" && !dialog.opts.multiline && (
             <div className="relative">
               <input
                 ref={inputRef}

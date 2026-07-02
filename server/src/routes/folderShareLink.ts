@@ -1,7 +1,7 @@
 import { Router } from "express";
 import crypto from "node:crypto";
 import bcrypt from "bcryptjs";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
@@ -178,7 +178,7 @@ export async function streamFolderZip(
     `attachment; filename="${asciiZip}"; filename*=UTF-8''${encodeURIComponent(zipName)}`,
   );
 
-  const archive = archiver("zip", { zlib: { level: 5 } });
+  const archive = new ZipArchive({ zlib: { level: 5 } });
   archive.on("error", (err: any) => {
     console.error("[folderShare:zip] archiver error", err);
     if (!res.headersSent) res.status(500).json({ error: "zip failure" });

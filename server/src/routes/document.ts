@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { USER_AVATAR_SELECT } from "../lib/userSelect.js";
 import { z } from "zod";
-import archiver from "archiver";
+import { ZipArchive } from "archiver";
 import { Prisma } from "@prisma/client";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog, queryTokenAuth } from "../lib/auth.js";
@@ -855,7 +855,7 @@ router.get("/folders/:id/download", async (req, res) => {
   res.setHeader("Cache-Control", "no-store");
 
   // 중간 압축 수준으로 충분. 대용량 이미지/영상은 어차피 이미 압축돼있어 level 올려도 효과 미미.
-  const archive = archiver("zip", { zlib: { level: 5 } });
+  const archive = new ZipArchive({ zlib: { level: 5 } });
   archive.on("error", (err) => {
     console.error("[doc:zip] archiver error", err);
     if (!res.headersSent) res.status(500).json({ error: "zip failure" });

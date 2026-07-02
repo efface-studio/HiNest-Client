@@ -13,7 +13,7 @@
 # ---------------------------------------------------------------------------
 
 # ============================ Stage 1: deps ================================
-FROM node:20-alpine AS deps
+FROM node:22-alpine AS deps
 WORKDIR /app
 
 # Prisma 바이너리가 alpine(musl) 에서 동작하려면 libc6-compat 필요.
@@ -27,7 +27,7 @@ COPY prisma ./prisma
 RUN npm ci --omit=dev
 
 # ============================ Stage 2: builder =============================
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 RUN apk add --no-cache libc6-compat openssl
@@ -44,7 +44,7 @@ COPY src ./src
 RUN npm run build
 
 # ============================ Stage 3: runner ==============================
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 # runtime 에도 openssl 필요 (Prisma query engine 이 동적 링크).

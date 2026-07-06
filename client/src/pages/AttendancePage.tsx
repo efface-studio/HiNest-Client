@@ -649,7 +649,8 @@ function formatRange(a: string, b: string) {
 /* ===== 야근(추가근무) 신청 ===== */
 type Overtime = {
   id: string; date: string; extendedEnd: string; reason?: string | null;
-  status: string; user?: { name: string; team: string | null } | null;
+  status: string; createdAt: string;
+  user?: { name: string; team: string | null; position: string | null } | null;
 };
 function otTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -661,6 +662,7 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
   const [endTime, setEndTime] = useState("21:00");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null);
 
   async function load() {
     try {
@@ -689,6 +691,25 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
   async function review(id: string, status: string) {
     try { await api(`/api/attendance/overtime/${id}`, { method: "PATCH", json: { status } }); await load(); }
     catch (e: any) { alertAsync({ title: "처리 실패", description: e?.message ?? "처리에 실패했어요" }); }
+  }
+  // 결재(서명)용 신청서 PDF — jspdf/html2canvas 는 lib 내부에서 lazy import
+  async function downloadPdf(o: Overtime) {
+    if (pdfBusy) return;
+    setPdfBusy(o.id);
+    try {
+      const { downloadOvertimePdf } = await import("../lib/overtimePdf");
+      await downloadOvertimePdf({
+        name: o.user?.name || "-",
+        team: o.user?.team,
+        position: o.user?.position,
+        date: o.date,
+        extendedEnd: o.extendedEnd,
+        reason: o.reason,
+        createdAt: o.createdAt,
+      });
+    } catch (e: any) {
+      alertAsync({ title: "PDF 생성 실패", description: e?.message ?? "신청서 PDF 생성에 실패했어요" });
+    } finally { setPdfBusy(null); }
   }
 
   return (
@@ -724,7 +745,12 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
                   <div className="font-bold text-ink-900">{o.date} <span className="text-ink-400 font-medium text-[12px]">→ {otTime(o.extendedEnd)}</span></div>
                   {o.reason && <div className="text-[12px] text-ink-500 truncate">{o.reason}</div>}
                 </div>
-                <StatusChip status={o.status} />
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button className="btn-ghost btn-xs" onClick={() => downloadPdf(o)} disabled={pdfBusy === o.id} title="신청서 PDF 다운로드">
+                    {pdfBusy === o.id ? "생성 중…" : "PDF"}
+                  </button>
+                  <StatusChip status={o.status} />
+                </div>
               </div>
             ))}
           </div>
@@ -747,6 +773,9 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
                     <div className="text-[12px] text-ink-500 truncate">→ {otTime(o.extendedEnd)}{o.reason ? ` · ${o.reason}` : ""}</div>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
+                    <button className="btn-ghost btn-xs" onClick={() => downloadPdf(o)} disabled={pdfBusy === o.id} title="신청서 PDF 다운로드">
+                      {pdfBusy === o.id ? "생성 중…" : "PDF"}
+                    </button>
                     <StatusChip status={o.status} />
                     {o.status === "PENDING" && (
                       <>

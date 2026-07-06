@@ -368,7 +368,8 @@ router.get("/overtime", async (req, res) => {
     where,
     orderBy: { createdAt: "desc" },
     take: 500,
-    include: { user: { select: { name: true, team: true } } },
+    // position(직급)은 야근 신청서 PDF(결재 서식)에 표기 — 이름·부서와 함께 내려준다.
+    include: { user: { select: { name: true, team: true, position: true } } },
   });
   res.json({ overtimes: list });
 });

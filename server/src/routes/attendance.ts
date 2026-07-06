@@ -371,7 +371,11 @@ router.get("/overtime", async (req, res) => {
     // position(직급)은 야근 신청서 PDF(결재 서식)에 표기 — 이름·부서와 함께 내려준다.
     include: { user: { select: { name: true, team: true, position: true } } },
   });
-  res.json({ overtimes: list });
+  // 회사명 — 신청서 PDF 하단 사명 표기용 (멀티테넌트라 클라 하드코딩 금지, 1쿼리 추가)
+  const company = u.companyId
+    ? await prisma.company.findUnique({ where: { id: u.companyId }, select: { name: true } })
+    : null;
+  res.json({ overtimes: list, companyName: company?.name ?? null });
 });
 
 router.patch("/overtime/:id", async (req, res) => {

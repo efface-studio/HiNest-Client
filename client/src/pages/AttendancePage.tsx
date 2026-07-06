@@ -663,11 +663,13 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
   const [pdfBusy, setPdfBusy] = useState<string | null>(null);
+  const [companyName, setCompanyName] = useState<string | null>(null);
 
   async function load() {
     try {
-      const m = await api<{ overtimes: Overtime[] }>("/api/attendance/overtime");
+      const m = await api<{ overtimes: Overtime[]; companyName?: string | null }>("/api/attendance/overtime");
       setMine(m.overtimes);
+      setCompanyName(m.companyName ?? null);
       if (isReviewer) {
         const a = await api<{ overtimes: Overtime[] }>("/api/attendance/overtime?all=1");
         setAll(a.overtimes);
@@ -706,6 +708,7 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
         extendedEnd: o.extendedEnd,
         reason: o.reason,
         createdAt: o.createdAt,
+        companyName,
       });
     } catch (e: any) {
       alertAsync({ title: "PDF 생성 실패", description: e?.message ?? "신청서 PDF 생성에 실패했어요" });

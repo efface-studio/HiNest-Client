@@ -149,10 +149,16 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     reload();
 
     let retry: number | null = null;
+    // 언마운트(로그아웃 → /login) 후 재연결 금지 플래그 — connect() 가 티켓 발급을
+    // await 하는 도중 cleanup 이 돌면, cleanup 은 "그 시점의" retry 타이머만 지우고
+    // connect 의 catch 가 그 뒤에 새 타이머를 걸어 로그인 화면에서도 sse-ticket 401 을
+    // 3→60초 백오프로 계속 두드리던 레이스(#1093)를 막는다.
+    let disposed = false;
     // SSE 재연결 백오프 — 서버 장애/인증 만료 시 3초마다 무한 재시도해 /stream 을
     // 두드리지 않도록 지수 백오프(3→6→…→최대 60초). 연결 성공(onopen) 시 3초로 리셋.
     let reconnectDelay = 3000;
     function scheduleReconnect() {
+      if (disposed) return;
       retry = window.setTimeout(connect, reconnectDelay);
       reconnectDelay = Math.min(reconnectDelay * 2, 60_000);
     }
@@ -178,8 +184,10 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       return apiUrl("/api/notification/stream") + (streamToken ? `?token=${encodeURIComponent(streamToken)}` : "");
     }
     async function connect() {
+      if (disposed) return;
       try {
         const streamUrl = await resolveStreamUrl();
+        if (disposed) return; // 티켓 발급 중 언마운트 — 연결 만들지 않음
         // 직결은 티켓(쿼리)으로 인증 → 쿠키 불필요. 프록시 폴백 경로는 기존 쿠키 인증 유지.
         const es = new EventSource(streamUrl, { withCredentials: !useDirect });
         esRef.current = es;
@@ -268,6 +276,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     document.addEventListener("visibilitychange", onVisibility);
 
     return () => {
+      disposed = true; // 진행 중이던 connect()/재연결 백오프가 이후에 되살아나지 않게
       if (retry) clearTimeout(retry);
       stopPoll();
       esRef.current?.close();

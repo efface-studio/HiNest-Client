@@ -45,18 +45,24 @@ export default function DashboardPage() {
     const today = new Date();
     const from = new Date(today.getFullYear(), today.getMonth(), today.getDate()).toISOString();
     const to = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7).toISOString();
-    const [n, s, a] = await Promise.all([
-      api<{ notices: Notice[] }>("/api/notice"),
-      api<{ events: Event[] }>(`/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
-      api<{ attendance: Attendance }>("/api/attendance/today"),
-    ]);
-    if (!aliveRef.current || myToken !== loadTokenRef.current) return;
-    setNotices(n.notices.slice(0, 5));
-    setEvents(s.events.slice(0, 6));
-    setAtt(a.attendance);
-    setLoaded(true);
+    try {
+      const [n, s, a] = await Promise.all([
+        api<{ notices: Notice[] }>("/api/notice"),
+        api<{ events: Event[] }>(`/api/schedule?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+        api<{ attendance: Attendance }>("/api/attendance/today"),
+      ]);
+      if (!aliveRef.current || myToken !== loadTokenRef.current) return;
+      setNotices(n.notices.slice(0, 5));
+      setEvents(s.events.slice(0, 6));
+      setAtt(a.attendance);
+      setLoaded(true);
+    } catch {
+      // 세션 만료(401)는 api.ts 전역 hinest:unauthorized 가 로그아웃 처리, 네트워크
+      // 순단은 스켈레톤 유지 — 여기서 안 잡으면 unhandledrejection 으로 새서
+      // 콘솔 에러 탭에 오보고된다(#1093).
+    }
   }
-  useEffect(() => { load(); }, []);
+  useEffect(() => { void load(); }, []);
 
   // 출퇴근 버튼 더블탭 가드 — 빠르게 두 번 누르면 POST 가 2번 나가던 문제 방지(서버는 멱등이라
   // 데이터 손상은 없지만 불필요한 요청·깜빡임 제거). 처리 중엔 버튼 비활성.

@@ -129,7 +129,12 @@ export async function api<T = any>(
   if (existing) return existing as Promise<T>;
   const p = apiInner<T>(path, init);
   _inflight.set(path, p);
-  p.finally(() => { if (_inflight.get(path) === p) _inflight.delete(path); });
+  // 주의: p.finally(cleanup) 는 "새 파생 프라미스"를 반환하는데 이걸 아무도 catch 하지
+  // 않으면, 호출부가 p 를 완벽히 try/catch 해도 p 가 reject 되는 순간 파생 프라미스 몫의
+  // unhandledrejection 이 발화한다 → 콘솔 에러 탭에 "[클라] unauthorized" 오보고(#1093).
+  // then(cleanup, cleanup) 파생은 cleanup 이 throw 하지 않는 한 항상 fulfilled 라 안전.
+  const cleanup = () => { if (_inflight.get(path) === p) _inflight.delete(path); };
+  p.then(cleanup, cleanup);
   return p;
 }
 

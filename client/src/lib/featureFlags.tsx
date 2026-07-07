@@ -1,9 +1,14 @@
 import { createContext, useContext, useEffect, useState } from "react";
 import { api } from "../api";
+import { useAuth } from "../auth";
 
 /**
- * 기능 플래그 클라 — 부트 시 1번 fetch, 이후 useFeatureFlag(key) 로 동기 조회.
- * 로그인 컨텍스트가 바뀌면 (login/logout/refresh) 다시 가져온다.
+ * 기능 플래그 클라 — 로그인 상태에서만 fetch, 이후 useFeatureFlag(key) 로 동기 조회.
+ * 사용자(user.id)가 바뀌면(로그인·계정 전환) 다시 가져오고, 로그아웃하면 비운다.
+ *
+ * 서버 /api/feature-flags 는 requireAuth 라 비로그인 fetch 는 무조건 401 — 예전엔
+ * 마운트 즉시(로그인 화면 포함) 무가드로 불러서 방문자마다 401 "unauthorized" 가
+ * 발생했고, 이것이 콘솔 에러 탭 오보고(#1093)의 주요 발생원이었다.
  */
 
 type FlagsCtx = {
@@ -15,6 +20,7 @@ type FlagsCtx = {
 const Ctx = createContext<FlagsCtx>({ flags: {}, loading: true, refresh: async () => {} });
 
 export function FeatureFlagsProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
   const [flags, setFlags] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
 
@@ -29,7 +35,17 @@ export function FeatureFlagsProvider({ children }: { children: React.ReactNode }
     }
   }
 
-  useEffect(() => { refresh(); }, []);
+  useEffect(() => {
+    if (!user) {
+      // 비로그인(로그인 화면·세션 만료) — 401 이 뻔한 fetch 를 아예 안 보낸다.
+      setFlags({});
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    void refresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
 
   return <Ctx.Provider value={{ flags, loading, refresh }}>{children}</Ctx.Provider>;
 }

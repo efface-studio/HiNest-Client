@@ -16,6 +16,7 @@
 
 import { downloadBlob } from "./download";
 import { isCapacitorNative } from "./platform";
+import { compensateCanvasTextBaseline } from "./canvasTextBaseline";
 
 export type OvertimeSheetData = {
   /** 신청자명 */
@@ -186,6 +187,11 @@ export async function downloadOvertimePdf(d: OvertimeSheetData): Promise<void> {
       sheet.style.height = `${pages * A4_H}px`;
       sheet.style.overflow = "hidden";
     }
+
+    // html2canvas 는 텍스트 baseline 을 아래로 그려 셀 글자가 처져 보인다(#1097) —
+    // 현 환경 편차를 프로브로 실측해 텍스트 노드별로 역보정(편차 없으면 no-op).
+    await (document as any).fonts?.ready?.catch?.(() => {});
+    await compensateCanvasTextBaseline(html2canvas as any, host);
 
     const canvas = await html2canvas(host, {
       scale: 2,

@@ -1485,28 +1485,25 @@ body.hinest-chat-fs .hinest-preview-banner {
 }
 
 /* ===== 야근 신청 서식형 폼(.otform) =====
-   신청 폼이 곧 신청서 — 야근 신청서 PDF(lib/overtimePdf.ts, #1091)의 서식을 화면에서
-   그대로 채워 넣는 종이 문서 룩. "종이"라서 다크모드에서도 항상 흰 배경 + hex 고정색
-   (PDF 서식과 동일한 색·선 위계). 레이아웃은 hairline grid(배경 #9AA0A8 + 1px gap). */
-.otform { background: #ffffff; border: 1px solid #d8dbe0; border-radius: 14px; padding: 18px 16px 16px; color: #1f2329; }
-.otform-title { text-align: center; font-size: 14px; font-weight: 800; letter-spacing: 3px; text-indent: 3px; color: #151719; white-space: nowrap; }
+   신청 폼이 곧 신청서 — 야근 신청서 PDF(lib/overtimePdf.ts, #1091) 서식의 구조(제목·이중
+   괘선·라벨 그리드)를 화면에서 그대로 채우되, 색은 전부 C 토큰이라 앱 테마(다크/라이트)를
+   따라간다("흰 종이" 룩은 테마와 겉돌아 반려됨 — PDF 산출물만 흰 종이).
+   레이아웃은 hairline grid(배경 토큰 + 1px gap). */
+.otform { background: var(--c-surface); border: 1px solid var(--c-border); border-radius: 14px; padding: 18px 16px 16px; color: var(--c-text); }
+.otform-title { text-align: center; font-size: 14px; font-weight: 800; letter-spacing: 3px; text-indent: 3px; color: var(--c-text); white-space: nowrap; }
 @media (min-width: 640px) { .otform-title { font-size: 15.5px; letter-spacing: 6px; text-indent: 6px; } }
-.otform-rule { margin-top: 10px; border-top: 2px solid #1f1f1f; }
-.otform-rule2 { margin-top: 2px; border-top: 1px solid #1f1f1f; margin-bottom: 14px; }
-.otform-grid { display: grid; grid-template-columns: 76px 1fr; gap: 1px; background: #9aa0a8; border: 1.5px solid #1f1f1f; }
+.otform-rule { margin-top: 10px; border-top: 2px solid var(--c-text-2); }
+.otform-rule2 { margin-top: 2px; border-top: 1px solid var(--c-text-2); margin-bottom: 14px; }
+.otform-grid { display: grid; grid-template-columns: 76px 1fr; gap: 1px; background: var(--c-border-strong); border: 1px solid var(--c-text-3); border-radius: 8px; overflow: hidden; }
 @media (min-width: 640px) { .otform-grid { grid-template-columns: 84px 1fr 84px 1fr; } }
-.otform-grid > * { background: #ffffff; min-width: 0; }
-.otform-th { background: #f5f6f8; color: #3a3f46; font-size: 12px; font-weight: 600; letter-spacing: 1.5px; display: flex; align-items: center; justify-content: center; padding: 10px 4px; text-align: center; white-space: nowrap; }
-.otform-td { padding: 8px 10px; font-size: 13.5px; display: flex; align-items: center; }
+.otform-grid > * { background: var(--c-surface); min-width: 0; }
+.otform-th { background: var(--c-surface-3); color: var(--c-text-2); font-size: 12px; font-weight: 600; letter-spacing: 1.5px; display: flex; align-items: center; justify-content: center; padding: 10px 4px; text-align: center; white-space: nowrap; }
+.otform-td { padding: 8px 10px; font-size: 13.5px; display: flex; align-items: center; color: var(--c-text); }
 .otform-span { grid-column: 1 / -1; }
 @media (min-width: 640px) { .otform-time { grid-column: span 3; } }
-.otform-hint { display: none; margin-left: auto; font-size: 10.5px; font-weight: 400; letter-spacing: 0.3px; color: #a6adb6; padding-right: 6px; white-space: nowrap; }
+.otform-hint { display: none; margin-left: auto; font-size: 10.5px; font-weight: 400; letter-spacing: 0.3px; color: var(--c-text-muted); padding-right: 6px; white-space: nowrap; }
 @media (min-width: 640px) { .otform-hint { display: block; } }
-.otform-dim { color: #6b7178; font-size: 12px; }
+.otform-dim { color: var(--c-text-3); font-size: 12px; }
 .otform-plan { padding: 10px 12px; }
-.otform-plan textarea { width: 100%; border: 0; outline: none; background: transparent; resize: none; font-size: 13.5px; line-height: 1.75; color: #1f2329; min-height: 128px; display: block; }
-.otform-plan textarea::placeholder { color: #a6adb6; }
-/* 서식 안에 박히는 앱 위젯(DatePicker/TimePicker 버튼)도 종이 톤으로 — 다크모드 무관 고정색 */
-.otform .input { background: #ffffff; border-color: #c9cdd2; color: #1f2329; padding: 7px 10px; font-size: 13px; }
-.otform .input:hover { background: #f5f6f8; }
-.otform .text-ink-400 { color: #8b9098; }
+.otform-plan textarea { width: 100%; border: 0; outline: none; background: transparent; resize: none; font-size: 13.5px; line-height: 1.75; color: var(--c-text); min-height: 128px; display: block; }
+.otform-plan textarea::placeholder { color: var(--c-text-muted); }

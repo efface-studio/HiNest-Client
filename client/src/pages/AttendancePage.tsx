@@ -634,14 +634,22 @@ function msToHM(ms: number) {
   const m = Math.floor((ms % 3600000) / 60000);
   return `${h}h ${m}m`;
 }
+/** 날짜 문자열을 YYYY-MM-DD 로 정규화 — 서버 Leave.startDate 는 Prisma DateTime 이라
+ *  풀 ISO("2026-06-09T00:00:00.000Z")로 직렬화돼 오는데, 무가공 렌더하면 개발용 시간이
+ *  그대로 노출되고 dayDiff 의 "T00:00:00" 이어붙이기 파싱이 NaN("(0일)")이 된다. */
+function ymd10(s: string): string {
+  return (s || "").slice(0, 10);
+}
 function dayDiff(a: string, b: string) {
   // 양 끝 포함 일수.
-  const start = new Date(a + "T00:00:00").getTime();
-  const end = new Date(b + "T00:00:00").getTime();
+  const start = new Date(ymd10(a) + "T00:00:00").getTime();
+  const end = new Date(ymd10(b) + "T00:00:00").getTime();
   if (Number.isNaN(start) || Number.isNaN(end) || end < start) return 0;
   return Math.round((end - start) / 86400000) + 1;
 }
 function formatRange(a: string, b: string) {
+  a = ymd10(a);
+  b = ymd10(b);
   if (a === b) return a;
   return `${a} ~ ${b}`;
 }
@@ -659,7 +667,7 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
   const { user } = useAuth(); // 서식의 성명·부서·직급 자동 기입
   const [mine, setMine] = useState<Overtime[]>([]);
   const [all, setAll] = useState<Overtime[]>([]);
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => todayKST()); // toISOString 은 UTC 라 KST 새벽엔 전날이 잡힘
   const [endTime, setEndTime] = useState("21:00");
   const [reason, setReason] = useState("");
   const [saving, setSaving] = useState(false);
@@ -715,6 +723,26 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
       alertAsync({ title: "PDF 생성 실패", description: e?.message ?? "신청서 PDF 생성에 실패했어요" });
     } finally { setPdfBusy(null); }
   }
+  // 지금 작성 중인 서식 그대로 PDF — 제출(신청) 없이도 결재용 서식을 뽑을 수 있게.
+  async function downloadFormPdf() {
+    if (pdfBusy) return;
+    setPdfBusy("form");
+    try {
+      const { downloadOvertimePdf } = await import("../lib/overtimePdf");
+      await downloadOvertimePdf({
+        name: user?.name || "-",
+        team: user?.team,
+        position: user?.position,
+        date,
+        extendedEnd: `${date}T${endTime}:00+09:00`,
+        reason,
+        createdAt: new Date().toISOString(),
+        companyName,
+      });
+    } catch (e: any) {
+      alertAsync({ title: "PDF 생성 실패", description: e?.message ?? "신청서 PDF 생성에 실패했어요" });
+    } finally { setPdfBusy(null); }
+  }
 
   return (
     <div className="space-y-4 mt-4">
@@ -752,10 +780,13 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
             </div>
           </div>
         </div>
-        <div className="flex justify-end mt-3">
+        <div className="flex justify-end items-center gap-2 mt-3">
+          <button className="btn-ghost" onClick={downloadFormPdf} disabled={pdfBusy === "form"} title="작성 중인 서식을 결재용 PDF 로 다운로드">
+            {pdfBusy === "form" ? "생성 중…" : "서식 PDF"}
+          </button>
           <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "신청 중…" : "야근 신청"}</button>
         </div>
-        <p className="text-[11.5px] text-ink-400 mt-2">승인되면 연장 종료시각까지 자동 퇴근이 미뤄지고, 사후 신청은 승인 시 그 날짜 근무시간에 가산돼요.</p>
+        <p className="text-[11.5px] text-ink-400 mt-2">승인되면 연장 종료시각까지 자동 퇴근이 미뤄지고, 사후 신청은 승인 시 그 날짜 근무시간에 가산돼요. 신청 후에도 아래 「내 야근 신청」에서 언제든 신청서 PDF 를 받을 수 있어요.</p>
       </div>
 
       <div className="panel p-0 overflow-hidden">

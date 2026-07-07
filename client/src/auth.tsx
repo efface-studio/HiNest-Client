@@ -146,8 +146,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     // iOS 푸시 토큰 해제 — 세션이 살아있을 때(로그아웃 API 호출 전) 보내야 401 이 안 난다. iOS 외엔 no-op.
-    await unregisterIosPush();
-    await api("/api/auth/logout", { method: "POST" });
+    try {
+      await unregisterIosPush();
+      await api("/api/auth/logout", { method: "POST" });
+    } catch {
+      // 세션이 이미 만료(401)·네트워크 실패여도 로컬 로그아웃은 반드시 완수한다 —
+      // 여기서 던지면 로그아웃 버튼의 async onClick 이 unhandledrejection 으로 새서
+      // 콘솔 에러 탭에 오보고되고(#1093), 클라가 로그인된 것처럼 남는다.
+    }
     // 로그아웃 API 호출(세션 revoke) 이 끝난 뒤에 토큰 제거 — 먼저 지우면 그 요청이 401 난다.
     clearAuthToken();
     setUser(null);

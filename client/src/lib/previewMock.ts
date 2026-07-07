@@ -226,6 +226,17 @@ function schedule() {
   };
 }
 
+function demoOvertimes() {
+  // 야근 신청 서식 폼·PDF 버튼 데모 — 줄바꿈 사유 포함(pre-line 렌더 확인용).
+  return {
+    overtimes: [
+      { id: "ot1", date: iso(-1, 0).slice(0, 10), extendedEnd: iso(-1, 21), reason: "신규 기능 배포 대응 및 모니터링.\n장애 발생 시 즉시 롤백 대기.", status: "APPROVED", createdAt: iso(-1, 10), user: { name: "김데모", team: "프로덕트팀", position: "매니저" } },
+      { id: "ot2", date: iso(-3, 0).slice(0, 10), extendedEnd: iso(-3, 22), reason: "월말 정산 마감", status: "PENDING", createdAt: iso(-3, 9), user: { name: "김데모", team: "프로덕트팀", position: "매니저" } },
+    ],
+    companyName: "주식회사 데모",
+  };
+}
+
 function attendanceToday() {
   // 미리보기 진입 시 "정확히 3시간 38분 근무 중" 으로 보이게 — 현재 시각에서 빼서 checkIn 만든다.
   // 데모용으로 'X시간 Y분' 카운터가 그럴듯한 값(3:38)으로 떨어진다(고정 09:30 출근이면 시간대마다
@@ -1158,6 +1169,9 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
 
   /* === 출퇴근 / 휴가 === */
   { test: (p) => p === "/api/attendance/today",        data: attendanceToday },
+  // overtime 은 아래 "/api/attendance" catch-all 보다 먼저 매칭돼야 함 — catch-all 응답엔
+  // overtimes 키가 없어 OvertimeSection 이 빈 목록으로 오인/크래시했던 프리뷰 전용 함정.
+  { test: (p) => p.startsWith("/api/attendance/overtime"), data: demoOvertimes },
   { test: (p) => p.startsWith("/api/attendance/leave"), data: (p?: string) => ({ leaves: demoLeaves(/\?all=1/.test(p ?? "")) }) },
   { test: (p) => p.startsWith("/api/attendance/month"), data: () => ({ attendances: demoMonthAttendance() }) },
   { test: (p) => p.startsWith("/api/attendance"),       data: () => ({ attendances: demoMonthAttendance(), leaves: demoLeaves(false) }) },

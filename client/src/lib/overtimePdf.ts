@@ -52,6 +52,7 @@ function fmtTimeHM(iso: string): string {
 
 /** YYYY-MM-DD → "YYYY-MM-DD (요일)" — 서식 가독용 요일 부기 */
 function fmtDateWithWeekday(ymd: string): string {
+  ymd = (ymd || "").slice(0, 10); // 풀 ISO 가 와도 서식·파일명에 원시 노출 방지
   const d = new Date(ymd + "T00:00:00");
   if (Number.isNaN(d.getTime())) return ymd;
   return `${ymd} (${"일월화수목금토"[d.getDay()]})`;

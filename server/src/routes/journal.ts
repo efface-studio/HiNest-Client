@@ -7,7 +7,8 @@ const router = Router();
 router.use(requireAuth);
 
 const schema = z.object({
-  date: z.string().max(40),
+  // YYYY-MM-DD 강제 — 느슨하면 풀 ISO 가 저장돼 클라가 원시 타임스탬프를 노출한다(#1099 계열).
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
   title: z.string().min(1).max(200),
   content: z.string().min(1).max(20_000),
 });

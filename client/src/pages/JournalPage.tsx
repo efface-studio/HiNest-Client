@@ -349,7 +349,7 @@ export default function JournalPage() {
                     <div className="inline-flex items-center gap-2 text-[11.5px] text-ink-500 font-bold">
                       <span className="chip chip-brand !text-[10.5px]">{formatDateLong(selected.date)}</span>
                       <span>·</span>
-                      <span className="font-mono tabular-nums">{selected.date}</span>
+                      <span className="font-mono tabular-nums">{(selected.date || "").slice(0, 10)}</span>
                     </div>
                     <h2 className="text-[24px] font-extrabold mt-2 break-words tracking-tight text-ink-900">
                       {selected.title || "(제목 없음)"}

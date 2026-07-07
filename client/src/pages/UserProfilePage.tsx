@@ -7,6 +7,7 @@ import { Skeleton, SkeletonText } from "../components/Skeleton";
 import { alertAsync } from "../components/ConfirmHost";
 import { DevBadge } from "../lib/devBadge";
 import { resolvePresence, type PresenceStatus, type WorkStatus } from "../lib/presence";
+import { fmtYmd } from "../lib/fmt";
 
 type ProfileUser = {
   id: string;
@@ -263,7 +264,7 @@ export default function UserProfilePage() {
         <div className="panel p-5">
           <div className="text-[10.5px] font-extrabold tracking-[0.06em] uppercase text-ink-500 mb-3">근무 정보</div>
           <Field label="사번" value={u.employeeNo ?? "—"} mono />
-          <Field label="입사일" value={u.hireDate ?? "—"} />
+          <Field label="입사일" value={fmtYmd(u.hireDate)} />
           <Field label="연락처" value={u.phone ?? "—"} mono />
           <Field label="가입일" value={new Date(u.createdAt).toLocaleDateString("ko-KR")} />
           {!isReviewer && (u.employeeNo === null || u.phone === null || u.hireDate === null) && (

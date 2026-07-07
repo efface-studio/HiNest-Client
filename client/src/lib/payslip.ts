@@ -9,6 +9,8 @@
  * 금액은 항상 관리자가 입력한 값/서버 저장값을 쓴다.
  */
 
+import { fmtYmd } from "./fmt";
+
 export type LineItem = { label: string; amount: number };
 
 export type Attendance = {
@@ -212,8 +214,8 @@ function payslipSheetMarkup(p: Payslip): string {
         <td class="lbl">직위</td><td>${esc(p.position || "-")}</td>
       </tr>
       <tr>
-        <td class="lbl">입사일</td><td>${esc(p.joinDate || "-")}</td>
-        <td class="lbl">지급일</td><td>${esc(p.payDate || "-")}</td>
+        <td class="lbl">입사일</td><td>${esc(fmtYmd(p.joinDate, "-"))}</td>
+        <td class="lbl">지급일</td><td>${esc(fmtYmd(p.payDate, "-"))}</td>
       </tr>
     </table>
     <table class="grid mt">

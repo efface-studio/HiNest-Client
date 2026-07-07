@@ -28,8 +28,11 @@ export default function DatePicker({
   min?: string;
 }) {
   const [open, setOpen] = useState(false);
+  // value 방어 정규화 — 호출부가 API DateTime 직렬화(풀 ISO)를 그대로 넘겨도
+  // 표시("2026-06-09T00:…" 원시 노출)와 파싱(+"T00:00:00" 이어붙이기 → Invalid Date)이 안 깨지게.
+  const day = value ? value.slice(0, 10) : "";
   // 팝오버 커서(보여줄 월) — 값이 없으면 오늘 기준
-  const initial = value ? new Date(value + "T00:00:00") : new Date();
+  const initial = day ? new Date(day + "T00:00:00") : new Date();
   const [cursor, setCursor] = useState<Date>(
     isNaN(initial.getTime()) ? new Date() : new Date(initial.getFullYear(), initial.getMonth(), 1)
   );
@@ -76,14 +79,14 @@ export default function DatePicker({
   // 팝오버 열릴 때 현재 값 기준으로 커서 맞춤
   useEffect(() => {
     if (!open) return;
-    const d = value ? new Date(value + "T00:00:00") : new Date();
+    const d = day ? new Date(day + "T00:00:00") : new Date();
     if (!isNaN(d.getTime())) setCursor(new Date(d.getFullYear(), d.getMonth(), 1));
   }, [open]); // eslint-disable-line
 
   // 해당 월의 7×N 그리드 날짜 배열 (앞 공백은 null 대신 이전달 날짜로 채워 UX 좋음)
   const days = buildMonthDays(cursor);
   const today = new Date();
-  const selected = value ? new Date(value + "T00:00:00") : null;
+  const selected = day ? new Date(day + "T00:00:00") : null;
 
   function pick(d: Date) {
     const s = fmt(d);
@@ -104,8 +107,8 @@ export default function DatePicker({
         onClick={() => !disabled && setOpen((v) => !v)}
       >
         {/* whitespace-nowrap — 좁은 칸에서 'YYYY-MM-DD' 가 'YYYY-/MM-DD' 로 줄바꿈되던 깨짐 방지 */}
-        <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${value ? "" : "text-ink-400"}`}>
-          {value || placeholder}
+        <span className={`whitespace-nowrap overflow-hidden text-ellipsis ${day ? "" : "text-ink-400"}`}>
+          {day || placeholder}
         </span>
         {variant === "input" && (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" className="text-ink-400">

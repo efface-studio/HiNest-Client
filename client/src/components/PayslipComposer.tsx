@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { api } from "../api";
 import { useModalDismiss } from "../lib/useModalDismiss";
 import Portal from "./Portal";
+import { fmtYmd } from "../lib/fmt";
 import Select, { type SelectOption } from "./Select";
 import {
   type Payslip,
@@ -102,7 +103,7 @@ export default function PayslipComposer({
     setEmployeeName(emp.name);
     setDepartment(emp.department || emp.team || "");
     setPosition(emp.position || "");
-    setJoinDate(emp.hireDate || "");
+    setJoinDate(emp.hireDate ? fmtYmd(emp.hireDate, "") : ""); // hireDate 가 풀 ISO/임의 형식이어도 명세서엔 YYYY-MM-DD
     setIdNumber(emp.birthDate || "");
   }
 

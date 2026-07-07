@@ -965,6 +965,8 @@ function demoMonthAttendance() {
   return out;
 }
 
+// 주의: 운영 서버는 Leave.startDate/endDate 를 Prisma DateTime → 풀 ISO 로 직렬화한다.
+// 목도 동일하게 풀 ISO 를 내보내 클라의 YYYY-MM-DD 정규화(ymd10)가 프리뷰에서 검증되게 한다.
 function demoLeaves(all: boolean) {
   const me = { name: DEMO_ME.name, team: DEMO_ME.team };
   const others = [
@@ -973,17 +975,17 @@ function demoLeaves(all: boolean) {
     { name: "한이브",     team: "운영팀" },
   ];
   const my: any[] = [
-    { id: "lv1", userId: DEMO_ME.id, type: "ANNUAL", startDate: iso(-14).slice(0, 10), endDate: iso(-14).slice(0, 10), reason: "개인 사유",            status: "APPROVED", user: me },
-    { id: "lv2", userId: DEMO_ME.id, type: "HALF",   startDate: iso(7).slice(0, 10),   endDate: iso(7).slice(0, 10),   reason: "병원 진료 (오후)",     status: "PENDING",  user: me },
-    { id: "lv3", userId: DEMO_ME.id, type: "ANNUAL", startDate: iso(21).slice(0, 10),  endDate: iso(23).slice(0, 10),  reason: "여름 휴가",             status: "PENDING",  user: me },
+    { id: "lv1", userId: DEMO_ME.id, type: "ANNUAL", startDate: iso(-14), endDate: iso(-14), reason: "개인 사유",            status: "APPROVED", user: me },
+    { id: "lv2", userId: DEMO_ME.id, type: "HALF",   startDate: iso(7),   endDate: iso(7),   reason: "병원 진료 (오후)",     status: "PENDING",  user: me },
+    { id: "lv3", userId: DEMO_ME.id, type: "ANNUAL", startDate: iso(21),  endDate: iso(23),  reason: "여름 휴가",             status: "PENDING",  user: me },
   ];
   if (!all) return my;
   return [
     ...my,
-    { id: "lv4", userId: "u-lead-1", type: "ANNUAL", startDate: iso(-2).slice(0, 10),  endDate: iso(-2).slice(0, 10),  reason: "결혼식 참석",           status: "APPROVED", user: others[0] },
-    { id: "lv5", userId: "u-lead-3", type: "SICK",   startDate: iso(-5).slice(0, 10),  endDate: iso(-5).slice(0, 10),  reason: "감기",                  status: "APPROVED", user: others[1] },
-    { id: "lv6", userId: "u-lead-2", type: "ANNUAL", startDate: iso(10).slice(0, 10),  endDate: iso(12).slice(0, 10),  reason: "가족 여행",             status: "PENDING",  user: others[2] },
-    { id: "lv7", userId: "u-lead-3", type: "OFFSITE",startDate: iso(2).slice(0, 10),   endDate: iso(2).slice(0, 10),   reason: "외근 (고객사 미팅)",   status: "APPROVED", user: others[1] },
+    { id: "lv4", userId: "u-lead-1", type: "ANNUAL", startDate: iso(-2),  endDate: iso(-2),  reason: "결혼식 참석",           status: "APPROVED", user: others[0] },
+    { id: "lv5", userId: "u-lead-3", type: "SICK",   startDate: iso(-5),  endDate: iso(-5),  reason: "감기",                  status: "APPROVED", user: others[1] },
+    { id: "lv6", userId: "u-lead-2", type: "ANNUAL", startDate: iso(10),  endDate: iso(12),  reason: "가족 여행",             status: "PENDING",  user: others[2] },
+    { id: "lv7", userId: "u-lead-3", type: "OFFSITE",startDate: iso(2),   endDate: iso(2),   reason: "외근 (고객사 미팅)",   status: "APPROVED", user: others[1] },
   ];
 }
 

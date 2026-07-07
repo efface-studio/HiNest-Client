@@ -656,6 +656,7 @@ function otTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
+  const { user } = useAuth(); // 서식의 성명·부서·직급 자동 기입
   const [mine, setMine] = useState<Overtime[]>([]);
   const [all, setAll] = useState<Overtime[]>([]);
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -668,11 +669,11 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
   async function load() {
     try {
       const m = await api<{ overtimes: Overtime[]; companyName?: string | null }>("/api/attendance/overtime");
-      setMine(m.overtimes);
+      setMine(m.overtimes ?? []); // ?? [] — 응답에 overtimes 가 없어도(프리뷰 목 등) .length 크래시 방지
       setCompanyName(m.companyName ?? null);
       if (isReviewer) {
         const a = await api<{ overtimes: Overtime[] }>("/api/attendance/overtime?all=1");
-        setAll(a.overtimes);
+        setAll(a.overtimes ?? []);
       }
     } catch { /* ignore */ }
   }
@@ -717,18 +718,39 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
 
   return (
     <div className="space-y-4 mt-4">
-      <div className="panel p-5">
+      <div className="panel p-4 sm:p-5">
         <div className="text-[15px] font-extrabold text-ink-900 mb-3">야근(추가근무) 신청</div>
-        <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
-          <label className="text-[12px] text-ink-500 block">날짜
-            <div className="mt-1"><DatePicker variant="input" value={date} onChange={setDate} /></div>
-          </label>
-          <label className="text-[12px] text-ink-500 block">연장 종료시각
-            <div className="mt-1"><TimePicker value={endTime} onChange={setEndTime} /></div>
-          </label>
-          <label className="text-[12px] text-ink-500 block sm:col-span-2">사유 (선택)
-            <input className="input mt-1" value={reason} onChange={(e) => setReason(e.target.value)} placeholder="예: 배포 대응" maxLength={1000} />
-          </label>
+        {/* 신청 폼 = 신청서 서식 — 여기 채운 내용이 그대로 결재용 PDF(#1091 서식)가 된다 */}
+        <div className="otform">
+          <div className="otform-title">야간근무(추가근무) 신청서</div>
+          <div className="otform-rule" />
+          <div className="otform-rule2" />
+          <div className="otform-grid">
+            <div className="otform-th">성&nbsp;&nbsp;명</div>
+            <div className="otform-td">{user?.name || "-"}</div>
+            <div className="otform-th">부&nbsp;&nbsp;서</div>
+            <div className="otform-td">{user?.team || "-"}</div>
+            <div className="otform-th">직&nbsp;&nbsp;급</div>
+            <div className="otform-td">{user?.position || "-"}</div>
+            <div className="otform-th">근무 일자</div>
+            <div className="otform-td"><DatePicker variant="input" value={date} onChange={setDate} className="w-full max-w-[190px]" /></div>
+            <div className="otform-th">근무 시간</div>
+            <div className="otform-td otform-time flex-wrap gap-x-2 gap-y-1">
+              <span className="otform-dim whitespace-nowrap">소정근로시간 종료 후 ~</span>
+              <TimePicker value={endTime} onChange={setEndTime} className="w-[110px]" />
+              <span className="otform-dim whitespace-nowrap">까지 (휴게시간 제외)</span>
+            </div>
+            <div className="otform-th otform-span !justify-start px-3">계획 내용 (업무 내용)<span className="otform-hint">수행 업무를 구체적으로 기재</span></div>
+            <div className="otform-plan otform-span">
+              <textarea
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                placeholder={"수행할 업무를 구체적으로 적어주세요.\n줄바꿈 그대로 신청서 PDF 에 들어가요."}
+                maxLength={1000}
+                rows={5}
+              />
+            </div>
+          </div>
         </div>
         <div className="flex justify-end mt-3">
           <button className="btn-primary" onClick={submit} disabled={saving}>{saving ? "신청 중…" : "야근 신청"}</button>
@@ -746,7 +768,8 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
               <div key={o.id} className="px-5 py-3 flex items-center justify-between gap-3">
                 <div className="min-w-0">
                   <div className="font-bold text-ink-900">{o.date} <span className="text-ink-400 font-medium text-[12px]">→ {otTime(o.extendedEnd)}</span></div>
-                  {o.reason && <div className="text-[12px] text-ink-500 truncate">{o.reason}</div>}
+                  {/* pre-line + 2줄 클램프 — 줄바꿈 사유가 한 줄로 뭉개지지 않게(전문은 PDF 로) */}
+                  {o.reason && <div className="text-[12px] text-ink-500 whitespace-pre-line line-clamp-2">{o.reason}</div>}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button className="btn-ghost btn-xs" onClick={() => downloadPdf(o)} disabled={pdfBusy === o.id} title="신청서 PDF 다운로드">

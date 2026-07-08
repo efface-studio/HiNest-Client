@@ -104,6 +104,63 @@ const SHEET_CSS = `
 .otsheet .ot-company{font-size:19px;font-weight:700;letter-spacing:8px;text-indent:8px;color:#3A3F46;min-height:28px;line-height:28px;}
 `;
 
+/* ===== 계획내용 줄 수 제한 =====
+ * PDF 계획 박스(.ot-rb: 높이 330px 고정·A4 1페이지 유지)에 실제로 들어가는 줄 수만큼만
+ * 입력을 허용하기 위한 실측 유틸. 하드코딩 대신 서식을 한 번 offscreen 렌더해
+ * 박스의 내용 폭·행높이·수용 줄 수를 계산해 캐시하고(치수는 CSS 에서만 결정되므로 1회면 충분),
+ * 이후엔 같은 폰트·폭의 측정 div 로 "자동 줄바꿈 포함" 실제 줄 수를 잰다. */
+type PlanMetrics = { contentWidth: number; lineHeightPx: number; maxLines: number; font: string; letterSpacing: string };
+let _planMetrics: PlanMetrics | null = null;
+
+function getPlanMetrics(): PlanMetrics {
+  if (_planMetrics) return _planMetrics;
+  const host = document.createElement("div");
+  host.style.cssText = `position:fixed;left:-10000px;top:0;width:${A4_W}px;background:#ffffff;z-index:-1;`;
+  host.innerHTML = overtimeSheetHTML({ name: "측정", date: "2026-01-01", extendedEnd: "2026-01-01T21:00:00+09:00", createdAt: "2026-01-01T09:00:00+09:00" });
+  document.body.appendChild(host);
+  const rb = host.querySelector<HTMLElement>(".ot-rb")!;
+  const cs = getComputedStyle(rb);
+  const padX = parseFloat(cs.paddingLeft) + parseFloat(cs.paddingRight);
+  const padY = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const lineHeightPx = parseFloat(cs.lineHeight); // 14.5 × 1.8 = 26.1
+  // clientHeight/clientWidth = 패딩 포함·보더 제외 → 내용 영역만 남긴다.
+  const contentWidth = rb.clientWidth - padX;
+  const maxLines = Math.max(1, Math.floor((rb.clientHeight - padY) / lineHeightPx));
+  const m: PlanMetrics = { contentWidth, lineHeightPx, maxLines, font: cs.font, letterSpacing: cs.letterSpacing };
+  host.remove();
+  _planMetrics = m;
+  return m;
+}
+
+/** 계획내용이 PDF 박스에서 차지할 실제 줄 수(자동 줄바꿈 포함)와 허용 최대 줄 수. */
+export function measurePlanLines(text: string): { lines: number; maxLines: number } {
+  const m = getPlanMetrics();
+  const probe = document.createElement("div");
+  probe.style.cssText = `position:fixed;left:-10000px;top:0;width:${m.contentWidth}px;white-space:pre-wrap;word-break:break-word;visibility:hidden;`;
+  probe.style.font = m.font;
+  probe.style.letterSpacing = m.letterSpacing;
+  probe.style.lineHeight = `${m.lineHeightPx}px`;
+  probe.textContent = text || " ";
+  document.body.appendChild(probe);
+  const h = probe.getBoundingClientRect().height;
+  probe.remove();
+  return { lines: Math.max(1, Math.round(h / m.lineHeightPx)), maxLines: m.maxLines };
+}
+
+/** maxLines 를 넘는 입력을 "들어가는 만큼"으로 자름 — 이진 탐색으로 가장 긴 접두사. */
+export function clampPlanText(text: string): string {
+  const { maxLines } = measurePlanLines("");
+  if (measurePlanLines(text).lines <= maxLines) return text;
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi + 1) / 2);
+    if (measurePlanLines(text.slice(0, mid)).lines <= maxLines) lo = mid;
+    else hi = mid - 1;
+  }
+  return text.slice(0, lo);
+}
+
 /** 신청서 마크업 — 결재란·제목 이중 괘선·정보표·계획내용·각주·서명·회사명. */
 export function overtimeSheetHTML(d: OvertimeSheetData): string {
   return `

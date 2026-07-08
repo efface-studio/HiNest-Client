@@ -11,6 +11,7 @@ import TimePicker from "../components/TimePicker";
 import Portal from "../components/Portal";
 import { alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
+import { measurePlanLines, clampPlanText } from "../lib/overtimePdf";
 
 type WorkSession = { s: string; e: string | null; src?: string };
 type Attendance = {
@@ -670,6 +671,8 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
   const [date, setDate] = useState(() => todayKST()); // toISOString 은 UTC 라 KST 새벽엔 전날이 잡힘
   const [endTime, setEndTime] = useState("21:00");
   const [reason, setReason] = useState("");
+  // 계획내용 줄 카운터 — PDF 계획 박스가 담을 수 있는 실측 줄 수(자동 줄바꿈 포함) 기준.
+  const [planLines, setPlanLines] = useState<{ lines: number; maxLines: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -723,6 +726,21 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
       alertAsync({ title: "PDF 생성 실패", description: e?.message ?? "신청서 PDF 생성에 실패했어요" });
     } finally { setPdfBusy(null); }
   }
+  // 계획내용 입력 제한 — PDF 계획 박스(A4 1페이지 고정 330px)에 실제로 들어가는 줄 수까지만.
+  // 자동 줄바꿈 포함 실측(measurePlanLines)이라 "몇 자"가 아니라 "몇 줄"이 기준. 넘치면
+  // 들어가는 만큼으로 잘라(clampPlanText) 서식이 2페이지로 넘어가거나 글이 잘리는 일이 없다.
+  function onReasonChange(v: string) {
+    const m = measurePlanLines(v);
+    if (m.lines <= m.maxLines) {
+      setReason(v);
+      setPlanLines(m);
+    } else {
+      const t = clampPlanText(v);
+      setReason(t);
+      setPlanLines(measurePlanLines(t));
+    }
+  }
+
   // 지금 작성 중인 서식 그대로 PDF — 제출(신청) 없이도 결재용 서식을 뽑을 수 있게.
   async function downloadFormPdf() {
     if (pdfBusy) return;
@@ -768,11 +786,17 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
               <TimePicker value={endTime} onChange={setEndTime} className="w-[110px]" />
               <span className="otform-dim whitespace-nowrap">까지 (휴게시간 제외)</span>
             </div>
-            <div className="otform-th otform-span !justify-start px-3">계획 내용 (업무 내용)<span className="otform-hint">수행 업무를 구체적으로 기재</span></div>
+            <div className="otform-th otform-span !justify-start px-3">
+              계획 내용 (업무 내용)
+              <span className={`otform-lines ${planLines && planLines.lines >= planLines.maxLines ? "otform-lines-full" : ""}`}>
+                {planLines ? `${planLines.lines}/${planLines.maxLines}줄` : ""}
+              </span>
+              <span className="otform-hint">수행 업무를 구체적으로 기재</span>
+            </div>
             <div className="otform-plan otform-span">
               <textarea
                 value={reason}
-                onChange={(e) => setReason(e.target.value)}
+                onChange={(e) => onReasonChange(e.target.value)}
                 placeholder={"수행할 업무를 구체적으로 적어주세요.\n줄바꿈 그대로 신청서 PDF 에 들어가요."}
                 maxLength={1000}
                 rows={5}

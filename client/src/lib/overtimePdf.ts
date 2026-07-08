@@ -75,7 +75,7 @@ const SHEET_CSS = `
 .otsheet .ot-head td{vertical-align:top;}
 .otsheet .ot-meta{font-size:11.5px;color:#8B9098;line-height:1.9;letter-spacing:0.5px;padding-top:2px;padding-right:20px;}
 .otsheet .ot-meta .ot-meta-code{color:#6B7178;font-weight:600;}
-.otsheet .ot-approve{width:300px;border:2px solid #1F1F1F;}
+.otsheet .ot-approve{width:172px;border:2px solid #1F1F1F;}
 .otsheet .ot-approve th,.otsheet .ot-approve td{border:1px solid #9AA0A8;text-align:center;vertical-align:middle;}
 .otsheet .ot-ap-side{width:32px;background:#F5F6F8;font-size:13px;font-weight:700;color:#3A3F46;line-height:2.1;letter-spacing:1px;}
 .otsheet .ot-ap-title{height:30px;background:#F5F6F8;font-size:12.5px;font-weight:600;color:#3A3F46;letter-spacing:3px;text-indent:3px;}
@@ -177,11 +177,11 @@ export function overtimeSheetHTML(d: OvertimeSheetData): string {
           ※ 승인권자의 결재 완료 후 근무를 개시하여 주시기 바랍니다.
         </div>
       </td>
-      <td style="width:300px;">
+      <td style="width:172px;">
         <table class="ot-approve">
-          <tr><td class="ot-ap-side" rowspan="3">결<br>재</td><th class="ot-ap-title">신 청</th><th class="ot-ap-title">대 표</th></tr>
-          <tr><td class="ot-ap-sign">(인)</td><td class="ot-ap-sign">(인)</td></tr>
-          <tr><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td></tr>
+          <tr><td class="ot-ap-side" rowspan="3">결<br>재</td><th class="ot-ap-title">대 표</th></tr>
+          <tr><td class="ot-ap-sign">(인)</td></tr>
+          <tr><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td></tr>
         </table>
       </td>
     </tr>

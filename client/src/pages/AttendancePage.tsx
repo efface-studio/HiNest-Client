@@ -659,8 +659,10 @@ function formatRange(a: string, b: string) {
 type Overtime = {
   id: string; date: string; extendedEnd: string; reason?: string | null;
   status: string; createdAt: string;
+  companions?: { id: string; name: string }[] | null;
   user?: { name: string; team: string | null; position: string | null } | null;
 };
+type MateLite = { id: string; name: string; team?: string | null };
 function otTime(iso: string): string {
   return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
@@ -673,6 +675,13 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
   const [reason, setReason] = useState("");
   // 계획내용 줄 카운터 — PDF 계획 박스가 담을 수 있는 실측 줄 수(자동 줄바꿈 포함) 기준.
   const [planLines, setPlanLines] = useState<{ lines: number; maxLines: number } | null>(null);
+  // 함께 근무자 선택 — 최대 5명, 본인 제외. 서식 정보표·목록에 표기.
+  const [mates, setMates] = useState<MateLite[]>([]);
+  const [mateOpen, setMateOpen] = useState(false);
+  const [mateQuery, setMateQuery] = useState("");
+  const [mateUsers, setMateUsers] = useState<MateLite[] | null>(null);
+  const mateBtnRef = useRef<HTMLButtonElement | null>(null);
+  const [mateRect, setMateRect] = useState<{ top: number; left: number } | null>(null);
   const [saving, setSaving] = useState(false);
   const [pdfBusy, setPdfBusy] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -695,8 +704,12 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
     setSaving(true);
     try {
       const extendedEnd = `${date}T${endTime}:00+09:00`;
-      await api("/api/attendance/overtime", { method: "POST", json: { date, extendedEnd, reason: reason || undefined } });
+      await api("/api/attendance/overtime", {
+        method: "POST",
+        json: { date, extendedEnd, reason: reason || undefined, companions: mates.length ? mates.map((m) => m.id) : undefined },
+      });
       setReason("");
+      setMates([]);
       await load();
     } catch (e: any) {
       alertAsync({ title: "신청 실패", description: e?.message ?? "야근 신청에 실패했어요" });
@@ -721,11 +734,36 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
         reason: o.reason,
         createdAt: o.createdAt,
         companyName,
+        companions: (o.companions ?? []).map((c) => c.name),
       });
     } catch (e: any) {
       alertAsync({ title: "PDF 생성 실패", description: e?.message ?? "신청서 PDF 생성에 실패했어요" });
     } finally { setPdfBusy(null); }
   }
+  async function openMatePicker() {
+    const r = mateBtnRef.current?.getBoundingClientRect();
+    if (r) setMateRect({ top: Math.round(r.bottom + 6), left: Math.round(Math.max(8, Math.min(r.left, window.innerWidth - 276))) });
+    setMateQuery("");
+    setMateOpen(true);
+    if (!mateUsers) {
+      try {
+        const res = await api<{ users: MateLite[] }>("/api/users");
+        setMateUsers(res.users ?? []);
+      } catch { setMateUsers([]); }
+    }
+  }
+  // 바깥 클릭으로 피커 닫기 — 팝오버(.otmate-pop) 안 클릭은 유지.
+  useEffect(() => {
+    if (!mateOpen) return;
+    function onDoc(e: MouseEvent) {
+      const t = e.target as HTMLElement;
+      if (t.closest(".otmate-pop") || t === mateBtnRef.current) return;
+      setMateOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [mateOpen]);
+
   // 계획내용 입력 제한 — PDF 계획 박스(A4 1페이지 고정 330px)에 실제로 들어가는 줄 수까지만.
   // 자동 줄바꿈 포함 실측(measurePlanLines)이라 "몇 자"가 아니라 "몇 줄"이 기준. 넘치면
   // 들어가는 만큼으로 잘라(clampPlanText) 서식이 2페이지로 넘어가거나 글이 잘리는 일이 없다.
@@ -756,6 +794,7 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
         reason,
         createdAt: new Date().toISOString(),
         companyName,
+        companions: mates.map((m) => m.name),
       });
     } catch (e: any) {
       alertAsync({ title: "PDF 생성 실패", description: e?.message ?? "신청서 PDF 생성에 실패했어요" });
@@ -786,6 +825,19 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
               <TimePicker value={endTime} onChange={setEndTime} className="w-[110px]" />
               <span className="otform-dim whitespace-nowrap">까지 (휴게시간 제외)</span>
             </div>
+            <div className="otform-th">함께 근무</div>
+            <div className="otform-td otform-time flex-wrap gap-1.5 py-2">
+              {mates.map((m) => (
+                <span key={m.id} className="otmate-chip">
+                  {m.name}
+                  <button type="button" aria-label={`${m.name} 제외`} onClick={() => setMates((prev) => prev.filter((x) => x.id !== m.id))}>×</button>
+                </span>
+              ))}
+              {mates.length < 5 && (
+                <button type="button" ref={mateBtnRef} className="otmate-add" onClick={openMatePicker}>+ 추가</button>
+              )}
+              {mates.length === 0 && <span className="otform-dim">(선택) 같이 야근하는 동료</span>}
+            </div>
             <div className="otform-th otform-span !justify-start px-3">
               계획 내용 (업무 내용)
               <span className={`otform-lines ${planLines && planLines.lines >= planLines.maxLines ? "otform-lines-full" : ""}`}>
@@ -804,6 +856,48 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
             </div>
           </div>
         </div>
+        {mateOpen && mateRect && (
+          <Portal>
+            <div className="otmate-pop" style={{ top: mateRect.top, left: mateRect.left }}>
+              <input
+                autoFocus
+                className="input !py-1.5 !text-[13px] mb-1.5"
+                placeholder="이름·팀 검색"
+                value={mateQuery}
+                onChange={(e) => setMateQuery(e.target.value)}
+              />
+              <div className="otmate-list">
+                {mateUsers === null ? (
+                  <div className="otmate-empty">불러오는 중…</div>
+                ) : (
+                  (() => {
+                    const q = mateQuery.trim().toLowerCase();
+                    const picked = new Set(mates.map((m) => m.id));
+                    const items = (mateUsers ?? [])
+                      .filter((m) => m.id !== user?.id && !picked.has(m.id))
+                      .filter((m) => !q || m.name.toLowerCase().includes(q) || (m.team ?? "").toLowerCase().includes(q))
+                      .slice(0, 30);
+                    if (!items.length) return <div className="otmate-empty">검색 결과가 없어요</div>;
+                    return items.map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        className="otmate-item"
+                        onClick={() => {
+                          setMates((prev) => (prev.length >= 5 ? prev : [...prev, { id: m.id, name: m.name, team: m.team }]));
+                          setMateOpen(false);
+                        }}
+                      >
+                        <span className="font-semibold">{m.name}</span>
+                        {m.team && <span className="text-ink-400 text-[11.5px] ml-1.5">{m.team}</span>}
+                      </button>
+                    ));
+                  })()
+                )}
+              </div>
+            </div>
+          </Portal>
+        )}
         <div className="flex justify-end items-center gap-2 mt-3">
           <button className="btn-ghost" onClick={downloadFormPdf} disabled={pdfBusy === "form"} title="작성 중인 서식을 결재용 PDF 로 다운로드">
             {pdfBusy === "form" ? "생성 중…" : "서식 PDF"}
@@ -825,6 +919,9 @@ function OvertimeSection({ isReviewer }: { isReviewer: boolean }) {
                   <div className="font-bold text-ink-900">{o.date} <span className="text-ink-400 font-medium text-[12px]">→ {otTime(o.extendedEnd)}</span></div>
                   {/* pre-line + 2줄 클램프 — 줄바꿈 사유가 한 줄로 뭉개지지 않게(전문은 PDF 로) */}
                   {o.reason && <div className="text-[12px] text-ink-500 whitespace-pre-line line-clamp-2">{o.reason}</div>}
+                  {!!o.companions?.length && (
+                    <div className="text-[11.5px] text-ink-400 truncate">함께 근무 · {o.companions.map((c) => c.name).join(", ")}</div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   <button className="btn-ghost btn-xs" onClick={() => downloadPdf(o)} disabled={pdfBusy === o.id} title="신청서 PDF 다운로드">

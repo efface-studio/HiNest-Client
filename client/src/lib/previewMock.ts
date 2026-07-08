@@ -230,7 +230,7 @@ function demoOvertimes() {
   // 야근 신청 서식 폼·PDF 버튼 데모 — 줄바꿈 사유 포함(pre-line 렌더 확인용).
   return {
     overtimes: [
-      { id: "ot1", date: iso(-1, 0).slice(0, 10), extendedEnd: iso(-1, 21), reason: "신규 기능 배포 대응 및 모니터링.\n장애 발생 시 즉시 롤백 대기.", status: "APPROVED", createdAt: iso(-1, 10), user: { name: "김데모", team: "프로덕트팀", position: "매니저" } },
+      { id: "ot1", date: iso(-1, 0).slice(0, 10), extendedEnd: iso(-1, 21), reason: "신규 기능 배포 대응 및 모니터링.\n장애 발생 시 즉시 롤백 대기.", status: "APPROVED", createdAt: iso(-1, 10), companions: [{ id: "u-lead-1", name: "이앨리스" }, { id: "u-lead-3", name: "박그레이스" }], user: { name: "김데모", team: "프로덕트팀", position: "매니저" } },
       { id: "ot2", date: iso(-3, 0).slice(0, 10), extendedEnd: iso(-3, 22), reason: "월말 정산 마감", status: "PENDING", createdAt: iso(-3, 9), user: { name: "김데모", team: "프로덕트팀", position: "매니저" } },
     ],
     companyName: "주식회사 데모",

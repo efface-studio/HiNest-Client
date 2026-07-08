@@ -470,6 +470,7 @@ model OvertimeRequest {
   date        String // YYYY-MM-DD (KST) — 야근한/할 날짜
   extendedEnd DateTime // 연장 종료시각
   reason      String?
+  companions  String? // 함께 근무자 스냅샷 — JSON [{id,name}] (신청 시점 이름, 서식 표기용)
   status      String    @default("PENDING") // PENDING | APPROVED | REJECTED
   reviewer    String? // 심사한 관리자 userId
   createdAt   DateTime  @default(now())

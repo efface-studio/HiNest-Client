@@ -335,13 +335,36 @@ const overtimeSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "YYYY-MM-DD"),
   extendedEnd: z.string().refine((s) => !Number.isNaN(new Date(s).getTime()), "유효한 일시가 아닙니다"),
   reason: z.string().max(1000).optional(),
+  // 함께 근무자 — 사용자 ID 목록(최대 5명). 이름은 서버가 같은 회사 사용자로 검증해 스냅샷.
+  companions: z.array(z.string().max(64)).max(5).optional(),
 });
+
+/** companions JSON 문자열 → [{id,name}]. 손상/빈값은 빈 배열(서식·목록 표기용). */
+function parseCompanions(raw: string | null): { id: string; name: string }[] {
+  if (!raw) return [];
+  try {
+    const v = JSON.parse(raw);
+    return Array.isArray(v) ? v.filter((x) => x && typeof x.name === "string") : [];
+  } catch {
+    return [];
+  }
+}
 
 router.post("/overtime", async (req, res) => {
   const parsed = overtimeSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid input" });
   const u = (req as any).user;
   const d = parsed.data;
+  // 함께 근무자 검증 — 같은 회사의 활성 사용자만, 본인 제외. 이름은 DB 값으로 스냅샷
+  // (클라가 보낸 이름을 신뢰하지 않음 — 결재 서식에 박제되는 값이라 위·변조 여지 차단).
+  let companions: { id: string; name: string }[] = [];
+  const ids = (d.companions ?? []).filter((id) => id !== u.id);
+  if (ids.length) {
+    companions = await prisma.user.findMany({
+      where: { id: { in: ids }, companyId: u.companyId ?? null, active: true },
+      select: { id: true, name: true },
+    });
+  }
   const ot = await prisma.overtimeRequest.create({
     data: {
       userId: u.id,
@@ -349,6 +372,7 @@ router.post("/overtime", async (req, res) => {
       date: d.date,
       extendedEnd: new Date(d.extendedEnd),
       reason: d.reason,
+      companions: companions.length ? JSON.stringify(companions) : null,
     },
   });
   await writeLog(u.id, "OVERTIME_REQUEST", ot.id, `${d.date} → ${d.extendedEnd}`);
@@ -375,7 +399,11 @@ router.get("/overtime", async (req, res) => {
   const company = u.companyId
     ? await prisma.company.findUnique({ where: { id: u.companyId }, select: { name: true } })
     : null;
-  res.json({ overtimes: list, companyName: company?.name ?? null });
+  res.json({
+    // companions 는 DB 엔 JSON 문자열 — 클라가 파싱하지 않도록 배열로 풀어 내려준다.
+    overtimes: list.map((o) => ({ ...o, companions: parseCompanions(o.companions) })),
+    companyName: company?.name ?? null,
+  });
 });
 
 router.patch("/overtime/:id", async (req, res) => {

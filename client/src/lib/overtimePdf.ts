@@ -35,6 +35,8 @@ export type OvertimeSheetData = {
   createdAt: string;
   /** 회사명 (멀티테넌트 — 목록 API 가 내려줌, 없으면 하단 사명 줄 생략) */
   companyName?: string | null;
+  /** 함께 근무자 이름 목록 (선택) */
+  companions?: string[] | null;
 };
 
 function esc(s: string): string {
@@ -92,7 +94,7 @@ const SHEET_CSS = `
 .otsheet .ot-reason th,.otsheet .ot-reason td{border:1px solid #9AA0A8;}
 .otsheet .ot-reason .ot-rh{height:40px;background:#F5F6F8;font-size:13.5px;font-weight:600;color:#3A3F46;letter-spacing:3px;text-align:left;padding:0 16px;vertical-align:middle;}
 .otsheet .ot-reason .ot-rhint{background:#F5F6F8;font-size:11px;font-weight:400;color:#A6ADB6;letter-spacing:0.5px;text-align:right;padding:0 16px;vertical-align:middle;width:200px;}
-.otsheet .ot-reason .ot-rb{height:330px;vertical-align:top;padding:18px 20px;font-size:14.5px;line-height:1.8;color:#1F2329;white-space:pre-wrap;word-break:break-word;}
+.otsheet .ot-reason .ot-rb{height:304px;vertical-align:top;padding:18px 20px;font-size:14.5px;line-height:1.8;color:#1F2329;white-space:pre-wrap;word-break:break-word;}
 .otsheet .ot-notes{margin-top:12px;font-size:11px;color:#6B7178;line-height:1.8;letter-spacing:0.2px;}
 .otsheet .ot-closing{margin-top:26px;text-align:center;font-size:15.5px;letter-spacing:1px;color:#1F2329;line-height:26px;}
 .otsheet .ot-date{margin-top:18px;text-align:center;font-size:14.5px;letter-spacing:2px;color:#1F2329;line-height:26px;}
@@ -177,9 +179,9 @@ export function overtimeSheetHTML(d: OvertimeSheetData): string {
       </td>
       <td style="width:300px;">
         <table class="ot-approve">
-          <tr><td class="ot-ap-side" rowspan="3">결<br>재</td><th class="ot-ap-title">신 청</th><th class="ot-ap-title">담 당</th><th class="ot-ap-title">승 인</th></tr>
-          <tr><td class="ot-ap-sign">(인)</td><td class="ot-ap-sign">(인)</td><td class="ot-ap-sign">(인)</td></tr>
-          <tr><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td></tr>
+          <tr><td class="ot-ap-side" rowspan="3">결<br>재</td><th class="ot-ap-title">신 청</th><th class="ot-ap-title">대 표</th></tr>
+          <tr><td class="ot-ap-sign">(인)</td><td class="ot-ap-sign">(인)</td></tr>
+          <tr><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td><td class="ot-ap-date">&nbsp;.&nbsp;&nbsp;.&nbsp;</td></tr>
         </table>
       </td>
     </tr>
@@ -197,7 +199,8 @@ export function overtimeSheetHTML(d: OvertimeSheetData): string {
       <th>직&nbsp;&nbsp;급</th><td>${esc(d.position || "-")}</td>
     </tr>
     <tr>
-      <th>근무 일자</th><td colspan="5">${esc(fmtDateWithWeekday(d.date))}</td>
+      <th>근무 일자</th><td>${esc(fmtDateWithWeekday(d.date))}</td>
+      <th>함께 근무</th><td colspan="3">${d.companions && d.companions.length ? esc(d.companions.join(", ")) : '<span class="ot-dim">—</span>'}</td>
     </tr>
     <tr>
       <th>근무 시간</th><td colspan="5"><span class="ot-dim">소정근로시간 종료 후 ~</span> <span class="ot-strong">${esc(fmtTimeHM(d.extendedEnd))}</span> <span class="ot-dim">까지 (휴게시간 제외)</span></td>

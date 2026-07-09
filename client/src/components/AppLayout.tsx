@@ -1183,58 +1183,106 @@ function NavSection({ label, items, dev }: { label: string; items: NavItem[]; de
  *  - z-20: ChatFab(z-40) 보다 아래. (모바일 사이드 드로어는 폐지됨 — /menu 페이지가 대체)
  *  - 아이콘은 currentColor 를 따르므로 부모 color 만 바꾸면 활성/비활성 색이 함께 바뀐다.
  */
+// iOS 플로팅 글래스 알약 공통 스타일 — 메인(핵심 탭) 알약과 "전체"(프로필) 알약이 공유한다.
+const GLASS_PILL: React.CSSProperties = {
+  borderRadius: 26,
+  // 반투명 + blur — 뒤로 스크롤되는 본문이 비쳐 보이는 글래스 질감.
+  background: "var(--c-glass)",
+  backdropFilter: "blur(22px) saturate(180%)",
+  WebkitBackdropFilter: "blur(22px) saturate(180%)",
+  border: "1px solid var(--c-glass-border)",
+  boxShadow: "0 10px 30px rgba(16,18,27,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
+  padding: "6px 4px",
+  overflow: "hidden",
+};
+
 function BottomNav({ items }: { items: NavItem[] }) {
   // 전자결재 대기 건수 배지 — 사이드바와 동일한 폴링 hook 재사용.
   const approvalCounts = useApprovalCounts();
-  // iOS 네이티브(아이폰)에서는 화면 하단에 떠 있는 애플 리퀴드 글래스 스타일 바(반투명+blur).
+  const { user } = useAuth();
+  // iOS 네이티브(아이폰·아이패드)에서는 화면 하단에 떠 있는 애플 리퀴드 글래스 스타일 바(반투명+blur).
   // 그 외(웹·안드로이드·Electron 데스크톱)는 기존 in-flow 솔리드 바 그대로 — 무회귀.
   // (본문이 바 뒤로 지나가도록 클리어런스는 styles.css 의 html.hinest-ios --hinest-main-pb 가 담당.)
   const ios = nativePlatform() === "ios";
+
+  const coreTabs = items.map((n) => {
+    const Icon = n.icon;
+    const badge = n.to === "/approvals" ? approvalCounts.pending : 0;
+    return (
+      <BottomNavTab key={n.to} to={n.to} end={n.end} label={n.label} badge={badge}>
+        <Icon />
+      </BottomNavTab>
+    );
+  });
+
+  // "전체" 탭 아이콘 = 사용자 프로필 아바타(상단바/사이드바와 동일 렌더).
+  const avatarIcon = user?.avatarUrl ? (
+    <img
+      src={imgSrc(user.avatarUrl)}
+      alt=""
+      className="w-[26px] h-[26px] rounded-full object-cover"
+      loading="lazy"
+      decoding="async"
+    />
+  ) : (
+    <div
+      className="w-[26px] h-[26px] rounded-full grid place-items-center text-white text-[12px] font-bold"
+      style={{ background: user?.avatarColor ?? "#3B5CF0" }}
+    >
+      {user?.name?.[0] ?? "?"}
+    </div>
+  );
+
+  // ── iOS(아이폰·아이패드): 핵심 4탭 알약 + "전체"(프로필) 알약을 좌우로 분리 ──
+  //    두 알약은 각각 .app-bottomnav 라 기존 숨김 규칙(모달·키보드·네이티브탭바)이 그대로 적용된다.
+  //    바깥 래퍼는 위치·간격만 담당(투명) — pointer-events:none 으로 알약 사이 빈틈은 본문에 클릭 통과.
+  if (ios) {
+    return (
+      <div
+        className="app-bottomnav-wrap md:hidden"
+        style={{
+          position: "fixed",
+          left: "50%",
+          transform: "translateX(-50%)",
+          width: "calc(100% - 24px)",
+          maxWidth: 500, // 아이패드 등 넓은 화면에서도 가운데 정렬(가로로 늘어지지 않게)
+          bottom: "max(10px, var(--sa-bottom, env(safe-area-inset-bottom)))",
+          zIndex: 30,
+          display: "flex",
+          alignItems: "stretch",
+          gap: 8,
+          pointerEvents: "none",
+        }}
+        aria-label="주요 메뉴"
+      >
+        <nav className="app-bottomnav flex items-stretch flex-1" style={{ ...GLASS_PILL, pointerEvents: "auto" }}>
+          {coreTabs}
+        </nav>
+        {/* 전체 — 프로필 아바타 아이콘의 독립 알약. 전용 메뉴 페이지(/menu)로 이동. */}
+        <nav className="app-bottomnav flex items-stretch" style={{ ...GLASS_PILL, width: 68, pointerEvents: "auto" }} aria-label="전체 메뉴">
+          <BottomNavTab to="/menu" label="전체" ariaLabel="전체 메뉴">
+            {avatarIcon}
+          </BottomNavTab>
+        </nav>
+      </div>
+    );
+  }
+
+  // ── 그 외(안드로이드·모바일 웹): 기존 in-flow 솔리드 단일 바 ──
   return (
     <nav
-      className={"app-bottomnav md:hidden flex items-stretch" + (ios ? "" : " flex-shrink-0")}
-      style={
-        ios
-          ? {
-              // 화면 하단에 떠 있는 알약형 글래스 바. 좌우 12px 여백 안에서 중앙 정렬 +
-              // 최대 폭 제한 → 아이패드처럼 넓은 화면에서도 가로로 늘어지지 않고 가운데 알약.
-              position: "fixed",
-              left: "50%",
-              transform: "translateX(-50%)",
-              width: "calc(100% - 24px)",
-              maxWidth: 480,
-              bottom: "max(10px, var(--sa-bottom, env(safe-area-inset-bottom)))",
-              zIndex: 30,
-              borderRadius: 26,
-              // 반투명 + blur — 뒤로 스크롤되는 본문이 비쳐 보이는 글래스 질감.
-              background: "var(--c-glass)",
-              backdropFilter: "blur(22px) saturate(180%)",
-              WebkitBackdropFilter: "blur(22px) saturate(180%)",
-              border: "1px solid var(--c-glass-border)",
-              boxShadow: "0 10px 30px rgba(16,18,27,0.22), inset 0 1px 0 rgba(255,255,255,0.22)",
-              padding: "6px 4px",
-              overflow: "hidden",
-            }
-          : {
-              // 테마 변수로 칠해 다크 모드에서도 자연스럽게(이전엔 bg-white 고정이라 다크에서 깨졌음).
-              background: "var(--c-surface)",
-              borderTop: "1px solid var(--c-border)",
-              // 홈 인디케이터 회피용 하단 여백. safe-area 없으면(env=0) 0.
-              paddingBottom: "max(var(--sa-bottom, env(safe-area-inset-bottom)) - 10px, 0px)",
-              boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
-            }
-      }
+      className="app-bottomnav md:hidden flex items-stretch flex-shrink-0"
+      style={{
+        // 테마 변수로 칠해 다크 모드에서도 자연스럽게(이전엔 bg-white 고정이라 다크에서 깨졌음).
+        background: "var(--c-surface)",
+        borderTop: "1px solid var(--c-border)",
+        // 홈 인디케이터 회피용 하단 여백. safe-area 없으면(env=0) 0.
+        paddingBottom: "max(var(--sa-bottom, env(safe-area-inset-bottom)) - 10px, 0px)",
+        boxShadow: "0 -8px 24px rgba(20,22,27,0.06)",
+      }}
       aria-label="주요 메뉴"
     >
-      {items.map((n) => {
-        const Icon = n.icon;
-        const badge = n.to === "/approvals" ? approvalCounts.pending : 0;
-        return (
-          <BottomNavTab key={n.to} to={n.to} end={n.end} label={n.label} badge={badge}>
-            <Icon />
-          </BottomNavTab>
-        );
-      })}
+      {coreTabs}
       {/* 전체 — 전용 메뉴 페이지로 이동(좌측 드로어 아님). NavLink 라 현재 위치면 활성색. */}
       <BottomNavTab to="/menu" label="전체" ariaLabel="전체 메뉴">
         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

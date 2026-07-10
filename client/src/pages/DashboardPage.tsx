@@ -31,13 +31,10 @@ export default function DashboardPage() {
   // 새로고침(load 재호출) 시엔 기존 데이터 유지하면서 백그라운드로 갱신.
   const [loaded, setLoaded] = useState(false);
 
-  useEffect(() => {
-    const t = setInterval(() => setNow(new Date()), 30_000);
-    return () => clearInterval(t);
-  }, []);
-
   const aliveRef = useRef(true);
   const loadTokenRef = useRef(0);
+  // 마지막으로 서버 데이터를 받아온 시각·날짜 — stale 판단용(#1109).
+  const lastLoadRef = useRef({ at: 0, day: "" });
   useEffect(() => { aliveRef.current = true; return () => { aliveRef.current = false; }; }, []);
 
   async function load() {
@@ -56,6 +53,7 @@ export default function DashboardPage() {
       setEvents(s.events.slice(0, 6));
       setAtt(a.attendance);
       setLoaded(true);
+      lastLoadRef.current = { at: Date.now(), day: new Date().toDateString() };
     } catch {
       // 세션 만료(401)는 api.ts 전역 hinest:unauthorized 가 로그아웃 처리, 네트워크
       // 순단은 스켈레톤 유지 — 여기서 안 잡으면 unhandledrejection 으로 새서
@@ -63,6 +61,38 @@ export default function DashboardPage() {
     }
   }
   useEffect(() => { void load(); }, []);
+
+  // ── stale 재조회(#1109) ──────────────────────────────────────────────
+  // 자동퇴근(서버 스케줄러)·자동출근(다음날 첫 /today 호출)은 서버에서 일어나는데,
+  // 예전엔 load() 가 마운트 1회뿐이라 화면을 밤새 켜두면(데스크톱) 어제의 "열린 세션"
+  // 으로 오늘 근무가 24시간+ 로 계속 누적돼 보였다(새로고침해야 정상). 이제:
+  //  - 날짜가 바뀌면(30초 틱에서 감지) 재조회 — 항상 보이는 데스크톱 커버.
+  //    이 재조회가 곧 다음날 첫 /today 호출이라 IP 자동출근도 리로드 없이 걸린다.
+  //  - 창 복귀(focus/visibilitychange — 네이티브 resume 은 main.tsx 가 합성 발화) 시
+  //    5분 이상 지난 데이터면 재조회 — 자동퇴근·다른 기기 출퇴근도 복귀 즉시 반영.
+  useEffect(() => {
+    const t = setInterval(() => {
+      setNow(new Date());
+      const { at, day } = lastLoadRef.current;
+      if (day && day !== new Date().toDateString() && Date.now() - at > 30_000 && document.visibilityState === "visible") {
+        void load();
+      }
+    }, 30_000);
+    const onReturn = () => {
+      if (document.visibilityState !== "visible") return;
+      const { at, day } = lastLoadRef.current;
+      const dayChanged = !!day && day !== new Date().toDateString();
+      if (dayChanged || Date.now() - at > 5 * 60_000) void load();
+    };
+    window.addEventListener("focus", onReturn);
+    document.addEventListener("visibilitychange", onReturn);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("focus", onReturn);
+      document.removeEventListener("visibilitychange", onReturn);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 출퇴근 버튼 더블탭 가드 — 빠르게 두 번 누르면 POST 가 2번 나가던 문제 방지(서버는 멱등이라
   // 데이터 손상은 없지만 불필요한 요청·깜빡임 제거). 처리 중엔 버튼 비활성.
@@ -105,7 +135,17 @@ export default function DashboardPage() {
   // 근무시간 = 모든 세션 합산(열린 세션은 now 까지). "다시 출근" 해도 누적된다.
   const workedMin = sessions.reduce((acc, s) => {
     const start = new Date(s.s).getTime();
-    const end = s.e ? new Date(s.e).getTime() : now.getTime();
+    let end = s.e ? new Date(s.e).getTime() : now.getTime();
+    if (!s.e) {
+      // 방어캡(#1109): 열린 세션이 오늘 것이 아니면(재조회가 도착하기 전 잠깐의 stale
+      // 데이터) 그 세션 시작일 자정까지만 집계 — "24시간 16분" 같은 부풀림 방지.
+      const st = new Date(s.s);
+      if (st.toDateString() !== now.toDateString()) {
+        const dayEnd = new Date(st);
+        dayEnd.setHours(23, 59, 59, 0);
+        end = Math.min(end, dayEnd.getTime());
+      }
+    }
     return acc + (end > start ? Math.floor((end - start) / 60000) : 0);
   }, 0);
   // 관리자 설정 기반 근무 시각 — 미설정 시 09:00/18:00 fallback.

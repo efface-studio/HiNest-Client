@@ -10,10 +10,10 @@
     <key>com.apple.security.network.client</key>
     <true/>
 
-    <!-- 파일 업로드/다운로드 (문서·급여명세서 등) -->
+    <!-- 파일 업로드/다운로드 — 업로드는 파일 선택기, 다운로드는 저장 다이얼로그
+         (will-download 의 setSaveDialogOptions)라 user-selected 하나로 충분.
+         downloads.read-write 는 대응 기능이 없어 2.4.5(i) 반려(1.0.0(3)) → 제거. -->
     <key>com.apple.security.files.user-selected.read-write</key>
-    <true/>
-    <key>com.apple.security.files.downloads.read-write</key>
     <true/>
 
     <!-- App Store 배포 식별자 — 프로비저닝 프로파일과 일치해야 함.

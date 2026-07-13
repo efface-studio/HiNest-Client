@@ -277,28 +277,14 @@ app.on("second-instance", () => {
   showWindow();
 });
 
-/**
- * 첫 실행에 자동 시작(OS 로그인 시 트레이 상주)을 기본 ON 으로 등록.
- * 사용자 토글로 OFF 한 후엔 다시 켜지 않음(flag 파일). dev 빌드는 skip.
- */
-function initAutoLaunchDefault() {
-  if (!app.isPackaged) return;
-  try {
-    const flagPath = path.join(app.getPath("userData"), "auto-launch-initialized");
-    if (fs.existsSync(flagPath)) return;
-    app.setLoginItemSettings({ openAtLogin: true, openAsHidden: true });
-    fs.writeFileSync(flagPath, String(Date.now()));
-    console.log("[autoLaunch] enabled by default on first run");
-  } catch (e) {
-    console.warn("[autoLaunch] init failed", e);
-  }
-}
+/* 자동 시작(로그인 시 실행)은 기본 OFF — MAS 가이드라인 2.4.5(iii): 사용자 동의 없이
+ * 로그인 시 자동 실행 금지(1.0.0(3) 반려 사유). 프로필 설정의 토글(hinest:setAutoLaunch)로
+ * 사용자가 직접 켠 경우에만 등록된다. */
 
 app.whenReady().then(() => {
   createWindow();
   buildAppMenu();
   createTray();
-  initAutoLaunchDefault();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

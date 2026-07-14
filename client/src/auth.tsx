@@ -112,6 +112,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // 섬광처럼 보이는 것을 방지. logout 에서와 동일하게 세션 캐시를 싹 비움.
     clearApiCache();
     setUser(res.user);
+    // 로그인 응답 user 는 /api/me 보다 필드가 적을 수 있어(구버전 서버 등) 풀 객체로
+    // 재동기화 — companyId/isDeveloper 누락 시 콘솔 '서비스로 돌아가기'·개발자 뱃지가
+    // 하드 리로드 전까지 사라지던 간헐 버그(#1113) 방지. fire-and-forget.
+    void refreshRef.current?.();
     // 로그인 직후 알림 권한 요청(iOS/macOS 등 설치형 앱). 라우팅을 막지 않도록 fire-and-forget.
     void requestNotifPermissionOnLogin();
     // 안드로이드: 백그라운드/잠금 상태 알림 신뢰도 위해 배터리 최적화 제외 1회 안내(카톡 방식).
@@ -128,6 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setAuthToken(res.token);
     clearApiCache();
     setUser(res.user);
+    // 로그인과 동일 — 풀 user 재동기화(#1113).
+    void refreshRef.current?.();
     // 가입(=최초 로그인) 직후에도 동일하게 알림 권한 요청 + 배터리 최적화 제외 안내(안드로이드).
     void requestNotifPermissionOnLogin();
     void ensureAndroidBatteryExemption();

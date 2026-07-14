@@ -159,6 +159,12 @@ router.post("/login", async (req, res) => {
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
       consoleOnly: isConsoleOnlyUser(user),
+      // /api/me 와 필드 일치(#1113) — 빠지면 로그인 직후 세션이 하드 리로드 전까지
+      // companyId 없는 부분 객체를 쥐어, 콘솔 '서비스로 돌아가기'(hasCompany)·개발자
+      // 뱃지(isDeveloper)가 간헐적으로 사라져 보인다.
+      companyId: user.companyId ?? null,
+      platformAdmin: user.platformAdmin,
+      isDeveloper: user.isDeveloper,
     },
     // 네이티브 앱(Capacitor)은 cross-site 쿠키가 ITP 에 막혀 새로고침 시 세션이 끊긴다.
     // 네이티브 origin 일 때만 세션 JWT 를 본문으로 함께 내려, 클라가 저장해 Authorization
@@ -209,7 +215,7 @@ router.post("/signup", async (req, res) => {
   // (1) 과 (3) 사이에 같은 초대키로 동시 요청이 들어오면 둘 다 used=false 를 보고 통과 → 키 1개로 N명 가입.
   // updateMany({ where:{id, used:false}, data:{used:true} }) 는 \"하나만 통과\" 를 DB 가 보장하므로
   // 트랜잭션 안에서 이 결과 count 를 보고 분기하면 어떤 동시성 시나리오에서도 단 한 명만 가입한다.
-  let user: { id: string; email: string; name: string; role: string; team: string | null; position: string | null; avatarColor: string; avatarUrl: string | null; superAdmin: boolean; companyId: string | null };
+  let user: { id: string; email: string; name: string; role: string; team: string | null; position: string | null; avatarColor: string; avatarUrl: string | null; superAdmin: boolean; companyId: string | null; platformAdmin: boolean; isDeveloper: boolean };
   try {
     user = await prisma.$transaction(async (tx) => {
       const now = new Date();
@@ -246,6 +252,7 @@ router.post("/signup", async (req, res) => {
         team: created.team, position: created.position,
         avatarColor: created.avatarColor, avatarUrl: created.avatarUrl, superAdmin: created.superAdmin,
         companyId: created.companyId,
+        platformAdmin: created.platformAdmin, isDeveloper: created.isDeveloper,
       };
     }, {
       isolationLevel: "Serializable",
@@ -291,6 +298,10 @@ router.post("/signup", async (req, res) => {
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
       consoleOnly: isConsoleOnlyUser(user),
+      // 로그인 응답과 동일 — /api/me 와 필드 일치(#1113).
+      companyId: user.companyId ?? null,
+      platformAdmin: user.platformAdmin,
+      isDeveloper: user.isDeveloper,
     },
     // 로그인과 동일 — 네이티브 origin 에만 세션 토큰을 본문으로 함께 내린다.
     ...(isNativeOrigin(req) ? { token } : {}),

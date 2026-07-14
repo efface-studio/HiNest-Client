@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, Navigate } from "react-router-dom";
+import { isInstalledApp } from "../lib/platform";
 import { useAuth } from "../auth";
 import { api } from "../api";
 import BrandLockup from "../components/BrandLockup";
@@ -41,7 +42,8 @@ export default function CompanySignupPage() {
 
   if (user) return <Navigate to="/" replace />;
   // 모바일/태블릿은 그냥 조용히 로그인으로 리다이렉트(안내 화면 없이).
-  if (isMobile) return <Navigate to="/login" replace />;
+  // 설치형 앱(macOS 데스크톱·iOS/Android 네이티브)도 전면 차단 — 회사 등록은 웹 전용.
+  if (isMobile || isInstalledApp()) return <Navigate to="/login" replace />;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { isInstalledApp } from "../lib/platform";
 import { Link, Navigate, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth";
 import BrandLockup from "../components/BrandLockup";
@@ -130,7 +131,8 @@ export default function SignupPage() {
             </Link>
           </div>
 
-          {/* 초대키가 없는 신규 회사는 회사 등록 신청으로 안내. 모바일에서는 숨김. */}
+          {/* 초대키가 없는 신규 회사는 회사 등록 신청으로 안내. 모바일 폭·설치형 앱에선 숨김(웹 전용). */}
+          {!isInstalledApp() && (
           <div className="mt-4 text-center text-[12.5px] hidden md:block">
             <span className="text-ink-400">초대키가 없는 새 회사인가요? </span>
             <Link
@@ -141,6 +143,7 @@ export default function SignupPage() {
               회사 등록 신청
             </Link>
           </div>
+          )}
         </div>
       </main>
     </div>

@@ -195,7 +195,8 @@ export default function LoginPage() {
           </div>
 
           {/* 새 회사 셀프 가입 — 멀티테넌트 진입점 */}
-          {/* 회사 등록 진입점 — 모바일에서는 숨김(긴 회사 정보 폼은 데스크탑에서만 작성). */}
+          {/* 회사 등록 진입점 — 모바일 폭에선 숨김(긴 폼), 설치형 앱(macOS·iOS)에선 웹 전용이라 숨김. */}
+          {!isInstalledApp() && (
           <div className="mt-4 text-center text-[12.5px] hidden md:block">
             <span className="text-ink-400">회사를 새로 시작하시나요? </span>
             <Link
@@ -206,6 +207,7 @@ export default function LoginPage() {
               회사 등록 신청
             </Link>
           </div>
+          )}
 
           {/* 앱 다운로드 — 설치형 앱(데스크톱·모바일 네이티브) 안에서는 숨김 */}
           {!isInstalledApp() && (

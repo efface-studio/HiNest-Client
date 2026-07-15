@@ -102,8 +102,8 @@ export default function PrivacyPolicyPage() {
           개인정보 처리에 관한 문의·불만·피해 구제는 아래로 접수할 수 있습니다.
         </p>
         <ul className="list-disc pl-5 space-y-1">
-          <li>개인정보 보호책임자: <b>[담당자명/직책 — 운영자가 채워야 함]</b></li>
-          <li>문의 이메일: <b>developer.seojiwan@gmail.com</b></li>
+          <li>개인정보 보호책임자: <b>서지완 (대표)</b></li>
+          <li>문의 이메일: <b>xixn2@efface.dev</b></li>
         </ul>
       </LegalSection>
 

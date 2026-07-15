@@ -85,7 +85,7 @@ export default function TermsPage() {
       </LegalSection>
 
       <LegalSection heading="문의">
-        <p>약관에 관한 문의: <b>developer.seojiwan@gmail.com</b></p>
+        <p>약관에 관한 문의: <b>xixn2@efface.dev</b></p>
       </LegalSection>
     </LegalLayout>
   );

@@ -22,15 +22,19 @@ const DEMO_ME = {
   id: "demo-user",
   email: "demo@hinest.app",
   name: "김데모",
-  role: "ADMIN",
+  // 데모 사용자 = 일반 사원. 관리자 탭(role ADMIN 필요)·운영 콘솔(superAdmin 필요)은
+  // 진입점(AppLayout)·라우트 가드(App.tsx AdminOnly/ConsoleOnly) 양쪽에서 자동 차단되어야
+  // 한다 — 미리보기는 외부 잠재고객이 보는 데모라 관리/운영 화면 노출 금지.
+  role: "MEMBER",
   team: "프로덕트팀",
-  position: "팀장",
+  position: "사원",
   avatarColor: "#3D54C4",
   avatarUrl: null,
-  superAdmin: true,
+  superAdmin: false,
+  platformAdmin: false,
   // 데모 사용자 = 일반 사용자 인상을 주기 위해 개발자 뱃지 제거.
   isDeveloper: false,
-  employeeNo: "AD0000001",
+  employeeNo: "PD0000042",
   presenceStatus: null,
   presenceMessage: null,
   presenceUpdatedAt: null,

@@ -165,6 +165,14 @@ router.post("/login", async (req, res) => {
       companyId: user.companyId ?? null,
       platformAdmin: user.platformAdmin,
       isDeveloper: user.isDeveloper,
+      // 근무시간·근태·재실 필드도 /api/me 와 일치(#1121) — 없으면 로그인 직후 대시보드
+      // 근무시간 게이지가 /api/me 재조회 전까지 09:00~18:00 기본값으로 잠깐 잘못 표시된다.
+      employeeNo: user.employeeNo,
+      presenceStatus: user.presenceStatus,
+      presenceMessage: user.presenceMessage,
+      presenceUpdatedAt: user.presenceUpdatedAt,
+      workStartTime: user.workStartTime,
+      workEndTime: user.workEndTime,
     },
     // 네이티브 앱(Capacitor)은 cross-site 쿠키가 ITP 에 막혀 새로고침 시 세션이 끊긴다.
     // 네이티브 origin 일 때만 세션 JWT 를 본문으로 함께 내려, 클라가 저장해 Authorization
@@ -215,7 +223,7 @@ router.post("/signup", async (req, res) => {
   // (1) 과 (3) 사이에 같은 초대키로 동시 요청이 들어오면 둘 다 used=false 를 보고 통과 → 키 1개로 N명 가입.
   // updateMany({ where:{id, used:false}, data:{used:true} }) 는 \"하나만 통과\" 를 DB 가 보장하므로
   // 트랜잭션 안에서 이 결과 count 를 보고 분기하면 어떤 동시성 시나리오에서도 단 한 명만 가입한다.
-  let user: { id: string; email: string; name: string; role: string; team: string | null; position: string | null; avatarColor: string; avatarUrl: string | null; superAdmin: boolean; companyId: string | null; platformAdmin: boolean; isDeveloper: boolean };
+  let user: { id: string; email: string; name: string; role: string; team: string | null; position: string | null; avatarColor: string; avatarUrl: string | null; superAdmin: boolean; companyId: string | null; platformAdmin: boolean; isDeveloper: boolean; employeeNo: string | null; presenceStatus: string | null; presenceMessage: string | null; presenceUpdatedAt: Date | null; workStartTime: string | null; workEndTime: string | null };
   try {
     user = await prisma.$transaction(async (tx) => {
       const now = new Date();
@@ -253,6 +261,11 @@ router.post("/signup", async (req, res) => {
         avatarColor: created.avatarColor, avatarUrl: created.avatarUrl, superAdmin: created.superAdmin,
         companyId: created.companyId,
         platformAdmin: created.platformAdmin, isDeveloper: created.isDeveloper,
+        // /api/me 필드 일치(#1121) — 응답 user 페이로드에 그대로 실어 근무시간 게이지 flash 방지.
+        employeeNo: created.employeeNo,
+        presenceStatus: created.presenceStatus, presenceMessage: created.presenceMessage,
+        presenceUpdatedAt: created.presenceUpdatedAt,
+        workStartTime: created.workStartTime, workEndTime: created.workEndTime,
       };
     }, {
       isolationLevel: "Serializable",
@@ -298,10 +311,16 @@ router.post("/signup", async (req, res) => {
       avatarUrl: user.avatarUrl,
       superAdmin: user.superAdmin,
       consoleOnly: isConsoleOnlyUser(user),
-      // 로그인 응답과 동일 — /api/me 와 필드 일치(#1113).
+      // 로그인 응답과 동일 — /api/me 와 필드 일치(#1113·#1121).
       companyId: user.companyId ?? null,
       platformAdmin: user.platformAdmin,
       isDeveloper: user.isDeveloper,
+      employeeNo: user.employeeNo,
+      presenceStatus: user.presenceStatus,
+      presenceMessage: user.presenceMessage,
+      presenceUpdatedAt: user.presenceUpdatedAt,
+      workStartTime: user.workStartTime,
+      workEndTime: user.workEndTime,
     },
     // 로그인과 동일 — 네이티브 origin 에만 세션 토큰을 본문으로 함께 내린다.
     ...(isNativeOrigin(req) ? { token } : {}),
@@ -322,6 +341,10 @@ const companySignupSchema = z.object({
 });
 
 router.post("/company-signup", async (req, res) => {
+  // 회사 등록은 웹 전용(#1114·#1121) — 클라 게이트(CompanySignupPage/SignupPage)만이 아니라
+  // 서버에서도 네이티브 앱(Capacitor iOS/Android) origin 을 차단해 방어심층을 맞춘다.
+  // (데스크톱 Electron 은 웹 origin 을 그대로 써 origin 으로는 구분 불가 — 클라 게이트가 담당.)
+  if (isNativeOrigin(req)) return res.status(403).json({ error: "회사 등록은 웹에서만 신청할 수 있어요" });
   const parsed = companySignupSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "입력값을 확인해주세요 (비밀번호는 8자 이상)" });
   const { companyName, contactName, email, password, contactPhone, bizRegNo } = parsed.data;

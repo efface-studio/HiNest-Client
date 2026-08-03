@@ -1528,8 +1528,14 @@ router.get("/attendance/overview", async (req, res) => {
   base.setUTCDate(base.getUTCDate() - (dow === 0 ? 6 : dow - 1));
   const weekMonday = base.toISOString().slice(0, 10);
 
+  // 스캔 하한(#1121) — 표에 쓰는 값은 today·이번 주(weekMonday~)·이번 달(monthPrefix)뿐이라
+  // 전체 근태 이력을 무제한 스캔할 이유가 없다. 필요한 창(주 시작 vs 월 시작 중 이른 날) 이후만
+  // 조회. total 은 클라 미사용이라 창 축소로 인한 표시 변화 없음.
+  const monthStart = `${monthPrefix}-01`;
+  const scanFrom = weekMonday < monthStart ? weekMonday : monthStart;
+
   const att = await prisma.attendance.findMany({
-    where: { userId: { in: ids } },
+    where: { userId: { in: ids }, date: { gte: scanFrom } },
     select: { userId: true, date: true, checkIn: true, checkOut: true, sessions: true },
   });
   const byUser = new Map<string, typeof att>();

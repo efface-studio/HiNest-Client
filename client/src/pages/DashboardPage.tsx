@@ -121,6 +121,10 @@ export default function DashboardPage() {
     } catch (err: any) {
       alertAsync({ title: "퇴근 실패", description: err?.message ?? "퇴근 처리에 실패했어요" });
       return;
+    } finally {
+      // checkIn 과 동일하게 항상 해제(#1121) — 없으면 퇴근 성공/실패 후 attBusy 가 true 로
+      // 고정돼 '다시 출근'·'퇴근하기' 버튼이 리마운트 전까지 잠긴다(다중 세션 재출근 불가).
+      setAttBusy(false);
     }
     load();
   }

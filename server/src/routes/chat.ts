@@ -832,13 +832,14 @@ router.post("/share", async (req, res) => {
 
   const recipientRoomIds = new Set<string>();
 
-  // 1) 그룹방 — 본인이 멤버여야만
-  for (const roomId of d.roomIds) {
-    const m = await prisma.roomMember.findUnique({
-      where: { roomId_userId: { roomId, userId: u.id } },
-      select: { id: true },
+  // 1) 그룹방 — 본인이 멤버인 방만. 방마다 findUnique 반복(N+1, 최대 50회) 대신
+  //    한 번의 findMany 로 조회(#1121). RoomMember 는 테넌트 모델이라 회사 격리도 자동.
+  if (d.roomIds.length) {
+    const mine = await prisma.roomMember.findMany({
+      where: { userId: u.id, roomId: { in: d.roomIds } },
+      select: { roomId: true },
     });
-    if (m) recipientRoomIds.add(roomId);
+    for (const m of mine) recipientRoomIds.add(m.roomId);
   }
 
   // 2) 1:1 — 각 userId 마다 DIRECT 방 찾거나 생성. 같은 회사만 허용.

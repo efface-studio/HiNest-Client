@@ -66,6 +66,10 @@ const TENANT_MODELS = new Set<string>([
   "Event",
   "Leave",
   "Attendance",
+  // OvertimeRequest 는 companyId 를 갖지만 이 목록에 없어(#1121) PATCH /overtime/:id 의
+  // findUnique/update 가 자동 스코프를 못 받아, 타 회사 야근 신청을 id 로 교차 승인/반려할
+  // 수 있는 IDOR 이 있었다. 등록해 findUnique/update 를 회사 단위로 자동 격리한다.
+  "OvertimeRequest",
   "Journal",
   "Notice",
   "NoticeReaction",

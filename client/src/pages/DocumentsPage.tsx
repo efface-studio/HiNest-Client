@@ -13,7 +13,7 @@ import { presentShareNative } from "../lib/share";
 import RevisionHistoryModal from "../components/RevisionHistoryModal";
 import type { MemoDoc } from "../components/DocMemoModal";
 import { safeUploadUrl } from "../lib/safeUrl";
-import { downloadFromUrl, downloadBlob } from "../lib/download";
+import { downloadFromUrl, downloadBlob, uploadUrlWithName } from "../lib/download";
 import { isCapacitorNative } from "../lib/platform";
 import { Browser } from "@capacitor/browser";
 
@@ -763,8 +763,11 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     if (!isPreviewable(d)) { downloadDoc(d); return; }
     const safe = safeUploadUrl(d.fileUrl);
     if (!safe) return;
-    if (isCapacitorNative()) { const u = imgSrc(safe); if (u) void Browser.open({ url: u }); }
-    else window.open(safe, "_blank", "noopener");
+    // 미리보기로 열 때도 원본명 힌트를 붙인다 — PDF 는 서버가 첨부로 내려주므로(INLINE_MIME_PREFIXES
+    // 에 없음) 이게 없으면 스토리지 키가 파일명이 되고, 이미지·영상도 "저장" 시 원본명이 유지된다.
+    const named = uploadUrlWithName(safe, d.fileName || d.title || "");
+    if (isCapacitorNative()) { const u = imgSrc(named); if (u) void Browser.open({ url: u }); }
+    else window.open(named, "_blank", "noopener");
   }
 
   // 폴더 전체 — 서버에서 ZIP 스트림으로 내려옴. 큰 폴더는 시간이 꽤 걸릴 수 있음.

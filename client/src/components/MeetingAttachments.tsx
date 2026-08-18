@@ -6,6 +6,7 @@ import { safeAttachmentUrl } from "../lib/safeUrl";
 import { isCapacitorNative } from "../lib/platform";
 import { openExternal } from "../lib/openExternal";
 import { Browser } from "@capacitor/browser";
+import { uploadUrlWithName } from "../lib/download";
 
 /**
  * 회의록 본문 아래에 떠있는 첨부 섹션 — 파일(이미지/영상/문서) + 외부 링크 모두 한 곳에서 관리.
@@ -261,7 +262,7 @@ export default function MeetingAttachments({
                 <div className="flex-1 min-w-0">
                   {safeHref ? (
                     <a
-                      href={safeHref}
+                      href={isLink ? safeHref : uploadUrlWithName(safeHref, att.name)}
                       target="_blank"
                       rel="noopener noreferrer"
                       {...(isLink ? {} : { download: att.name })}
@@ -269,7 +270,8 @@ export default function MeetingAttachments({
                         if (!isCapacitorNative()) return;
                         e.preventDefault();
                         if (isLink) { openExternal(safeHref); return; }
-                        const u = imgSrc(safeHref);
+                        // 원본 파일명 힌트 — 없으면 서버가 스토리지 키를 파일명으로 쓴다.
+                        const u = imgSrc(uploadUrlWithName(safeHref, att.name));
                         if (u) void Browser.open({ url: u });
                       }}
                       className="text-[13px] font-semibold text-ink-900 hover:text-brand-600 truncate block"

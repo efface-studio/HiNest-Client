@@ -1341,7 +1341,17 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         <>
         {/* 데스크톱(md+): 인라인 테이블. iPad portrait 는 이 너비를 못 받쳐 모바일 카드로 보낸다. */}
         <div className="panel p-0 overflow-hidden overflow-x-auto hidden md:block">
-          <table className="pro min-w-[760px]">
+          <table className="pro min-w-[840px]" style={{ tableLayout: "fixed" }}>
+            {/* 컬럼 폭 고정 — auto 레이아웃은 제목·태그에 폭을 몰아주고 작성자·수정 칸을
+                0 에 가깝게 눌러, 한글이 글자 단위로 줄바꿈되던(서/지/완) UI 깨짐이 있었다. */}
+            <colgroup>
+              <col />
+              <col style={{ width: 158 }} />
+              <col style={{ width: 208 }} />
+              <col style={{ width: 112 }} />
+              <col style={{ width: 100 }} />
+              <col style={{ width: 152 }} />
+            </colgroup>
             <thead>
               <tr>
                 <th>제목</th>
@@ -1372,7 +1382,7 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                     opacity: draggingDocId === d.id ? 0.5 : 1,
                   }}
                 >
-                  <td className="cell-primary">
+                  <td className="cell-primary overflow-hidden">
                     <div
                       className={`flex items-start gap-2.5 ${d.content != null ? "cursor-pointer" : ""}`}
                       onClick={d.content != null ? () => setMemoTarget(d) : undefined}
@@ -1427,11 +1437,21 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                     </div>
                   </td>
                   <td data-label="태그" className={(d.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean).length ? "" : "cell-hide-m"}>
-                    <div className="flex flex-wrap gap-1 justify-end">
-                      {(d.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean).map((t) => (
-                        <span key={t} className="chip-gray">#{t}</span>
-                      ))}
-                    </div>
+                    {(() => {
+                      // 태그가 많으면 칩이 세로로 쌓여 행 높이가 폭발한다 — 3개까지만 보이고
+                      // 나머지는 +N 으로 요약(전체 목록은 title 툴팁).
+                      const tags = (d.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean);
+                      const shown = tags.slice(0, 3);
+                      const rest = tags.length - shown.length;
+                      return (
+                        <div className="flex flex-wrap gap-1 justify-end" title={tags.join(", ")}>
+                          {shown.map((t) => (
+                            <span key={t} className="chip-gray max-w-[110px] truncate">#{t}</span>
+                          ))}
+                          {rest > 0 && <span className="chip-gray">+{rest}</span>}
+                        </div>
+                      );
+                    })()}
                   </td>
                   <td data-label="파일">
                     {(() => {
@@ -1448,15 +1468,17 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                       return (
                         <button type="button" title={d.fileName ?? undefined}
                           onClick={() => openDocOrDownload(d)}
-                          className="inline-flex items-center gap-1 max-w-[180px] sm:max-w-[260px] align-middle text-[12px] font-bold text-brand-600 hover:underline tabular text-left">
+                          className="inline-flex items-center gap-1 w-full max-w-full align-middle text-[12px] font-bold text-brand-600 hover:underline text-left">
+                          {/* 파일명에 tabular(고정폭)를 쓰면 한글이 글자마다 벌어져 깨져 보인다 —
+                              이름은 본문 폰트, 용량만 tabular. */}
                           <span className="truncate">{d.fileName}</span>
-                          <span className="text-ink-400 flex-shrink-0">({fmtSize(d.fileSize ?? 0)})</span>
+                          <span className="text-ink-400 flex-shrink-0 tabular">({fmtSize(d.fileSize ?? 0)})</span>
                         </button>
                       );
                     })()}
                   </td>
-                  <td data-label="작성자">
-                    <div className="flex items-center gap-2">
+                  <td data-label="작성자" className="whitespace-nowrap">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div className="w-6 h-6 rounded grid place-items-center text-white text-[10px] font-bold overflow-hidden" style={{ background: d.author.avatarUrl ? "transparent" : (d.author.avatarColor ?? "#6B7280") }}>
                         {d.author.avatarUrl ? (
                           <img src={imgSrc(d.author.avatarUrl)} alt={d.author.name} className="w-full h-full object-cover" loading="lazy" decoding="async"/>
@@ -1464,10 +1486,10 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
                           d.author.name[0]
                         )}
                       </div>
-                      <div className="text-[12px]">{d.author.name}</div>
+                      <div className="text-[12px] truncate">{d.author.name}</div>
                     </div>
                   </td>
-                  <td data-label="수정" className="tabular text-[11px] text-ink-500">{new Date(d.updatedAt).toLocaleDateString("ko-KR")}</td>
+                  <td data-label="수정" className="tabular text-[11px] text-ink-500 whitespace-nowrap">{new Date(d.updatedAt).toLocaleDateString("ko-KR")}</td>
                   <td className="cell-actions" style={{ textAlign: "right" }}>
                     <div className="flex items-center justify-end gap-1">
                       {/* 메모 타입 */}

@@ -771,6 +771,11 @@ table.pro tbody td {
   border-bottom: 1px solid var(--c-border);
   font-size: 13px;
   color: var(--c-text-2);
+  /* 한글 줄바꿈 가드 — 칸이 좁아지면 브라우저 기본값은 음절 단위로 끊어 "서/지/완" 처럼
+     세로로 쪼개진다(표 UI 깨짐의 주범). keep-all 로 낱말 안에서는 끊지 않고,
+     한 낱말이 칸보다 길 때만 anywhere 로 끊어 넘침도 막는다. */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 table.pro tbody tr:last-child td { border-bottom: 0; }
 table.pro tbody tr:hover td { background: var(--c-surface-2); }

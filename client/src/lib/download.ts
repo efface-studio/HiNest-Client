@@ -21,6 +21,36 @@ import { imgSrc } from "../api";
  */
 
 /**
+ * /uploads 파일 URL 에 원본 파일명 힌트(?name=)를 붙인다.
+ *
+ * 왜 필요한가 — 서버(/uploads)는 `?name=` 이 없으면 **스토리지 키(해시)** 를 파일명으로 써서
+ * Content-Disposition 을 만든다. 그리고 다운로드는 S3 presigned 로 302 되므로 **cross-origin
+ * 이 되는 순간 `<a download>` 의 파일명은 브라우저가 무시하고 서버가 만든 Content-Disposition
+ * 만 남는다**(Chrome·Edge·Safari·Firefox / Windows·macOS·모바일 공통). 즉 이 힌트가 전 플랫폼에서
+ * 원본 파일명을 지키는 유일한 수단이다. 호출부마다 빼먹지 않도록 여기 한 곳에서 붙인다.
+ *
+ * 외부(http…)·blob·data URL 과 /uploads 가 아닌 경로는 그대로 둔다.
+ */
+export function uploadUrlWithName(
+  href: string,
+  filename?: string | null,
+  opts: { download?: boolean } = {},
+): string {
+  if (!href || /^(data:|blob:)/i.test(href)) return href;
+  try {
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost";
+    const u = new URL(href, origin);
+    if (!u.pathname.startsWith("/uploads/")) return href;
+    if (opts.download) u.searchParams.set("download", "1");
+    if (filename) u.searchParams.set("name", filename);
+    // 상대경로로 들어온 건 상대경로로 유지(imgSrc 가 절대화·토큰 부착을 담당).
+    return href.startsWith("/") ? u.pathname + u.search : u.toString();
+  } catch {
+    return href;
+  }
+}
+
+/**
  * URL 을 파일로 다운로드.
  * 동일 출처거나 서버가 `Content-Disposition: attachment` 를 주는 URL 에 사용.
  *
@@ -28,6 +58,9 @@ import { imgSrc } from "../api";
  *   이 경우 브라우저가 서버의 Content-Disposition 파일명으로 폴백한다.
  */
 export function downloadFromUrl(href: string, filename = ""): void {
+  // /uploads 파일이면 원본명 힌트를 URL 에 실어 서버가 올바른 Content-Disposition 을 만들게 한다
+  // (S3 presigned 302 로 넘어가면 아래 `a.download` 는 무시되므로 이게 유일한 파일명 보장 수단).
+  href = uploadUrlWithName(href, filename, { download: true });
   // 데스크탑(Electron): 메인 프로세스가 webContents.downloadURL 로 직접 받게 한다.
   //   <a download> 는 cross-origin 302(/uploads → S3 presigned) 에서 download 속성·파일명이
   //   무시되고, 리다이렉트 추적 중 창 네비게이션 edge case 로 "안 받아지거나 느린" 현상이 있었다.

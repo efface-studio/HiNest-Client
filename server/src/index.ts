@@ -359,6 +359,16 @@ function applyUploadSecurityHeaders(
   // defense-in-depth — /uploads 에서 내려가는 HTML 이 실수로라도 실행되지 않도록 tight CSP
   res.setHeader("Content-Security-Policy", "default-src 'none'; sandbox; frame-ancestors 'none'");
   const inline = INLINE_MIME_PREFIXES.some((p) => contentType.startsWith(p));
+  if (inline && !forceDownload) {
+    // 인라인(이미지·영상·오디오)도 파일명을 실어준다 — 헤더가 없으면 브라우저 미리보기에서
+    // "이미지 저장"을 눌렀을 때 스토리지 키(해시)가 파일명이 된다. 표시는 그대로 inline.
+    if (downloadName) {
+      const enc = encodeURIComponent(downloadName).replace(/['()]/g, escape).replace(/\*/g, "%2A");
+      const ascii = downloadName.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "");
+      res.setHeader("Content-Disposition", `inline; filename="${ascii}"; filename*=UTF-8''${enc}`);
+    }
+    return;
+  }
   if (forceDownload || !inline) {
     // ?download=1 이 오거나 비-인라인 타입이면 강제 첨부. 원본 파일명이 있으면 그걸 사용.
     const fn = downloadName || name;

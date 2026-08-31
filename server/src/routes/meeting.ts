@@ -319,8 +319,6 @@ router.get("/:id", async (req, res) => {
   res.json({ meeting });
 });
 
-/* =========================== 첨부 (파일·이미지·영상·링크) =========================== */
-
 // 파일 첨부의 url 은 반드시 우리 업로드 경로 — 외부/javascript: 스킴 차단.
 const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;
 const fileAttachmentSchema = z.object({

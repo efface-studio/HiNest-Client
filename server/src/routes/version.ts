@@ -24,7 +24,6 @@ router.get("/", (_req, res) => {
     min: MIN_DESKTOP_VERSION,
     releasedAt: new Date().toISOString(),
     notes: "버그 수정 및 안정성 개선.",
-    // 향후 자동 업데이트 사용 시 이곳에 downloadUrl, sha512 등 추가
   });
 });
 

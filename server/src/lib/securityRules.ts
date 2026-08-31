@@ -42,7 +42,6 @@ export function evictSecurityCache() {
   _rateCache = null;
 }
 
-/* ---------- IPv4 CIDR 매칭 ---------- */
 function ipv4ToInt(ip: string): number | null {
   const m = ip.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
   if (!m) return null;
@@ -63,13 +62,11 @@ function ipMatches(ip: string, cidr: string): boolean {
   return (ipInt & mask) === (baseInt & mask);
 }
 
-/* ---------- Glob 매칭 ---------- */
 function globToRegex(glob: string): RegExp {
   const esc = glob.replace(/[.+^${}()|[\]\\]/g, "\\$&").replace(/\*/g, ".*").replace(/\?/g, ".");
   return new RegExp("^" + esc + "$");
 }
 
-/* ---------- Rate-limit 카운터 (인메모리 슬라이딩 윈도우) ---------- */
 const counter = new Map<string, number[]>(); // key → ts list (오름차순)
 const COUNTER_MAX_KEYS = 50_000;
 
@@ -98,7 +95,6 @@ function countSince(arr: number[], sinceMs: number, now: number): number {
   return n;
 }
 
-/* ---------- 미들웨어 ---------- */
 export async function ipBlockMiddleware(req: Request, res: Response, next: NextFunction) {
   // 만료 룰 자동 무효화 — 룰 fetch 시점에 한 번 체크.
   const rows = await getIpBlocks();

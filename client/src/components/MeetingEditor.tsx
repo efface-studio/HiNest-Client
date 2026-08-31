@@ -278,7 +278,6 @@ function Toolbar({ editor }: { editor: Editor }) {
 
   return (
     <div className="meeting-toolbar">
-      {/* 글씨 크기 */}
       <Select
         className="meeting-toolbar-select"
         value={editor.getAttributes("textStyle").fontSize ?? ""}
@@ -287,7 +286,6 @@ function Toolbar({ editor }: { editor: Editor }) {
         options={fontSizeOptions}
       />
 
-      {/* 제목 레벨 */}
       <Select
         className="meeting-toolbar-select"
         value={
@@ -332,7 +330,6 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <Divider />
 
-      {/* 글씨 색 */}
       <ColorPicker
         label="글씨색"
         colors={TEXT_COLORS}
@@ -344,7 +341,6 @@ function Toolbar({ editor }: { editor: Editor }) {
         swatchSymbol="A"
       />
 
-      {/* 형광펜 */}
       <ColorPicker
         label="형광펜"
         colors={HIGHLIGHT_COLORS}
@@ -376,7 +372,6 @@ function Toolbar({ editor }: { editor: Editor }) {
 
       <Divider />
 
-      {/* 정렬 */}
       <ToolBtn active={editor.isActive({ textAlign: "left" })} onClick={() => editor.chain().focus().setTextAlign("left").run()} title="좌측 정렬">
         <AlignIcon d="M4 6h16M4 10h10M4 14h16M4 18h10" />
       </ToolBtn>

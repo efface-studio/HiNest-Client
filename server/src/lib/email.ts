@@ -122,7 +122,6 @@ export async function sendEmailWithAttachment(
   }
 }
 
-/* ===== MIME 빌더 (첨부 메일용) ===== */
 
 const CRLF = "\r\n";
 

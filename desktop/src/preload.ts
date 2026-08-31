@@ -31,7 +31,6 @@ contextBridge.exposeInMainWorld("hinest", {
     return () => ipcRenderer.removeListener("hinest:fullscreen", handler);
   },
 
-  // ─── 자동 업데이트 (electron-updater) ────────────────────────────────
   checkForUpdates: () =>
     ipcRenderer.invoke("hinest:checkForUpdates") as Promise<{ ok: boolean; version?: string | null; error?: string }>,
   quitAndInstall: () => ipcRenderer.invoke("hinest:quitAndInstall"),

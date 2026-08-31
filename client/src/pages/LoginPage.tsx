@@ -69,7 +69,6 @@ export default function LoginPage() {
         <BrandLockup height={36} />
       </header>
 
-      {/* 본문 — 중앙 정렬, 한 단 */}
       <main
         className="flex-1 flex items-center justify-center px-6"
         style={{
@@ -82,7 +81,6 @@ export default function LoginPage() {
         }}
       >
         <div className="w-full max-w-[360px]">
-          {/* 인사말 */}
           <div className="mb-9">
             <h1 className="text-[26px] font-extrabold text-ink-900 tracking-tight leading-tight">
               어서 오세요
@@ -92,7 +90,6 @@ export default function LoginPage() {
             </p>
           </div>
 
-          {/* 폼 */}
           <form onSubmit={submit} className="space-y-3">
             <SoftInput
               type="email"
@@ -169,7 +166,6 @@ export default function LoginPage() {
             </button>
           </form>
 
-          {/* 보조 액션 */}
           <div className="mt-5 flex items-center justify-center gap-4 text-[12.5px]">
             <Link
               to="/signup"
@@ -194,7 +190,6 @@ export default function LoginPage() {
             </Link>
           </div>
 
-          {/* 새 회사 셀프 가입 — 멀티테넌트 진입점 */}
           {/* 회사 등록 진입점 — 모바일 폭에선 숨김(긴 폼), 설치형 앱(macOS·iOS)에선 웹 전용이라 숨김. */}
           {!isInstalledApp() && (
           <div className="mt-4 text-center text-[12.5px] hidden md:block">

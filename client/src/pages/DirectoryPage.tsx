@@ -140,10 +140,8 @@ export default function DirectoryPage() {
         refreshing={refreshing}
       />
 
-      {/* My profile hero */}
       {me && <MyProfileHero me={me} totalCount={users.length} teamCount={teams.length} />}
 
-      {/* Toolbar */}
       <div className="mt-6 mb-4 space-y-2">
         <div className="relative w-full max-w-md">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#8E959E" strokeWidth="2"
@@ -161,7 +159,6 @@ export default function DirectoryPage() {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* 팀 필터 — 좌측 정렬, 넘치면 가로 스크롤 */}
           <div className="flex-1 min-w-0 overflow-x-auto -mx-1 px-1">
             <div className="tabs inline-flex">
               <button
@@ -177,7 +174,6 @@ export default function DirectoryPage() {
               ))}
             </div>
           </div>
-          {/* 보기 전환 — 우측 정렬 고정 */}
           <div className="tabs flex-shrink-0">
             <button className={`tab ${view === "grid" ? "tab-active" : ""}`} onClick={() => setView("grid")} title="그리드">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -260,7 +256,6 @@ export default function DirectoryPage() {
   );
 }
 
-/* =============== My Profile Hero =============== */
 function MyProfileHero({
   me,
   totalCount,
@@ -332,7 +327,6 @@ function MyProfileHero({
   );
 }
 
-/* =============== Grid Card =============== */
 function GridCard({
   u,
   onDM,
@@ -424,7 +418,6 @@ function GridCard({
   );
 }
 
-/* =============== List Row =============== */
 function ListRow({ u, onDM, divider, dmBusy }: { u: DirectoryUser; onDM: () => void; divider: boolean; dmBusy?: boolean }) {
   return (
     <div

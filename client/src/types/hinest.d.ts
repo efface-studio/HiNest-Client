@@ -17,12 +17,10 @@ declare global {
       getAutoLaunch?: () => Promise<boolean>;
       setAutoLaunch?: (enabled: boolean) => Promise<{ ok: boolean; enabled?: boolean; error?: string }>;
       onFullscreenChange: (cb: (isFs: boolean) => void) => () => void;
-      // ─── macOS 네이티브 Touch ID ─────────────────────────────────
       // Electron Chromium 이 WebAuthn 플랫폼 인증기를 노출하지 않아서
       // main 프로세스가 systemPreferences.promptTouchID 로 OS 프롬프트를 직접 띄움.
       canTouchID?: () => Promise<boolean>;
       promptTouchID?: (reason: string) => Promise<{ ok: boolean; error?: string }>;
-      // ─── 자동 업데이트 ──────────────────────────────────────────
       checkForUpdates?: () => Promise<{ ok: boolean; version?: string | null; error?: string }>;
       quitAndInstall?: () => Promise<{ ok: boolean; error?: string } | void>;
       onUpdateDownloaded?: (cb: (info: { version: string; notes?: string }) => void) => () => void;

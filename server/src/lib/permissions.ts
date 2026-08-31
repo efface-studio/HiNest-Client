@@ -92,67 +92,56 @@ type Catalog = {
 };
 
 export const PERMISSION_CATALOG: Catalog[] = [
-  // 일정
   { key: "schedule.create",         label: "일정 작성",                group: "일정",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "schedule.create.team",    label: "팀 일정 등록",             group: "일정",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "schedule.create.company", label: "전사 일정 등록",           group: "일정",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "schedule.edit.any",       label: "다른 사람 일정 편집",       group: "일정",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "schedule.delete.any",     label: "다른 사람 일정 삭제",       group: "일정",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
 
-  // 회의록
   { key: "meeting.create",          label: "회의록 작성",              group: "회의록",    defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "meeting.edit.any",        label: "다른 사람 회의록 편집",     group: "회의록",    defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "meeting.delete.any",      label: "다른 사람 회의록 삭제",     group: "회의록",    defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "meeting.visibility.all",  label: "전사 공개로 회의록 작성",   group: "회의록",    defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
 
-  // 공지
   { key: "notice.create",           label: "공지 작성",                group: "공지",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "notice.edit.any",         label: "다른 사람 공지 편집",       group: "공지",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "notice.delete.any",       label: "다른 사람 공지 삭제",       group: "공지",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "notice.pin",              label: "공지 상단 고정",            group: "공지",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "notice.broadcast",        label: "전사 알림 보내기",          group: "공지",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
 
-  // 결재
   { key: "approval.create",         label: "결재 신청",                group: "결재",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "approval.review",         label: "결재자 지정 가능 (남이 나를 결재자로)", group: "결재", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "approval.cancel.any",     label: "다른 사람 결재 취소",       group: "결재",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
 
-  // 근태·휴가
   { key: "attendance.edit.own",     label: "내 출퇴근 직접 수정",       group: "근태·휴가", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "attendance.edit.any",     label: "다른 사람 출퇴근 수정",     group: "근태·휴가", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "leave.request",           label: "휴가 신청",                group: "근태·휴가", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "leave.approve",           label: "휴가 승인",                group: "근태·휴가", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
 
-  // 업무일지
   { key: "journal.create",          label: "업무일지 작성",            group: "업무일지",  defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "journal.view.team",       label: "팀원 업무일지 열람",        group: "업무일지",  defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "journal.view.all",        label: "전사 업무일지 열람",        group: "업무일지",  defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
 
-  // 지출·카드
   { key: "expense.create",          label: "지출 등록",                group: "지출·카드", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "expense.approve",         label: "지출 승인",                group: "지출·카드", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "expense.view.team",       label: "팀 지출 열람",             group: "지출·카드", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "expense.view.all",        label: "전사 지출 열람",           group: "지출·카드", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "card.manage",             label: "법인카드 관리",            group: "지출·카드", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
 
-  // 문서
   { key: "document.create",         label: "문서 작성/업로드",          group: "문서",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "document.edit.any",       label: "다른 사람 문서 편집",       group: "문서",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "document.delete.any",     label: "다른 사람 문서 삭제",       group: "문서",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "document.share.link",     label: "외부 공유 링크 발급",       group: "문서",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
 
-  // 채팅
   { key: "chat.room.create",        label: "채팅방 생성",              group: "채팅",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "chat.room.kick",          label: "채팅방 멤버 추방",          group: "채팅",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
   { key: "chat.audit",              label: "사내톡 감사 접근",          group: "채팅",      defaults: { ADMIN: false, MANAGER: false, MEMBER: false }, hidden: true }, // 개발자 stepup 전용 — UI 노출 X
 
-  // 프로젝트
   { key: "project.create",          label: "프로젝트 생성",            group: "프로젝트",  defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "project.edit.any",        label: "다른 사람 프로젝트 편집",   group: "프로젝트",  defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "project.delete.any",      label: "다른 사람 프로젝트 삭제",   group: "프로젝트",  defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "project.member.manage",   label: "프로젝트 멤버 추가/제거",   group: "프로젝트",  defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
 
-  // 사용자·조직
   { key: "user.invite",             label: "초대 키 발급",             group: "사용자·조직", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "user.edit",               label: "사용자 정보 편집",          group: "사용자·조직", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "user.deactivate",         label: "사용자 비활성화/퇴사 처리", group: "사용자·조직", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
@@ -161,7 +150,6 @@ export const PERMISSION_CATALOG: Catalog[] = [
   { key: "directory.edit",          label: "조직도 편집",              group: "사용자·조직", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "admin.access",            label: "관리자 페이지 접근",        group: "사용자·조직", defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
 
-  // 기타
   { key: "service-account.manage",  label: "서비스 계정 관리",          group: "기타",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
   { key: "snippet.share",           label: "스니펫 공유",              group: "기타",      defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "upload.unlimited",        label: "대용량 업로드 허용",        group: "기타",      defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },

@@ -15,7 +15,6 @@ import ShareButton from "./ShareButton";
 
 const MeetingEditor = lazy(() => import("./MeetingEditor"));
 
-// ===== 타입 =====
 type DocScope = "ALL" | "TEAM" | "PRIVATE" | "CUSTOM";
 export type MemoDoc = {
   id: string;
@@ -110,7 +109,6 @@ export default function DocMemoModal({
   const [deleting, setDeleting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // ===== TopBar 하단 오프셋 실측 =====
   const [topOffset, setTopOffset] = useState<number>(measureHeaderBottom);
   useLayoutEffect(() => {
     function measure() { setTopOffset(measureHeaderBottom()); }
@@ -145,7 +143,6 @@ export default function DocMemoModal({
     if (!doc) setTimeout(() => titleRef.current?.focus(), 80);
   }, [doc]);
 
-  // ===== 저장 =====
   async function handleSave() {
     if (!title.trim()) {
       setErr("제목을 입력해주세요");
@@ -235,9 +232,7 @@ export default function DocMemoModal({
         className="fixed left-0 right-0 bottom-0 z-[60] flex flex-col bg-[color:var(--c-bg)]"
         style={{ top: topOffset }}
       >
-        {/* ===== 헤더 — 닫기 + 경로 표시 + 우측 액션 ===== */}
         <div className="flex-shrink-0 flex items-center justify-between gap-3 px-4 h-12 border-b border-ink-150 bg-[color:var(--c-surface)]">
-          {/* 왼쪽: 닫기 + 경로 */}
           <div className="flex items-center gap-2 min-w-0">
             <button
               onClick={onClose}
@@ -259,7 +254,6 @@ export default function DocMemoModal({
             </div>
           </div>
 
-          {/* 오른쪽: 액션 (공개 범위는 본문 카드에서 선택) */}
           <div className="flex items-center gap-1.5 flex-shrink-0">
             {editMode ? (
               <>
@@ -306,7 +300,6 @@ export default function DocMemoModal({
           </div>
         </div>
 
-        {/* 오류 띠 */}
         {err && (
           <div className="flex-shrink-0 flex items-center gap-2 px-5 py-2 bg-rose-50 border-b border-rose-200 text-[12px] text-rose-700">
             <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -314,7 +307,6 @@ export default function DocMemoModal({
           </div>
         )}
 
-        {/* ===== 본문 ===== */}
         <div className="flex-1 min-h-0 overflow-y-auto">
           {/* 풀스크린 패널이 화면 바닥(bottom-0)까지 닿으므로, 끝까지 스크롤했을 때 마지막
               콘텐츠가 iOS 홈 인디케이터(하단 세이프라인)에 가려지지 않게 safe-area 만큼 더
@@ -325,7 +317,6 @@ export default function DocMemoModal({
             style={{ paddingBottom: "max(4rem, calc(2rem + var(--sa-bottom, env(safe-area-inset-bottom))))" }}
           >
 
-            {/* ── 대제목 ── */}
             {editMode ? (
               <input
                 ref={titleRef}
@@ -342,7 +333,6 @@ export default function DocMemoModal({
               </h1>
             )}
 
-            {/* ── 메타 (열람 모드) ── */}
             {!editMode && doc && (
               <div className="flex items-center gap-2 mb-4 text-[12px] text-ink-400">
                 <div
@@ -374,7 +364,6 @@ export default function DocMemoModal({
               </div>
             )}
 
-            {/* ── 태그 ── */}
             {editMode ? (
               <input
                 className="block w-full text-[12px] text-ink-400 placeholder:text-ink-300 bg-transparent border-none outline-none mb-1"
@@ -391,7 +380,6 @@ export default function DocMemoModal({
               </div>
             ) : null}
 
-            {/* ── 공개 범위 (편집 모드 · 전역 메모) — 회의록과 동일한 카드형 선택 ── */}
             {editMode && !projectId && (
               <div className="mt-5 rounded-2xl border border-ink-150 bg-[color:var(--c-surface)] p-4">
                 <div className="flex items-center gap-1.5 mb-3">
@@ -422,7 +410,6 @@ export default function DocMemoModal({
                   })}
                 </div>
 
-                {/* CUSTOM — 열람자 지정 */}
                 {scope === "CUSTOM" && (
                   <div className="mt-3 pt-3 border-t border-ink-100 flex flex-wrap items-center gap-2">
                     <span className="text-[11px] font-bold text-violet-700">열람 가능:</span>
@@ -472,10 +459,8 @@ export default function DocMemoModal({
               </div>
             )}
 
-            {/* ── 구분선 ── */}
             <div className="border-t border-ink-100 mt-5 mb-6" />
 
-            {/* ── TipTap 에디터 ── */}
             <Suspense fallback={
               <div className="py-12 flex items-center justify-center gap-2 text-[12px] text-ink-400">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className="animate-spin">

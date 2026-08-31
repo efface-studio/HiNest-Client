@@ -23,7 +23,6 @@ const INLINE = /`([^`\n]+)`/g;
 // 평문에 자연스럽게 잘 등장하지 않는 코드 신호 — JS/TS/Swift/Kotlin/Python/Java/Go/Rust/SQL/PHP 폭넓게.
 const CODE_TOKEN = new RegExp(
   [
-    // 기호
     "=>",
     "::",
     "->",
@@ -34,7 +33,6 @@ const CODE_TOKEN = new RegExp(
     "^\\s*/\\*",
     "^\\s*#\\s*include",
     "^\\s*@\\w+", // 데코레이터: @Published @Component @Override
-    // 선언/제어 키워드
     "^\\s*(?:final\\s+|public\\s+|private\\s+|protected\\s+|static\\s+|abstract\\s+|open\\s+|internal\\s+|sealed\\s+)*(?:class|struct|enum|interface|extension|protocol|trait|object)\\b",
     "^\\s*(?:async\\s+)?(?:function|func|fn|fun|def|sub)\\b",
     "^\\s*(?:const|let|var|val|mut)\\s",
@@ -54,11 +52,8 @@ const CODE_TOKEN = new RegExp(
     "^\\s*use\\s+\\w",
     "^\\s*public\\s+",
     "^\\s*private\\s+",
-    // SQL
     "^\\s*(?:SELECT|INSERT|UPDATE|DELETE|CREATE\\s+TABLE|ALTER\\s+TABLE|DROP\\s+TABLE)\\b",
-    // PHP
     "^\\s*<\\?php",
-    // HTML/XML
     "^\\s*</?[a-zA-Z][\\w:-]*[\\s/>]",
   ].join("|"),
   "m",

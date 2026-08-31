@@ -65,7 +65,6 @@ export default function MeetingDetailPage() {
   const [myProjects, setMyProjects] = useState<ProjectLite[]>([]);
   const [users, setUsers] = useState<UserLite[]>([]);
 
-  // 최초 로드
   useEffect(() => {
     if (!id) return;
     let alive = true;
@@ -341,7 +340,6 @@ export default function MeetingDetailPage() {
         </div>
       </div>
 
-      {/* 제목 */}
       {edit ? (
         <input
           className="w-full text-[24px] sm:text-[32px] font-extrabold bg-transparent border-none outline-none mb-2 placeholder-slate-300"
@@ -354,7 +352,6 @@ export default function MeetingDetailPage() {
         <h1 className="text-[24px] sm:text-[32px] font-extrabold mb-2 break-words">{meeting.title}</h1>
       )}
 
-      {/* 메타 정보 */}
       <div className="flex items-center gap-2 mb-5 text-[12px] text-slate-500 flex-wrap">
         <span className="inline-flex items-center gap-1.5">
           <span className="avatar avatar-xs overflow-hidden" style={{ background: meeting.author.avatarUrl ? "transparent" : meeting.author.avatarColor }}>
@@ -397,7 +394,6 @@ export default function MeetingDetailPage() {
         </div>
       ) : null}
 
-      {/* 공개 범위 — 편집모드에서만 */}
       {edit && (
         <div className="card mb-4">
           <div className="text-[12px] font-bold mb-2">공개 범위</div>

@@ -726,7 +726,6 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     }
   }
 
-  // ===== 다운로드 =====
   // 직접 다운로드(브라우저/네이티브 다운로더가 스트리밍 저장) — 504 게이트웨이 타임아웃·빈 창 없이
   // 안정적. ?download=1&name=<원본명> 으로 강제 첨부 + 파일명 힌트.
   //  - 웹: <a download> 속성으로 원본 파일명 정상.
@@ -819,7 +818,6 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     }
   }
 
-  // ===== 문서 드래그앤드롭 이동 =====
   // 행을 폴더 카드(또는 브레드크럼) 위에 떨어뜨려 folderId 만 PATCH.
   // 서버는 작성자 본인 or ADMIN 에게만 PATCH 를 허용하므로 권한 없는 이동은 403.
   const [draggingDocId, setDraggingDocId] = useState<string | null>(null);
@@ -863,13 +861,11 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
     }
   }
 
-  // 현재 폴더의 하위 폴더
   const currentChildren = useMemo(() => {
     if (currentFolder === "root") return folders.filter((f) => !f.parentId);
     return folders.filter((f) => f.parentId === currentFolder);
   }, [folders, currentFolder]);
 
-  // 브레드크럼 경로
   const crumbs = useMemo(() => {
     const arr: Folder[] = [];
     let id: string | null = currentFolder === "root" ? null : currentFolder;
@@ -1214,7 +1210,6 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
           </div>
         )}
 
-      {/* 폴더 그리드 */}
       {currentChildren.length > 0 && (
         <div className="mb-5">
           <div className="text-[11px] font-extrabold text-ink-500 uppercase tracking-[0.08em] mb-2">폴더 <span className="text-ink-400 tabular">{currentChildren.length}</span></div>
@@ -1305,7 +1300,6 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         </div>
       )}
 
-      {/* 문서 리스트 */}
       <div className="mb-2 text-[11px] font-extrabold text-ink-500 uppercase tracking-[0.08em]">문서 <span className="text-ink-400 tabular">{docs.length}</span></div>
       {loadErr && (
         <div className="mb-2 p-3 rounded-xl bg-rose-50 border border-rose-200 text-[12px] text-rose-700 flex items-center justify-between gap-2">
@@ -1869,7 +1863,6 @@ export default function DocumentsPage({ projectId: fixedProjectId, embedded = fa
         />
       )}
 
-      {/* ===== 메모 편집/열람 모달 ===== */}
       {/* fallback=null: DocMemoModal 이 createPortal(document.body) 를 사용하므로
           Suspense fallback 에도 동일 컨테이너 portal 을 쓰면 React reconciler 가 crash.
           초기 로드는 100ms 내외라 null 로 충분. */}

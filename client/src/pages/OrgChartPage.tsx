@@ -96,7 +96,6 @@ export default function OrgChartPage() {
   // 이런 계정들은 팀원 페이지(Directory) 에서만 보이게 두고 조직도에서는 감춤.
   const orgUsers = useMemo(() => users.filter((u) => !!u.team && u.team.trim() !== ""), [users]);
 
-  // 팀별 그룹 + 직급순 정렬
   const grouped = useMemo(() => {
     const map = new Map<string, DirUser[]>();
     for (const u of orgUsers) {
@@ -179,7 +178,6 @@ export default function OrgChartPage() {
         refreshing={refreshing}
       />
 
-      {/* 뷰 전환 탭 */}
       <div className="flex items-center gap-1 p-1 bg-ink-100 dark:bg-ink-50 rounded-lg mb-4 w-fit">
         <ViewTab active={view === "rank"} onClick={() => setView("rank")} label="직급 트리" hint="직급 기준(팀 무관)" />
         <ViewTab active={view === "tree"} onClick={() => setView("tree")} label="팀 트리" hint="팀 단위 계층도" />
@@ -234,7 +232,6 @@ function ViewTab({ active, onClick, label, hint }: { active: boolean; onClick: (
   );
 }
 
-/* ===================== List View (기존 카드) ===================== */
 function ListView({
   grouped,
   meId,
@@ -432,7 +429,6 @@ function RankTreeView({
   );
 }
 
-/* ===================== Nodes ===================== */
 function RootNode({ label, count }: { label: string; count: number }) {
   return (
     <div className="org-vtree-root">

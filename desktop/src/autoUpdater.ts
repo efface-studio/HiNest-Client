@@ -82,7 +82,6 @@ export function setupAutoUpdater(getWindow: () => BrowserWindow | null) {
     notify("hinest:updateError", { message: String(err?.message ?? err) });
   });
 
-  // 앱 시작 시 한 번, 그리고 4시간마다 체크
   const CHECK_INTERVAL_MS = 4 * 60 * 60 * 1000;
   const check = () => {
     autoUpdater.checkForUpdates().catch((e) => {

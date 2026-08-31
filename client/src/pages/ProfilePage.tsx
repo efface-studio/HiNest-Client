@@ -186,7 +186,6 @@ export default function ProfilePage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* 미리보기 */}
         <div className="lg:col-span-1">
           <div className="panel p-6 sticky top-4">
             <div className="flex items-center gap-3">
@@ -220,7 +219,6 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* 편집 */}
         <div className="lg:col-span-2 space-y-5">
           <div className="panel p-6">
             <div className="h-sub mb-4">기본 정보</div>

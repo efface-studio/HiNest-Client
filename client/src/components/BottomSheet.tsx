@@ -93,7 +93,6 @@ export default function BottomSheet({
 
   if (!mounted) return null;
 
-  // ── iOS 드래그 핸들 ──
   function onDragStart(clientY: number) { dragStartRef.current = clientY; }
   function onDragMove(clientY: number) {
     if (dragStartRef.current == null) return;
@@ -159,7 +158,6 @@ export default function BottomSheet({
             </div>
           )}
 
-          {/* 헤더 */}
           {(title || icon) && (
             <div className="flex items-center justify-between px-5 sm:px-6 pt-3 sm:pt-5 pb-3 flex-shrink-0">
               <div className="flex items-center gap-2.5 min-w-0">
@@ -183,7 +181,6 @@ export default function BottomSheet({
             </div>
           )}
 
-          {/* 본문 — 스크롤 영역 */}
           <div className="px-5 sm:px-6 overflow-auto flex-1 min-h-0">{children}</div>
 
           {/* 푸터 — 하단 고정. iOS 는 safe-area-inset-bottom 흡수. */}

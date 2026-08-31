@@ -95,7 +95,6 @@ export default function UserProfilePage() {
     return (
       <div>
         <PageHeader eyebrow="팀원" title="프로필" onRefresh={refresh} refreshing={refreshing} />
-        {/* 히어로 카드 형태 Skeleton — 큰 아바타 + 이름·부서 + 본문 단락 */}
         <div className="panel p-6 mb-4 flex items-center gap-5">
           <Skeleton circle w={96} h={96} />
           <div className="flex-1 min-w-0 flex flex-col gap-2.5">
@@ -148,7 +147,6 @@ export default function UserProfilePage() {
         }
       />
 
-      {/* 히어로 카드 — 그라데이션 헤더 + 큰 아바타 + 액션 */}
       <div className="panel p-0 overflow-hidden mb-4">
         <div
           className="relative px-6 sm:px-10 py-10"
@@ -158,7 +156,6 @@ export default function UserProfilePage() {
             color: "#fff",
           }}
         >
-          {/* 격자 패턴 */}
           <div
             aria-hidden
             style={{
@@ -172,7 +169,6 @@ export default function UserProfilePage() {
             }}
           />
           <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-5">
-            {/* 아바타 */}
             <div className="relative">
               <div
                 className="w-24 h-24 rounded-2xl grid place-items-center text-[36px] font-extrabold overflow-hidden"
@@ -189,7 +185,6 @@ export default function UserProfilePage() {
                   initial
                 )}
               </div>
-              {/* presence 점 */}
               <span
                 className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full"
                 style={{
@@ -251,7 +246,6 @@ export default function UserProfilePage() {
         </div>
       </div>
 
-      {/* 정보 카드들 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="panel p-5">
           <div className="text-[10.5px] font-extrabold tracking-[0.06em] uppercase text-ink-500 mb-3">기본 정보</div>

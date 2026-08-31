@@ -10,7 +10,6 @@ export function normalizeClientIp(ip: string | undefined | null): string | null 
   if (!ip) return null;
   const s = ip.trim();
   if (!s) return null;
-  // IPv4-mapped IPv6
   const m = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(s);
   if (m) return m[1];
   return s;

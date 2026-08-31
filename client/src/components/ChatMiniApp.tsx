@@ -571,7 +571,6 @@ export default function ChatMiniApp({
     return () => { if (!activeId) onActiveRoomChange(null); };
   }, [activeRoomObj, user?.id, showSettings, roomSettings]);
 
-  // 방 전환 시 설정 화면은 항상 닫음
   useEffect(() => { setShowSettings(false); }, [activeId]);
 
   // 상위에서 그룹 생성 요청이 오면 생성 뷰 열기 (0은 초기값이라 무시)
@@ -1057,7 +1056,6 @@ export default function ChatMiniApp({
   );
 }
 
-/* ======================= 목록 ======================= */
 function ListView({
   rooms, meId, unread, q, setQ, onOpen, onHideRoom, messageHits, searching, roomSettings, presenceMap,
 }: {
@@ -1076,7 +1074,6 @@ function ListView({
 
   return (
     <>
-      {/* 검색바 */}
       <div style={{ padding: "4px 18px 10px" }}>
         <div
           style={{
@@ -1121,9 +1118,7 @@ function ListView({
         </div>
       </div>
 
-      {/* 결과 영역 */}
       <div style={{ flex: 1, overflowY: "auto", padding: "0 8px 12px" }}>
-        {/* ===== 이름 섹션 ===== */}
         {isSearching && <SectionLabel>이름</SectionLabel>}
         {rooms.length === 0 && !isSearching && (
           <div style={{ padding: "72px 0", textAlign: "center", color: C.gray500, fontSize: 14, fontWeight: 500 }}>
@@ -1184,7 +1179,6 @@ function ListView({
           );
         })}
 
-        {/* ===== 채팅 내역 섹션 ===== */}
         {isSearching && (
           <>
             <SectionLabel>채팅 내역{searching ? " · 검색중" : ""}</SectionLabel>
@@ -1214,7 +1208,6 @@ function ListView({
   );
 }
 
-/* ===== 리스트 섹션 헤더 (토스 스타일) ===== */
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div
@@ -1238,7 +1231,6 @@ function EmptyRow({ children }: { children: React.ReactNode }) {
   );
 }
 
-/* ===== 범용 리스트 행 ===== */
 function ListRow({
   onClick, onDelete, avatar, title, titleHighlight, subtitle, subtitleHighlight, subtitlePrefix, rightTop, unread, muted, presenceColor, presenceTitle, isGroup, memberCount,
 }: {
@@ -1421,7 +1413,6 @@ function ListRow({
   );
 }
 
-/* ===== 키워드 하이라이트 ===== */
 function highlight(text: string, q?: string) {
   if (!q || !q.trim()) return text;
   const needle = q.trim();
@@ -1438,7 +1429,6 @@ function highlight(text: string, q?: string) {
   );
 }
 
-/* ======================= 새 그룹 만들기 ======================= */
 type DirUser = { id: string; name: string; email?: string; team?: string | null; position?: string | null; avatarColor?: string; avatarUrl?: string | null };
 
 function CreateGroupView({
@@ -1510,7 +1500,6 @@ function CreateGroupView({
     <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", background: C.surface }}>
       {/* 스크롤 영역 — minHeight:0 + flex:1 조합으로만 overflowY 스크롤이 정상 작동. */}
       <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "4px 18px 12px" }}>
-        {/* 그룹 이름 */}
         <SectionLabel>그룹 이름 (선택)</SectionLabel>
         <div
           style={{
@@ -1532,7 +1521,6 @@ function CreateGroupView({
           />
         </div>
 
-        {/* 선택된 멤버 칩 */}
         {selectedList.length > 0 && (
           <>
             <SectionLabel>선택한 멤버 {selectedList.length}명</SectionLabel>
@@ -1562,7 +1550,6 @@ function CreateGroupView({
           </>
         )}
 
-        {/* 검색 */}
         <SectionLabel>멤버 추가</SectionLabel>
         <div
           style={{
@@ -1589,7 +1576,6 @@ function CreateGroupView({
           />
         </div>
 
-        {/* 유저 리스트 */}
         {filtered.length === 0 && (
           <EmptyRow>일치하는 사용자가 없어요</EmptyRow>
         )}
@@ -1623,7 +1609,6 @@ function CreateGroupView({
                   </div>
                 )}
               </div>
-              {/* 체크박스 */}
               <div
                 style={{
                   width: 22, height: 22, borderRadius: 999,
@@ -1645,7 +1630,6 @@ function CreateGroupView({
         })}
       </div>
 
-      {/* 하단 액션 바 */}
       <div style={{ padding: "12px 18px 16px", background: C.surface, display: "flex", gap: 8 }}>
         {err && (
           <div style={{ alignSelf: "center", fontSize: 12.5, fontWeight: 600, color: C.red }}>{err}</div>
@@ -1681,7 +1665,6 @@ function CreateGroupView({
   );
 }
 
-/* ======================= 채팅방 설정 ======================= */
 function SettingsView({
   room, meId, isAdmin, settings, onPatch, messages, onDeleteRoom,
 }: {

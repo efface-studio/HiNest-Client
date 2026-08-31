@@ -277,7 +277,6 @@ export default function ProjectQaList({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 
-  // ---------- 업로드 ----------
   async function uploadToServer(file: File): Promise<{
     url: string; name: string; mimeType: string; sizeBytes: number;
     kind: AttachmentKind;
@@ -300,7 +299,6 @@ export default function ProjectQaList({
     return { url: d.url, name: d.name, mimeType: d.type, sizeBytes: d.size, kind: d.kind };
   }
 
-  // ---------- CRUD ----------
   async function quickCreate(e?: React.FormEvent) {
     e?.preventDefault();
     const t = quickTitle.trim();
@@ -470,7 +468,6 @@ export default function ProjectQaList({
     return () => window.removeEventListener("keydown", onKey);
   }, [expandedId]);
 
-  // ---------- 뷰 ----------
   // 상태 필터 + "내 담당" 토글을 조합.
   // 정렬: ALL 뷰에서는 해결되지 않은(= BUG/IN_PROGRESS) 항목을 위로 띄워서
   //       작업 중인 것에 시선이 먼저 가도록. 같은 그룹 안에서는 서버가 준 순서 유지.
@@ -513,7 +510,6 @@ export default function ProjectQaList({
 
   return (
     <div className="qa-board">
-      {/* ===== 헤더: 제목 + 설명 + 필터 탭 ===== */}
       <div className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <button
@@ -583,7 +579,6 @@ export default function ProjectQaList({
         </div>
         )}
 
-        {/* 필터 탭 — Notion "그룹 보기" 느낌의 탭 스타일 */}
         {!collapsed && (
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 mt-1 border-b border-ink-100 relative">
           {(["ALL", ...STATUS_ORDER] as const).map((k) => {
@@ -642,7 +637,6 @@ export default function ProjectQaList({
 
       {!collapsed && (
       <>
-      {/* ===== 테이블 헤더 (sm 이상에서만) ===== */}
       <div
         className="hidden sm:grid items-center gap-2 px-2 py-1.5 mt-2 text-[11px] font-medium uppercase tracking-wider text-ink-400"
         style={{
@@ -660,7 +654,6 @@ export default function ProjectQaList({
         <span />
       </div>
 
-      {/* ===== 행 목록 ===== */}
       {!loaded ? (
         <div className="text-center text-ink-400 text-sm py-6">불러오는 중…</div>
       ) : (
@@ -726,7 +719,6 @@ export default function ProjectQaList({
             ))
           )}
 
-          {/* ===== 퀵 추가 행 — Notion 의 "+ 새로 만들기" 모방 ===== */}
           <form
             onSubmit={quickCreate}
             className="flex items-center gap-2 px-2 py-2 border-t border-ink-100 hover:bg-black/[0.03] dark:hover:bg-white/[0.04] transition-colors"
@@ -762,9 +754,6 @@ export default function ProjectQaList({
   );
 }
 
-/* ================================================================
-   개별 행 — 접혀있을 때는 Notion 테이블 한 줄, 펼치면 상세 편집 패널.
-================================================================ */
 function QaRow({
   item,
   members,
@@ -802,7 +791,6 @@ function QaRow({
 
   return (
     <div className={["group border-t border-ink-100", resolved ? "opacity-70" : ""].join(" ")}>
-      {/* ---------- 접힌 행 ---------- */}
       {/* 모바일: 제목줄만 grid 3칼럼 (dot | 제목 | 삭제), 속성은 아래에 flex-wrap */}
       {/* 데스크톱: 풀 Notion 테이블 레이아웃 */}
       <div
@@ -814,7 +802,6 @@ function QaRow({
           onToggleExpand();
         }}
       >
-        {/* status dot */}
         <span
           title={STATUS_LABEL[item.status]}
           style={{
@@ -826,7 +813,6 @@ function QaRow({
           }}
         />
 
-        {/* 제목 — 인라인 편집 + 작성자·작성시간 메타 */}
         <div className="min-w-0 flex flex-col">
           <div className="flex items-center gap-2">
             <input
@@ -946,7 +932,6 @@ function QaRow({
           )}
         </div>
 
-        {/* 담당자 */}
         <div className="hidden sm:block">
           <AssigneeSelect
             value={item.assigneeId}
@@ -955,12 +940,10 @@ function QaRow({
           />
         </div>
 
-        {/* 상태 */}
         <div className="hidden sm:block">
           <StatusSelect value={item.status} onChange={(v) => onPatch({ status: v })} />
         </div>
 
-        {/* 퀵 액션 — 행 hover 시 완료/되돌리기 + 삭제 */}
         <div
           className="flex justify-end items-center gap-0.5"
           onClick={(e) => e.stopPropagation()}
@@ -1048,10 +1031,8 @@ function QaRow({
         )}
       </div>
 
-      {/* ---------- 펼친 상세 편집 ---------- */}
       {expanded && (
         <div className="px-3 sm:px-4 pb-4 pt-1 bg-black/[0.02] dark:bg-white/[0.03] border-t border-ink-100 flex flex-col gap-3">
-          {/* 속성 그리드 — Notion 페이지 상단 Properties 영역 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 pt-3">
             <PropertyRow label="우선순위">
               <PrioritySelect value={item.priority} onChange={(v) => onPatch({ priority: v })} />
@@ -1108,7 +1089,6 @@ function QaRow({
             </PropertyRow>
           </div>
 
-          {/* 메모 — Notion 페이지 본문 영역 */}
           <div>
             <div className="text-[11px] font-medium uppercase tracking-wider text-ink-400 mb-1">
               메모
@@ -1129,7 +1109,6 @@ function QaRow({
             />
           </div>
 
-          {/* 첨부 — 이미지/영상 프리뷰 */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <div className="text-[11px] font-medium uppercase tracking-wider text-ink-400">
@@ -1167,7 +1146,6 @@ function QaRow({
             )}
           </div>
 
-          {/* 작성/해결 이력 */}
           <div className="text-[11px] text-ink-400 flex flex-wrap gap-x-3 pt-2 border-t border-ink-100">
             {item.createdBy && (
               <span>
@@ -1192,9 +1170,6 @@ function QaRow({
   );
 }
 
-/* ================================================================
-   공용 서브 컴포넌트
-================================================================ */
 
 function PropertyRow({
   label,

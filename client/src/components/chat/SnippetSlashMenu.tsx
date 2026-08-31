@@ -59,7 +59,6 @@ export function SnippetSlashMenu({
   const [token, setToken] = useState<{ start: number; end: number; query: string } | null>(null);
   const fetchSeq = useRef(0);
 
-  // 커서 변경/value 변경 시 토큰 재계산.
   useEffect(() => {
     const ta = textareaRef.current;
     if (!ta) return;
@@ -82,7 +81,6 @@ export function SnippetSlashMenu({
     };
   }, [textareaRef, value]);
 
-  // 토큰 변경 시 fetch.
   useEffect(() => {
     if (!token) return;
     const seq = ++fetchSeq.current;
@@ -96,7 +94,6 @@ export function SnippetSlashMenu({
       .catch(() => {});
   }, [token?.query]);
 
-  // 키 가드 — 메뉴가 열려있을 때 위/아래/Enter/Tab/Esc 가로채기.
   innerRef.current = {
     handleKey: (e) => {
       if (!open || items.length === 0 || !token) return false;

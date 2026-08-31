@@ -84,7 +84,7 @@ export default function DesktopUpdateBanner() {
     if (loadedRef.current) return;
     loadedRef.current = true;
     check();
-    const t = setInterval(check, 5 * 60 * 1000); // 5분
+    const t = setInterval(check, 5 * 60 * 1000);
     return () => clearInterval(t);
     // eslint-disable-next-line
   }, []);

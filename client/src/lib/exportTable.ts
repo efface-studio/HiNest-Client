@@ -63,7 +63,6 @@ export async function downloadXLSX<T>(
   ];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
 
-  // 스타일 정의
   const thin = { style: "thin", color: { rgb: "8A8A8A" } } as const;
   const border = { top: thin, bottom: thin, left: thin, right: thin };
   const headerStyle = {
@@ -83,7 +82,6 @@ export async function downloadXLSX<T>(
     border,
   };
 
-  // 모든 셀에 스타일 적용 — 헤더 행(0)은 headerStyle, 본문은 bodyStyle
   const nRows = aoa.length;
   const nCols = columns.length;
   for (let r = 0; r < nRows; r++) {

@@ -86,12 +86,10 @@ export async function checkAppStoreUpdate(): Promise<AppStoreCheckResult> {
   if (cached) return cached;
 
   try {
-    // 현재 설치된 앱 버전.
     const { App } = await import("@capacitor/app");
     const info = await App.getInfo();
     const current = (info.version || "").trim();
 
-    // App Store 최신 버전.
     const url = `https://itunes.apple.com/lookup?bundleId=${encodeURIComponent(BUNDLE_ID)}&country=${COUNTRY}&t=${Date.now()}`;
     const res = await fetch(url, { cache: "no-store" });
     if (!res.ok) { const r = { needsUpdate: false, current }; writeCache(r); return r; }

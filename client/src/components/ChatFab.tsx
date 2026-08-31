@@ -143,7 +143,6 @@ export default function ChatFab() {
     };
   }, []);
 
-  // 팝업 닫힐 때 방 상태도 초기화
   useEffect(() => { if (!open) setActiveRoom(null); }, [open]);
 
   if (hidden) return null;
@@ -234,7 +233,6 @@ export default function ChatFab() {
             />
           )}
 
-          {/* ===== 본문 — flex:1 로 남은 공간 모두 채움 ===== */}
           <div
             style={{
               flex: 1,
@@ -325,7 +323,6 @@ export default function ChatFab() {
   );
 }
 
-/* ===== 목록용 헤더 ===== */
 function ListHeader({
   chatUnread,
   onCreateGroup,
@@ -408,7 +405,6 @@ function ListHeader({
   );
 }
 
-/* ===== 대화방용 헤더 ===== */
 function RoomHeader({ info }: { info: ActiveRoomInfo }) {
   // 글래스 헤더의 실제 높이를 CSS 변수로 노출 → 메시지 스크롤이 그만큼 padding-top 을 받아
   // 헤더 뒤로 자연스럽게 스크롤된다(고정값 대신 실측이라 1줄·2줄 제목 모두 정확).

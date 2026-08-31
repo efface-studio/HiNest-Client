@@ -300,7 +300,6 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
 });
 
-/* ======= IPC: 렌더러 ↔ 메인 ======= */
 
 ipcMain.handle("hinest:setBadge", (_e, count: number) => {
   try {

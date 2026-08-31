@@ -246,7 +246,6 @@ export default function ShareSheet({
           <div className="w-10 h-1.5 rounded-full bg-ink-200" />
         </div>
 
-        {/* 헤더 */}
         <div className="px-5 pt-2 pb-2 flex items-center justify-between">
           <h3 className="text-[15px] font-bold text-ink-900">공유</h3>
           <button
@@ -273,7 +272,6 @@ export default function ShareSheet({
           </div>
         </div>
 
-        {/* 검색 */}
         <div className="px-5 pb-2">
           <input
             value={q}
@@ -283,7 +281,6 @@ export default function ShareSheet({
           />
         </div>
 
-        {/* 선택된 칩 */}
         {total > 0 && (
           <div
             className="hinest-x-scroll px-5 pt-1 pb-2.5 flex items-center gap-2 overflow-x-auto"
@@ -320,7 +317,6 @@ export default function ShareSheet({
           </div>
         )}
 
-        {/* 목록 */}
         <div className="flex-1 overflow-y-auto px-2 pb-2">
           {filteredRooms.length > 0 && (
             <>

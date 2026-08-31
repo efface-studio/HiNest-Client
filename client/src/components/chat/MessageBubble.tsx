@@ -410,7 +410,6 @@ function VideoMenuItem({
   );
 }
 
-/* ===== 이미지 썸네일 + 라이트박스 (뷰포트 안에 contain) ===== */
 function ImageThumb({ src, alt, fileName, fileType, fileSize }: { src: string; alt: string; fileName: string | null; fileType: string | null; fileSize: number | null }) {
   const [open, setOpen] = useState(false);
   return (
@@ -571,7 +570,6 @@ function ImageLightbox({
               <path d="M12 15V3" />
             </svg>
           </button>
-          {/* 문서함 저장 */}
           <button
             type="button"
             aria-label="문서함 저장"
@@ -587,7 +585,6 @@ function ImageLightbox({
             )}
           </button>
         </div>
-        {/* 닫기 */}
         <button
           type="button"
           aria-label="닫기"
@@ -605,7 +602,6 @@ function ImageLightbox({
   );
 }
 
-/* ===== 메시지 컨텍스트 메뉴(이모지 + 액션) ===== */
 const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "🙏"];
 
 export type MessageAction = {
@@ -843,7 +839,6 @@ export function ReactionPicker({
   );
 }
 
-/* 액션 아이콘 (stroke-current) */
 const ICON_SVG = (d: React.ReactNode) => (
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     {d}
@@ -1162,7 +1157,6 @@ function ShareCardBubble({ msg, mine }: { msg: Message; mine: boolean }) {
         boxShadow: "0 1px 3px rgba(15,23,42,0.08)",
       }}
     >
-      {/* 좌측 브랜드 컬러 바 + 아이콘 */}
       <div style={{ width: 44, flexShrink: 0, background: "var(--c-brand-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 19 }}>
         {meta.icon}
       </div>
@@ -1530,7 +1524,6 @@ function CodeViewerModal({ code, lang, onClose }: { code: string; lang?: string;
           boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
         }}
       >
-        {/* 헤더 */}
         <div
           style={{
             display: "flex",
@@ -1638,7 +1631,6 @@ function CodeViewerModal({ code, lang, onClose }: { code: string; lang?: string;
   );
 }
 
-/* ===== 첨부 미리보기 (전송 전 입력바 위) ===== */
 export function AttachmentPreview({
   att,
   onClear,

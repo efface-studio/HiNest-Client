@@ -24,7 +24,6 @@ type UserRow = {
   avatarColor?: string;
   avatarUrl?: string | null;
   createdAt: string;
-  // HR 상세
   hrCode?: string | null;
   affiliation?: string | null;
   employeeNo?: string | null;
@@ -48,7 +47,6 @@ type UserRow = {
   lockedAt?: string | null;
 };
 
-// 나이 계산 (생년월일 기반)
 function calcAge(birth?: string | null): number | "" {
   if (!birth) return "";
   const d = new Date(birth);
@@ -59,7 +57,6 @@ function calcAge(birth?: string | null): number | "" {
   if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
   return age;
 }
-// 근속연수 (입사일 기반, 소수점 1자리)
 function calcTenure(hire?: string | null): number | "" {
   if (!hire) return "";
   const d = new Date(hire);
@@ -100,7 +97,6 @@ const HR_EXPORT_COLUMNS: TableColumn<UserRow>[] = [
   { header: "비고", get: (u) => u.note ?? "" },
 ];
 
-// 엑셀 헤더 → User 필드 매핑 (import 용)
 const HR_IMPORT_HEADER_MAP: Record<string, string> = {
   "HR번호": "hrCode",
   "소속": "affiliation",
@@ -306,7 +302,6 @@ export default function AdminPage() {
         description="구성원·초대키·팀·직급을 관리합니다."
       />
 
-      {/* 통계 — 모바일·iPad 는 한 줄 요약, 데스크톱은 카드 */}
       <div className="md:hidden flex flex-wrap items-center gap-x-2 gap-y-1 text-[13px] text-ink-500 mb-4">
         <span className="font-bold text-ink-900">구성원 {users.length}</span>
         <span className="text-ink-300">·</span>
@@ -374,7 +369,6 @@ function StatCard({ label, value, sub }: { label: string; value: number | string
   );
 }
 
-/* ===================== Users ===================== */
 function UsersTab({
   users, teams, positions, reload,
 }: { users: UserRow[]; teams: Team[]; positions: Position[]; reload: () => void }) {
@@ -547,7 +541,6 @@ function UsersTab({
           </button>
         </div>
       </div>
-      {/* 필터 바 — 검색 · 권한 · 상태. 한 줄로 정렬되고 좁아지면 자연스럽게 접힘. */}
       <div className="flex items-center gap-2 flex-wrap px-5 py-2.5 border-b border-[color:var(--c-border)]">
         <input
           className="input text-[12px] h-[32px] w-full sm:w-[240px]"
@@ -729,7 +722,6 @@ function UsersTab({
               key={u.id}
               className="rounded-2xl border border-ink-150 bg-[var(--c-surface)] p-3.5"
             >
-              {/* 헤더 — 탭하면 상세 편집 */}
               <button
                 type="button"
                 onClick={() => setEditTarget(u)}
@@ -745,7 +737,6 @@ function UsersTab({
 
               <div className="h-px bg-ink-100 my-3" />
 
-              {/* 직급 / 팀 */}
               <div className="grid grid-cols-2 gap-3 mb-3">
                 <div className="min-w-0">
                   <div className="text-[10.5px] font-bold text-ink-400 mb-0.5">직급</div>
@@ -757,7 +748,6 @@ function UsersTab({
                 </div>
               </div>
 
-              {/* 권한 드롭다운 + 액션 아이콘 */}
               <div className="flex items-end justify-between gap-2">
                 <div className="min-w-0">
                   <div className="text-[10.5px] font-bold text-ink-400 mb-1">권한</div>
@@ -960,7 +950,6 @@ function ResignModal({
   );
 }
 
-/* ===== 상세 정보 편집 모달 — HR 전 필드 입력 ===== */
 /**
  * 관리자가 한 유저의 HR 상세 정보를 폼으로 편집.
  * - 섹션: 조직 정보 / 개인 정보 / 고용 정보 / 기타
@@ -1279,7 +1268,6 @@ function SelectOrEtc({
   );
 }
 
-/* ===== 상세 리스트 뷰 — 엑셀 포맷 그대로 전 컬럼 ===== */
 /**
  * 가로 스크롤 가능한 HR 상세 테이블.
  * 각 셀은 인라인 편집(blur 시 저장) — 관리자가 바로 수정 가능.
@@ -1537,7 +1525,6 @@ function DetailCell({
   );
 }
 
-/* ===== 출근 기록 수정 모달 ===== */
 function AttendanceEditModal({
   user, onClose, onSaved,
 }: { user: UserRow; onClose: () => void; onSaved: () => void }) {
@@ -1550,7 +1537,6 @@ function AttendanceEditModal({
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState<{ checkIn: string | null; checkOut: string | null }>({ checkIn: null, checkOut: null });
 
-  // ISO → "HH:mm"
   const isoToHM = (iso: string | null | undefined): string => {
     if (!iso) return "";
     const d = new Date(iso);
@@ -1641,7 +1627,6 @@ function AttendanceEditModal({
           {user.name} · {user.email}
         </div>
 
-        {/* 현재 상태 요약 박스 */}
         <div className="rounded-xl p-3 mb-4 flex items-center gap-3"
           style={{ background: statusColor + "14", border: `1px solid ${statusColor}33` }}>
           <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: statusColor }} />
@@ -1655,7 +1640,6 @@ function AttendanceEditModal({
           </div>
         </div>
 
-        {/* 원클릭 상태 토글 */}
         <div>
           <div className="field-label mb-1.5">빠른 변경</div>
           <div className="grid grid-cols-2 gap-2 mb-4">
@@ -1687,7 +1671,6 @@ function AttendanceEditModal({
           </div>
         </div>
 
-        {/* 수동 입력 */}
         <div className="space-y-3">
           <div>
             <label className="field-label">날짜</label>
@@ -1734,7 +1717,6 @@ function UserAvatar({ name, color, imageUrl, size = 36 }: { name: string; color:
 }
 
 /** 모바일 구성원 카드용 상태 뱃지 — 재직(green) / 비활성(gray) / 퇴사(gray). */
-// 카드용 상태 — ● Active / ● Inactive / ● 퇴사 (점 + 라벨). 스크린샷2 매칭.
 function MemberCardStatus({ u }: { u: UserRow }) {
   const { color, label } = u.resignedAt
     ? { color: "#F97316", label: "퇴사" }
@@ -1749,7 +1731,6 @@ function MemberCardStatus({ u }: { u: UserRow }) {
   );
 }
 
-/* ===================== Invites ===================== */
 function InvitesTab({
   invites, teams, positions, reload,
 }: { invites: Invite[]; teams: Team[]; positions: Position[]; reload: () => void }) {
@@ -1800,7 +1781,6 @@ function InvitesTab({
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-      {/* 발급 폼 */}
       <div className="lg:col-span-2 panel p-6">
         <div className="flex items-center gap-2 mb-4">
           <div className="w-8 h-8 rounded-lg bg-brand-50 text-brand-600 grid place-items-center">
@@ -1862,7 +1842,6 @@ function InvitesTab({
         )}
       </div>
 
-      {/* 목록 */}
       <div className="lg:col-span-3 panel p-0 overflow-hidden">
         <div className="section-head">
           <div className="title">초대키 목록 <span className="text-ink-400 font-medium tabular ml-1">{invites.length}</span></div>
@@ -1938,7 +1917,6 @@ function InvitesTab({
   );
 }
 
-/* ===================== Teams ===================== */
 function TeamsTab({ teams, reload }: { teams: Team[]; reload: () => void }) {
   const [name, setName] = useState("");
   async function add(e: React.FormEvent) {
@@ -2026,7 +2004,6 @@ function TeamsTab({ teams, reload }: { teams: Team[]; reload: () => void }) {
   );
 }
 
-/* ===================== Positions ===================== */
 function PositionsTab({ positions, reload }: { positions: Position[]; reload: () => void }) {
   const [name, setName] = useState("");
   // 서버 리스트 반영 + 드래그 중 낙관적 재정렬을 위한 로컬 상태.
@@ -2225,7 +2202,6 @@ function DragHandleIcon() {
   );
 }
 
-/* ===================== Shared ===================== */
 function EmptyState({ title, description }: { title: string; description: string }) {
   return (
     <div className="py-14 text-center">
@@ -2240,7 +2216,6 @@ function EmptyState({ title, description }: { title: string; description: string
   );
 }
 
-/* Icons */
 function UsersIcon() {
   return <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" />
@@ -2268,7 +2243,6 @@ function ClockIcon() {
   </svg>;
 }
 
-/* ===== 근태 — 전 직원 출퇴근 + 이번주/이번달/총 근무시간 ===== */
 type OverviewRow = {
   id: string; name: string; team: string | null; position: string | null;
   avatarColor?: string; avatarUrl?: string | null;
@@ -2339,7 +2313,6 @@ function AttendanceOverviewTab() {
   const weekTotal = rows.reduce((a, r) => a + r.weekMinutes, 0);
   const monthTotal = rows.reduce((a, r) => a + r.monthMinutes, 0);
 
-  // 필터 + 정렬
   const filtered = useMemo(() => {
     const kw = q.trim().toLowerCase();
     let arr = rows.filter((r) => {
@@ -2370,7 +2343,6 @@ function AttendanceOverviewTab() {
 
   return (
     <div className="space-y-4">
-      {/* 핵심 통계 — 오늘 상태 분포 + 합계 */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <StatCard label="근무 중" value={workingNow} sub={`전체 ${rows.length}명`} />
         <StatCard label="퇴근" value={offNow} sub={`미출근 ${absentNow}명`} />
@@ -2378,7 +2350,6 @@ function AttendanceOverviewTab() {
         <StatCard label="이번 달 합계" value={`${Math.round(monthTotal / 60)}h`} sub={rows.length ? `1인 평균 ${Math.round(monthTotal / rows.length / 60)}h` : "-"} />
       </div>
 
-      {/* 필터 바 — 검색 + 상태칩 + 정렬(모바일) */}
       <div className="panel p-3 sm:p-4 flex flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-2">
           <input
@@ -2388,7 +2359,6 @@ function AttendanceOverviewTab() {
             onChange={(e) => setQ(e.target.value)}
             maxLength={80}
           />
-          {/* 모바일 정렬 셀렉트 — 데스크톱은 헤더 클릭 */}
           <div className="md:hidden flex items-center gap-1.5">
             <Select className="input !py-1.5 !h-[36px] !text-[12.5px]" value={sortKey} onChange={(v) => setSortKey(v as SortKey)}
               options={(["name", "week", "month"] as SortKey[]).map((k) => ({ value: k, label: SORT_LABEL[k] }))}
@@ -2424,7 +2394,6 @@ function AttendanceOverviewTab() {
         </div>
       </div>
 
-      {/* 데스크톱: 정렬 가능한 표 */}
       <div className="panel p-0 overflow-hidden hidden md:block">
         <div className="overflow-x-auto hinest-x-scroll">
           <table className="w-full text-[13px] whitespace-nowrap">
@@ -2489,7 +2458,6 @@ function AttendanceOverviewTab() {
         </div>
       </div>
 
-      {/* 모바일: 카드 그리드 */}
       <div className="md:hidden grid grid-cols-1 gap-2.5">
         {filtered.map((r) => {
           const st = rowStatus(r);
@@ -2550,7 +2518,6 @@ function TrashIcon() {
   </svg>;
 }
 
-/* =================== 일괄 잠금 해제 — 헤더에 표시 =================== */
 
 /**
  * 잠긴 계정이 1명 이상일 때만 표시되는 작은 버튼.
@@ -2601,7 +2568,6 @@ function BulkUnlockButton({ users, onUnlocked }: { users: UserRow[]; onUnlocked:
   );
 }
 
-/* =================== 보안 블록 (잠금 상태 + 비밀번호 재설정) =================== */
 
 function SecurityBlock({ user, onChanged }: { user: UserRow; onChanged: () => void }) {
   const [pw1, setPw1] = useState("");
@@ -2642,7 +2608,6 @@ function SecurityBlock({ user, onChanged }: { user: UserRow; onChanged: () => vo
 
   return (
     <div className="space-y-4">
-      {/* 잠금 상태 */}
       <div
         className="rounded-lg p-3.5 border"
         style={{
@@ -2675,7 +2640,6 @@ function SecurityBlock({ user, onChanged }: { user: UserRow; onChanged: () => vo
         </div>
       </div>
 
-      {/* 비밀번호 재설정 */}
       <form onSubmit={resetPassword} className="rounded-lg p-3.5 border" style={{ borderColor: "var(--c-border)" }}>
         <div className="text-[13px] font-extrabold text-ink-900 mb-2.5">비밀번호 재설정</div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -2714,7 +2678,6 @@ function SecurityBlock({ user, onChanged }: { user: UserRow; onChanged: () => vo
 }
 
 
-/* ===================== Attendance IP Restrict ===================== */
 function AttendanceIpTab({ onCountChange }: { onCountChange?: (n: number) => void }) {
   const [loading, setLoading] = useState(true);
   const [enabled, setEnabled] = useState(false);
@@ -2804,7 +2767,6 @@ function AttendanceIpTab({ onCountChange }: { onCountChange?: (n: number) => voi
     catch (e: any) { setItems(prev); alertAsync({ title: "제거 실패", description: e?.message ?? String(e) }); }
   }
 
-  // ── 지오펜스 핸들러 ──
   async function toggleGeo(next: boolean) {
     setGeoEnabled(next);
     try {
@@ -2950,7 +2912,6 @@ function AttendanceIpTab({ onCountChange }: { onCountChange?: (n: number) => voi
         )}
       </div>
 
-      {/* ── 위치 기반 자동출근(지오펜스) — 출근 IP 제한과 같은 패턴 ── */}
       <div className="panel p-5">
         <div className="flex items-start justify-between gap-3">
           <div>

@@ -22,7 +22,6 @@
  */
 export function sanitizeZipPath(p: string): string {
   if (!p) return "_";
-  // 통합 구분자
   const normalized = p.replace(/\\/g, "/");
   const parts = normalized.split("/");
   const out: string[] = [];

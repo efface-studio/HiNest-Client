@@ -122,7 +122,6 @@ export default function BroadcastPanel() {
         전체 · 특정 회사 · 특정 사람에게 제목과 내용을 넣어 즉시 알림을 보냅니다. 벨·실시간·폰 푸시로 전달돼요.
       </div>
 
-      {/* 대상 선택 */}
       <label className="field-label">받는 대상</label>
       <div className="flex gap-1 p-1 rounded-xl bg-ink-100 mb-3">
         {TARGETS.map((t) => (
@@ -142,7 +141,6 @@ export default function BroadcastPanel() {
         ))}
       </div>
 
-      {/* 특정 회사 */}
       {target === "company" && (
         <div className="mb-3">
           <label className="field-label">회사</label>
@@ -150,7 +148,6 @@ export default function BroadcastPanel() {
         </div>
       )}
 
-      {/* 특정 사람 */}
       {target === "user" && (
         <div className="mb-3">
           <label className="field-label">받는 사람</label>
@@ -202,7 +199,6 @@ export default function BroadcastPanel() {
         </div>
       )}
 
-      {/* 제목 · 내용 */}
       <div className="mb-3">
         <label className="field-label">제목</label>
         <input

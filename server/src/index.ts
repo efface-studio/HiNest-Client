@@ -118,7 +118,6 @@ app.use(
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
-// === Request ID 미들웨어 ===
 // 각 요청에 고유 ID 를 붙여 access log / error log / superadmin 로그 뷰에서
 // "이 5xx 가 그 요청이었음" 을 상호참조할 수 있게 한다. 응답 헤더 X-Request-ID 로
 // 클라에도 노출 — 사용자 버그 리포트 시 그 ID 만 받으면 서버 로그 즉시 검색 가능.
@@ -638,7 +637,6 @@ const server = app.listen(PORT, () => {
   });
 });
 
-// === Graceful shutdown ===
 // ECS Fargate 가 배포 중 task 교체할 때 SIGTERM 을 30초 grace 안에 보낸다.
 // 그 30초 동안 진행 중인 요청을 정상 처리하고, 새 요청은 받지 않으며, DB 연결을
 // 닫아야 한다. 그래야 사용자가 "갑자기 끊겼다" / 502 를 안 보고, prisma 연결도

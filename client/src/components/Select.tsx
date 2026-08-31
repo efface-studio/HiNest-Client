@@ -70,7 +70,6 @@ export default function Select({
     });
   }, [options, q, showSearch]);
 
-  // 바깥 클릭으로 닫기.
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
@@ -83,7 +82,6 @@ export default function Select({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  // ESC 로 닫기.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { e.stopPropagation(); setOpen(false); } };
@@ -117,7 +115,6 @@ export default function Select({
     };
   }, [open]);
 
-  // 열릴 때 검색창 포커스(검색 가능할 때) + 검색어 초기화.
   useEffect(() => {
     if (open) { setQ(""); if (showSearch) requestAnimationFrame(() => searchRef.current?.focus()); }
   }, [open, showSearch]);

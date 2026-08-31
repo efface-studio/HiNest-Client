@@ -174,7 +174,6 @@ export default function AttendancePage() {
     }
   }
 
-  // === 통계 계산 ===
   const stats = useMemo(() => {
     const completed = records.filter((r) => r.checkIn && r.checkOut);
     const totalMs = completed.reduce((acc, r) => acc + attWorkedMs(r), 0);
@@ -219,7 +218,6 @@ export default function AttendancePage() {
         }
       />
 
-      {/* 상단 통계 카드 — 전체 페이지의 시각적 앵커. */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-5">
         <StatCard
           label={`${month} 근무일`}
@@ -267,7 +265,6 @@ export default function AttendancePage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* 출퇴근 기록 */}
         <div className="lg:col-span-2 panel p-0 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
             <div>
@@ -344,7 +341,6 @@ export default function AttendancePage() {
           )}
         </div>
 
-        {/* 내 휴가 신청 */}
         <div className="panel p-0 overflow-hidden">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
             <div>
@@ -366,7 +362,6 @@ export default function AttendancePage() {
         </div>
       </div>
 
-      {/* 관리자 — 전체 휴가 처리 */}
       {isReviewer && (
         <div className="panel p-0 overflow-hidden mt-5">
           <div className="px-5 py-4 border-b border-ink-100 flex items-center justify-between">
@@ -451,10 +446,8 @@ export default function AttendancePage() {
         </div>
       )}
 
-      {/* 야근(추가근무) 신청 */}
       <OvertimeSection isReviewer={isReviewer} />
 
-      {/* 신청 모달 */}
       {open && (
         <Portal>
         <div
@@ -623,7 +616,6 @@ function EmptyState({ icon, title, hint }: { icon: React.ReactNode; title: strin
   );
 }
 
-// === 유틸 ===
 function dowLabel(n: number) {
   return ["일", "월", "화", "수", "목", "금", "토"][n] ?? "";
 }
@@ -655,7 +647,6 @@ function formatRange(a: string, b: string) {
   return `${a} ~ ${b}`;
 }
 
-/* ===== 야근(추가근무) 신청 ===== */
 type Overtime = {
   id: string; date: string; extendedEnd: string; reason?: string | null;
   status: string; createdAt: string;

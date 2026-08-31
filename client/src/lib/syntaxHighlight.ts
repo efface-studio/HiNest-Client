@@ -7,7 +7,6 @@
 
 import hljs from "highlight.js/lib/core";
 
-// 등록 — 사내 개발팀이 자주 쓰는 언어 위주.
 import swift from "highlight.js/lib/languages/swift";
 import typescript from "highlight.js/lib/languages/typescript";
 import javascript from "highlight.js/lib/languages/javascript";

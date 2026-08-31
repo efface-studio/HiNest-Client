@@ -110,7 +110,6 @@ router.post("/login", async (req, res) => {
     return res.status(401).json({ error: GENERIC_LOGIN_ERROR });
   }
 
-  // 성공 시 카운터 리셋.
   if ((user.failedLoginCount ?? 0) > 0) {
     await prisma.user.update({
       where: { id: user.id },
@@ -613,7 +612,7 @@ router.get("/super-session", requireAuth, async (req, res) => {
  *      - 토큰 사용 처리 + 같은 유저의 다른 미사용 토큰도 같이 무효화
  */
 
-const RESET_TOKEN_TTL_MS = 30 * 60 * 1000; // 30분
+const RESET_TOKEN_TTL_MS = 30 * 60 * 1000;
 
 function hashToken(token: string) {
   return crypto.createHash("sha256").update(token).digest("hex");

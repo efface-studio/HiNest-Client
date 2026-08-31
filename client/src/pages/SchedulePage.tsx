@@ -143,7 +143,7 @@ export default function SchedulePage() {
       const en = new Date(e.endAt);
       return d >= new Date(s.getFullYear(), s.getMonth(), s.getDate()) &&
         d <= new Date(en.getFullYear(), en.getMonth(), en.getDate());
-    }).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime()); // 시작 시각 순 정렬
+    }).sort((a, b) => new Date(a.startAt).getTime() - new Date(b.startAt).getTime());
   }
 
   // 주간 보기 — cursor 가 속한 주(일~토) 7일.
@@ -247,7 +247,6 @@ export default function SchedulePage() {
         description="전사/팀/개인 일정을 월별로 관리합니다."
         right={
           <div className="flex items-center gap-2 flex-wrap">
-            {/* 월 / 주 보기 토글 */}
             <div className="inline-flex rounded-lg bg-ink-100 p-0.5">
               <button
                 className={`px-3 h-8 rounded-md text-[13px] font-bold transition ${view === "month" ? "bg-white shadow-sm text-ink-900" : "text-ink-500"}`}
@@ -312,7 +311,6 @@ export default function SchedulePage() {
             const isSaturday = d && d.getDay() === 6;
             const isRed = holiday || isSunday;
 
-            // 날짜 숫자 색상
             let numClass = "text-ink-700";
             if (isRed) numClass = "text-rose-500";
             else if (isSaturday) numClass = "text-accent-500";
@@ -434,9 +432,6 @@ export default function SchedulePage() {
   );
 }
 
-/* ============================================================ */
-/*                       Event Chip                             */
-/* ============================================================ */
 /** 주간 보기 — 그 주(일~토) 7일을 세로 아젠다로. 각 날짜의 일정을 시작 시각 순으로 쌓아 보여준다. */
 function WeekAgenda({ days, eventsOn, onOpenDay }: { days: Date[]; eventsOn: (d: Date) => Event[]; onOpenDay: (d: Date) => void }) {
   const DOW = ["일", "월", "화", "수", "목", "금", "토"];
@@ -561,7 +556,6 @@ function EventChip({ e, onOpenDay }: { e: Event; onOpenDay: () => void }) {
   const cat = e.category ? CATEGORIES.find((c) => c.key === e.category) : undefined;
   const start = new Date(e.startAt);
   const end = new Date(e.endAt);
-  // 다중일 이벤트면 시간 생략, 단일일이면 HH:mm 표시
   const multi =
     start.toDateString() !== end.toDateString();
   const timeStr = multi
@@ -605,9 +599,6 @@ function EventChip({ e, onOpenDay }: { e: Event; onOpenDay: () => void }) {
   );
 }
 
-/* ============================================================ */
-/*                     Day Detail Modal                         */
-/* ============================================================ */
 function DayDetailModal({
   date,
   events,
@@ -729,10 +720,6 @@ function DayDetailModal({
   );
 }
 
-/* ============================================================ */
-/*                       Event Modal                            */
-/* ============================================================ */
-
 const EVENT_COLORS = [
   "#3B5CF0", // 브랜드 블루
   "#2962FF", // 액센트 블루
@@ -842,7 +829,6 @@ type DirUser = { id: string; name: string; email: string; team?: string | null; 
 
 // (useViewportInset 제거 — EventModal 이 공용 BottomSheet 로 이관되며 키보드 인셋·safe-area 를
 //  BottomSheet 가 직접 관리한다. visualViewport 수동 추적이 더 이상 필요 없음.)
-
 function EventModal({
   onClose,
   form,
@@ -924,7 +910,6 @@ function EventModal({
       }
     >
         <form id="event-form" onSubmit={onSubmit} className="space-y-5 py-1">
-            {/* 제목 */}
             <div>
               <label className="field-label">제목</label>
               <input
@@ -938,7 +923,6 @@ function EventModal({
               />
             </div>
 
-            {/* 시간 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="field-label">시작</label>
@@ -957,7 +941,6 @@ function EventModal({
               </div>
             </div>
 
-            {/* 카테고리 */}
             <div>
               <label className="field-label">카테고리</label>
               <div className="flex flex-wrap gap-1.5">
@@ -983,7 +966,6 @@ function EventModal({
               </div>
             </div>
 
-            {/* 범위 */}
             <div>
               <label className="field-label">공유 범위</label>
               <div className={`grid gap-2 ${canMakeCompany ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-1 sm:grid-cols-3"}`}>
@@ -1053,14 +1035,12 @@ function EventModal({
               </div>
             )}
 
-            {/* 대상 인원 (TARGETED 일 때) */}
             {form.scope === "TARGETED" && (
               <div>
                 <label className="field-label">
                   대상 인원 <span className="text-ink-500 font-normal">({form.targetUserIds.length}명)</span>
                 </label>
 
-                {/* 선택된 칩 */}
                 {form.targetUserIds.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {form.targetUserIds.map((id) => {
@@ -1098,7 +1078,6 @@ function EventModal({
                   </div>
                 )}
 
-                {/* 검색 + 리스트 */}
                 <div className="panel p-0 overflow-hidden">
                   <div className="px-3 py-2 border-b border-ink-150">
                     <input
@@ -1156,7 +1135,6 @@ function EventModal({
               </div>
             )}
 
-            {/* 색상 */}
             <div>
               <label className="field-label">색상</label>
               <div className="flex items-center flex-wrap gap-2">
@@ -1194,7 +1172,6 @@ function EventModal({
               </div>
             </div>
 
-            {/* 메모 */}
             <div>
               <label className="field-label">메모 <span className="text-ink-400 font-normal">(선택)</span></label>
               <textarea

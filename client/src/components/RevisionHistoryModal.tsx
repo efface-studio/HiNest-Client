@@ -128,7 +128,6 @@ export default function RevisionHistoryModal({
   );
 }
 
-// fmtSize: src/lib/fmt.ts 로 이동
 
 function extractPreview(doc: any): string {
   if (!doc) return "";

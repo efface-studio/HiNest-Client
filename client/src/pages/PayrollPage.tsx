@@ -76,7 +76,6 @@ export default function PayrollPage() {
   function onSaved(p: Payslip) {
     setComposing(false);
     setEditTarget(null);
-    // 현재 필터에 맞으면 목록 갱신.
     reload();
     // 방금 저장한 건 바로 미리보기로 띄워 결과 확인.
     setPreview(p);
@@ -248,7 +247,6 @@ export default function PayrollPage() {
         ) : undefined}
       />
 
-      {/* 필터 */}
       <div className="flex flex-wrap items-center gap-2 mb-4">
         <Select className="input w-auto" value={String(year)} disabled={bulk !== null} onChange={(v) => setYear(Number(v))} options={yearOptions} ariaLabel="연도" />
         <Select className="input w-auto" value={String(month)} disabled={bulk !== null} onChange={(v) => setMonth(Number(v))} options={monthOptions} ariaLabel="월" />
@@ -257,7 +255,6 @@ export default function PayrollPage() {
         )}
       </div>
 
-      {/* 발송 현황 + 일괄 발송 (ADMIN) */}
       {isAdmin && (
         <div className="flex flex-wrap items-center gap-2 mb-3">
           <span className="text-[12.5px] text-ink-500">

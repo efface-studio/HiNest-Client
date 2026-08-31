@@ -116,5 +116,3 @@ export default function PublicSharePage() {
     </div>
   );
 }
-
-// fmtSize: src/lib/fmt.ts 로 이동

@@ -20,7 +20,6 @@ import fs from "node:fs";
  * 공개 라우터는 shareLink.ts 의 /api/public-share/:token 에서 폴더 타입으로 처리.
  */
 
-/* =============== 인증 라우터 =============== */
 const authed = Router();
 authed.use(requireAuth);
 

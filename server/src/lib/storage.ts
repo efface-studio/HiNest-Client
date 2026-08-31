@@ -28,9 +28,6 @@ import fs from "node:fs";
  * 방어선을 유지하기 위해 그대로 둠. 클라이언트가 직접 presigned URL 로 가는 구성은 다음 단계.
  */
 
-/* ──────────────────────────────────────────────────────────────────────────── */
-/* S3 (신규 primary)                                                             */
-/* ──────────────────────────────────────────────────────────────────────────── */
 const S3_REGION = process.env.AWS_REGION?.trim();
 const S3_BUCKET = process.env.S3_BUCKET?.trim();
 const S3_ACCESS_KEY = process.env.AWS_ACCESS_KEY_ID?.trim();
@@ -56,9 +53,6 @@ if (S3_REGION && S3_BUCKET) {
   });
 }
 
-/* ──────────────────────────────────────────────────────────────────────────── */
-/* Supabase (레거시 fallback — 이관 기간에만 필요)                               */
-/* ──────────────────────────────────────────────────────────────────────────── */
 const SB_URL = process.env.SUPABASE_URL?.trim();
 const SB_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
 const SB_BUCKET = process.env.SUPABASE_STORAGE_BUCKET?.trim() || "hinest-uploads";
@@ -70,9 +64,6 @@ if (SB_URL && SB_KEY) {
   });
 }
 
-/* ──────────────────────────────────────────────────────────────────────────── */
-/* Public API                                                                    */
-/* ──────────────────────────────────────────────────────────────────────────── */
 
 export function isStorageEnabled(): boolean {
   return !!s3 || !!supabase;
@@ -154,7 +145,6 @@ export async function downloadFile(key: string): Promise<{
   contentType: string;
   size: number;
 } | null> {
-  // 1) S3
   if (s3) {
     try {
       const res = await s3.send(
@@ -176,7 +166,6 @@ export async function downloadFile(key: string): Promise<{
     }
   }
 
-  // 2) Supabase (레거시)
   if (supabase) {
     const { data, error } = await supabase.storage.from(SB_BUCKET).download(key);
     if (error || !data) return null;
@@ -287,9 +276,6 @@ export async function deleteFile(key: string): Promise<void> {
   }
 }
 
-/* ──────────────────────────────────────────────────────────────────────────── */
-/* 내부 helper                                                                   */
-/* ──────────────────────────────────────────────────────────────────────────── */
 
 /** AWS SDK v3 의 GetObject 응답 Body 는 Node 환경에서 Readable 스트림. */
 async function streamToBuffer(stream: Readable): Promise<Buffer> {

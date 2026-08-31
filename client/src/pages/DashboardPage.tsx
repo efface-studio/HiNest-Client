@@ -178,7 +178,6 @@ export default function DashboardPage() {
     <div className="space-y-4">
       <InstallAppBanner />
 
-      {/* 인사 카드 — 흰 패널, 큰 인사 + 작은 부제 */}
       <TossCard className="px-6 py-7 sm:px-8 sm:py-8">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
@@ -193,7 +192,6 @@ export default function DashboardPage() {
         </div>
       </TossCard>
 
-      {/* 오늘의 근무 — Toss 메인 카드 패턴: 큰 값 + 진행률 + 우측 액션 */}
       <TossCard className="px-6 py-6 sm:px-8 sm:py-7">
         <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
           <div>
@@ -227,7 +225,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 진행률 바 — 09~18 */}
         <div>
           <div className="relative h-2 rounded-full overflow-hidden" style={{ background: "var(--c-surface-3)" }}>
             <div
@@ -242,14 +239,12 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 출근/퇴근 시각 — 카드 하단 부드러운 분리선 */}
         <div className="grid grid-cols-2 gap-4 mt-5 pt-5 border-t" style={{ borderColor: "var(--c-border)" }}>
           <KV label="출근 시각" value={timeOf(att?.checkIn ?? null)} />
           <KV label="퇴근 시각" value={timeOf(att?.checkOut ?? null)} />
         </div>
       </TossCard>
 
-      {/* 빠른 메뉴 — 6 grid, soft tint icon + 라벨 */}
       <TossCard className="p-3">
         <div className="grid grid-cols-3 sm:grid-cols-6 gap-1">
           <QuickItem to="/schedule" label="일정" tint="#3182F6" Icon={IconCalendar} />
@@ -261,7 +256,6 @@ export default function DashboardPage() {
         </div>
       </TossCard>
 
-      {/* 본문 2열 */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 space-y-4">
           <ScheduleCard events={events} loaded={loaded} />
@@ -284,9 +278,6 @@ export default function DashboardPage() {
   );
 }
 
-/* ============================================================
- *  TossCard — 모든 카드의 베이스. 부드러운 그림자 + 둥근 모서리.
- * ============================================================ */
 function TossCard({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
     <div
@@ -302,9 +293,6 @@ function TossCard({ children, className }: { children: React.ReactNode; classNam
   );
 }
 
-/* ============================================================
- *  StatusPill — 색칠된 알약. Toss 의 상태 칩 패턴.
- * ============================================================ */
 type WorkStatus = "IN" | "OFF" | "NONE";
 function StatusPill({ status }: { status: WorkStatus }) {
   const cfg = status === "IN"
@@ -323,9 +311,6 @@ function StatusPill({ status }: { status: WorkStatus }) {
   );
 }
 
-/* ============================================================
- *  Quick item
- * ============================================================ */
 function QuickItem({ to, label, tint, Icon }: { to: string; label: string; tint: string; Icon: React.ComponentType<{ color: string }> }) {
   return (
     <Link
@@ -343,9 +328,6 @@ function QuickItem({ to, label, tint, Icon }: { to: string; label: string; tint:
   );
 }
 
-/* ============================================================
- *  ScheduleCard
- * ============================================================ */
 function ScheduleCard({ events, loaded = true }: { events: Event[]; loaded?: boolean }) {
   const grouped = useMemo(() => groupByDay(events), [events]);
   return (
@@ -394,9 +376,6 @@ function ScheduleCard({ events, loaded = true }: { events: Event[]; loaded?: boo
   );
 }
 
-/* ============================================================
- *  NoticeCard
- * ============================================================ */
 function NoticeCard({ notices, loaded = true }: { notices: Notice[]; loaded?: boolean }) {
   return (
     <TossCard className="px-5 sm:px-6 py-5">
@@ -439,9 +418,6 @@ function NoticeCard({ notices, loaded = true }: { notices: Notice[]; loaded?: bo
   );
 }
 
-/* ============================================================
- *  ProfileCard — Toss 프로필 카드 톤
- * ============================================================ */
 function ProfileCard(p: { name: string; email?: string; team: string | null; position: string | null; role: string; avatarUrl: string | null; avatarColor?: string; isDeveloper: boolean }) {
   const initial = (p.name?.[0] ?? "?").toUpperCase();
   return (
@@ -470,9 +446,6 @@ function ProfileCard(p: { name: string; email?: string; team: string | null; pos
   );
 }
 
-/* ============================================================
- *  building blocks
- * ============================================================ */
 function CardHeader({ title, count, href }: { title: string; count?: number; href?: string }) {
   return (
     <div className="flex items-baseline justify-between">
@@ -517,7 +490,6 @@ function ScopeChip({ scope }: { scope: string }) {
   );
 }
 
-/* ===== utils ===== */
 function timeOf(iso: string | null): string {
   if (!iso) return "—";
   return new Date(iso).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", hour12: false });
@@ -559,7 +531,6 @@ function groupByDay(events: Event[]): [string, Event[]][] {
   return Array.from(map.entries());
 }
 
-/* ===== icons ===== */
 function IconCalendar({ color }: { color: string }) {
   return <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="17" rx="2.5" /><path d="M3 10h18M8 2v4M16 2v4" /></svg>;
 }

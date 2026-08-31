@@ -118,7 +118,6 @@ function BlockedPage() {
         border: isDark ? "1px solid rgba(255,255,255,0.06)" : "none",
       }}
     >
-      {/* 큰 배경 자물쇠 — 시각적 hero */}
       <svg
         aria-hidden
         viewBox="0 0 24 24"
@@ -140,7 +139,6 @@ function BlockedPage() {
         <rect x="4" y="11" width="16" height="9" rx="2" />
         <path d="M8 11V7a4 4 0 0 1 8 0v4" />
       </svg>
-      {/* 격자 패턴 */}
       <div
         aria-hidden
         style={{
@@ -219,7 +217,6 @@ function UnderConstructionPage({ isDeveloper }: { isDeveloper: boolean }) {
         @keyframes hinest-uc-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
       `}</style>
 
-      {/* 배경 펄스 도형들 */}
       <div
         aria-hidden
         style={{
@@ -249,7 +246,6 @@ function UnderConstructionPage({ isDeveloper }: { isDeveloper: boolean }) {
           pointerEvents: "none",
         }}
       />
-      {/* 격자 */}
       <div
         aria-hidden
         style={{
@@ -263,7 +259,6 @@ function UnderConstructionPage({ isDeveloper }: { isDeveloper: boolean }) {
         }}
       />
 
-      {/* 큰 배경 톱니바퀴 — hero 일러스트 */}
       <svg
         aria-hidden
         viewBox="0 0 24 24"
@@ -288,7 +283,6 @@ function UnderConstructionPage({ isDeveloper }: { isDeveloper: boolean }) {
       </svg>
 
       <div className="relative px-6 sm:px-12 py-14 sm:py-20 max-w-[1000px]">
-        {/* 작은 톱니바퀴 (반대 방향) — 깊이감 */}
         <svg
           aria-hidden
           viewBox="0 0 24 24"
@@ -310,7 +304,6 @@ function UnderConstructionPage({ isDeveloper }: { isDeveloper: boolean }) {
           <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33h.04a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.04a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
         </svg>
 
-        {/* hero 톱니 카드 */}
         <div
           className="w-24 h-24 rounded-3xl grid place-items-center mb-8"
           style={{
@@ -483,7 +476,6 @@ export default function AppLayout({ children }: { children?: React.ReactNode } =
   );
 }
 
-// ── 모바일 당겨서 새로고침(pull-to-refresh) ───────────────────────────────
 const PTR_THRESHOLD = 64; // 이 거리(px) 이상 당기고 놓으면 새로고침 발동
 const PTR_MAX = 96; // 시각적 최대 당김 거리(고무줄 감쇠 상한)
 const PTR_RESTING = 48; // 새로고침 진행 중 콘텐츠가 머무는 위치
@@ -1500,7 +1492,6 @@ type ProjectLite = {
   status: "ACTIVE" | "ARCHIVED";
 };
 
-// DevQuickToggle 은 공용 컴포넌트(components/DevQuickToggle.tsx)로 추출 — ConsoleLayout 과 공유.
 
 /**
  * 사이드바 "팀" 섹션 — 내가 참여중인 프로젝트 목록.
@@ -1691,7 +1682,6 @@ function navClass(active: boolean) {
   ].join(" ");
 }
 
-/* ---------- TopBar ---------- */
 const BREADCRUMB: Record<string, string> = {
   "/": "개요",
   "/schedule": "일정",
@@ -1887,7 +1877,6 @@ function TopBar({ draggable = false, onOpenNav, safeAreaTop = false }: { draggab
   );
 }
 
-/* ---------- Icons ---------- */
 type I = { active?: boolean };
 
 function svgBase(_active: boolean, path: React.ReactNode) {

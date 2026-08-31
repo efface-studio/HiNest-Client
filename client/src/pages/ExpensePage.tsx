@@ -224,7 +224,6 @@ export default function ExpensePage() {
       />
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-        {/* 월 합계: 브랜드 컬러 강조 카드 */}
         <div
           className="panel p-5 text-white relative overflow-hidden"
           style={{

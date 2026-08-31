@@ -151,7 +151,6 @@ export default function ProjectPage() {
         </div>
       )}
 
-      {/* 캘린더를 전체 폭으로 사용하고, 멤버 리스트는 아래로. */}
       <div className="space-y-6">
         <div className="card">
           <ProjectCalendar
@@ -212,7 +211,6 @@ export default function ProjectPage() {
               </button>
             )}
           </div>
-          {/* 가로 그리드 — 넓은 영역을 활용해 카드 형태로 나열 */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {members.map((m) => (
               <div key={m.id} className="flex items-center gap-2.5 border border-slate-100 rounded-lg px-3 py-2">

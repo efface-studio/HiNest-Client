@@ -76,7 +76,6 @@ function canEdit(user: { id: string; role?: string; superAdmin?: boolean }, row:
 async function visibleWhere(user: { id: string; role?: string; superAdmin?: boolean; team?: string | null }) {
   if (isAdmin(user)) return {};
 
-  // 내가 멤버인 프로젝트 id 목록
   const memberships = await prisma.projectMember.findMany({
     where: { userId: user.id },
     select: { projectId: true },

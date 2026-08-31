@@ -50,7 +50,6 @@ export default function DesignSystemPage() {
   );
 }
 
-/* ============ 공용 보조 ============ */
 
 function Section({ title, desc, children }: { title: string; desc?: string; children: React.ReactNode }) {
   return (
@@ -84,7 +83,6 @@ function CopyChip({ value, children, className = "" }: { value: string; children
   );
 }
 
-/* ============ Header ============ */
 
 function Header() {
   return (
@@ -99,7 +97,6 @@ function Header() {
   );
 }
 
-/* ============ Colors ============ */
 
 const COLOR_TOKENS: { group: string; vars: string[] }[] = [
   { group: "배경/표면", vars: ["--c-bg", "--c-surface", "--c-border", "--c-border-strong"] },
@@ -179,7 +176,6 @@ function PaletteRow({ name, shades }: { name: string; shades: number[] }) {
   );
 }
 
-/* ============ Typography ============ */
 
 const TYPE_SAMPLES = [
   { cls: "text-[24px] font-extrabold", label: "Heading XL · 24/800" },
@@ -210,7 +206,6 @@ function TypographySection() {
   );
 }
 
-/* ============ Buttons ============ */
 
 function ButtonsSection() {
   return (
@@ -248,7 +243,6 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-/* ============ Inputs / Pickers ============ */
 
 const SELECT_OPTIONS = [
   { value: "all", label: "전체" },
@@ -305,7 +299,6 @@ function InputsSection() {
   );
 }
 
-/* ============ Panels ============ */
 
 function PanelsSection() {
   return (
@@ -324,7 +317,6 @@ function PanelsSection() {
   );
 }
 
-/* ============ Badges ============ */
 
 function BadgesSection() {
   return (
@@ -364,7 +356,6 @@ function PillBadge({ color, label }: { color: "emerald" | "amber" | "rose" | "in
   return <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full ${map[color]}`}>{label}</span>;
 }
 
-/* ============ Modals / Sheet ============ */
 
 function ModalsSection() {
   const [open, setOpen] = useState(false);
@@ -382,7 +373,6 @@ function ModalsSection() {
   );
 }
 
-/* ============ Skeletons ============ */
 
 function SkeletonsSection() {
   return (
@@ -417,7 +407,6 @@ function Label({ children }: { children: React.ReactNode }) {
   return <div className="text-[11.5px] font-bold text-[color:var(--c-text-muted)] mb-2">{children}</div>;
 }
 
-/* ============ Icons ============ */
 
 const COMMON_ICONS: { name: string; svg: JSX.Element }[] = [
   { name: "search", svg: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></> },
@@ -455,7 +444,6 @@ function IconsSection() {
   );
 }
 
-/* ============ Branding (로고/락업) ============ */
 
 function BrandingSection() {
   return (
@@ -474,7 +462,6 @@ function BrandingSection() {
   );
 }
 
-/* ============ Avatar ============ */
 
 // 가입 시 자동 할당되는 10색 팔레트 — previewMock 의 AVATAR_PALETTE 와 동일.
 const AVATAR_PALETTE = ["#3D54C4", "#16A34A", "#7C3AED", "#DB2777", "#F59E0B", "#0EA5E9", "#EF4444", "#0891B2", "#84CC16", "#F97316"];
@@ -523,7 +510,6 @@ function AvatarSection() {
   );
 }
 
-/* ============ Presence Status ============ */
 
 const PRESENCE_FALLBACKS: Record<string, { color: string; label: string; emoji: string }> = {
   AVAILABLE: { color: "#22c55e", label: "근무중", emoji: "🟢" },
@@ -551,7 +537,6 @@ function PresenceSection() {
   );
 }
 
-/* ============ Chips ============ */
 
 function ChipsSection() {
   return (
@@ -578,7 +563,6 @@ function ChipsSection() {
   );
 }
 
-/* ============ Form: Switch / Checkbox / Radio ============ */
 
 function FormSection() {
   const [sw1, setSw1] = useState(true);
@@ -663,7 +647,6 @@ function SwitchRow({ label, checked, onChange, disabled }: { label: string; chec
   );
 }
 
-/* ============ Tabs ============ */
 
 const TAB_ITEMS = ["개요", "구성원", "근태", "출근 IP", "사용 시간"];
 
@@ -694,7 +677,6 @@ function TabsSection() {
   );
 }
 
-/* ============ Radius / Shadow ============ */
 
 const RADIUS_SCALE: { label: string; value: string }[] = [
   { label: "xs", value: "6px" },
@@ -776,7 +758,6 @@ function RadiusShadowSection() {
   );
 }
 
-/* ============ Native Dialogs ============ */
 
 function NativeDialogsSection() {
   return (
@@ -796,7 +777,6 @@ function NativeDialogsSection() {
   );
 }
 
-/* ============ Banner ============ */
 
 function BannerSection() {
   return (
@@ -825,7 +805,6 @@ function BannerSection() {
   );
 }
 
-/* ============ Empty State ============ */
 
 function EmptyStateSection() {
   return (
@@ -849,7 +828,6 @@ function EmptyStateSection() {
   );
 }
 
-/* ============ Message Bubble (Chat) ============ */
 
 function MessageBubbleSection() {
   return (

@@ -32,7 +32,6 @@ const schema = z.object({
   receiptUrl: receiptUrlSchema,
 });
 
-// 목록
 router.get("/", async (req, res) => {
   const u = (req as any).user;
   const all = req.query.all === "1" && (u.role === "ADMIN" || u.role === "MANAGER");

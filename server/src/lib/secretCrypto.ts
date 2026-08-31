@@ -17,7 +17,6 @@ const MAX_PLAINTEXT = 1024;
 function resolveKey(): Buffer | null {
   const raw = process.env.ACCOUNT_ENC_KEY;
   if (!raw) return null;
-  // base64 로 32바이트면 그대로, 아니면 sha256 파생.
   try {
     const buf = Buffer.from(raw, "base64");
     if (buf.length === 32) return buf;

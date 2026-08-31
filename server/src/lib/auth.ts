@@ -290,7 +290,6 @@ export function requirePlatformAdmin(req: Request, res: Response, next: NextFunc
   next();
 }
 
-/* ---- Super admin step-up (비밀번호 재인증) ---- */
 export function signSuper(userId: string) {
   return jwt.sign({ sub: userId, kind: "super" }, SECRET, {
     expiresIn: `${SUPER_TTL_SEC}s`,
@@ -335,7 +334,6 @@ export function requireSuperAdminStepUp(req: Request, res: Response, next: NextF
 
 export { SUPER_TTL_SEC, IMP_TTL_SEC };
 
-/* ---- Impersonation (사용자 대신 보기) ---- */
 export function signImpersonate(actorId: string, targetId: string) {
   return jwt.sign({ actor: actorId, sub: targetId, kind: "imp" }, SECRET, {
     expiresIn: `${IMP_TTL_SEC}s`,

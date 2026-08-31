@@ -9,7 +9,6 @@ import type { MemoDoc } from "../components/DocMemoModal";
 // DocMemoModal 은 TipTap(무거운 번들)을 포함 → 실제 열릴 때만 로드.
 const DocMemoModal = lazy(() => import("../components/DocMemoModal"));
 
-// ===== 타입 =====
 type DocScope = "ALL" | "TEAM" | "PRIVATE" | "CUSTOM";
 
 type Memo = {
@@ -41,7 +40,6 @@ const SCOPE_LABEL: Record<DocScope, string> = {
   CUSTOM: "사용자지정",
 };
 
-// ===== TipTap JSON → 평문 추출 (미리보기용) =====
 function extractText(node: any, limit = 200): string {
   if (!node) return "";
   if (node.type === "text") return node.text ?? "";
@@ -54,7 +52,6 @@ function extractText(node: any, limit = 200): string {
   return result;
 }
 
-// ===== 날짜 포맷 =====
 function relativeDate(iso: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const min = Math.floor(diff / 60_000);
@@ -67,7 +64,6 @@ function relativeDate(iso: string): string {
   return new Date(iso).toLocaleDateString("ko-KR", { month: "long", day: "numeric" });
 }
 
-// ===== 메모 카드 =====
 function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
   const preview = extractText(memo.content);
   const tags = (memo.tags ?? "").split(",").map((t) => t.trim()).filter(Boolean);
@@ -100,14 +96,12 @@ function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
         </h3>
       </div>
 
-      {/* 본문 미리보기 */}
       {preview && (
         <p className="text-[12px] text-ink-500 dark:text-ink-400 line-clamp-4 leading-relaxed mt-2.5">
           {preview}
         </p>
       )}
 
-      {/* 태그 */}
       {tags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2.5">
           {tags.slice(0, 4).map((t) => (
@@ -137,7 +131,6 @@ function MemoCard({ memo, onClick }: { memo: Memo; onClick: () => void }) {
   );
 }
 
-// ===== 빈 상태 =====
 function EmptyState({ onNew }: { onNew: () => void }) {
   return (
     <div className="flex flex-col items-center justify-center py-24 gap-5 text-center">
@@ -159,7 +152,6 @@ function EmptyState({ onNew }: { onNew: () => void }) {
   );
 }
 
-// ===== 스켈레톤 카드 =====
 function SkeletonCard() {
   return (
     <div className="rounded-2xl border border-ink-100 dark:border-ink-800 bg-white dark:bg-ink-900 p-5 flex flex-col gap-3">
@@ -175,7 +167,6 @@ function SkeletonCard() {
   );
 }
 
-// ===== 메인 페이지 =====
 export default function MemosPage() {
   const [memos, setMemos] = useState<Memo[]>([]);
   const [loading, setLoading] = useState(true);
@@ -275,9 +266,7 @@ export default function MemosPage() {
         }
       />
 
-      {/* 검색 + 스코프 탭 */}
       <div className="flex flex-wrap items-center gap-3">
-        {/* 스코프 탭 */}
         <div className="flex items-center bg-ink-100 dark:bg-ink-800 rounded-xl p-1 gap-0.5">
           {SCOPE_TABS.map((tab) => (
             <button
@@ -295,7 +284,6 @@ export default function MemosPage() {
           ))}
         </div>
 
-        {/* 검색 */}
         <div className="relative flex-1 min-w-[180px] max-w-xs">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-400" width="13" height="13"
             viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -325,7 +313,6 @@ export default function MemosPage() {
           )}
         </div>
 
-        {/* 건수 */}
         {!loading && (
           <span className="text-[12px] text-ink-400 dark:text-ink-500 ml-auto">
             {memos.length}개
@@ -333,7 +320,6 @@ export default function MemosPage() {
         )}
       </div>
 
-      {/* 카드 그리드 */}
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)}
@@ -348,7 +334,6 @@ export default function MemosPage() {
         </div>
       )}
 
-      {/* 메모 편집/열람 모달 */}
       {memoTarget !== null && (
         <Suspense fallback={null}>
           <DocMemoModal

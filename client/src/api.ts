@@ -1,9 +1,3 @@
-/**
- * API 오리진. 일반 웹/데스크톱(Electron) 빌드에서는 빈 문자열 → 기존처럼 상대경로
- * 그대로 (동작 변화 없음). Capacitor 네이티브 빌드에서는 웹 자산이
- * capacitor://localhost 에서 로드돼 상대경로가 서버에 닿지 않으므로, 빌드시
- * VITE_API_BASE 로 절대 오리진(예: https://nest.hi-vits.com)을 주입한다.
- */
 import { getAuthToken } from "./lib/authToken";
 import { isCapacitorNative } from "./lib/platform";
 

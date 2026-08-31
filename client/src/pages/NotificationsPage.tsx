@@ -38,7 +38,6 @@ export default function NotificationsPage() {
 
   return (
     <div className="max-w-[640px] mx-auto">
-      {/* 헤더 — 제목 + 미읽음 수, 우측에 모두 읽음 / 설정 */}
       <div className="flex items-center gap-2 mb-4">
         <h1 className="text-[20px] font-extrabold text-ink-900 tracking-tight">알림</h1>
         {unread > 0 && (
@@ -83,7 +82,6 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      {/* 탭 — 전체 / 안읽음 */}
       <div className="tabs mb-3">
         <button className={`tab ${tab === "all" ? "tab-active" : ""}`} onClick={() => setTab("all")}>전체</button>
         <button className={`tab ${tab === "unread" ? "tab-active" : ""}`} onClick={() => setTab("unread")}>
@@ -91,7 +89,6 @@ export default function NotificationsPage() {
         </button>
       </div>
 
-      {/* 리스트 */}
       <div className="panel overflow-hidden">
         {!loaded && visible.length === 0 ? (
           // 첫 로드 동안 — 알림 행 형태의 Skeleton(아바타 + 제목·시간 두 줄).

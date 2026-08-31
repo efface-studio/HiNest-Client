@@ -143,7 +143,6 @@ router.delete("/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------------- 프로젝트 일정 ---------------- */
 
 async function assertProjectMember(projectId: string, userId: string, adminRole: string) {
   if (adminRole === "ADMIN") return true;
@@ -301,7 +300,6 @@ router.delete("/:id/events/:eventId", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------------- 웹훅 채널 ---------------- */
 
 /** 프로젝트의 웹훅 채널 목록. 최근 이벤트 카운트 포함. */
 router.get("/:id/webhook", async (req, res) => {
@@ -397,7 +395,6 @@ router.get("/:id/webhook/:channelId/events", async (req, res) => {
   res.json({ events });
 });
 
-/* ---------------- QA 체크리스트 ---------------- */
 
 // BUG=오류(신규 리포트), IN_PROGRESS=수정 중, NEEDS_FIX=수정필요,
 // NEEDS_TEST=테스트 요망, DONE=완료, ON_HOLD=보류.

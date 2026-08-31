@@ -163,7 +163,6 @@ router.get("/:id", async (req, res) => {
   res.json({ payslip: p });
 });
 
-/* ===== 작성 (ADMIN) ===== */
 router.post("/", requireAdmin, async (req, res) => {
   const parsed = createSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid input" });
@@ -215,7 +214,6 @@ router.post("/", requireAdmin, async (req, res) => {
   res.json({ payslip: p });
 });
 
-/* ===== 수정 (ADMIN) ===== */
 router.patch("/:id", requireAdmin, async (req, res) => {
   const u = (req as any).user;
   const exist = await prisma.payslip.findFirst({
@@ -262,7 +260,6 @@ router.patch("/:id", requireAdmin, async (req, res) => {
   res.json({ payslip: p });
 });
 
-/* ===== 삭제 (ADMIN, soft-delete) ===== */
 router.delete("/:id", requireAdmin, async (req, res) => {
   const u = (req as any).user;
   const exist = await prisma.payslip.findFirst({
@@ -343,15 +340,12 @@ function payslipEmailHtml(a: {
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F3F4F6;padding:24px 0;font-family:${FONT}">` +
     `<tr><td align="center">` +
     `<table role="presentation" cellpadding="0" cellspacing="0" style="width:480px;max-width:480px;background:#FFFFFF;border-radius:14px;overflow:hidden;border:1px solid #E5E7EB">` +
-    // 헤더 (브랜드 바)
     `<tr><td style="background:#3B5CF0;padding:24px 28px">` +
     `<div style="color:#C9D5FF;font-size:12px;font-weight:700;letter-spacing:.04em">${escHtml(a.company)}</div>` +
     `<div style="color:#FFFFFF;font-size:20px;font-weight:800;margin-top:5px">${a.year}년 ${a.month}월 급여명세서</div>` +
     `</td></tr>` +
-    // 본문
     `<tr><td style="padding:28px 28px 24px">` +
     `<p style="margin:0 0 18px;font-size:15px;color:#111827;line-height:1.6"><b>${escHtml(a.employeeName)}</b>님, ${a.year}년 ${a.month}월 급여명세서를 보내드립니다.</p>` +
-    // 요약 카드
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#EEF3FF;border-radius:12px">` +
     `<tr><td style="padding:18px 20px">` +
     `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">` +
@@ -369,7 +363,6 @@ function payslipEmailHtml(a: {
     `<p style="margin:16px 0 0;font-size:13px;color:#374151;line-height:1.6">자세한 지급·공제 내역은 첨부된 PDF 명세서를 확인해 주세요.</p>` +
     replyBtn +
     `</td></tr>` +
-    // 푸터
     `<tr><td style="padding:16px 28px;background:#FAFAFB;border-top:1px solid #EEF0F2">` +
     `<div style="font-size:11.5px;color:#9CA3AF;line-height:1.6">${footerNote}</div>` +
     `</td></tr>` +

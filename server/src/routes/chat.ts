@@ -678,7 +678,6 @@ router.post("/rooms/:id/messages", async (req, res) => {
   res.json({ message: msg });
 });
 
-/* ===== Reactions ===== */
 router.post("/messages/:id/reactions", async (req, res) => {
   const u = (req as any).user;
   // emoji 는 짧은 유니코드 시퀀스여야 함 — 길어도 ZWJ 조합 포함 16자 이내.
@@ -969,9 +968,6 @@ router.post("/share", async (req, res) => {
   res.json({ ok: true, count: created.length, messages: created });
 });
 
-/**
- * 내 예약 메시지 목록
- */
 router.get("/scheduled", async (req, res) => {
   const u = (req as any).user;
   // 예약 메시지는 실무상 많지 않지만, 장기 미체크 시 수천 건 누적 가능 — take 상한.

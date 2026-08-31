@@ -56,5 +56,3 @@ export function publish(userId: string, event: string, data: unknown) {
 export function publishMany(userIds: string[], event: string, data: unknown) {
   for (const u of userIds) publish(u, event, data);
 }
-
-/** 디버깅용 */

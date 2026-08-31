@@ -372,7 +372,6 @@ function formatAbsolute(iso: string) {
 }
 
 
-
 function DesktopBiometricPanel({
   devices, deviceId, reload,
 }: {
@@ -421,7 +420,6 @@ function DesktopBiometricPanel({
 
   return (
     <div className="mb-4 panel p-0 overflow-hidden">
-      {/* 헤더 */}
       <div className="px-5 py-3.5 border-b border-ink-100 flex items-center justify-between">
         <div className="flex items-baseline gap-2">
           <div className="text-[13.5px] font-bold text-ink-900 tracking-[-0.01em]">등록된 기기</div>
@@ -432,7 +430,6 @@ function DesktopBiometricPanel({
         </div>
       </div>
 
-      {/* 컬럼 헤더 — 테이블 느낌 */}
       {devices.length > 0 && (
         <div className="px-5 py-2 border-b border-ink-100 bg-ink-25 grid grid-cols-[1fr_130px_130px_60px] gap-3 text-[10.5px] font-bold text-ink-500 uppercase tracking-[0.06em]">
           <div>기기</div>
@@ -442,7 +439,6 @@ function DesktopBiometricPanel({
         </div>
       )}
 
-      {/* 기기 리스트 */}
       <div>
         {devices.length === 0 && (
           <div className="px-5 py-8 text-center">
@@ -496,7 +492,6 @@ function DesktopBiometricPanel({
         })}
       </div>
 
-      {/* 이 기기 등록 섹션 */}
       {!enrolledHere && (
         <div className="border-t border-ink-100 px-5 py-4 bg-ink-25">
           <div className="text-[11.5px] font-bold text-ink-700 mb-2">이 기기 추가</div>

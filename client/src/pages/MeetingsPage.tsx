@@ -188,7 +188,6 @@ export default function MeetingsPage() {
         />
       </div>
 
-      {/* 검색 + 필터 칩 */}
       <div className="panel p-4 mb-3">
         <div className="flex items-center gap-3 flex-wrap">
           <div className="relative flex-1 min-w-[220px]">
@@ -259,7 +258,6 @@ export default function MeetingsPage() {
         </div>
       </div>
 
-      {/* 본문 */}
       {loading ? (
         <div className="space-y-2">
           {Array.from({ length: 4 }).map((_, i) => <SkeletonRow key={i} />)}
@@ -300,7 +298,6 @@ function MeetingCard({ m, sortKey }: { m: MeetingRow; sortKey: SortKey }) {
       to={`/meetings/${m.id}`}
       className="panel p-0 overflow-hidden hover:!border-brand-300 transition group block"
     >
-      {/* 좌측 색띠 — 공개범위색(전사=초록·프로젝트=프로젝트색·특정인원=앰버), 뱃지와 일치 */}
       <div className="flex">
         <div className="w-1.5 flex-shrink-0" style={{ background: bandColor }} aria-hidden />
         <div className="flex-1 p-4 min-w-0">

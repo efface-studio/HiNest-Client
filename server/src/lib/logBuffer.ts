@@ -41,7 +41,6 @@ export function getLogs(opts: { since?: number; level?: LogLevel; q?: string; li
     const k = opts.q.toLowerCase();
     arr = arr.filter((e) => e.msg.toLowerCase().includes(k));
   }
-  // 최근 N 만 반환.
   return arr.slice(-limit);
 }
 

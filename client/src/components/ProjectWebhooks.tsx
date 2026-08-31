@@ -167,7 +167,6 @@ export default function ProjectWebhooks({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {/* 채널 리스트 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
         {channels.map((ch) => (
           <div
@@ -220,7 +219,6 @@ export default function ProjectWebhooks({ projectId }: { projectId: string }) {
         ))}
       </div>
 
-      {/* 선택한 채널의 수신 이벤트 피드 */}
       {selected && (
         <div className="mt-5 border-t border-slate-100 pt-5">
           <div className="flex items-center gap-2 mb-2">
@@ -268,7 +266,6 @@ export default function ProjectWebhooks({ projectId }: { projectId: string }) {
         </div>
       )}
 
-      {/* 생성 모달 */}
       {openCreate && (
         <Portal>
         <div

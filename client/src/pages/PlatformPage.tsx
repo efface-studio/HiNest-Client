@@ -204,7 +204,6 @@ export default function PlatformPage() {
         })}
       </div>
 
-      {/* 목록 헤더: 현재 보기 라벨 + 개수 + 전체 토글 */}
       <div className="flex items-center justify-between gap-3 mb-3">
         <h2 className="text-[14.5px] font-extrabold text-ink-800 flex items-center gap-1.5">
           {filter === "ALL" ? "전체 회사" : STATUS_META[filter].label}
@@ -225,7 +224,6 @@ export default function PlatformPage() {
         </button>
       </div>
 
-      {/* 목록 */}
       {loading ? (
         <div className="space-y-3">
           {[0, 1, 2].map((i) => (

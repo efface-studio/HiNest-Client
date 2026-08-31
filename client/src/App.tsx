@@ -75,7 +75,6 @@ function ProtectedFallback() {
       }}
       aria-hidden
     >
-      {/* 상단바 흉내 — 좌측 타이틀, 우측 아이콘 자리 */}
       <div className="flex items-center justify-between px-4" style={{ height: 56 }}>
         <Skeleton w={116} h={22} radius={6} />
         <div className="flex items-center gap-2.5">
@@ -83,7 +82,6 @@ function ProtectedFallback() {
           <Skeleton circle w={32} h={32} />
         </div>
       </div>
-      {/* 본문 — 통계 그리드 + 섹션 리스트(데스크톱에선 가운데 정렬) */}
       <div
         className="px-4 pt-3 mx-auto w-full max-w-3xl"
         style={{ display: "flex", flexDirection: "column", gap: 22 }}

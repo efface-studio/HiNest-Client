@@ -14,13 +14,12 @@ import { requireAuth } from "../lib/auth.js";
 const router = Router();
 router.use(requireAuth);
 
-// ─── /api/nav/visibility 인메모리 캐시 ───────────────────────────────────────
 // NavConfig 는 관리자가 수동으로 바꾸는 아주 드문 데이터이지만
 // /visibility 는 모든 사용자의 모든 페이지 로드마다 호출된다.
 // 1분 TTL 캐시로 DB 왕복을 없애고, 변경 시 admin 라우트에서 즉시 무효화.
 type NavVisibilityPayload = { disabled: string[]; dev: string[] };
 let _navVisCache: { data: NavVisibilityPayload; exp: number } | null = null;
-const NAV_VIS_TTL_MS = 60_000; // 1분
+const NAV_VIS_TTL_MS = 60_000;
 
 export function evictNavVisibilityCache(): void {
   _navVisCache = null;

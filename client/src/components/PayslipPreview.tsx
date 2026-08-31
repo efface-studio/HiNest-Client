@@ -79,7 +79,6 @@ export default function PayslipPreview({
           </div>
         </div>
 
-        {/* 양식 본문 */}
         <div className="border border-ink-200 rounded-xl p-5 bg-white text-ink-900">
           <h2 className="text-center text-[17px] font-extrabold tracking-tight">
             {p.year}년 {String(p.month).padStart(2, "0")}월분 임금명세서
@@ -88,7 +87,6 @@ export default function PayslipPreview({
             {p.companyName || DEFAULT_COMPANY}
           </div>
 
-          {/* 인적사항 */}
           <table className="w-full border-collapse text-[12.5px]">
             <tbody>
               <Row
@@ -112,7 +110,6 @@ export default function PayslipPreview({
             </tbody>
           </table>
 
-          {/* 지급/공제 */}
           <table className="w-full border-collapse text-[12.5px] mt-3">
             <thead>
               <tr>
@@ -148,13 +145,11 @@ export default function PayslipPreview({
             </tbody>
           </table>
 
-          {/* 실수령액 */}
           <div className="mt-3 flex items-center justify-between border-2 border-ink-600 rounded-lg px-4 py-3">
             <span className="text-[14px] font-extrabold">실수령액</span>
             <span className="text-[20px] font-extrabold tabular">{won(p.netPay)}</span>
           </div>
 
-          {/* 근태 */}
           {att.length > 0 && (
             <table className="w-full border-collapse text-[12px] mt-3.5">
               <thead>
@@ -177,7 +172,6 @@ export default function PayslipPreview({
             </table>
           )}
 
-          {/* 계산방법 */}
           {calc.length > 0 && (
             <table className="w-full border-collapse text-[12px] mt-3.5">
               <thead>

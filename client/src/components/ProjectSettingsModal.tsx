@@ -146,8 +146,6 @@ function TabBtn({
   );
 }
 
-/* ---------- Info Tab ---------- */
-
 function InfoTab({
   project,
   canEdit,
@@ -304,8 +302,6 @@ function InfoTab({
     </form>
   );
 }
-
-/* ---------- Members Tab ---------- */
 
 function MembersTab({
   project,

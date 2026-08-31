@@ -282,7 +282,6 @@ function PanelArea({ tab }: { tab: Tab }) {
   );
 }
 
-/* ============ 로그·감사 — 라이브 로그 스트림 헤더 + 언더라인 탭 (스카이) ============ */
 // 그래픽 액센트(점·언더라인·글리프)는 라이트/다크 양쪽에서 그대로 읽히는 중간 톤 hex 를 쓰고,
 // 글자색·면(面) 색은 styles.css 의 다크 리매핑이 걸린 Tailwind 유틸(text-sky-600 등)로 처리한다.
 const LOGS_ACCENT = "#0EA5E9";
@@ -339,7 +338,6 @@ function LogsChrome({ tabs, tab, setTab, chat, meta }: ChromeProps) {
   );
 }
 
-/* ============ 시스템·운영 — 운영 카드 헤더 + 세그먼트 알약 탭 (에메랄드) ============ */
 function SystemChrome({ tabs, tab, setTab, meta }: ChromeProps) {
   return (
     <div>
@@ -376,7 +374,6 @@ function SystemChrome({ tabs, tab, setTab, meta }: ChromeProps) {
   );
 }
 
-/* ============ 보안·권한 — "제한 구역" 밴드 + 좌측 세로 레일 (앰버) ============ */
 function SecurityChrome({ tabs, tab, setTab, meta }: ChromeProps) {
   return (
     <div>
@@ -416,7 +413,6 @@ function SecurityChrome({ tabs, tab, setTab, meta }: ChromeProps) {
   );
 }
 
-/* ============ 개발자 도구 — 다크 터미널 창 + 모노 탭 (바이올렛) ============ */
 function DevtoolsChrome({ tabs, tab, setTab, meta }: ChromeProps) {
   return (
     <div>
@@ -451,7 +447,6 @@ function DevtoolsChrome({ tabs, tab, setTab, meta }: ChromeProps) {
   );
 }
 
-/* ---- 그룹 헤더용 글리프 (운영 콘솔 사이드바 아이콘과 통일) ---- */
 function SystemGlyph() {
   return (
     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -600,7 +595,6 @@ function UnderlineTab({
   );
 }
 
-/* =============== 활동 로그 =============== */
 function LogsPanel() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [q, setQ] = useState("");
@@ -714,7 +708,6 @@ function LogsPanel() {
   );
 }
 
-/* =============== 사내톡 감사 =============== */
 function ChatAuditPanel() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [active, setActive] = useState<Room | null>(null);
@@ -928,7 +921,6 @@ function RoomTypeChip({ type }: { type: Room["type"] }) {
 }
 
 
-/* =============== API 명세 =============== */
 function ApiSpecPanel() {
   const [routes, setRoutes] = useState<ApiSpecRoute[]>([]);
   const [baseUrl, setBaseUrl] = useState("");
@@ -1083,12 +1075,10 @@ function ApiSpecRouteDetail({ r, baseUrl }: { r: ApiSpecRoute; baseUrl: string }
 
   return (
     <div className="px-4 py-3 bg-ink-25 border-t border-ink-100 space-y-3">
-      {/* URL */}
       <Field label="Full URL">
         <code className="text-[12.5px] font-mono text-ink-900 break-all">{fullUrl}</code>
       </Field>
 
-      {/* Path params */}
       {r.pathParams.length > 0 && (
         <Field label="Path Params">
           <ul className="text-[12.5px] font-mono text-ink-900 space-y-1">
@@ -1104,7 +1094,6 @@ function ApiSpecRouteDetail({ r, baseUrl }: { r: ApiSpecRoute; baseUrl: string }
         </Field>
       )}
 
-      {/* Headers */}
       <Field label="Required Headers">
         {r.headers.length === 0 ? (
           <div className="text-[12px] text-ink-500">없음 (인증 불필요, body 없음)</div>
@@ -1121,7 +1110,6 @@ function ApiSpecRouteDetail({ r, baseUrl }: { r: ApiSpecRoute; baseUrl: string }
         )}
       </Field>
 
-      {/* Body */}
       <Field label="Body">
         {r.hasBody ? (
           <div className="text-[12px] text-ink-600">
@@ -1134,7 +1122,6 @@ function ApiSpecRouteDetail({ r, baseUrl }: { r: ApiSpecRoute; baseUrl: string }
         )}
       </Field>
 
-      {/* Middlewares */}
       {r.middlewares.length > 0 && (
         <Field label="Middleware Chain">
           <div className="text-[11.5px] font-mono text-ink-700">
@@ -1143,7 +1130,6 @@ function ApiSpecRouteDetail({ r, baseUrl }: { r: ApiSpecRoute; baseUrl: string }
         </Field>
       )}
 
-      {/* cURL */}
       <Field label="cURL 예시">
         <pre className="text-[11.5px] font-mono text-ink-900 bg-white border border-ink-150 rounded-md p-2.5 overflow-x-auto whitespace-pre">
 {curl}
@@ -1191,7 +1177,6 @@ function MethodChip({ method }: { method: string }) {
   return <span className={`chip ${tone} font-mono`} style={{ minWidth: 56, justifyContent: "center" }}>{method}</span>;
 }
 
-/* =============== 콘솔 — 명령어로 권한·계정 제어 =============== */
 type ConsoleEntry =
   | { kind: "input"; text: string; ts: number }
   | { kind: "output"; text: string; ok: boolean; ts: number };
@@ -1631,7 +1616,6 @@ function ConsolePanel() {
         maxHeight: "calc(100dvh - 120px)",
       }}
     >
-      {/* macOS 스타일 타이틀 바 */}
       <div
         style={{
           display: "flex",
@@ -1748,7 +1732,6 @@ function ConsolePanel() {
         )}
       </div>
 
-      {/* 입력 영역 */}
       <div
         style={{
           display: "flex",
@@ -1995,7 +1978,6 @@ function PromptInline({ theme }: { theme: ConsoleTheme }) {
   );
 }
 
-/* =============== 서버 로그 — 인메모리 버퍼 폴링 =============== */
 type LogLevel = "info" | "warn" | "error" | "http";
 type ServerLog = { ts: number; level: LogLevel; msg: string };
 
@@ -2143,7 +2125,6 @@ function ServerLogsPanel() {
   );
 }
 
-/* =============== 메뉴 가시성 — 사이드바 항목 켜고 끄기 =============== */
 // AppLayout 의 NAV 그룹과 동일한 path/label 매핑.
 const NAV_GROUPS: { label: string; items: { to: string; label: string }[] }[] = [
   {

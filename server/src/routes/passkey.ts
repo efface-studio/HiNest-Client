@@ -163,7 +163,6 @@ router.post("/register/verify", requireAuth, requireSuperAdminStepUp, async (req
   res.json({ ok: true });
 });
 
-/* ================ 인증(authentication) ================ */
 router.post("/auth/options", requireAuth, async (req, res) => {
   const u = (req as any).user;
   const list = await prisma.passkey.findMany({ where: { userId: u.id } });
@@ -226,7 +225,6 @@ router.post("/auth/verify", requireAuth, async (req, res) => {
     data: { counter: verification.authenticationInfo.newCounter, lastUsedAt: new Date() },
   });
 
-  // 총관리자면 super 쿠키 발급
   const fresh = await prisma.user.findUnique({ where: { id: u.id } });
   if (fresh?.superAdmin) {
     const token = signSuper(fresh.id);
@@ -238,7 +236,6 @@ router.post("/auth/verify", requireAuth, async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ================ 기기 관리 ================ */
 router.get("/", requireAuth, async (req, res) => {
   const u = (req as any).user;
   const list = await prisma.passkey.findMany({

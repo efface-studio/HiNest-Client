@@ -65,7 +65,6 @@ router.get("/projects", async (req, res) => {
   res.json({ projects });
 });
 
-/* ===== 폴더 ===== */
 // 전역(프로젝트 아닌) 폴더 가시성 — 기존 로직 그대로.
 function folderVisibilityWhere(u: { id: string; team: string | null; role: string }) {
   if (u.role === "ADMIN") return {};
@@ -359,7 +358,6 @@ router.delete("/folders/:id", async (req, res) => {
   res.json({ ok: true, mode: "cascade" });
 });
 
-/* ===== 문서 ===== */
 // fileUrl 은 반드시 우리 업로드 경로 형식이어야 함 — javascript:, data:, 외부 URL,
 // 그리고 path traversal(../) 모두 차단. (chat.ts 와 동일 정책)
 const SAFE_UPLOAD_URL = /^\/uploads\/[A-Za-z0-9._-]+$/;

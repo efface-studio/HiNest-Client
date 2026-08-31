@@ -175,7 +175,6 @@ export default function ConfirmHost() {
   const [value, setValue] = useState("");
   const [reveal, setReveal] = useState(false);
 
-  // prompt 열릴 때 defaultValue 세팅 + 자동 포커스, 보기 상태 초기화.
   useEffect(() => {
     if (dialog?.kind === "prompt") {
       setValue(dialog.opts.defaultValue ?? "");
@@ -185,7 +184,6 @@ export default function ConfirmHost() {
     }
   }, [dialog]);
 
-  // ESC 로 취소/닫기.
   useEffect(() => {
     if (!dialog) return;
     function onKey(e: KeyboardEvent) {

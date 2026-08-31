@@ -11,7 +11,6 @@ import { requireAuth } from "../lib/auth.js";
 const router = Router();
 router.use(requireAuth);
 
-/* ========== 템플릿 ========== */
 const templateBody = z.object({
   title: z.string().max(200).optional(),
   content: z.string().max(5000).optional(),
@@ -76,7 +75,6 @@ router.delete("/templates/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ========== 결재라인 즐겨찾기 ========== */
 const lineSchema = z.object({
   name: z.string().min(1).max(100),
   reviewerIds: z.array(z.string().max(50)).min(1).max(10),

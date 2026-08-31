@@ -40,7 +40,6 @@ const SEEN_TTL_MS = 10 * 60 * 1000;
 function checkReplay(id: string | undefined): boolean {
   if (!id) return false;
   const now = Date.now();
-  // 캐시 정리 (가볍게)
   if (seenIds.size > 5000) {
     for (const [k, t] of seenIds) if (now - t > SEEN_TTL_MS) seenIds.delete(k);
   }

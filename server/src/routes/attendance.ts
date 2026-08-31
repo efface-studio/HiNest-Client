@@ -120,7 +120,7 @@ router.post("/check-out", async (req, res) => {
     where: { userId_date: { userId: u.id, date } },
   });
   const sessions = normalizeSessions(existing);
-  closeOpenSessions(sessions, now); // 열린 세션 종료
+  closeOpenSessions(sessions, now);
   const rec = await prisma.attendance.upsert({
     where: { userId_date: { userId: u.id, date } },
     update: { sessions: sessions as unknown as object, checkOut: now },
@@ -216,7 +216,6 @@ router.post("/geo-check-in", async (req, res) => {
   res.json({ attendance: rec, workedMinutes: workedMinutes(normalizeSessions(rec)), working: true });
 });
 
-// 월별 근태 기록
 router.get("/month", async (req, res) => {
   const u = (req as any).user;
   const month = String(req.query.month ?? ""); // YYYY-MM
@@ -229,7 +228,6 @@ router.get("/month", async (req, res) => {
   res.json({ attendances: list });
 });
 
-// 휴가 신청
 // TRIP = 외근 (출장/외부 미팅 등 — 사무실 밖에서 업무).
 // 개별 날짜가 먼저 Invalid Date 인지 검증 — 그래야 순서 refine 메시지("종료일이 시작일보다 빠릅니다")가
 // 잘못된 포맷 입력에 오해석되지 않는다.

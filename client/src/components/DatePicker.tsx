@@ -124,7 +124,6 @@ export default function DatePicker({
           className="fixed z-[2000] bg-[var(--c-surface)] rounded-lg shadow-lg border border-[color:var(--c-border)] p-3"
           style={{ width: 280, top: pos.top, left: pos.left }}
         >
-          {/* 월 헤더 + 이동 */}
           <div className="flex items-center justify-between mb-2">
             <button
               type="button"
@@ -155,7 +154,6 @@ export default function DatePicker({
             >»</button>
           </div>
 
-          {/* 요일 헤더 */}
           <div className="grid grid-cols-7 mb-1">
             {["일", "월", "화", "수", "목", "금", "토"].map((d, i) => (
               <div
@@ -169,7 +167,6 @@ export default function DatePicker({
             ))}
           </div>
 
-          {/* 날짜 그리드 */}
           <div className="grid grid-cols-7 gap-0.5">
             {days.map((d, i) => {
               const inMonth = d.getMonth() === cursor.getMonth();
@@ -197,7 +194,6 @@ export default function DatePicker({
             })}
           </div>
 
-          {/* 하단 액션 */}
           <div className="flex items-center justify-between mt-2 pt-2 border-t border-ink-100">
             <button
               type="button"

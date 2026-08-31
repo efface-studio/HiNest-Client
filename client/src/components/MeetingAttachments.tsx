@@ -212,7 +212,6 @@ export default function MeetingAttachments({
         )}
       </div>
 
-      {/* 링크 입력 폼 — 토글로 펼침 */}
       {linkOpen && !readOnly && (
         <form onSubmit={submitLink} className="px-4 py-3 border-b border-ink-100 bg-ink-25 flex flex-wrap items-center gap-2">
           <input

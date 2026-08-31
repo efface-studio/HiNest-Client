@@ -164,7 +164,6 @@ export default function RolePermissionsPanel() {
                       );
                     })}
                     <td className="py-2 pl-3 text-right">
-                      {/* 어느 role 이든 기본값과 다르면 row 단위 reset 버튼 */}
                       {ROLES.some((r) => (matrix?.[r.key]?.[c.key] ?? c.defaults[r.key]) !== c.defaults[r.key]) && (
                         <button
                           className="text-[10.5px] text-ink-500 hover:text-ink-800"

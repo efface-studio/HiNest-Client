@@ -10,25 +10,20 @@ import { imgSrc } from "../../api";
  * 키 이름은 레거시 호환을 위해 유지.
  */
 export const C = {
-  // 브랜드
   blue: "var(--c-brand)",
   blueHover: "var(--c-brand-hover)",
   blueSoft: "var(--c-brand-soft)",
-  // 텍스트
   ink: "var(--c-text)",
   gray700: "var(--c-text-2)",
   gray600: "var(--c-text-3)",
   gray500: "var(--c-text-muted)",
-  // 보더/구분선
   gray300: "var(--c-border-strong)",
   gray200: "var(--c-border)",
   // 보조 표면 (배지·리액션 칩 등)
   gray100: "var(--c-surface-3)",
   // 상대 메시지 버블 전용 — surface 위에 올릴 때 확실히 구분되는 톤
   bubbleOther: "var(--c-chat-bubble-other)",
-  // 상태
   red: "var(--c-danger)",
-  // 표면
   surface: "var(--c-surface)",
   surfaceAlt: "var(--c-surface-2)",
   bg: "var(--c-bg)",
@@ -226,7 +221,6 @@ export function Avatar({
   );
 }
 
-/* ===== 방별 로컬 설정(별명/음소거) localStorage 저장 ===== */
 const ROOM_SETTINGS_KEY = "hinest.chat.roomSettings.v1";
 
 export function loadAllRoomSettings(): Record<string, { nickname?: string; muted?: boolean }> {

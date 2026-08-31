@@ -201,7 +201,6 @@ export default function PayslipComposer({
           <button className="btn-ghost text-[13px]" onClick={onClose} disabled={saving}>닫기</button>
         </div>
 
-        {/* 기본 정보 */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-1">
             <label className="label">직원</label>
@@ -238,13 +237,11 @@ export default function PayslipComposer({
           </div>
         </div>
 
-        {/* 지급/공제 */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-5">
           <ItemEditor title="지급 항목" accent="brand" items={earnings} setItems={setEarnings} total={totalEarnings} />
           <ItemEditor title="공제 항목" accent="rose" items={deductions} setItems={setDeductions} total={totalDeductions} />
         </div>
 
-        {/* 실수령액 */}
         <div className="mt-4 flex items-center justify-between rounded-xl bg-ink-100 px-4 py-3">
           <span className="text-[13px] font-bold text-ink-700">실수령액 (지급 − 공제)</span>
           <span className={`text-[20px] font-extrabold tabular ${netPay < 0 ? "text-rose-600" : "text-ink-900"}`}>
@@ -252,7 +249,6 @@ export default function PayslipComposer({
           </span>
         </div>
 
-        {/* 근태 (선택) */}
         <details className="mt-5 group">
           <summary className="cursor-pointer text-[13px] font-bold text-ink-700 select-none">근태 정보 (선택)</summary>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mt-3">
@@ -270,7 +266,6 @@ export default function PayslipComposer({
           </div>
         </details>
 
-        {/* 계산방법 (선택) */}
         <details className="mt-4">
           <summary className="cursor-pointer text-[13px] font-bold text-ink-700 select-none">계산 방법 (선택)</summary>
           <div className="space-y-2 mt-3">
@@ -291,7 +286,6 @@ export default function PayslipComposer({
           </div>
         </details>
 
-        {/* 메모 */}
         <div className="mt-4">
           <label className="label">하단 문구</label>
           <input className="input" value={memo} maxLength={500} onChange={(e) => setMemo(e.target.value)} />

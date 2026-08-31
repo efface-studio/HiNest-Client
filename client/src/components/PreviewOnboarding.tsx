@@ -90,7 +90,6 @@ export default function PreviewOnboarding() {
     return () => setNativeTabBarHidden("onboarding", false);
   }, [open]);
 
-  // 키보드 단축키
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
@@ -120,7 +119,6 @@ export default function PreviewOnboarding() {
       aria-modal="true"
       aria-labelledby="preview-onboarding-title"
     >
-      {/* 배경 오라 블롭 — 천천히 떠다니는 컬러 블롭 3개 */}
       <div className="hinest-onb-aura" aria-hidden>
         <span className="hinest-onb-blob blob-1" style={{ background: "radial-gradient(circle, #6366F1 0%, transparent 60%)" }} />
         <span className="hinest-onb-blob blob-2" style={{ background: "radial-gradient(circle, #EC4899 0%, transparent 60%)" }} />
@@ -177,14 +175,12 @@ export default function PreviewOnboarding() {
         </div>
       </div>
 
-      {/* 본문 — 가운데 정렬, 슬라이드 전환 */}
       <div className="absolute inset-0 flex items-center justify-center px-6">
         <div
           key={step}
           className="w-full max-w-[560px] text-center hinest-onb-card"
           style={{ ["--slide-from" as any]: `${dir * 24}px` }}
         >
-          {/* 카테고리 키커 */}
           <div
             className="hinest-onb-kicker text-[11px] font-bold uppercase tracking-[0.24em] mb-5"
             style={{ color: accent }}
@@ -192,7 +188,6 @@ export default function PreviewOnboarding() {
             {s.kicker}
           </div>
 
-          {/* 이모지 + 글로우 링 */}
           <div className="hinest-onb-emoji-wrap relative inline-flex items-center justify-center mb-7">
             <span
               className="hinest-onb-ring"
@@ -204,7 +199,6 @@ export default function PreviewOnboarding() {
             <span className="hinest-onb-emoji text-[78px] leading-none relative">{s.emoji}</span>
           </div>
 
-          {/* 제목 */}
           <h2
             id="preview-onboarding-title"
             className="hinest-onb-title text-[30px] sm:text-[36px] font-extrabold tracking-tight leading-[1.15]"
@@ -216,7 +210,6 @@ export default function PreviewOnboarding() {
             {s.title}
           </h2>
 
-          {/* 본문 */}
           <p
             className="hinest-onb-body mt-5 text-[15px] sm:text-[16.5px] leading-relaxed mx-auto max-w-[500px]"
             style={{
@@ -227,7 +220,6 @@ export default function PreviewOnboarding() {
             {s.body}
           </p>
 
-          {/* 불릿 */}
           {s.bullets && (
             <ul className="hinest-onb-bullets mt-6 inline-flex flex-col items-start gap-2.5 text-left mx-auto">
               {s.bullets.map((b, i) => (
@@ -257,9 +249,7 @@ export default function PreviewOnboarding() {
         </div>
       </div>
 
-      {/* 하단 — 진행률 바 + 액션 + 키보드 힌트 */}
       <div className="absolute left-0 right-0 bottom-7 sm:bottom-10 flex flex-col items-center gap-5 px-6 hinest-onb-bottom" style={{ zIndex: 20 }}>
-        {/* 가는 진행률 라인 */}
         <div className="relative" style={{ width: 220, height: 3 }}>
           <div className="absolute inset-0 rounded-full" style={{ background: "rgba(255,255,255,0.14)" }} />
           <div
@@ -272,7 +262,6 @@ export default function PreviewOnboarding() {
           />
         </div>
 
-        {/* 액션 */}
         <div className="flex items-center gap-2.5">
           {!isFirst && (
             <button
@@ -319,7 +308,6 @@ export default function PreviewOnboarding() {
           )}
         </div>
 
-        {/* 키보드 힌트 */}
         <div
           className="hinest-onb-kbd flex items-center gap-2 text-[10.5px] font-mono tracking-wide"
           style={{ color: "rgba(255,255,255,0.4)" }}
@@ -333,7 +321,6 @@ export default function PreviewOnboarding() {
         </div>
       </div>
 
-      {/* === 스타일 === */}
       <style>{`
         /* 오버레이 진입 — 페이드 + 블러 */
         .hinest-onb-overlay {

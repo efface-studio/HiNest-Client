@@ -174,7 +174,6 @@ pub.get("/:token", async (req, res) => {
 pub.post("/:token/download", async (req, res) => {
   const password = typeof req.body?.password === "string" ? req.body.password : "";
 
-  // 폴더 링크 처리
   const folderResult = await findActiveFolderLink(req.params.token);
   if (folderResult.link) {
     const fl = folderResult.link;
@@ -198,7 +197,6 @@ pub.post("/:token/download", async (req, res) => {
     return res.status(folderResult.err).json({ error: statusMsg(folderResult.err) });
   }
 
-  // 문서 링크 처리
   const r = await findActive(req.params.token);
   if (r.err) return res.status(r.err).json({ error: statusMsg(r.err) });
   const link = r.link!;

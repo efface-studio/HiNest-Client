@@ -168,7 +168,6 @@ export default function ConsoleLayout() {
 
   return (
     <div className="flex bg-ink-50" style={{ height: "100dvh" }}>
-      {/* ===== 데스크톱 사이드바 (어두운 운영 테마) ===== */}
       <aside
         className="console-sidebar hidden md:flex w-[252px] flex-col flex-shrink-0 bg-ink-900 text-white"
         style={{ paddingTop: "var(--sa-top, env(safe-area-inset-top))" }}
@@ -271,7 +270,6 @@ export default function ConsoleLayout() {
         </div>
       </aside>
 
-      {/* ===== 모바일 상단바 + 본문 ===== */}
       <div className="flex-1 min-w-0 flex flex-col">
         {showTitlebarSpace && (
           <div

@@ -17,7 +17,6 @@ function iso(daysOffset: number, hour = 9, min = 0): string {
   return d.toISOString();
 }
 
-/* ===== 가짜 사용자/팀 ===== */
 const DEMO_ME = {
   id: "demo-user",
   email: "demo@hinest.app",
@@ -52,7 +51,6 @@ const AVATAR_PALETTE = ["#3D54C4", "#16A34A", "#7C3AED", "#DB2777", "#F59E0B", "
 const PRESENCE_CYCLE: (string | null)[] = ["AVAILABLE", null, "MEETING", "MEAL", "OUT", null, "AWAY"];
 function pick<T>(arr: T[], i: number): T { return arr[i % arr.length]; }
 
-// 임원/매니저 라인 (소수)
 const LEADS = [
   { name: "이앨리스",  role: "MANAGER", team: "디자인팀",   position: "리드",   isDeveloper: false, presenceStatus: "AVAILABLE", presenceMessage: null },
   { name: "한이브",    role: "MANAGER", team: "운영팀",     position: "팀장",   isDeveloper: false, presenceStatus: "OUT",        presenceMessage: "외근" },
@@ -63,7 +61,6 @@ const LEADS = [
   { name: "임도훈",    role: "ADMIN",   team: "재무팀",     position: "이사",   isDeveloper: false, presenceStatus: "MEETING",    presenceMessage: "이사회" },
 ];
 
-// 대리·주임 (중간 라인)
 const SENIORS = [
   { name: "오민준",   team: "개발팀",   position: "대리" },
   { name: "신유나",   team: "디자인팀", position: "대리" },
@@ -75,7 +72,6 @@ const SENIORS = [
   { name: "유서연",   team: "재무팀",   position: "주임" },
 ];
 
-// 사원 — 30명 (요청에 맞춰 조정)
 const STAFF_NAMES = [
   "박밥", "최캐롤", "정데이브",
   "김지우", "이서연", "박민서", "최지유", "정하윤", "강지호", "조서윤",
@@ -99,7 +95,6 @@ function makeStaff(idx: number, name: string) {
 function buildUsers() {
   const out: any[] = [DEMO_ME];
   let n = 0;
-  // 리더진
   for (const l of LEADS) {
     n++;
     out.push({
@@ -111,7 +106,6 @@ function buildUsers() {
       ...l,
     });
   }
-  // 시니어
   for (const s of SENIORS) {
     n++;
     out.push({
@@ -127,7 +121,6 @@ function buildUsers() {
       ...s,
     });
   }
-  // 사원 (인턴 포함) — 30명+
   STAFF_NAMES.forEach((nm, i) => {
     n++;
     const base = makeStaff(i, nm);
@@ -145,7 +138,6 @@ function buildUsers() {
 
 const DEMO_USERS = buildUsers();
 
-/* ===== fixtures ===== */
 function notices() {
   return {
     notices: [
@@ -494,7 +486,6 @@ function journalsList() {
   };
 }
 
-/* ===== 전자결재 데모 ===== */
 function demoApprovalsAll() {
   const meReq = { id: DEMO_ME.id, name: DEMO_ME.name, avatarColor: DEMO_ME.avatarColor, avatarUrl: null, position: DEMO_ME.position, team: DEMO_ME.team };
   const reviewers = [
@@ -586,7 +577,6 @@ function approvals(p?: string) {
   return { approvals: list };
 }
 
-/* ===== 데모 프로젝트 ===== */
 const DEMO_PROJECTS = [
   { id: "p1", name: "HiNest v2",
     description:
@@ -638,7 +628,6 @@ const DEMO_PROJECTS = [
 
 function projectList() { return { projects: DEMO_PROJECTS }; }
 
-/* ===== 프로젝트별 QA / 이벤트 데모 ===== */
 const _qaUser = (id: string, name: string, color: string) => ({ id, name, avatarColor: color, avatarUrl: null, position: null, team: null });
 const _grace = _qaUser("u-lead-3", "박그레이스", "#7C3AED");
 const _alice = _qaUser("u-lead-1", "이앨리스",   "#16A34A");
@@ -649,7 +638,6 @@ const _yunseo = _qaUser("u-sr-13", "조윤서", "#7C3AED"); // p1 멤버 · 개�
 
 function projectQa(projectId: string) {
   if (projectId === "p1") {
-    // HiNest v2 — 베타 운영 중 발견된 이슈 / 개선
     return [
       { id: "qa1", projectId, title: "모바일에서 결재 댓글 알림 누락", note: "iOS 17.4 + 결재 댓글 작성 시 신청자에게 푸시 알림이 가지 않음. APN payload 확인 필요.",
         screen: "모바일 / 결재 상세", platform: "IOS" as const, assigneeId: _grace.id, status: "IN_PROGRESS" as const, priority: "HIGH" as const, sortOrder: 1, dueDate: iso(3).slice(0, 10),
@@ -700,14 +688,12 @@ function projectWebhooks(projectId: string) {
 function projectEvents(projectId: string) {
   if (projectId === "p1") {
     return [
-      /* ── 기존 마일스톤 ───────────────────────────────────── */
       { id: "pe1", projectId, title: "결재 자동화 베타 그룹 선정",   description: "10명 내외, 직급 분포 고려. 신청자 중 결재 빈도 상·중·하 골고루 선정해 추천 정확도 편향 방지.", startAt: iso(2, 10),  endAt: iso(2, 11),  allDay: false, color: "#3B5CF0", assigneeIds: _me.id, createdById: _me.id, completed: false, completedAt: null, completedById: null },
       { id: "pe2", projectId, title: "v2 베타 1차 회고",            description: "3주 운영 후 회고. 채택률·반려율·문의 인입 추이 리뷰 후 다음 마일스톤 합의.", startAt: iso(5, 14),  endAt: iso(5, 16),  allDay: false, color: "#3B5CF0", assigneeIds: null, createdById: _alice.id, completed: false, completedAt: null, completedById: null },
       { id: "pe3", projectId, title: "디자인 시스템 v2.1 마이그레이션", description: "전 화면 컬러 토큰 일괄 갱신. 라이트/다크/브랜드 3모드 동시 적용 + 회귀 스크린샷 대조.", startAt: iso(7, 9),   endAt: iso(9, 18),  allDay: true,  color: "#7C3AED", assigneeIds: `${_alice.id},${_yuna.id}`, createdById: _alice.id, completed: false, completedAt: null, completedById: null },
       { id: "pe4", projectId, title: "정식 런칭 D-day",             description: "공식 발표 + 외부 파트너 도입 시작. 보도자료·인앱 공지·고객지원 매크로 동시 오픈.", startAt: iso(45, 10), endAt: iso(45, 11), allDay: false, color: "#DB2777", assigneeIds: null, createdById: _me.id, completed: false, completedAt: null, completedById: null },
       { id: "pe5", projectId, title: "회의록 검색 인덱싱 도입",      description: "한글 자모 분리 토크나이저 적용 + 검색 응답 80ms 목표. 동의어 사전 200개 등록.", startAt: iso(-3, 14), endAt: iso(-3, 18), allDay: false, color: "#16A34A", assigneeIds: _yunseo.id, createdById: _grace.id, completed: true, completedAt: iso(-3, 18), completedById: _grace.id },
 
-      /* ── 지난 일정 (완료) ─────────────────────────────────── */
       { id: "pe6",  projectId, title: "v2 베타 킥오프 & 범위 확정",    description: "베타 성공지표 합의 — 결재 자동화 채택률 60%, 회의록 검색 만족도 4.0/5.0. 프로덕트·디자인·개발 합동.", startAt: iso(-12, 10), endAt: iso(-12, 12), allDay: false, color: "#3B5CF0", assigneeIds: `${_me.id},${_alice.id},${_grace.id}`, createdById: _me.id, completed: true, completedAt: iso(-12, 12), completedById: _me.id },
       { id: "pe7",  projectId, title: "스프린트 13 회고",             description: "벨로시티 38pt 달성. 액션아이템 3건 — 추천 데이터셋 보강 / QA 자동화 / 디자인 토큰 정리.", startAt: iso(-11, 14), endAt: iso(-11, 15), allDay: false, color: "#7C3AED", assigneeIds: `${_grace.id},${_me.id}`, createdById: _grace.id, completed: true, completedAt: iso(-11, 15), completedById: _grace.id },
       { id: "pe8",  projectId, title: "결재선 추천 학습 데이터셋 라벨링", description: "지난 6개월 결재 신청·실제 결재선 매칭 정답 수기 라벨링. 운영팀 협조로 2,400건 확보.", startAt: iso(-8, 9), endAt: iso(-7, 18), allDay: true, color: "#F59E0B", assigneeIds: _yunseo.id, createdById: _grace.id, completed: true, completedAt: iso(-7, 18), completedById: _yunseo.id },
@@ -717,7 +703,6 @@ function projectEvents(projectId: string) {
       { id: "pe12", projectId, title: "베타 사용자 심층 인터뷰 (3명)",  description: "온보딩 마찰 구간 / 결재선 추천 신뢰도 / 검색 체감 속도 청취. 녹취 정리본 문서함 업로드.", startAt: iso(-4, 16), endAt: iso(-4, 18), allDay: false, color: "#0EA5E9", assigneeIds: _me.id, createdById: _me.id, completed: true, completedAt: iso(-4, 18), completedById: _me.id },
       { id: "pe13", projectId, title: "6월 1주차 플래닝 & OKR 동기화",  description: "6월 마일스톤 확정 — v2.1 마이그레이션, 베타 2차 회고, RC1 빌드.", startAt: iso(-1, 10), endAt: iso(-1, 11), allDay: false, color: "#3B5CF0", assigneeIds: `${_me.id},${_alice.id},${_grace.id}`, createdById: _me.id, completed: true, completedAt: iso(-1, 11), completedById: _me.id },
 
-      /* ── 이번 주 · 예정 ───────────────────────────────────── */
       { id: "pe14", projectId, title: "데일리 스탠드업",              description: "오늘 작업·블로커 공유 (15분).", startAt: iso(0, 9, 30), endAt: iso(0, 9, 45), allDay: false, color: "#3B5CF0", assigneeIds: null, createdById: _me.id, completed: false, completedAt: null, completedById: null },
       { id: "pe15", projectId, title: "결재 자동화 베타 온보딩 세션",   description: "베타 그룹 대상 결재선 추천·자동 분기 기능 데모 + Q&A. 슬라이드 + 라이브 데모.", startAt: iso(1, 14), endAt: iso(1, 15, 30), allDay: false, color: "#3B5CF0", assigneeIds: `${_me.id},${_alice.id}`, createdById: _me.id, completed: false, completedAt: null, completedById: null },
       { id: "pe16", projectId, title: "디자인 시스템 v2.1 토큰 리뷰",   description: "채도 상향안(이앨리스 제안) 반영 여부 검토. 다크모드 대비비 영향 확인.", startAt: iso(1, 16, 30), endAt: iso(1, 17, 30), allDay: false, color: "#7C3AED", assigneeIds: `${_alice.id},${_grace.id}`, createdById: _alice.id, completed: false, completedAt: null, completedById: null },
@@ -741,7 +726,6 @@ function projectEvents(projectId: string) {
       { id: "pe34", projectId, title: "월간 OKR 점검 & 6월 회고",      description: "6월 OKR 달성도 리뷰 + 7월 핵심 결과 초안. 베타→정식 전환 준비 상황 공유.", startAt: iso(27, 10), endAt: iso(27, 11, 30), allDay: false, color: "#3B5CF0", assigneeIds: _me.id, createdById: _me.id, completed: false, completedAt: null, completedById: null },
       { id: "pe35", projectId, title: "v2.1 프로덕션 소프트 배포",      description: "전사 점진 배포(10%→50%→100%). 롤백 절차·모니터링 대기조 지정.", startAt: iso(28, 16), endAt: iso(28, 17), allDay: false, color: "#DB2777", assigneeIds: `${_grace.id},${_me.id}`, createdById: _grace.id, completed: false, completedAt: null, completedById: null },
 
-      /* ── 로드맵 (다음 달) ─────────────────────────────────── */
       { id: "pe36", projectId, title: "출시 직후 모니터링 강화 주간",    description: "배포 직후 3일 집중 모니터링. 에러·문의 인입 실시간 추적, 핫픽스 대기조 운영.", startAt: iso(29, 9), endAt: iso(31, 18), allDay: true, color: "#DC2626", assigneeIds: `${_grace.id},${_yunseo.id}`, createdById: _grace.id, completed: false, completedAt: null, completedById: null },
       { id: "pe37", projectId, title: "파트너사 도입 온보딩 (1차)",      description: "외부 파트너 2개사 워크스페이스 셋업 + 관리자 교육. 데이터 마이그레이션 가이드 전달.", startAt: iso(35, 14), endAt: iso(35, 15, 30), allDay: false, color: "#0EA5E9", assigneeIds: _me.id, createdById: _me.id, completed: false, completedAt: null, completedById: null },
       { id: "pe38", projectId, title: "정식 런칭 리허설 / 시나리오 점검", description: "런칭 당일 타임라인·공지·장애 대응 시나리오 드라이런. 역할별 R&R 확정.", startAt: iso(41, 10), endAt: iso(41, 12), allDay: false, color: "#DB2777", assigneeIds: `${_grace.id},${_me.id}`, createdById: _me.id, completed: false, completedAt: null, completedById: null },
@@ -757,7 +741,6 @@ function projectEvents(projectId: string) {
   return [];
 }
 
-/* ===== 문서함 데모 ===== */
 function demoFolders() {
   return [
     { id: "f1", name: "회사 운영", parentId: null, createdAt: iso(-180), scope: "ALL" as const, scopeTeam: null, scopeUserIds: null },
@@ -993,7 +976,6 @@ function demoLeaves(all: boolean) {
   ];
 }
 
-/* ===== 법인카드 지출 데모 ===== */
 function demoExpenses() {
   return [
     { id: "ex1", userId: DEMO_ME.id,  usedAt: iso(0, 12, 30),  merchant: "스타벅스 강남역점",   category: "식비",   amount:  18000, memo: "프로덕트팀 주간 미팅 (참석 4명) — 아이스 아메리카노 4잔",  receiptUrl: null, status: "PENDING",  user: { name: DEMO_ME.name,  team: DEMO_ME.team } },
@@ -1007,7 +989,6 @@ function demoExpenses() {
   ];
 }
 
-/* ===== 서비스 계정 데모 ===== */
 function demoAccounts() {
   const me = { id: DEMO_ME.id, name: DEMO_ME.name, avatarColor: DEMO_ME.avatarColor, avatarUrl: null };
   const proj = (id: string) => {
@@ -1133,7 +1114,6 @@ function platformSummary() {
 
 /** 경로별 매처 — 위에서 아래로 검사하므로 **세부 경로 → 일반 경로** 순서. */
 const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = [
-  /* === 본인 / 인증 === */
   { test: (p) => p === "/api/me",                      data: () => ({ user: DEMO_ME, impersonator: null }) },
   { test: (p) => p === "/api/me/presence",             data: () => ({ presenceStatus: null, presenceMessage: null, presenceUpdatedAt: null }) },
   { test: (p) => p.startsWith("/api/version"),         data: () => ({ version: "preview" }) },
@@ -1144,7 +1124,6 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
   { test: (p) => p.startsWith("/api/platform/companies/summary"), data: platformSummary },
   { test: (p) => p.startsWith("/api/platform/companies"),         data: platformCompanies },
 
-  /* === 사용자 / 디렉토리 === */
   { test: (p) => p.startsWith("/api/users/teams"),     data: teams },
   { test: (p) => p.startsWith("/api/users/presence"),  data: () => ({ users: DEMO_USERS.map((u) => ({ id: u.id, presenceStatus: u.presenceStatus, presenceMessage: u.presenceMessage, workStatus: "IN" })) }) },
   { test: (p) => p === "/api/users" || p.startsWith("/api/users?"), data: () => {
@@ -1160,7 +1139,6 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
     } },
   { test: (p) => p.startsWith("/api/users/"),          data: () => ({ user: DEMO_USERS[1] }) },
 
-  /* === 공지 === */
   { test: (p) => /^\/api\/notice\/[^/?]+\/reactions/.test(p), data: () => ({ reactions: [] }) },
   { test: (p) => /^\/api\/notice\/[^/?]+(?:\?|$)/.test(p),    data: (p?: string) => {
       const id = (p ?? "").replace(/^\/api\/notice\//, "").split(/[/?]/)[0];
@@ -1169,11 +1147,9 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
     } },
   { test: (p) => p.startsWith("/api/notice"),          data: notices },
 
-  /* === 일정 === */
   { test: (p) => /^\/api\/schedule\/[^/?]+/.test(p),   data: () => ({ event: schedule().events[0] }) },
   { test: (p) => p.startsWith("/api/schedule"),        data: schedule },
 
-  /* === 출퇴근 / 휴가 === */
   { test: (p) => p === "/api/attendance/today",        data: attendanceToday },
   // overtime 은 아래 "/api/attendance" catch-all 보다 먼저 매칭돼야 함 — catch-all 응답엔
   // overtimes 키가 없어 OvertimeSection 이 빈 목록으로 오인/크래시했던 프리뷰 전용 함정.
@@ -1182,13 +1158,11 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
   { test: (p) => p.startsWith("/api/attendance/month"), data: () => ({ attendances: demoMonthAttendance() }) },
   { test: (p) => p.startsWith("/api/attendance"),       data: () => ({ attendances: demoMonthAttendance(), leaves: demoLeaves(false) }) },
 
-  /* === 회의록 === */
   { test: (p) => p.startsWith("/api/meeting/mentionable"),                data: () => ({ users: DEMO_USERS.slice(0, 8).map((u) => ({ id: u.id, name: u.name, avatarColor: u.avatarColor })) }) },
   { test: (p) => /^\/api\/meeting\/[^/?]+\/revisions/.test(p),            data: (p?: string) => ({ revisions: meetingRevisions((p ?? "").match(/\/api\/meeting\/([^/?]+)/)?.[1] ?? "m1") }) },
   { test: (p) => /^\/api\/meeting\/[^/?]+(?:\?|$)/.test(p),               data: (p?: string) => meetingDetail((p ?? "").replace(/^\/api\/meeting\//, "").split(/[/?]/)[0]) },
   { test: (p) => p.startsWith("/api/meeting"),                            data: meetings },
 
-  /* === 업무일지 === */
   { test: (p) => /^\/api\/journal\/[^/?]+/.test(p),    data: (p?: string) => {
       const id = (p ?? "").replace(/^\/api\/journal\//, "").split(/[/?]/)[0];
       const list = journalsList().journals;
@@ -1196,7 +1170,6 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
     } },
   { test: (p) => p.startsWith("/api/journal"),         data: journalsList },
 
-  /* === 결재 === */
   { test: (p) => p === "/api/approval/counts",         data: approvalCounts },
   { test: (p) => /^\/api\/approval\/[^/?]+/.test(p),   data: (p?: string) => {
       const id = (p ?? "").replace(/^\/api\/approval\//, "").split(/[/?]/)[0];
@@ -1208,11 +1181,9 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
   { test: (p) => p.startsWith("/api/approval-extras"),           data: () => ({}) },
   { test: (p) => p.startsWith("/api/approval"),                  data: approvals },
 
-  /* === 알림 === */
   { test: (p) => p.startsWith("/api/notification/prefs"), data: () => ({ prefs: {}, dndStart: null, dndEnd: null }) },
   { test: (p) => p.startsWith("/api/notification"),       data: notificationList },
 
-  /* === 채팅 === */
   { test: (p) => /\/api\/chat\/rooms\/[^/]+\/messages/.test(p), data: (p?: string) => {
       const m = (p ?? "").match(/\/rooms\/([^/]+)\/messages/);
       return { messages: chatMessages(m?.[1] ?? "r1"), readStates: [] };
@@ -1221,7 +1192,6 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
   { test: (p) => p.startsWith("/api/chat/rooms"),      data: () => ({ rooms: chatRooms() }) },
   { test: (p) => p.startsWith("/api/chat"),            data: () => ({ rooms: chatRooms() }) },
 
-  /* === 문서함 === */
   { test: (p) => /^\/api\/document\/[^/?]+\/revisions/.test(p), data: () => ({ revisions: [] }) },
   { test: (p) => p.startsWith("/api/document/folders"),  data: () => ({ folders: demoFolders() }) },
   { test: (p) => p.startsWith("/api/document/projects"), data: () => ({ projects: DEMO_PROJECTS.map((x) => ({ id: x.id, name: x.name, color: x.color })) }) },
@@ -1232,7 +1202,6 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
     } },
   { test: (p) => p.startsWith("/api/document"),          data: () => ({ documents: demoDocs(), folders: demoFolders() }) },
 
-  /* === 지출 / 카드 === */
   { test: (p) => /^\/api\/expense\/[^/?]+/.test(p),    data: (p?: string) => {
       const id = (p ?? "").replace(/^\/api\/expense\//, "").split(/[/?]/)[0];
       const list = demoExpenses();
@@ -1243,7 +1212,6 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
       return { expenses: list, totalAmount: list.reduce((a, e) => a + e.amount, 0) };
     } },
 
-  /* === 프로젝트 === */
   { test: (p) => /^\/api\/project\/[^/?]+\/events/.test(p),  data: (p?: string) => ({ events: projectEvents((p ?? "").match(/\/api\/project\/([^/?]+)/)?.[1] ?? "p1") }) },
   { test: (p) => /^\/api\/project\/[^/?]+\/qa/.test(p),      data: (p?: string) => ({ items: projectQa((p ?? "").match(/\/api\/project\/([^/?]+)/)?.[1] ?? "p1") }) },
   { test: (p) => /^\/api\/project\/[^/?]+\/webhook/.test(p), data: (p?: string) => ({ channels: projectWebhooks((p ?? "").match(/\/api\/project\/([^/?]+)/)?.[1] ?? "p1") }) },
@@ -1251,29 +1219,24 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
   { test: (p) => /^\/api\/project\/[^/?]+(?:\?|$)/.test(p),  data: (p?: string) => projectDetail((p ?? "").replace(/^\/api\/project\//, "").split(/[/?]/)[0]) },
   { test: (p) => p.startsWith("/api/project"),               data: projectList },
 
-  /* === 서비스 계정 === */
   { test: (p) => p.startsWith("/api/service-accounts/projects"), data: () => ({ projects: DEMO_PROJECTS.map((p) => ({ id: p.id, name: p.name, color: p.color })) }) },
   { test: (p) => /^\/api\/service-accounts\/[^/?]+/.test(p), data: () => ({ account: demoAccounts()[0] }) },
   { test: (p) => p.startsWith("/api/service-accounts"),  data: () => ({ accounts: demoAccounts() }) },
 
-  /* === 스니펫 / 핀 / 프로필 === */
   { test: (p) => p.startsWith("/api/snippet/search"),  data: () => ({ snippets: [] }) },
   { test: (p) => p.startsWith("/api/snippet"),         data: () => ({ snippets: [] }) },
   { test: (p) => p.startsWith("/api/pins"),            data: () => ({ pins: [] }) },
   { test: (p) => p.startsWith("/api/profile"),         data: () => ({ user: DEMO_ME }) },
 
-  /* === Feature Flags / 네비 === */
   { test: (p) => p.startsWith("/api/feature-flags"),   data: featureFlags },
   { test: (p) => p.startsWith("/api/nav"),             data: navConfig },
 
-  /* === 검색 / 미리보기 / 공유링크 === */
   { test: (p) => p.startsWith("/api/search"),          data: () => ({ users: [], notices: [], events: [], documents: [], messages: [], meetings: [], approvals: [] }) },
   { test: (p) => p.startsWith("/api/unfurl"),          data: () => ({ url: null, title: null, description: null, image: null }) },
   { test: (p) => p.startsWith("/api/share-links"),     data: () => ({ links: [] }) },
   { test: (p) => p.startsWith("/api/folder-share-links"), data: () => ({ links: [] }) },
   { test: (p) => p.startsWith("/api/public-share"),    data: () => ({ ok: false, error: "preview" }) },
 
-  /* === 관리자 페이지 === */
   { test: (p) => p.startsWith("/api/admin/invites"),        data: () => ({ keys: [] }) },
   { test: (p) => p.startsWith("/api/admin/teams"),          data: () => ({ teams: DEMO_TEAMS.map((t, i) => ({ id: `t${i}`, name: t, createdAt: iso(-30) })) }) },
   { test: (p) => p.startsWith("/api/admin/positions"),      data: () => ({ positions: ["이사", "팀장", "리드", "대리", "주임", "사원", "인턴"].map((n, i) => ({ id: `p${i}`, name: n, rank: i, createdAt: iso(-30) })) }) },

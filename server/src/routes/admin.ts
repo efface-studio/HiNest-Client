@@ -36,7 +36,6 @@ router.use(requireAuth, requireAdmin);
 const ops = Router();
 ops.use((_req: Request, _res: Response, next: NextFunction) => runUnscoped(() => next()));
 
-/* ===== 초대키 ===== */
 router.get("/invites", async (_req, res) => {
   const keys = await prisma.inviteKey.findMany({
     orderBy: { createdAt: "desc" },
@@ -88,7 +87,6 @@ router.delete("/invites/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ===== 유저 ===== */
 // HR 상세까지 포함해 전 필드 반환. 엑셀 업/다운로드 기반.
 const HR_SELECT = {
   id: true,
@@ -483,7 +481,6 @@ router.post("/users/unlock-all", async (req, res) => {
     where: { id: { in: ids } },
     data: { failedLoginCount: 0, lockedAt: null },
   });
-  // 각 사용자 캐시 무효화 + 감사 로그
   await Promise.all(targets.map((t) => evictUserCache(t.id)));
   await writeLog(u.id, "USER_UNLOCK_BULK", undefined, `count=${targets.length} ids=${ids.join(",")}`, req.ip);
   res.json({ ok: true, count: targets.length, users: targets });
@@ -554,7 +551,6 @@ router.post("/users/:id/unresign", async (req, res) => {
   res.json({ user: updated });
 });
 
-/* ===== 팀 ===== */
 router.get("/teams", async (_req, res) => {
   const teams = await prisma.team.findMany({ orderBy: { createdAt: "asc" }, take: 500 });
   res.json({ teams });
@@ -607,7 +603,6 @@ router.delete("/teams/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ===== 직급 ===== */
 router.get("/positions", async (_req, res) => {
   const positions = await prisma.position.findMany({
     orderBy: [{ rank: "asc" }, { createdAt: "asc" }],
@@ -692,7 +687,6 @@ router.delete("/positions/:id", async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ===== 로그 (총관리자 전용 · step-up 필요) ===== */
 /* ===== API 명세 (총관리자) =====
  * Express 라우터 트리를 깊이우선으로 훑어 등록된 모든 (METHOD, PATH) + 사용된 미들웨어 이름을 수집.
  * - 인증/권한 미들웨어 이름이 검출되면 auth: \"PUBLIC\" | \"AUTH\" | \"ADMIN\" | \"SUPER\" 로 라벨링.
@@ -1435,7 +1429,6 @@ ops.get("/companies", requireSuperAdminStepUp, async (_req, res) => {
   res.json({ companies });
 });
 
-/* ===== 출근 기록 조회 — 특정 유저의 특정 날짜 ===== */
 router.get("/users/:id/attendance", async (req, res) => {
   const u = (req as any).user;
   const { id } = req.params;
@@ -1451,7 +1444,6 @@ router.get("/users/:id/attendance", async (req, res) => {
   res.json({ attendance: rec });
 });
 
-/* ===== 출근 기록 관리 — 특정 유저의 특정 날짜 출퇴근 시각 수정 ===== */
 // body: { date?: "YYYY-MM-DD" 생략시 오늘, checkIn?: ISO|null, checkOut?: ISO|null }
 // 문자열 생략 → 미변경, null 명시 → 해당 필드 지움.
 router.patch("/users/:id/attendance", async (req, res) => {
@@ -1573,7 +1565,6 @@ router.get("/attendance/overview", async (req, res) => {
  * 보안: super-stepup 필수, 1시간 자동 만료, 시작/종료 모두 audit 기록.
  * 모든 액션은 임퍼소네이팅 중에도 (req as any).realUser 로 진짜 사용자가 추적된다.
  */
-/* ===== Feature Flags CRUD ===== */
 import { evictFlagCache } from "../lib/featureFlags.js";
 
 ops.get("/feature-flags", requireSuperAdminStepUp, async (_req, res) => {
@@ -1621,7 +1612,6 @@ ops.delete("/feature-flags/:key", requireSuperAdminStepUp, async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ===== 역할 권한 (RolePermission) ===== */
 import { PERMISSION_CATALOG, getEffectiveMatrix, evictPermissionCache, type PermKey } from "../lib/permissions.js";
 
 ops.get("/role-permissions", requireSuperAdminStepUp, async (_req, res) => {
@@ -1665,7 +1655,6 @@ ops.delete("/role-permissions/:role/:permKey", requireSuperAdminStepUp, async (r
   res.json({ ok: true });
 });
 
-/* ===== 2FA(패스키) 정책 ===== */
 
 ops.get("/2fa-policy", requireSuperAdminStepUp, async (_req, res) => {
   const policies = await prisma.twoFactorPolicy.findMany();
@@ -1711,7 +1700,6 @@ ops.get("/2fa-policy/non-compliant", requireSuperAdminStepUp, async (_req, res) 
   res.json({ users: out });
 });
 
-/* ===== Rate-limit Rules + IP Blocks ===== */
 import { evictSecurityCache } from "../lib/securityRules.js";
 
 ops.get("/rate-rules", requireSuperAdminStepUp, async (_req, res) => {
@@ -1819,7 +1807,6 @@ ops.delete("/api-tokens/:id", requireSuperAdminStepUp, async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ===== Audit Trail Viewer ===== */
 
 ops.get("/audit", requireSuperAdminStepUp, async (req, res) => {
   const action = typeof req.query.action === "string" ? req.query.action : undefined;
@@ -1949,12 +1936,10 @@ ops.post("/trash/purge-old", requireSuperAdminStepUp, async (req, res) => {
   res.json({ ok: true, counts: { meeting: m.count, document: d.count, journal: j.count, notice: n.count } });
 });
 
-/* ===== Health-check Board ===== */
 
 ops.get("/health", requireSuperAdminStepUp, async (_req, res) => {
   const checks: Record<string, { ok: boolean; latencyMs?: number; detail?: string; meta?: any }> = {};
 
-  // DB ping
   {
     const t0 = Date.now();
     try {
@@ -1965,7 +1950,6 @@ ops.get("/health", requireSuperAdminStepUp, async (_req, res) => {
     }
   }
 
-  // 마이그레이션 상태
   try {
     const rows = await prisma.$queryRawUnsafe<any[]>(
       `SELECT migration_name, finished_at FROM "_prisma_migrations" ORDER BY finished_at DESC LIMIT 1`
@@ -1976,7 +1960,6 @@ ops.get("/health", requireSuperAdminStepUp, async (_req, res) => {
     checks.migrations = { ok: false, detail: String(e?.message ?? e) };
   }
 
-  // S3
   {
     const region = process.env.AWS_REGION?.trim();
     const bucket = process.env.S3_BUCKET?.trim();
@@ -1995,7 +1978,6 @@ ops.get("/health", requireSuperAdminStepUp, async (_req, res) => {
     }
   }
 
-  // 프로세스 정보
   const mem = process.memoryUsage();
   checks.process = {
     ok: true,
@@ -2024,7 +2006,6 @@ ops.get("/health", requireSuperAdminStepUp, async (_req, res) => {
   res.json({ ok: allOk, ts: Date.now(), checks });
 });
 
-/* ===== Error Dashboard (5xx grouping) ===== */
 
 ops.get("/errors", requireSuperAdminStepUp, async (req, res) => {
   const userId = typeof req.query.userId === "string" ? req.query.userId : undefined;
@@ -2060,7 +2041,6 @@ ops.delete("/errors", requireSuperAdminStepUp, async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ===== Session Manager ===== */
 
 /** 활성 세션 목록. ?userId 로 특정 유저만, 기본은 전체 (최근 활동 순). */
 ops.get("/sessions", requireSuperAdminStepUp, async (req, res) => {

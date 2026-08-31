@@ -44,7 +44,6 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
 
   useEffect(() => {
     if (!open) return;
-    // 열릴 때마다 상태 초기화.
     setName("");
     setDescription("");
     setColor(PALETTE[0]);
@@ -100,7 +99,6 @@ export default function CreateProjectModal({ open, onClose, onCreated }: Props) 
       });
       onCreated?.();
       onClose();
-      // 만든 직후 바로 해당 프로젝트로 이동.
       nav(`/projects/${r.project.id}`);
     } catch (e: any) {
       setErr(e?.message ?? "프로젝트 생성에 실패했습니다.");

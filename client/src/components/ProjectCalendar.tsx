@@ -39,7 +39,6 @@ function parseAssignees(s: string | null | undefined): string[] {
 type View = "month" | "week" | "day";
 type Mode = "calendar" | "list";
 
-/* ------------ 날짜 유틸 ------------ */
 function startOfMonth(d: Date) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
 }
@@ -81,7 +80,6 @@ function toLocalInput(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/* ------------ 메인 컴포넌트 ------------ */
 export default function ProjectCalendar({
   projectId,
   members,
@@ -290,7 +288,6 @@ export default function ProjectCalendar({
 
   return (
     <div>
-      {/* 헤더: 뷰 스위처 + 네비 */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-2 mb-4">
         <div className="flex items-center gap-2 flex-wrap">
           <button className="btn-ghost !px-2 !py-1" onClick={() => shift(-1)} aria-label="이전">
@@ -313,7 +310,6 @@ export default function ProjectCalendar({
             <ViewBtn active={mode === "calendar"} onClick={() => setMode("calendar")}>캘린더</ViewBtn>
             <ViewBtn active={mode === "list"} onClick={() => setMode("list")}>리스트</ViewBtn>
           </div>
-          {/* 캘린더 모드에서만 월/주/일 선택 가능 */}
           {mode === "calendar" && (
             <>
               <ViewBtn active={view === "month"} onClick={() => setView("month")}>월</ViewBtn>
@@ -333,7 +329,6 @@ export default function ProjectCalendar({
         </div>
       </div>
 
-      {/* 담당자 필터 — 전체 / 내 일정 / 멤버별 */}
       <div className="flex items-center gap-1.5 flex-wrap mb-3">
         <FilterChip active={filter === "all"} onClick={() => setFilter("all")}>전체</FilterChip>
         {user?.id && (() => {
@@ -386,7 +381,6 @@ export default function ProjectCalendar({
         <ListView cursor={cursor} events={visibleEvents} onSelect={setSelected} memberMap={memberMap} onToggleCompleted={toggleCompleted} />
       )}
 
-      {/* 생성 모달 */}
       {openCreate && (
         <Portal>
         <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setOpenCreate(false)}>
@@ -468,7 +462,6 @@ export default function ProjectCalendar({
         </Portal>
       )}
 
-      {/* 상세 모달 */}
       {selected && (
         <Portal>
         <div className="fixed inset-0 bg-slate-900/40 grid place-items-center modal-safe z-50" onClick={() => setSelected(null)}>
@@ -688,7 +681,6 @@ function ViewBtn({ active, onClick, children }: { active: boolean; onClick: () =
   );
 }
 
-/* ------------ 월 뷰 ------------ */
 function MonthGrid({
   cursor,
   events,
@@ -759,7 +751,6 @@ function MonthGrid({
                   {c.getDate()}
                 </span>
               </div>
-              {/* 데스크톱: 이벤트 칩 최대 3개 */}
               <div className="hidden sm:block space-y-0.5">
                 {evs.slice(0, 3).map((ev) => {
                   const asg = parseAssignees(ev.assigneeIds);
@@ -784,7 +775,6 @@ function MonthGrid({
                 })}
                 {evs.length > 3 && <div className="text-[10px] text-slate-400">+{evs.length - 3}</div>}
               </div>
-              {/* 모바일: 색상 점으로 밀도만 표시 */}
               <div className="sm:hidden flex items-center justify-center flex-wrap gap-[3px] mt-0.5">
                 {evs.slice(0, 4).map((ev) => (
                   <span
@@ -807,7 +797,6 @@ function MonthGrid({
   );
 }
 
-/* ------------ 주 뷰 ------------ */
 function WeekView({
   cursor,
   eventsOnDay,
@@ -881,7 +870,6 @@ function WeekView({
   );
 }
 
-/* ------------ 리스트(일자 agenda) 뷰 ------------ */
 function ListView({
   cursor,
   events,
@@ -980,7 +968,6 @@ function ListView({
   );
 }
 
-/* ------------ 일 뷰 ------------ */
 function DayView({
   cursor,
   events,

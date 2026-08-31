@@ -408,7 +408,6 @@ export default function ServiceAccountsPage() {
         }
       />
 
-      {/* 경고 배너 */}
       <div className="panel p-3 mb-4 bg-amber-50 border border-amber-200 text-[12px] text-amber-800 flex items-start gap-2">
         <span className="text-base leading-none">🔐</span>
         <div>
@@ -417,7 +416,6 @@ export default function ServiceAccountsPage() {
         </div>
       </div>
 
-      {/* 스코프 탭 */}
       <div className="flex items-center gap-1 mb-3 border-b border-ink-200 overflow-x-auto">
         {scopeTabs.map((t) => (
           <button
@@ -434,7 +432,6 @@ export default function ServiceAccountsPage() {
         ))}
       </div>
 
-      {/* 프로젝트 칩 필터 (PROJECT 탭일 때만) */}
       {scopeTab === "PROJECT" && (
         <div className="flex flex-wrap items-center gap-1.5 mb-3">
           <button
@@ -463,7 +460,6 @@ export default function ServiceAccountsPage() {
         </div>
       )}
 
-      {/* 검색 + 카테고리 필터 */}
       <div className="flex flex-col sm:flex-row gap-2 mb-4">
         <input
           className="input flex-1"
@@ -1033,7 +1029,6 @@ function AccountModal({
             </label>
           </div>
 
-          {/* 공개 범위 */}
           <div className="flex flex-col gap-1">
             <span className="text-[11px] font-bold text-ink-500">공개 범위</span>
             <div className="grid grid-cols-3 gap-1.5">

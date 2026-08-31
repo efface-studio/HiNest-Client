@@ -48,7 +48,6 @@ function isStandalonePWA() {
   );
 }
 
-// ─── 아이콘 ──────────────────────────────────────────────────────────────
 // 각 플랫폼의 공식 심볼로 통일 — currentColor 로 그려서 다크/라이트 자동 대응.
 
 function IconWindows() {
@@ -197,7 +196,6 @@ function WindowsBlockHelp() {
   );
 }
 
-// ─── 카드 ────────────────────────────────────────────────────────────────
 function Card({
   id,
   highlighted,
@@ -273,7 +271,6 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
   );
 }
 
-// ─── 본체 ────────────────────────────────────────────────────────────────
 export default function DownloadPage() {
   const os = useMemo(() => detectOS(), []);
   const standalone = useMemo(() => isStandalonePWA(), []);
@@ -303,7 +300,6 @@ export default function DownloadPage() {
       </header>
 
       <main className="max-w-[980px] mx-auto px-5 py-8 sm:py-12">
-        {/* 헤드라인 */}
         <div className="text-center mb-8 sm:mb-12">
           <h1
             className="text-[24px] sm:text-[32px] font-extrabold tracking-tight"
@@ -342,9 +338,7 @@ export default function DownloadPage() {
           </div>
         )}
 
-        {/* 플랫폼 카드 */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-5">
-          {/* Windows */}
           <Card
             id="win"
             highlighted={os === "win"}
@@ -372,7 +366,6 @@ export default function DownloadPage() {
             </div>
           </Card>
 
-          {/* macOS */}
           <Card
             id="mac"
             highlighted={os === "mac"}
@@ -408,7 +401,6 @@ export default function DownloadPage() {
             </div>
           </Card>
 
-          {/* iOS */}
           <Card
             id="ios"
             highlighted={os === "ios"}
@@ -432,7 +424,6 @@ export default function DownloadPage() {
             </ol>
           </Card>
 
-          {/* Android */}
           <Card
             id="android"
             highlighted={os === "android"}
@@ -454,7 +445,6 @@ export default function DownloadPage() {
           </Card>
         </div>
 
-        {/* 도움말 */}
         <div
           className="mt-8 text-center text-[12px]"
           style={{ color: "var(--c-text-3)" }}

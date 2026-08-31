@@ -27,10 +27,8 @@ export default function TimePicker({
   const popRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
 
-  // 현재 선택값 파싱
   const { hh, mm } = useMemo(() => parse(value), [value]);
 
-  // 바깥 클릭으로 닫기
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
@@ -43,7 +41,6 @@ export default function TimePicker({
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  // 팝오버 위치 계산
   useLayoutEffect(() => {
     if (!open || !wrapperRef.current) return;
     const calc = () => {
@@ -65,12 +62,11 @@ export default function TimePicker({
     };
   }, [open]);
 
-  // 열릴 때 현재 선택 행을 스크롤 중앙으로
   const hourListRef = useRef<HTMLDivElement>(null);
   const minListRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    // 렌더 직후 실행
+    // 렌더 직후 실행 — DOM 에 버튼이 올라와야 querySelector/scrollIntoView 가 동작한다.
     const t = setTimeout(() => {
       const hi = hh ?? new Date().getHours();
       const mi = mm ?? 0;
@@ -136,7 +132,6 @@ export default function TimePicker({
             </button>
           </div>
           <div className="grid grid-cols-2 gap-0 border-t border-ink-100">
-            {/* 시 */}
             <div className="border-r border-ink-100">
               <div className="text-[10px] text-center text-ink-400 py-1 border-b border-ink-100">시</div>
               <div ref={hourListRef} className="max-h-[200px] overflow-y-auto py-1">
@@ -160,7 +155,6 @@ export default function TimePicker({
                 })}
               </div>
             </div>
-            {/* 분 */}
             <div>
               <div className="text-[10px] text-center text-ink-400 py-1 border-b border-ink-100">분</div>
               <div ref={minListRef} className="max-h-[200px] overflow-y-auto py-1">

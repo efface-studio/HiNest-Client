@@ -180,7 +180,6 @@ export default function JournalPage() {
         }
       />
       <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] gap-5">
-        {/* 사이드 리스트 */}
         <aside className="panel p-0 overflow-hidden flex flex-col" style={{ maxHeight: "calc(100vh - 220px)" }}>
           <div className="px-4 py-3 border-b border-ink-100">
             <div className="flex items-center justify-between mb-2">
@@ -276,7 +275,6 @@ export default function JournalPage() {
           </div>
         </aside>
 
-        {/* 본문 */}
         <main className="panel p-0 overflow-hidden flex flex-col" style={{ minHeight: "60vh" }}>
           {editing ? (
             <form onSubmit={save} className="flex flex-col h-full">

@@ -54,7 +54,6 @@ export default function DateTimePicker({ value, onChange, mode = "datetime", min
     );
   }
 
-  // datetime — 가로로 DatePicker + TimePicker 나란히.
   return (
     <div className={`flex items-stretch gap-2 ${className ?? ""}`}>
       <div className="flex-1 min-w-0">

@@ -136,6 +136,8 @@ export interface AuthUser {
   // HiNest 개발자 플래그 — 콘솔(superAdmin)에서만 부여되는 신뢰 designation.
   // 회사 관리자 페이지 접근 + 역할 변경(ADMIN 부여)을 총관리자와 함께 허용한다.
   isDeveloper: boolean;
+  // 소속 팀명. 문서함/핀/서비스계정 등 scope=TEAM 가시성 판정이 이 값과 scopeTeam 을 비교한다.
+  team: string | null;
 }
 
 export function signToken(
@@ -247,6 +249,7 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
       companyId: activeUser.companyId ?? null,
       platformAdmin: activeUser.platformAdmin,
       isDeveloper: activeUser.isDeveloper,
+      team: activeUser.team ?? null,
     } as AuthUser;
     // 핸들러에서 user row 가 또 필요하면 재조회하지 말고 이거 쓰기 — /api/me 처럼
     // 인증만 거치고 바로 user 필드를 되돌려주는 엔드포인트에서 DB 왕복 1번 절약.

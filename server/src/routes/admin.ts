@@ -583,13 +583,34 @@ router.patch("/teams/:id", async (req, res) => {
   const u = (req as any).user;
   const prev = await prisma.team.findUnique({ where: { id: req.params.id } });
   if (!prev) return res.status(404).json({ error: "not found" });
-  const team = await prisma.team.update({ where: { id: prev.id }, data: { name } });
-  // 사용자 team 문자열도 동기화
-  if (prev.name !== name) {
-    // `team` 변수는 Team 객체라 문자열 필드에 바로 못 넣음. 새 이름 `name` 을 넣어야
-    // 사용자의 team 문자열이 올바르게 동기화됨.
-    await prisma.user.updateMany({ where: { team: prev.name }, data: { team: name } });
-  }
+  if (prev.name === name) return res.json({ team: prev });
+  // 팀명은 Team.id 가 아니라 문자열로 여러 모델에 박혀 있고, 팀 스코프 가시성은
+  // User.team === scopeTeam 완전 일치로 판정한다. 사용자만 바꾸면 기존 팀 문서·폴더·템플릿·
+  // 일정이 옛 이름에 남아 팀원에게서 사라지므로 전부 한 트랜잭션에서 함께 치환한다.
+  // 모든 updateMany 는 테넌트 스코프(companyId) 안에서 돌아 다른 회사의 동명 팀은 건드리지 않는다.
+  const sa = await prisma.serviceAccount.findMany({
+    where: { scopeTeams: { has: prev.name } },
+    select: { id: true, scopeTeams: true },
+  });
+  const team = await prisma.$transaction(async (tx) => {
+    const updated = await tx.team.update({ where: { id: prev.id }, data: { name } });
+    await tx.user.updateMany({ where: { team: prev.name }, data: { team: name } });
+    await tx.document.updateMany({ where: { scope: "TEAM", scopeTeam: prev.name }, data: { scopeTeam: name } });
+    await tx.folder.updateMany({ where: { scope: "TEAM", scopeTeam: prev.name }, data: { scopeTeam: name } });
+    await tx.approvalTemplate.updateMany({ where: { scope: "TEAM", scopeTeam: prev.name }, data: { scopeTeam: name } });
+    await tx.event.updateMany({ where: { team: prev.name }, data: { team: name } });
+    await tx.serviceAccount.updateMany({ where: { scopeTeam: prev.name }, data: { scopeTeam: name } });
+    // scopeTeams 는 String[] 이라 updateMany 로 원소 치환이 안 됨 — 건별로 배열을 다시 쓴다.
+    for (const s of sa) {
+      await tx.serviceAccount.update({
+        where: { id: s.id },
+        data: { scopeTeams: s.scopeTeams.map((t) => (t === prev.name ? name : t)) },
+      });
+    }
+    // 아직 안 쓴 초대키가 옛 팀명으로 가입되지 않도록.
+    await tx.inviteKey.updateMany({ where: { used: false, team: prev.name }, data: { team: name } });
+    return updated;
+  });
   await writeLog(u.id, "TEAM_UPDATE", team.id, `${prev.name} -> ${name}`);
   res.json({ team });
 });

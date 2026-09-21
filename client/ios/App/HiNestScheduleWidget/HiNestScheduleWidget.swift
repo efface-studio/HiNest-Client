@@ -17,7 +17,7 @@ import WidgetKit
 import SwiftUI
 
 private let APP_GROUP = "group.com.hivits.hinest"
-private let API_BASE = "https://nest.hi-vits.com" // 운영 Vercel 도메인 — 위젯도 동일 origin 사용
+private let API_BASE = "https://nest.efface.dev" // 운영 Vercel 도메인 — 위젯도 동일 origin 사용
 private let TOKEN_KEY = "hinest.session.token"
 
 // MARK: - Models

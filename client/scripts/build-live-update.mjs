@@ -6,8 +6,8 @@
  *   출력: client/dist/live-updates/bundle-<sha>.zip + manifest.json
  *
  * Vercel 이 client/dist 를 그대로 정적 호스팅하므로, 출력물이 자동으로
- *   https://nest.hi-vits.com/live-updates/manifest.json
- *   https://nest.hi-vits.com/live-updates/bundle-<sha>.zip
+ *   https://nest.efface.dev/live-updates/manifest.json
+ *   https://nest.efface.dev/live-updates/bundle-<sha>.zip
  * 로 노출된다 (추가 인프라/CI 0).
  *
  * 버전:

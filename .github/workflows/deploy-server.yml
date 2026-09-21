@@ -94,7 +94,7 @@ jobs:
       - name: Post-deploy health probe
         run: |
           for i in 1 2 3 4 5; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" https://api.nest.hi-vits.com/api/health || true)
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://api.nest.efface.dev/api/health || true)
             echo "attempt $i: HTTP=$code"
             [ "$code" = "200" ] && exit 0
             sleep 5

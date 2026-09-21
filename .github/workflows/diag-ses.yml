@@ -1,5 +1,5 @@
 # SES + 비밀번호 재설정 메일 발송 진단 워크플로우.
-# 1) nest.hi-vits.com 도메인 verify 상태
+# 1) nest.efface.dev 도메인 verify 상태
 # 2) developer.seojiwan@gmail.com 이메일 verify 상태
 # 3) CloudWatch 에서 최근 EMAIL_FALLBACK 마커 + AuditLog PWD_RESET 추출
 #

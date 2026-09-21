@@ -85,7 +85,7 @@ const COOKIE_BASE = {
 };
 
 // Capacitor 네이티브 앱 WebView 의 origin — iOS: capacitor://localhost, Android: https://localhost.
-// 이 origin 들은 API 서버(예: nest.hi-vits.com)와 cross-site 라서 SameSite=Lax 쿠키가 전송되지 않는다.
+// 이 origin 들은 API 서버(예: nest.efface.dev)와 cross-site 라서 SameSite=Lax 쿠키가 전송되지 않는다.
 // 따라서 네이티브에서 들어온 요청에만 SameSite=None;Secure 로 발급해 cross-site 전송을 허용한다.
 // 웹/데스크톱은 기존 Lax 를 유지(추가 방어선) — 어차피 Origin 체크 CSRF 미들웨어가 양쪽 다 보호한다.
 export const NATIVE_ORIGINS = (process.env.CAPACITOR_ORIGINS ?? "capacitor://localhost,https://localhost")

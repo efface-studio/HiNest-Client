@@ -64,7 +64,7 @@ keystore.properties(또는 env)가 있으면 서명된 AAB 가 나온다.
 2. 앱 생성 → 패키지명 `com.hivits.hinest`.
 3. **Play App Signing** 활성(권장) — 업로드 키로 서명해 올리면 Google 이 배포 서명 관리.
 4. 스토어 등록정보: 앱 이름·설명·아이콘(512px)·피처 그래픽(1024×500)·스크린샷(폰/태블릿).
-5. **개인정보처리방침 URL**: `https://nest.hi-vits.com/privacy` (이미 있음).
+5. **개인정보처리방침 URL**: `https://nest.efface.dev/privacy` (이미 있음).
 6. 데이터 보안 양식, 콘텐츠 등급, 타깃 연령.
 7. 내부 테스트 트랙에 AAB 업로드 → 검증 후 프로덕션 출시.
 

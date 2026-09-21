@@ -111,7 +111,7 @@ export default function DesktopUpdateBanner() {
   }, [isDesktop]);
 
   function openDownloadPage() {
-    const url = "https://nest.hi-vits.com/download";
+    const url = "https://nest.efface.dev/download";
     if (window.hinest?.openExternal) {
       window.hinest.openExternal(url).catch(() => window.open(url, "_blank"));
     } else {

@@ -4,7 +4,7 @@ import { SESClient, SendEmailCommand, SendRawEmailCommand } from "@aws-sdk/clien
  * 메일 발송 헬퍼 — AWS SES 사용.
  *
  * 환경 변수:
- *   SES_FROM_ADDRESS   필수 — 발신 주소 (verified identity). 예: "HiNest <no-reply@nest.hi-vits.com>"
+ *   SES_FROM_ADDRESS   필수 — 발신 주소 (verified identity). 예: "HiNest <no-reply@nest.efface.dev>"
  *   AWS_REGION         기본 ap-northeast-2
  *   AWS_ACCESS_KEY_ID  / AWS_SECRET_ACCESS_KEY 또는 ECS Task Role
  *

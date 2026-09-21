@@ -20,7 +20,7 @@ final class NotificationService: UNNotificationServiceExtension {
 
     /// 앱 본체와 합의된 App Group / API 오리진. 실제 값으로 맞출 것.
     private let appGroupId = "group.com.hivits.hinest"
-    private let apiBase = "https://nest.hi-vits.com" // = VITE_API_BASE
+    private let apiBase = "https://nest.efface.dev" // = VITE_API_BASE
 
     override func didReceive(_ request: UNNotificationRequest,
                              withContentHandler contentHandler: @escaping (UNNotificationContent) -> Void) {

@@ -19,7 +19,7 @@ jobs:
     steps:
       - name: Ping /api/health (production — Fargate)
         run: |
-          # 현재 프로덕션 서버는 api.nest.hi-vits.com (AWS Fargate).
+          # 현재 프로덕션 서버는 api.nest.efface.dev (AWS Fargate).
           # Fargate 는 항상 warm → keepalive 불필요. 이 잡은 수동 헬스 확인용으로만 남김.
-          curl --fail --max-time 30 -sS https://api.nest.hi-vits.com/api/health
+          curl --fail --max-time 30 -sS https://api.nest.efface.dev/api/health
           echo

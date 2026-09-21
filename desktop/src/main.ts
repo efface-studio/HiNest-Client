@@ -16,7 +16,7 @@ import { setupAutoUpdater } from "./autoUpdater";
 const isDev = !!process.env.HINEST_DEV;
 // 배포 빌드는 기본적으로 Vercel 에 올라간 웹앱을 로드.
 // HINEST_URL 환경변수로 덮어쓰기 가능 (스테이징/로컬 테스트용).
-const PROD_URL = "https://nest.hi-vits.com";
+const PROD_URL = "https://nest.efface.dev";
 const DEFAULT_URL = isDev
   ? "http://localhost:1000"
   : process.env.HINEST_URL ?? PROD_URL;

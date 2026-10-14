@@ -41,8 +41,7 @@ export default function JournalPage() {
   const [list, setList] = useState<Journal[]>([]);
   const [loading, setLoading] = useState(true);
   const { refreshing, refresh } = useRefresh(() => load());
-  // 열람 대상 — "" 는 본인. 서버(GET /journal?userId=)와 같은 기준: MANAGER 는 같은 팀, ADMIN 은 전사.
-  const canViewOthers = me?.role === "ADMIN" || (me?.role === "MANAGER" && !!me.team);
+  // 열람 대상 — "" 는 본인. 열람 가능 목록은 서버가 권한 카탈로그(journal.view.*) 기준으로 내려준다.
   const [viewUserId, setViewUserId] = useState("");
   const [colleagues, setColleagues] = useState<Colleague[]>([]);
   const viewingOther = !!viewUserId && viewUserId !== me?.id;
@@ -87,15 +86,10 @@ export default function JournalPage() {
   }, [journalPath]);
 
   useEffect(() => {
-    if (!canViewOthers || !me) return;
-    api<{ users: Colleague[] }>("/api/users")
-      .then((d) => {
-        if (!aliveRef.current) return;
-        const others = d.users.filter((x) => x.id !== me.id);
-        setColleagues(me.role === "ADMIN" ? others : others.filter((x) => x.team === me.team));
-      })
+    api<{ users: Colleague[] }>("/api/journal/viewable-users")
+      .then((d) => { if (aliveRef.current) setColleagues(d.users ?? []); })
       .catch(() => {});
-  }, [canViewOthers, me]);
+  }, [me?.id]);
 
   async function load() {
     const path = journalPath;
@@ -235,7 +229,7 @@ export default function JournalPage() {
               </div>
               <span className="chip chip-gray !text-[10.5px]">{list.length}</span>
             </div>
-            {canViewOthers && colleagues.length > 0 && (
+            {colleagues.length > 0 && (
               <Select
                 className="input !h-9 !text-[12.5px] mb-2"
                 value={viewUserId}

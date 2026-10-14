@@ -120,7 +120,7 @@ export const PERMISSION_CATALOG: Catalog[] = [
 
   { key: "journal.create",          label: "업무일지 작성",            group: "업무일지",  defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "journal.view.team",       label: "팀원 업무일지 열람",        group: "업무일지",  defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
-  { key: "journal.view.all",        label: "전사 업무일지 열람",        group: "업무일지",  defaults: { ADMIN: true,  MANAGER: false, MEMBER: false } },
+  { key: "journal.view.all",        label: "전사 업무일지 열람",        group: "업무일지",  defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },
 
   { key: "expense.create",          label: "지출 등록",                group: "지출·카드", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: true  } },
   { key: "expense.approve",         label: "지출 승인",                group: "지출·카드", defaults: { ADMIN: true,  MANAGER: true,  MEMBER: false } },

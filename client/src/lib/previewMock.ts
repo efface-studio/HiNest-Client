@@ -9,12 +9,30 @@
  *  - SSE(/notification/stream 등) → 절대 연결되지 않게 401 즉시 반환.
  */
 
+import { getPreviewRole } from "./previewFlag";
+
 const TODAY = new Date();
 function iso(daysOffset: number, hour = 9, min = 0): string {
   const d = new Date(TODAY);
   d.setDate(d.getDate() + daysOffset);
   d.setHours(hour, min, 0, 0);
   return d.toISOString();
+}
+
+/** `/preview?role=` 로 바꾼 권한을 데모 사용자에 덧씌운다. 기본(member)이면 빈 객체. */
+function previewRoleFields(): Partial<typeof DEMO_ME> {
+  switch (getPreviewRole()) {
+    case "manager":
+      return { role: "MANAGER", position: "팀장" };
+    case "admin":
+      return { role: "ADMIN", position: "이사" };
+    case "super":
+      return { role: "ADMIN", position: "이사", superAdmin: true, isDeveloper: true };
+    case "platform":
+      return { role: "ADMIN", position: "이사", platformAdmin: true, isDeveloper: true };
+    default:
+      return {};
+  }
 }
 
 const DEMO_ME = {
@@ -1114,7 +1132,7 @@ function platformSummary() {
 
 /** 경로별 매처 — 위에서 아래로 검사하므로 **세부 경로 → 일반 경로** 순서. */
 const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = [
-  { test: (p) => p === "/api/me",                      data: () => ({ user: DEMO_ME, impersonator: null }) },
+  { test: (p) => p === "/api/me",                      data: () => ({ user: { ...DEMO_ME, ...previewRoleFields() }, impersonator: null }) },
   { test: (p) => p === "/api/me/presence",             data: () => ({ presenceStatus: null, presenceMessage: null, presenceUpdatedAt: null }) },
   { test: (p) => p.startsWith("/api/version"),         data: () => ({ version: "preview" }) },
   // 미리보기에서 개발자 페이지 열람 허용 — step-up 게이트를 통과시킨다 (active=true).

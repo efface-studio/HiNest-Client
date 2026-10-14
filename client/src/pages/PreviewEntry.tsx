@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useAuth } from "../auth";
 import { clearApiCache } from "../api";
-import { enablePreview } from "../lib/previewFlag";
+import { applyPreviewRoleFromUrl, enablePreview } from "../lib/previewFlag";
 import AppLayout from "../components/AppLayout";
 import DashboardPage from "./DashboardPage";
 
@@ -18,6 +18,8 @@ export default function PreviewEntry() {
 
   useEffect(() => {
     // 동기 플래그 세팅 → 모든 후속 api() 호출이 mock 으로 단락.
+    // ?role= 은 디자인 시스템 임베드에서만 받아들인다 (previewFlag.applyPreviewRoleFromUrl 참고).
+    applyPreviewRoleFromUrl();
     enablePreview();
     clearApiCache();
     refresh();

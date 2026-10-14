@@ -11,6 +11,57 @@
  */
 
 export const PREVIEW_KEY = "hinest:preview";
+export const PREVIEW_ROLE_KEY = "hinest:preview:role";
+
+/** 미리보기 데모 사용자 권한. 기본은 일반 사원(MEMBER). */
+export type PreviewRole = "member" | "manager" | "admin" | "super" | "platform";
+const PREVIEW_ROLES: PreviewRole[] = ["member", "manager", "admin", "super", "platform"];
+
+/**
+ * 역할 전환(`/preview?role=`)을 받아들일 부모 창 origin.
+ * 미리보기는 외부 잠재고객이 보는 데모라 관리/운영 화면을 감추는 게 기본이고,
+ * efface 디자인 시스템(component.efface.dev)이 iframe 으로 띄워 디자인을 검사할 때만 푼다.
+ */
+const PREVIEW_ROLE_PARENTS = ["https://component.efface.dev", "http://localhost:5190"];
+
+function embeddedByAllowedParent(): boolean {
+  if (typeof window === "undefined" || window.parent === window) return false;
+  try {
+    const anc = (window.location as Location & { ancestorOrigins?: DOMStringList }).ancestorOrigins;
+    if (anc && anc.length) return PREVIEW_ROLE_PARENTS.includes(anc[anc.length - 1]);
+    // Firefox 는 ancestorOrigins 가 없다 — referrer 로 대신
+    return PREVIEW_ROLE_PARENTS.some((o) => document.referrer.startsWith(o + "/") || document.referrer === o);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * `/preview?role=…` 를 세션에 기록한다. 허용된 부모에 임베드됐거나 로컬 개발일 때만.
+ * 미리보기 안에서 다른 페이지로 옮겨도 sessionStorage 로 유지된다.
+ */
+export function applyPreviewRoleFromUrl(): void {
+  if (typeof window === "undefined") return;
+  const raw = new URLSearchParams(window.location.search).get("role");
+  if (!raw) return;
+  const role = raw.toLowerCase() as PreviewRole;
+  if (!PREVIEW_ROLES.includes(role)) return;
+  const local = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  if (!local && !embeddedByAllowedParent()) return;
+  try {
+    if (role === "member") sessionStorage.removeItem(PREVIEW_ROLE_KEY);
+    else sessionStorage.setItem(PREVIEW_ROLE_KEY, role);
+  } catch {}
+}
+
+export function getPreviewRole(): PreviewRole {
+  try {
+    const v = sessionStorage.getItem(PREVIEW_ROLE_KEY) as PreviewRole | null;
+    return v && PREVIEW_ROLES.includes(v) ? v : "member";
+  } catch {
+    return "member";
+  }
+}
 
 function active(): boolean {
   if (typeof window === "undefined") return false;
@@ -69,6 +120,7 @@ export function disablePreview(): void {
   (window as any).__HINEST_PREVIEW__ = false;
   try {
     sessionStorage.removeItem(PREVIEW_KEY);
+    sessionStorage.removeItem(PREVIEW_ROLE_KEY);
   } catch {}
   // 네트워크 패치 해제 — 무거운 모듈이 이미 로드된 경우에만 실제 효과(아니면 패치도 안 깔림).
   void import("./previewMock")

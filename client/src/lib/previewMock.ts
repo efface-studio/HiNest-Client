@@ -1163,6 +1163,7 @@ const HANDLERS: { test: (p: string) => boolean; data: (p?: string) => any }[] = 
   { test: (p) => /^\/api\/meeting\/[^/?]+(?:\?|$)/.test(p),               data: (p?: string) => meetingDetail((p ?? "").replace(/^\/api\/meeting\//, "").split(/[/?]/)[0]) },
   { test: (p) => p.startsWith("/api/meeting"),                            data: meetings },
 
+  { test: (p) => p === "/api/journal/viewable-users",  data: () => ({ users: [] }) },
   { test: (p) => /^\/api\/journal\/[^/?]+/.test(p),    data: (p?: string) => {
       const id = (p ?? "").replace(/^\/api\/journal\//, "").split(/[/?]/)[0];
       const list = journalsList().journals;

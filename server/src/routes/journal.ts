@@ -2,6 +2,8 @@ import { Router } from "express";
 import { z } from "zod";
 import { prisma } from "../lib/db.js";
 import { requireAuth, writeLog } from "../lib/auth.js";
+import { hasPermission } from "../lib/permissions.js";
+import { getHiddenPositions, excludeHidden } from "../lib/hiddenPositions.js";
 
 const router = Router();
 router.use(requireAuth);
@@ -20,25 +22,45 @@ const patchSchema = z.object({
   content: z.string().min(1).max(20_000).optional(),
 });
 
+// 타인 일지 열람 범위 — permissions 카탈로그(journal.view.all / journal.view.team) 기준.
+// 관리자가 역할별 권한을 토글하면 그대로 반영된다. 팀 미지정이면 팀 범위 열람 불가.
+async function journalViewScope(u: { role: string; team?: string | null }): Promise<"all" | "team" | null> {
+  if (await hasPermission(u.role, "journal.view.all")) return "all";
+  if (u.team && (await hasPermission(u.role, "journal.view.team"))) return "team";
+  return null;
+}
+
+// 내가 일지를 열람할 수 있는 사용자 목록(본인 제외) — 클라이언트 열람 대상 선택용.
+router.get("/viewable-users", async (req, res) => {
+  const u = (req as any).user;
+  const scope = await journalViewScope(u);
+  if (!scope) return res.json({ users: [] });
+  const hidden = await getHiddenPositions(u.companyId);
+  const users = await prisma.user.findMany({
+    where: {
+      active: true,
+      id: { not: u.id },
+      ...(scope === "team" ? { team: u.team } : {}),
+      ...excludeHidden(hidden),
+    },
+    orderBy: { name: "asc" },
+    take: 5000,
+    select: { id: true, name: true, team: true, position: true },
+  });
+  res.json({ users });
+});
+
 router.get("/", async (req, res) => {
   const u = (req as any).user;
   const userId = req.query.userId ? String(req.query.userId) : u.id;
-  // 권한 정책 (permissions catalog 기준):
-  //   - 본인 일지: 누구나 (자기 자신)
-  //   - 타인 일지: MEMBER 불가, MANAGER 는 같은 팀까지만, ADMIN 만 전사 열람
-  // 이전엔 MANAGER 가 모든 부서 일지를 볼 수 있어 개인정보 노출 우려 컸음.
   if (userId !== u.id) {
-    if (u.role === "MEMBER") return res.status(403).json({ error: "forbidden" });
-    if (u.role === "MANAGER") {
-      // 내 팀은 requireAuth 캐시 유저행에서 — 대상(다른 유저) 팀만 조회.
-      const me = (req as any).userRecord as { team?: string | null } | undefined;
+    const scope = await journalViewScope(u);
+    if (!scope) return res.status(403).json({ error: "forbidden" });
+    if (scope === "team") {
+      // 팀 미지정 대상은 거부 — 둘 다 null 이어도 같은 팀으로 보지 않는다.
       const target = await prisma.user.findUnique({ where: { id: userId }, select: { team: true } });
-      // 팀 미지정이거나 다른 팀이면 거부 — null/undefined 동일 취급 안 함(둘 다 null 이면 거부).
-      if (!me?.team || !target?.team || me.team !== target.team) {
-        return res.status(403).json({ error: "forbidden" });
-      }
+      if (!target?.team || target.team !== u.team) return res.status(403).json({ error: "forbidden" });
     }
-    // ADMIN 은 통과.
   }
   const list = await prisma.journal.findMany({
     where: { userId, deletedAt: null },

@@ -7,6 +7,8 @@ import DateTimePicker from "../components/DateTimePicker";
 import Portal from "../components/Portal";
 import { alertAsync } from "../components/ConfirmHost";
 import { useModalDismiss } from "../lib/useModalDismiss";
+import { useAuth } from "../auth";
+import Select, { type SelectOption } from "../components/Select";
 
 type Journal = {
   id: string;
@@ -14,6 +16,7 @@ type Journal = {
   title: string;
   content: string;
   createdAt: string;
+  user?: { name: string };
 };
 
 /**
@@ -31,10 +34,21 @@ function today() {
 
 type Mode = "view" | "create" | "edit";
 
+type Colleague = { id: string; name: string; team?: string | null; position?: string | null };
+
 export default function JournalPage() {
+  const { user: me } = useAuth();
   const [list, setList] = useState<Journal[]>([]);
   const [loading, setLoading] = useState(true);
   const { refreshing, refresh } = useRefresh(() => load());
+  // 열람 대상 — "" 는 본인. 열람 가능 목록은 서버가 권한 카탈로그(journal.view.*) 기준으로 내려준다.
+  const [viewUserId, setViewUserId] = useState("");
+  const [colleagues, setColleagues] = useState<Colleague[]>([]);
+  const viewingOther = !!viewUserId && viewUserId !== me?.id;
+  const journalPath = viewingOther ? `/api/journal?userId=${encodeURIComponent(viewUserId)}` : "/api/journal";
+  // 대상 전환 직후 이전 대상의 늦은 응답이 목록을 덮지 않도록.
+  const pathRef = useRef(journalPath);
+  pathRef.current = journalPath;
   const [selected, setSelected] = useState<Journal | null>(null);
   const [form, setForm] = useState({ date: today(), title: "", content: "" });
   const [mode, setMode] = useState<Mode>("view");
@@ -53,38 +67,54 @@ export default function JournalPage() {
     return () => { aliveRef.current = false; };
   }, []);
 
+  function applyList(path: string, journals: Journal[]) {
+    if (!aliveRef.current || pathRef.current !== path) return;
+    setList(journals);
+    setLoading(false);
+    setSelected((s) => s ?? journals[0] ?? null);
+  }
+
   // SWR — 탭 안에서 재진입 시 즉시 리스트 렌더.
   useEffect(() => {
-    apiSWR<{ journals: Journal[] }>("/api/journal", {
-      onCached: (d) => {
-        if (!aliveRef.current) return;
-        setList(d.journals);
-        setLoading(false);
-        if (d.journals.length && !selected) setSelected(d.journals[0]);
-      },
-      onFresh: (d) => {
-        if (!aliveRef.current) return;
-        setList(d.journals);
-        setLoading(false);
-        if (d.journals.length && !selected) setSelected(d.journals[0]);
-      },
-      onError: () => { if (aliveRef.current) setLoading(false); },
+    const path = journalPath;
+    apiSWR<{ journals: Journal[] }>(path, {
+      onCached: (d) => applyList(path, d.journals),
+      onFresh: (d) => applyList(path, d.journals),
+      onError: () => { if (aliveRef.current && pathRef.current === path) setLoading(false); },
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [journalPath]);
+
+  useEffect(() => {
+    api<{ users: Colleague[] }>("/api/journal/viewable-users")
+      .then((d) => { if (aliveRef.current) setColleagues(d.users ?? []); })
+      .catch(() => {});
+  }, [me?.id]);
 
   async function load() {
+    const path = journalPath;
     try {
-      const d = await api<{ journals: Journal[] }>("/api/journal");
-      if (!aliveRef.current) return;
-      setList(d.journals);
-      if (d.journals.length && !selected) setSelected(d.journals[0]);
+      const d = await api<{ journals: Journal[] }>(path);
+      applyList(path, d.journals);
     } finally {
-      if (aliveRef.current) setLoading(false);
+      if (aliveRef.current && pathRef.current === path) setLoading(false);
     }
   }
 
+  function changeViewer(id: string) {
+    if (id === viewUserId) return;
+    setViewUserId(id);
+    setList([]);
+    setSelected(null);
+    setLoading(true);
+    setQ("");
+    setMode("view");
+    setErr("");
+  }
+
   function openCreate() {
+    // 남의 일지를 보던 중이면 내 일지로 돌아와서 작성.
+    if (viewingOther) changeViewer("");
     setMode("create");
     setForm({ date: today(), title: "", content: "" });
     setSelected(null);
@@ -148,6 +178,17 @@ export default function JournalPage() {
   }
 
   const editing = mode !== "view";
+  const viewerOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "", label: "내 일지" },
+      ...colleagues.map((c) => {
+        const meta = [c.team, c.position].filter(Boolean).join(" · ");
+        return { value: c.id, label: meta ? `${c.name} (${meta})` : c.name, searchText: `${c.name} ${meta}` };
+      }),
+    ],
+    [colleagues],
+  );
+  const viewingName = colleagues.find((c) => c.id === viewUserId)?.name ?? list[0]?.user?.name ?? "";
   const filtered = useMemo(() => {
     const k = q.trim().toLowerCase();
     if (!k) return list;
@@ -183,9 +224,21 @@ export default function JournalPage() {
         <aside className="panel p-0 overflow-hidden flex flex-col" style={{ maxHeight: "calc(100vh - 220px)" }}>
           <div className="px-4 py-3 border-b border-ink-100">
             <div className="flex items-center justify-between mb-2">
-              <div className="text-[13.5px] font-extrabold text-ink-900">내 일지</div>
+              <div className="text-[13.5px] font-extrabold text-ink-900 truncate">
+                {viewingOther ? `${viewingName || "팀원"}님의 일지` : "내 일지"}
+              </div>
               <span className="chip chip-gray !text-[10.5px]">{list.length}</span>
             </div>
+            {colleagues.length > 0 && (
+              <Select
+                className="input !h-9 !text-[12.5px] mb-2"
+                value={viewUserId}
+                onChange={changeViewer}
+                options={viewerOptions}
+                ariaLabel="열람할 일지 선택"
+                searchPlaceholder="이름·팀 검색"
+              />
+            )}
             <div className="relative">
               <input
                 className="input !h-9 !text-[12.5px] !pl-8"
@@ -225,9 +278,13 @@ export default function JournalPage() {
             ) : filtered.length === 0 ? (
               <div className="px-4 py-12 text-center">
                 <div className="text-[34px] mb-2">📝</div>
-                <div className="text-[13px] font-bold text-ink-900">{q ? "검색 결과가 없어요" : "아직 일지가 없어요"}</div>
-                <div className="text-[11.5px] text-ink-500 mt-1">{q ? "다른 키워드로 찾아보세요" : "오늘 한 일을 정리해 보세요"}</div>
-                {!q && (
+                <div className="text-[13px] font-bold text-ink-900">
+                  {q ? "검색 결과가 없어요" : viewingOther ? "작성한 일지가 없어요" : "아직 일지가 없어요"}
+                </div>
+                <div className="text-[11.5px] text-ink-500 mt-1">
+                  {q ? "다른 키워드로 찾아보세요" : viewingOther ? "다른 팀원을 선택해 보세요" : "오늘 한 일을 정리해 보세요"}
+                </div>
+                {!q && !viewingOther && (
                   <button className="btn-ghost btn-xs mt-3" onClick={openCreate}>+ 새 일지 작성</button>
                 )}
               </div>
@@ -353,19 +410,21 @@ export default function JournalPage() {
                       {selected.title || "(제목 없음)"}
                     </h2>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <button className="btn-ghost btn-xs" onClick={() => openEdit(selected)} disabled={removingId === selected.id}>
-                      수정
-                    </button>
-                    <button
-                      className="btn-ghost btn-xs"
-                      style={{ color: "var(--c-danger)" }}
-                      onClick={() => setConfirmRemoveId(selected.id)}
-                      disabled={removingId === selected.id}
-                    >
-                      {removingId === selected.id ? "삭제 중…" : "삭제"}
-                    </button>
-                  </div>
+                  {!viewingOther && (
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                      <button className="btn-ghost btn-xs" onClick={() => openEdit(selected)} disabled={removingId === selected.id}>
+                        수정
+                      </button>
+                      <button
+                        className="btn-ghost btn-xs"
+                        style={{ color: "var(--c-danger)" }}
+                        onClick={() => setConfirmRemoveId(selected.id)}
+                        disabled={removingId === selected.id}
+                      >
+                        {removingId === selected.id ? "삭제 중…" : "삭제"}
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
               <div className="flex-1 px-6 py-6 overflow-auto">
@@ -375,7 +434,7 @@ export default function JournalPage() {
               </div>
             </article>
           ) : (
-            <EmptyDetail onCreate={openCreate} />
+            <EmptyDetail onCreate={openCreate} viewingOther={viewingOther} />
           )}
         </main>
       </div>
@@ -429,7 +488,17 @@ export default function JournalPage() {
   );
 }
 
-function EmptyDetail({ onCreate }: { onCreate: () => void }) {
+function EmptyDetail({ onCreate, viewingOther }: { onCreate: () => void; viewingOther: boolean }) {
+  if (viewingOther) {
+    return (
+      <div className="flex-1 grid place-items-center px-6 py-16">
+        <div className="text-center max-w-[360px]">
+          <div className="text-[40px] mb-3">📝</div>
+          <div className="text-[16px] font-extrabold text-ink-900">열람할 일지를 선택하세요</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex-1 grid place-items-center px-6 py-16">
       <div className="text-center max-w-[360px]">

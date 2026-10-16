@@ -89,13 +89,13 @@ gh workflow run cost-fargate-rightsize.yml -f cpu=256 -f memory=512
 
 | 항목 | 복잡도 |
 |------|--------|
-| Route 53 DNS 변경 (`api.nest.hi-vits.com`) | 낮음 |
+| Route 53 DNS 변경 (`api.nest.efface.dev`) | 낮음 |
 | ACM 인증서 (이미 보유) | 낮음 |
 | SSE (`/api/notification/stream`) 지원 | **APIGW HTTP API 는 SSE OK, 단 30s 타임아웃** |
 | 큰 응답 (10MB 이상 파일) | **HTTP API 한도 10MB — 업로드/다운로드는 ALB 유지 권장** |
 | WebSocket (HiNest 미사용) | N/A |
 
-**결론**: SSE 가 30초 안에 첫 이벤트 보내는 한 동작. 파일 업로드/다운로드는 별도 도메인(`upload.nest.hi-vits.com`) 으로 ALB 유지하는 하이브리드 구성이 안전.
+**결론**: SSE 가 30초 안에 첫 이벤트 보내는 한 동작. 파일 업로드/다운로드는 별도 도메인(`upload.nest.efface.dev`) 으로 ALB 유지하는 하이브리드 구성이 안전.
 
 지금 단계 추천: **NAT 제거 + Fargate 다운사이즈 먼저**. APIGW 전환은 사용자가 100명 넘으면 그때 재검토.
 

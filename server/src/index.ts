@@ -66,8 +66,8 @@ const PORT = Number(process.env.PORT ?? 4000);
 const IS_PROD = process.env.NODE_ENV === "production";
 const ORIGIN = process.env.CLIENT_ORIGIN ?? "http://localhost:1000";
 
-// ALB + Vercel rewrite 두 hop 뒤에 있다(웹 + 네이티브 모두 nest.hi-vits.com → Vercel rewrite
-// → api.nest.hi-vits.com(ALB) → ECS). trust proxy=1 만 두면 마지막 Vercel hop 만 떼어내
+// ALB + Vercel rewrite 두 hop 뒤에 있다(웹 + 네이티브 모두 nest.efface.dev → Vercel rewrite
+// → api.nest.efface.dev(ALB) → ECS). trust proxy=1 만 두면 마지막 Vercel hop 만 떼어내
 // req.ip 가 Vercel 인스턴스 IP(13.125.x.x / 43.203.x.x 같은 AWS Lambda IP) 로 잡힌다 →
 // 출근 IP 화이트리스트가 의도와 다르게 동작.
 // trust proxy=2 로 두 hop(ALB + Vercel) 신뢰 → X-Forwarded-For 의 가장 왼쪽 = 사용자 IP.

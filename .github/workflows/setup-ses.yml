@@ -30,10 +30,10 @@ env:
   TASK_FAMILY: hinest-server
   CONTAINER_NAME: server
   # 발신/링크 호스트 — 코드에서 fallback 처리하지만 운영에선 명시 권장.
-  # nest.hi-vits.com 도메인이 verify 완료됐으므로 정식 발신 주소 사용.
+  # nest.efface.dev 도메인을 SES 에서 verify 한 뒤 사용 — 미verify 상태면 발송 실패(EMAIL_FALLBACK 로그).
   # DKIM 서명도 이 도메인 키로 붙어서 deliverability 우수.
-  SES_FROM_ADDRESS: "HiNest <no-reply@nest.hi-vits.com>"
-  PUBLIC_APP_URL: "https://nest.hi-vits.com"
+  SES_FROM_ADDRESS: "HiNest <no-reply@nest.efface.dev>"
+  PUBLIC_APP_URL: "https://nest.efface.dev"
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 jobs:
@@ -148,7 +148,7 @@ jobs:
       - name: Post-deploy health probe
         run: |
           for i in 1 2 3 4 5; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" https://api.nest.hi-vits.com/api/health || true)
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://api.nest.efface.dev/api/health || true)
             echo "attempt $i: HTTP=$code"
             [ "$code" = "200" ] && exit 0
             sleep 5

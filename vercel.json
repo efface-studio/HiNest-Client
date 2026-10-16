@@ -8,11 +8,11 @@
   "rewrites": [
     {
       "source": "/api/:path*",
-      "destination": "https://api.nest.hi-vits.com/api/:path*"
+      "destination": "https://api.nest.efface.dev/api/:path*"
     },
     {
       "source": "/uploads/:path*",
-      "destination": "https://api.nest.hi-vits.com/uploads/:path*"
+      "destination": "https://api.nest.efface.dev/uploads/:path*"
     },
     {
       "source": "/(.*)",

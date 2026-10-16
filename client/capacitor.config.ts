@@ -48,7 +48,7 @@ const config: CapacitorConfig = {
     androidScheme: "https",
     iosScheme: "https",
     // (B) 원격 URL 방식으로 빠르게 테스트하려면 아래 두 줄의 주석을 해제:
-    // url: "https://nest.hi-vits.com",
+    // url: "https://nest.efface.dev",
     // cleartext: false,
     //
     // (C) Dev hot-reload — 개발 중 npm run cap:ios:dev 로 가면 이 분기가 켜진다.
@@ -85,7 +85,7 @@ const config: CapacitorConfig = {
     CapacitorUpdater: {
       autoUpdate: true,
       directUpdate: true,
-      updateUrl: "https://nest.hi-vits.com/api/updates/check",
+      updateUrl: "https://nest.efface.dev/api/updates/check",
       appReadyTimeout: 10000,
       responseTimeout: 20,
       autoDeleteFailed: true,

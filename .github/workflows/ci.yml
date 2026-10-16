@@ -36,7 +36,7 @@ jobs:
         run: npx vite build
         env:
           # 빌드 시 API 베이스 — 시크릿 아님(공개 도메인). 번들에만 들어감.
-          VITE_API_BASE: https://nest.hi-vits.com
+          VITE_API_BASE: https://nest.efface.dev
 
   server:
     name: server · prisma + tsc

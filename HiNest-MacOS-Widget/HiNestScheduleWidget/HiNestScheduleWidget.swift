@@ -12,7 +12,7 @@ import WidgetKit
 import SwiftUI
 
 private let APP_GROUP = "group.com.hivits.hinest"
-private let API_BASE = "https://nest.hi-vits.com"
+private let API_BASE = "https://nest.efface.dev"
 private let TOKEN_KEY = "hinest.session.token"
 
 // MARK: - Models

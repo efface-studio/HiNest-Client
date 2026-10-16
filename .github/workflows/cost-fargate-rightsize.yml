@@ -126,7 +126,7 @@ jobs:
         run: |
           OK=0
           for i in 1 2 3 4 5 6; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" https://api.nest.hi-vits.com/api/health || true)
+            code=$(curl -s -o /dev/null -w "%{http_code}" https://api.nest.efface.dev/api/health || true)
             echo "attempt $i: HTTP=$code"
             if [ "$code" = "200" ]; then OK=1; break; fi
             sleep 5

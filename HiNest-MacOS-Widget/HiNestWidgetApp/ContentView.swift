@@ -11,7 +11,7 @@ import SwiftUI
 import WidgetKit
 
 private let APP_GROUP = "group.com.hivits.hinest"
-private let API_BASE = "https://nest.hi-vits.com"
+private let API_BASE = "https://nest.efface.dev"
 private let TOKEN_KEY = "hinest.session.token"
 private let USER_NAME_KEY = "hinest.session.userName"
 

@@ -119,7 +119,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
     @objc func prewarmAvatars(_ call: CAPPluginCall) {
         let paths = (call.getArray("paths", String.self) ?? []).filter { $0.hasPrefix("/uploads/") }
         let groupId = "group.com.hivits.hinest"
-        let apiBase = "https://nest.hi-vits.com"
+        let apiBase = "https://nest.efface.dev"
         guard !paths.isEmpty,
               let base = FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: groupId) else {
             call.resolve(["cached": 0]); return
@@ -220,7 +220,7 @@ public class LiquidGlassTabBarPlugin: CAPPlugin, CAPBridgedPlugin {
         let href = call.getString("href") ?? "/"
         let token = call.getString("token") ?? ""
         // apiBase 미지정 시 운영 오리진. (웹 빌드의 VITE_API_BASE 와 동일해야 /api 가 맞는다.)
-        let apiBase = (call.getString("apiBase") ?? "https://nest.hi-vits.com").trimmingCharacters(in: .init(charactersIn: "/"))
+        let apiBase = (call.getString("apiBase") ?? "https://nest.efface.dev").trimmingCharacters(in: .init(charactersIn: "/"))
         DispatchQueue.main.async {
             guard let presenter = self.bridge?.viewController else {
                 call.resolve(["presented": false]); return

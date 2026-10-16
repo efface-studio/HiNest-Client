@@ -12,7 +12,7 @@ const _envApiBase = ((import.meta as any).env?.VITE_API_BASE as string | undefin
  *    모든 요청이 WebView 로컬(https://localhost)로 새서 로그인 등 전부 실패했다(데이터 타입 오류).
  *    네이티브에서만 폴백하므로 웹/데스크톱은 기존처럼 상대경로(빈 base) 그대로 — 동작 변화 없음.
  */
-export const API_BASE: string = _envApiBase || (isCapacitorNative() ? "https://nest.hi-vits.com" : "");
+export const API_BASE: string = _envApiBase || (isCapacitorNative() ? "https://nest.efface.dev" : "");
 
 /** 상대 API/자산 경로를 현재 빌드에 맞는 절대 URL 로. 절대 URL 은 그대로 통과. */
 export function apiUrl(path: string): string {

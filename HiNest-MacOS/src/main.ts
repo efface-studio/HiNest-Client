@@ -20,7 +20,7 @@ import crypto from "node:crypto";
 
 const isDev = !!process.env.HINEST_DEV;
 // 배포 빌드는 Vercel 에 올라간 웹앱을 로드. HINEST_URL 로 덮어쓰기 가능(스테이징/테스트).
-const PROD_URL = "https://nest.hi-vits.com";
+const PROD_URL = "https://nest.efface.dev";
 const DEFAULT_URL = isDev
   ? "http://localhost:1000"
   : process.env.HINEST_URL ?? PROD_URL;

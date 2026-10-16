@@ -629,7 +629,7 @@ function hashToken(token: string) {
  *   - NODE_ENV === "production" 이고 PUBLIC_APP_URL 이 없으면 안전하게 default 운영 도메인 사용.
  *   - 개발 환경에서만 Host 헤더 fallback 허용.
  */
-const PROD_DEFAULT_APP_URL = "https://nest.hi-vits.com";
+const PROD_DEFAULT_APP_URL = "https://nest.efface.dev";
 function appBaseUrl(req: { headers: { host?: string }; protocol?: string }) {
   const fromEnv = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
   if (fromEnv) return fromEnv;

@@ -52,7 +52,7 @@ public class HiNestMessagingService extends MessagingService {
     /** 고중요도 "기본 알림" 채널(MainActivity 가 생성) — 헤드업·배지·잠금화면 속성 포함. */
     private static final String CHANNEL_ID = MainActivity.CHANNEL_ID;
     /** = VITE_API_BASE (운영). iOS NSE 와 동일하게 하드코딩. */
-    private static final String API_BASE = "https://nest.hi-vits.com";
+    private static final String API_BASE = "https://nest.efface.dev";
     private static final int AVATAR_PX = 128;
 
     @Override

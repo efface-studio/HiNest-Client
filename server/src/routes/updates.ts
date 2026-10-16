@@ -5,7 +5,7 @@ import { Router } from "express";
  *
  * 동작:
  *   1) 셸이 POST /api/updates/check { version, ... } 로 현재 번들 정보를 보낸다.
- *   2) 서버는 https://nest.hi-vits.com/live-updates/manifest.json 을 GET 해 최신 메타를 가져온다
+ *   2) 서버는 https://nest.efface.dev/live-updates/manifest.json 을 GET 해 최신 메타를 가져온다
  *      (Vercel 정적 호스팅 — vite build 직후 build-live-update.mjs 가 자동 생성·갱신).
  *   3) manifest.version 이 셸의 version 과 다르면 새 번들 정보 반환, 같으면 'no_new_version_available'.
  *
@@ -18,9 +18,9 @@ import { Router } from "express";
 const router = Router();
 
 const MANIFEST_URL =
-  process.env.LIVE_UPDATE_MANIFEST_URL ?? "https://nest.hi-vits.com/live-updates/manifest.json";
+  process.env.LIVE_UPDATE_MANIFEST_URL ?? "https://nest.efface.dev/live-updates/manifest.json";
 const PUBLIC_ORIGIN =
-  process.env.LIVE_UPDATE_PUBLIC_ORIGIN ?? "https://nest.hi-vits.com";
+  process.env.LIVE_UPDATE_PUBLIC_ORIGIN ?? "https://nest.efface.dev";
 const CACHE_TTL_MS = 60_000;
 
 type Manifest = {

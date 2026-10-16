@@ -6,7 +6,7 @@ import { Router } from "express";
  * 왜 직접 GitHub Releases 링크를 두지 않는가:
  *   1) Chrome / Edge 의 "Safe Browsing" 평판 시스템은 도메인+파일명 조합 기반.
  *      github.com/.../releases/download/... 직접 링크는 매번 새 평판으로 시작.
- *      자체 도메인(api.nest.hi-vits.com)에서 일관된 경로(/api/download/windows)로
+ *      자체 도메인(api.nest.efface.dev)에서 일관된 경로(/api/download/windows)로
  *      배포하면 평판이 점진적으로 쌓여 \"이 파일은 일반적으로 다운로드되지 않습니다\"
  *      경고가 시간이 지나면서 사라진다.
  *   2) 명시적 Content-Type / Content-Disposition 으로 일부 브라우저의
